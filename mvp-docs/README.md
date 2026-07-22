@@ -18,6 +18,7 @@ Read in this order.
 | Doc | What it covers | Read it when |
 |---|---|---|
 | **[PRD.md](./PRD.md)** | Product requirements. Users, principles, every MVP feature with priority labels, screen inventory, design direction, success criteria, delivery phases, risks. | Start here. It's the spec. |
+| **[BRAND-DESIGN-LANGUAGE.md](./BRAND-DESIGN-LANGUAGE.md)** | The committed visual language: palette, the belt-rank level ramp, typography, spacing, shadcn/ui component mapping, motion, theming, accessibility contract, identity assets. Ships with `tokens.css`. | Before touching `src/ui/` or any screen. |
 | **[FEATURE-PARITY.md](./FEATURE-PARITY.md)** | Complete StickyStudy feature inventory mapped to KanjiForge status, plus the gaps we accept and the places we're better. | To check nothing was missed. |
 | **[SRS-SPEC.md](./SRS-SPEC.md)** | The scheduling algorithm in implementable detail: state, config, transitions, queue construction, goal math, statistics, merge semantics, 14 test cases. | Before writing `core/srs`. |
 | **[DATA-SOURCES.md](./DATA-SOURCES.md)** | Every dataset, its license, its size, its extraction plan, and what we legally cannot have. Build pipeline requirements. | Before writing anything — Phase 0 depends on it. |

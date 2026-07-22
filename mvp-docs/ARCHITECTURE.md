@@ -13,8 +13,11 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 | Runtime | React 19 | |
 | Styling | **Tailwind CSS v4** + CSS custom properties for the level ramp and theme tokens | The ramp must be swappable at runtime for CVD modes, which means CSS variables, not compiled classes. |
 | Client state | **Zustand** | Small, no provider tree, easy to persist slices. Avoid Redux; avoid Context for high-frequency study state. |
-| Local database | **SQLite-WASM over OPFS** for content; **Dexie (IndexedDB)** for user data | See §4. |
+| Local database | **SQLite-WASM over OPFS** for content; **PowerSync-managed SQLite (via `@powersync/web`)** for user data | See §4. Dexie is dropped for user data — PowerSync owns that store now so it can sync. Content packs are unaffected. |
 | Service worker | **Serwist** | Actively maintained successor to `next-pwa`; first-class Next.js App Router support. |
+| Accounts | **better-auth**, Postgres-backed via Drizzle | Account required before study begins — see §2 and PRD §1.2. |
+| Sync | **PowerSync (Open Edition, self-hosted)**, replicating from Postgres | Genuinely supports offline writes, unlike Zero (ruled out — see §10). FSL-licensed, free to self-host. |
+| Server database | **Postgres 16** | Backs both better-auth and PowerSync's logical replication. Self-hosted via Coolify. |
 | Charts | **uPlot** or hand-rolled SVG | Recharts/Chart.js are too heavy for a 200 KB budget and we only need bars. |
 | Animation | **Motion** (framer-motion successor) for card transitions; raw `requestAnimationFrame` for stroke animation and tile pan | |
 | Tokenizer | Kuromoji.js or Lindera-WASM, lazy-loaded (v1.1) | See DATA-SOURCES §10. |
@@ -22,8 +25,8 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 
 ### 1.1 Explicit non-choices
 
-- **No SSR, no server components doing data work.** All user data is on-device. Server components are used only for the static shell.
-- **No ORM.** The queries are few and hand-written SQL over SQLite-WASM is clearer and faster.
+- **No SSR, no server components doing data work — with one deliberate exception.** All *study* data is on-device and derived by client-side `replay()`; server components render only the static shell. The exception is accounts and sync: better-auth and PowerSync are a real, mandatory server, not the optional v1.1 add-on earlier drafts of this doc described. §2's "fully static export" now describes the client app only. The account/sync server is a separate, always-required deployable (self-hosted via Coolify — see §10).
+- **No ORM for content packs.** The queries are few and hand-written SQL over SQLite-WASM is clearer and faster. (The server-side Postgres schema for accounts/sync does use an ORM — Drizzle, via better-auth's adapter — since that's a normal relational schema with migrations, not a hand-tuned read path.)
 - **No component library.** shadcn/ui-style copy-in primitives at most. A flashcard app has ~12 unique components and a design that must not look templated.
 - **No analytics SDK.** See PRD §7.3.
 
@@ -31,10 +34,10 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 
 ## 2. Next.js configuration
 
-Deploy as a **fully static export** (`output: 'export'`) so the app can be hosted on GitHub Pages, Cloudflare Pages, Netlify, or a user's own static host with zero backend. This is a hard requirement for "self-hostable FOSS."
+Deploy the **client app** as a **fully static export** (`output: 'export'`) so it can be hosted on GitHub Pages, Cloudflare Pages, Netlify, or a user's own static host, with the account/sync server (better-auth + PowerSync + Postgres, §10) run as a separate, mandatory service the client is configured to talk to. The static-export claim is now about the app shell only, not about the product having zero backend — an account is required before study begins, so a backend is always in the picture. Self-hosters run the server piece themselves (e.g. via Coolify); it is not optional the way v1.1 sync once was.
 
 Consequences to design around:
-- No API routes. Anything that looks like a backend must be optional and external (v1.1 sync server).
+- No API routes in the Next.js app itself. Accounts and sync are handled entirely by the separate server (§10) over its own origin, configured by URL at build/runtime.
 - Dynamic routes need `generateStaticParams` or must be client-routed. **Client-route everything below the shell**: `/study`, `/browse`, `/detail/[id]`, `/dictionary` are all client-side routes over a static shell. Use a single catch-all page with a client router if the App Router's static export fights you on deep links.
 - Content packs are static assets served from `/packs/`, or from a CDN/GitHub Release URL configurable at build time.
 
@@ -138,26 +141,26 @@ CREATE VIRTUAL TABLE glosses_fts USING fts5(entry_id UNINDEXED, gloss);
 
 Keep the full entry as packed JSON in a BLOB rather than normalizing every sense and gloss into tables. We read whole entries; we never query across sense fields relationally. This halves the database size and simplifies the pipeline.
 
-### 4.2 User data — Dexie / IndexedDB
+### 4.2 User data — PowerSync-managed SQLite
 
-Small, mutable, precious, syncable.
+Small, mutable, precious, syncable. Previously Dexie/IndexedDB; now a PowerSync-managed SQLite database (via `@powersync/web`), because the sync design (§10) requires a local store PowerSync can own — Dexie has no place in that pipeline. The table shape is unchanged from the original Dexie design; every table additionally carries a `user_id` column so PowerSync's sync rules can scope rows to the authenticated user (see §10).
 
 ```ts
-db.version(1).stores({
-  decks:       'id, name, updatedAt',
-  stickies:    'id, deckId, [deckId+order], contentRef',
-  cardStates:  '[deckId+stickyId], deckId, level, dueAt, flagged',
-  reviews:     'id, [deckId+at], stickyId, at',      // append-only
-  sessions:    'id, deckId, startedAt',
-  settings:    'key',
-  textHistory: 'id, at',
-});
+// PowerSync schema (Schema/Table definitions, not raw SQL)
+decks:       { id, user_id, name, updatedAt }
+stickies:    { id, user_id, deckId, order, contentRef }
+cardStates:  { id, user_id, deckId, stickyId, level, dueAt, flagged }  // compound-key behavior via a unique index on (deckId, stickyId)
+reviews:     { id, user_id, deckId, stickyId, at, ... }                // append-only
+sessions:    { id, user_id, deckId, startedAt }
+settings:    { user_id, key, value }
+textHistory: { id, user_id, at }
 ```
 
 Notes:
 - `stickies.contentRef` points into a content pack (`kanji:未` or `word:1234567`) rather than duplicating dictionary data. A user-created sticky with no dictionary match stores its own inline content instead.
-- `[deckId+stickyId]` compound primary key on `cardStates` makes "same kanji in two decks, independent progress" natural — which is what StickyStudy's "transfer progress" feature implies.
-- `reviews` is the only unbounded table. At 200 reviews/day for 5 years that's ~365k rows — trivial for IndexedDB, but paginate the history queries and precompute daily aggregates into a `dailyStats` table on write.
+- A unique index on `(deckId, stickyId)` in `cardStates` makes "same kanji in two decks, independent progress" natural — which is what StickyStudy's "transfer progress" feature implies.
+- `reviews` is the only unbounded table. At 200 reviews/day for 5 years that's ~365k rows — trivial for local SQLite, but paginate the history queries and precompute daily aggregates into a `dailyStats` table on write.
+- Every table's Postgres counterpart is scoped by `user_id` via PowerSync sync rules (§10), so a user only ever syncs their own rows.
 
 ### 4.3 The write path
 
@@ -219,7 +222,7 @@ Prototype this in Phase 0 with synthetic data before committing to the rest of t
 | App shell (HTML/JS/CSS) | Precache, cache-first, versioned by build hash |
 | Fonts | Cache-first, 1 year |
 | Content packs | **Explicit install**, not opportunistic caching. Downloaded on user action into Cache Storage / OPFS with a visible progress UI and a resumable-on-retry flow. |
-| Sync API (v1.1) | Network-only, with a background queue |
+| Sync API (PowerSync, MVP) | Local-first: reads/writes hit local SQLite immediately; a background upload queue flushes to the PowerSync service when online (§10) |
 
 **Update flow:** on `waiting`, show a persistent-but-dismissible toast. Never `skipWaiting()` automatically — reloading mid-study-session and losing the queue would be the single most infuriating possible bug.
 
@@ -337,24 +340,58 @@ Do this in a Web Worker; 500 rows against SQLite-WASM should not block the main 
 
 ---
 
-## 10. Sync design (v1.1, but constrains MVP)
+## 10. Sync design
 
-**MVP constraint that must be honored now:** every `Review` carries a UUIDv7 `id` and a `deviceId`, and the review log is append-only. Nothing else is required in MVP.
+**Status: MVP-scope, mandatory.** Every account gets working cross-device sync from the start — this is no longer a deferred v1.1 nicety (see PRD §1.2, §4.16). Every `Review` still carries a UUIDv7 `id` and a `deviceId`; the review log is still append-only. That invariant doesn't go away — it's still what makes `replay()` deterministic and what makes backup/restore trivially correct — but the *transport* is no longer a bespoke `POST /sync` endpoint.
 
-**v1.1 server** (optional, self-hostable, ~300 lines):
+### Why not a bespoke sync server
+
+The original design here was a ~300-line hand-rolled push/pull endpoint doing a set-union of the review log. That's still a *correct* model for this data (immutable facts can't conflict), but the user directed against building and maintaining a bespoke protocol when a maintained, FOSS, self-hostable one already does this well. **Rocicorp's Zero was evaluated and rejected**: Zero deliberately does not support offline writes — in its `disconnected`/`error`/`needs-auth` states, reads work but writes are rejected ([Zero offline docs](https://zero.rocicorp.dev/docs/offline)), and "disable offline writes" shipped as an intentional Q4 2025 change, not a gap to be fixed. That is disqualifying for an app whose entire premise is that every study answer is a write that must succeed offline (PRD §1.2 principle 3, §7.1 airplane-mode acceptance).
+
+### What we use instead: PowerSync
+
+**[PowerSync](https://powersync.com) Open Edition**, self-hosted. It is FOSS (source-available under the [Functional Source License](https://powersync.com/legal/fsl) — free to run and modify; the only restriction is not re-selling it as a competing hosted sync service, which doesn't apply to self-hosting your own app), it replicates from a normal Postgres database via logical replication (no proprietary datastore), and — the deciding factor — it genuinely supports offline writes: local writes queue in an upload buffer on the client and flush on reconnect, rather than being rejected.
+
+How it fits:
+
+- **Sync rules** (a YAML config PowerSync loads) scope every table by the authenticated `user_id`, so a user only ever receives and can write their own rows. Because accounts are required before study begins (PRD §1.2), there is no anonymous-then-upgrade merge case to design for — every row has a real `user_id` from the moment it's created.
+- **Client**: `@powersync/web` opens a local SQLite database (replacing Dexie, §4.2) and keeps it synced against the PowerSync service. Reads and writes hit this local database first — the study loop (§4.3) is unaffected by network state.
+- **The review log stays append-only and immutable.** PowerSync doesn't need the manual set-union `replay()` was originally built to support at the *transport* layer — row-level sync handles that — but `replay()` itself is kept: it's still what recomputes `cardStates` from the log (deterministic, no merge logic in the scheduler), and it's still what powers full backup/restore (§12, §4.12) and any future FSRS migration. Nothing about the log's shape or SRS-SPEC.md changes.
+- **Decks and settings**: still last-write-wins per field via `updatedAt` where it matters, same as before — PowerSync doesn't change this, it's a property of the schema, not the transport.
+
+### Auth & deployment
+
+- **Postgres 16**, self-hosted via Coolify. Set `wal_level = logical` in `postgresql.conf` (required for PowerSync's logical replication; PowerSync itself only requires Postgres 11+, but 16 is pinned here for a modern baseline).
+- A dedicated Postgres role for PowerSync — `REPLICATION` + `BYPASSRLS` + `SELECT` on the synced tables — and a publication covering them:
+  ```sql
+  CREATE ROLE powersync_role WITH REPLICATION BYPASSRLS LOGIN PASSWORD '...';
+  GRANT SELECT ON decks, stickies, card_states, reviews, sessions, settings, text_history TO powersync_role;
+  CREATE PUBLICATION powersync FOR TABLE decks, stickies, card_states, reviews, sessions, settings, text_history;
+  ```
+- **better-auth** for accounts, backed by the same Postgres via `drizzleAdapter(db, { provider: "pg" })`. Sign-in is required before the app can be used (no anonymous mode, no upgrade flow) — see PRD §1.2.
+- **better-auth's JWT plugin** issues the signed token PowerSync's sync connection authenticates with (PowerSync verifies a JWT; it doesn't understand better-auth's session cookies directly). `PS_JWT_ISSUER` on the PowerSync service must match the issuer better-auth's JWT plugin sets.
+- **PowerSync Service** runs as its own Docker container, configured via `service.yaml` or a base64-encoded `POWERSYNC_CONFIG_B64`: a replication section pointing at the Postgres connection string above, a storage section for PowerSync's own sync-bucket bookkeeping (can live in the same Postgres instance, separate schema), and the sync-rules file.
+
+**Environment variables** (full reference — set these on the Coolify services):
 
 ```
-POST /sync
-  body: { deviceId, since: cursor, reviews: Review[], decks: Deck[], settings: Setting[] }
-  resp: { cursor, reviews: Review[], decks: Deck[], settings: Setting[] }
+# Postgres
+POSTGRES_DB=kanjiforge
+POSTGRES_USER=kanjiforge
+POSTGRES_PASSWORD=<secret>
+
+# better-auth (Next.js app / auth service)
+BETTER_AUTH_SECRET=<32+ char random, e.g. `openssl rand -base64 32`>
+BETTER_AUTH_URL=https://app.example.com
+DATABASE_URL=postgres://kanjiforge:<secret>@postgres:5432/kanjiforge
+
+# PowerSync service
+PS_REPLICATION_URI=postgres://powersync_role:<secret>@postgres:5432/kanjiforge
+PS_JWT_ISSUER=<matches better-auth JWT plugin issuer>
+PS_PUBLIC_URL=https://sync.example.com
 ```
 
-- Reviews: server stores the union, deduped by `id`. Returns everything the client hasn't seen. No conflict resolution needed — a set union of immutable facts cannot conflict.
-- Client then runs `replay()` over the merged log to recompute all `cardStates`. Deterministic, no merge logic in the scheduler.
-- Decks and settings: last-write-wins per field via `updatedAt`, which is acceptable for low-contention metadata.
-- Auth: email magic link or OIDC. Storage: Postgres or SQLite. Deployable as a single container.
-
-The same `replay()` function powers offline backup restore, which means it gets tested continuously from Phase 4 onward rather than being written under pressure in v1.1.
+(Only environment variables prefixed `PS_` are substitutable inside PowerSync's `service.yaml` via its `!env` tag — keep all PowerSync-service config using that prefix.)
 
 ---
 
