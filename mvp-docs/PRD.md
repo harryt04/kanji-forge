@@ -14,7 +14,7 @@ KanjiForge is an offline-first, installable Progressive Web App for studying Jap
 
 The defining idea: every card is a **sticky** that has a **color**. Red means new, green means mastered, and the colors in between are visible progress. A user can zoom out and see their entire deck as a wall of colored tiles turning from red to green over weeks. That single visualization is the product's emotional core and the number one thing to get right.
 
-KanjiForge must run entirely in the browser, work offline after first load, install to a phone home screen, and be usable on tablet, laptop, and desktop. No account required. No server required. No tracking. No paywall.
+KanjiForge must run entirely in the browser, work offline after first load, install to a phone home screen, and be usable on tablet, laptop, and desktop. Signing in is required (see §1.2) so progress can follow a user across devices from day one — but there is no tracking and no paywall.
 
 ### 1.1 Why this exists
 
@@ -25,9 +25,9 @@ KanjiForge's wedge: **StickyStudy's UX and SRS legibility, delivered as an open,
 ### 1.2 Product principles
 
 1. **The color is the interface.** Progress must be visible at a glance, at every zoom level, on every screen.
-2. **Zero setup.** Open the app, pick a deck, start studying in under 60 seconds. No account, no config, no deck downloads required to begin.
-3. **Offline is the default, not a mode.** Every study feature works on a plane. Network is only for optional content packs and optional sync.
-4. **Your data is a file.** Everything exportable to open formats at any time, without an account.
+2. **Sign in once, then it's zero-friction.** An account is required before studying — this is a deliberate trade against instant anonymous use, made so that cross-device sync (picking up on a phone where you left off on a laptop) works from the very first session, with no later "upgrade" step and no local-data-merge edge case. After that one sign-in, picking a deck and starting a session takes under 60 seconds.
+3. **Offline is the default, not a mode.** Every study feature works on a plane, including recording answers — writes queue locally and sync when back online (see `ARCHITECTURE.md` §10). Network is required only for initial sign-in, content packs, and sync.
+4. **Your data is a file.** Everything exportable to open formats at any time.
 5. **Mobile-first, not mobile-only.** Thumb-reachable one-handed study on a phone; genuinely better on a large screen, not just stretched.
 6. **Honest licensing.** Every bundled byte has a documented, compatible open license. See `DATA-SOURCES.md`.
 
@@ -38,7 +38,6 @@ KanjiForge's wedge: **StickyStudy's UX and SRS legibility, delivered as an open,
 - Grammar lessons, conjugation drills, listening comprehension exercises
 - Monetization of any kind
 - Native app store distribution (PWA install only)
-- Real-time multi-device sync (manual export/import ships in MVP; live sync is v1.1)
 
 ---
 
@@ -305,9 +304,10 @@ StickyStudy's "Translation" feature: paste Japanese, get furigana and glosses, h
 
 ### 4.16 Sync and backup
 
-- **[P0] MVP:** manual full-backup export/import as a JSON file, plus per-deck export. Clearly surfaced, with a nag if no backup has been taken in 30 days.
+- **[P0] MVP:** account-based, real-time cross-device sync via a self-hosted PowerSync + Postgres + better-auth server (see `ARCHITECTURE.md` §10). Sign-in is required (§1.2), so sync is live from a user's first session — not an opt-in add-on. Offline writes are queued locally and flushed on reconnect; the study loop never blocks on network state.
+- **[P0]** Manual full-backup export/import as a JSON file, plus per-deck export, kept as an independent escape hatch even though live sync exists — this is what makes the data genuinely portable and un-lockable-in (PRD §1.2 principle 4). Clearly surfaced, with a nag if no backup has been taken in 30 days.
 - **[P1]** File System Access API on desktop: pick a backup folder once, auto-write a backup on a schedule.
-- **[P2] v1.1:** optional account-based sync against a small self-hostable server. Design constraint that must be honored in MVP: **the review log is append-only and each record carries a stable UUID + device ID + timestamp**, so multi-device merge is a set union followed by a deterministic state recomputation. No CRDT complexity needed. Deck/settings conflicts resolve last-write-wins per field.
+- Design constraint honored by the server design: **the review log is append-only and each record carries a stable UUID + device ID + timestamp**, so the same `replay()` projection that powers sync also powers backup/restore and any future scheduler migration. Deck/settings conflicts resolve last-write-wins per field.
 
 ### 4.17 Accessibility
 
@@ -353,6 +353,8 @@ StickyStudy's "Translation" feature: paste Japanese, get furigana and glosses, h
 
 ## 6. Design direction
 
+> **The concrete, shipped decisions — palette, ramp, type, components, motion, identity assets — live in [`BRAND-DESIGN-LANGUAGE.md`](./BRAND-DESIGN-LANGUAGE.md).** This section states the *requirements* that document must satisfy; treat the reference ramp and font suggestions below as the brief, not the final answer.
+
 ### 6.1 The core visual metaphor
 
 Physical sticky notes / paper slips. Cards should feel like objects: subtle drop shadow, slight paper texture at high zoom, a satisfying flip. The color ramp is the brand. Everything else stays quiet so the color can shout.
@@ -378,6 +380,8 @@ Reference default ramp (adjust in design, but keep the perceptual spacing):
 
 Alternate CVD-safe ramp: a single-hue lightness/chroma ramp (deep purple → pale yellow) so progression survives any form of color blindness.
 
+**Shipped decision:** the chosen ramp is not this reference table — see `BRAND-DESIGN-LANGUAGE.md` §3 for the belt-rank ramp (白 → 黄 → 緑 → 青 → 黒) that replaced it, built on strictly increasing perceptual lightness so it satisfies every requirement above without a separate CVD mode.
+
 ### 6.3 Typography
 
 - **Japanese:** a proper Japanese face at large sizes. Noto Sans JP for UI, Noto Serif JP or Klee One for the large card character (Klee's textbook-style forms match how kanji are actually taught to write). Subset aggressively — see `ARCHITECTURE.md` §6.
@@ -402,7 +406,7 @@ Plain, direct, in the user's frame. "4 correct answers to master this" not "SRS 
 
 ### 7.1 Functional acceptance (MVP is done when)
 
-- A new user can install, pick JLPT N5 Kanji, and complete a 20-card session in under 90 seconds from first tap, with no account and no network after initial load.
+- A new user can sign in, install, pick JLPT N5 Kanji, and complete a 20-card session in under 90 seconds from first tap after sign-in, with no further network needed after initial load.
 - Airplane mode: every feature in §4.1–4.8 and §4.11–4.14 works.
 - A 2,136-card jōyō deck renders in tile view and pans at ≥50fps on a mid-range 2021 Android phone.
 - Answering a card (tap → next card visible) completes in <100ms at p95.
@@ -474,9 +478,9 @@ Tokenizer integration, furigana rendering, bulk harvest, share target, audio tie
 
 **Resolved:**
 1. ~~Code license~~ → **MIT.** Rationale: enforcement of a copyleft license is not realistically available to a solo maintainer, and permissive licensing lowers the barrier to contribution. Note that this decision applies to the *code only* — bundled and derived data remains CC BY-SA 4.0 by obligation, which already forecloses a fully-closed fork of the content packs. See §9.1.
+2. ~~Is a hosted instance offered at all, or is it strictly self-host?~~ → **Strictly self-host, account required.** The maintainer self-hosts their own instance (Postgres + better-auth + PowerSync) via Coolify; there is no maintainer-run hosted service in scope. The client app remains a static deploy (`ARCHITECTURE.md` §2), but it is not usable without a running account/sync server — that server is a mandatory deployable for anyone running KanjiForge, not an optional v1.1 extra. See `ARCHITECTURE.md` §10 for the full stack and env vars.
 
 **Open questions for the maintainer:**
-2. Is a hosted instance offered at all, or is it strictly self-host + GitHub Pages style static deploy? Affects whether Phase 2 sync needs a real backend.
 3. Should the built-in decks be bundled in the initial install or downloaded as packs on first run? Trade-off: install size vs. offline-from-zero.
 
 ### 9.1 Licensing structure
