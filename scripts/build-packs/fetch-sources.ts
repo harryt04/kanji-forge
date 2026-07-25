@@ -256,7 +256,7 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
   const latestYomitan = await getLatestYomitanRelease();
   const latestKanjiData = await getLatestKanjiDataCommit();
 
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = new Date().toISOString().slice(0, 10);
 
   return [
     {
