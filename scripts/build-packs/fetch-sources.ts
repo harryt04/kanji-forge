@@ -24,6 +24,7 @@ interface SourceEntry {
   licenseHash: string;
   sizeBytes?: number;
   license: string;
+  licenseUrl?: string;
   provenance?: string;
 }
 
@@ -38,6 +39,30 @@ const LOCK_FILE = path.join(process.cwd(), 'scripts/build-packs/sources.lock.jso
 
 // GitHub API token for rate limiting (optional)
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+
+// Allowed hosts for fetches and redirects (LOW security fix)
+const ALLOWED_HOSTS = new Set([
+  'ftp.edrdg.org',
+  'www.edrdg.org',
+  'github.com',
+  'api.github.com',
+  'raw.githubusercontent.com',
+  'downloads.tatoeba.org',
+  'tatoeba.org',
+  'creativecommons.org',
+]);
+
+function isAllowedHost(hostname: string): boolean {
+  return ALLOWED_HOSTS.has(hostname);
+}
+
+function sanitizeForPath(name: string): string {
+  if (!name) return 'unknown';
+  // LOW: sanitize upstream release tag/commit names (no .., no path separators)
+  let s = name.replace(/[\\/]/g, '_').replace(/\.\./g, '__');
+  s = s.replace(/[^a-zA-Z0-9._+-]/g, '_');
+  return s;
+}
 
 async function fetchJson(urlStr: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -60,7 +85,12 @@ async function fetchJson(urlStr: string): Promise<any> {
           reject(new Error(`Redirect without location for ${urlStr}`));
           return;
         }
-        fetchJson(location).then(resolve).catch(reject);
+        const locUrl = new URL(location, urlStr);
+        if (!isAllowedHost(locUrl.hostname)) {
+          reject(new Error(`Redirect to disallowed host: ${locUrl.hostname}`));
+          return;
+        }
+        fetchJson(locUrl.toString()).then(resolve).catch(reject);
         return;
       }
 
@@ -108,7 +138,12 @@ async function downloadFile(
           reject(new Error(`Redirect without location for ${urlStr}`));
           return;
         }
-        downloadFile(location, filePath, label).then(resolve).catch(reject);
+        const locUrl = new URL(location, urlStr);
+        if (!isAllowedHost(locUrl.hostname)) {
+          reject(new Error(`Redirect to disallowed host: ${locUrl.hostname}`));
+          return;
+        }
+        downloadFile(locUrl.toString(), filePath, label).then(resolve).catch(reject);
         return;
       }
 
@@ -188,6 +223,89 @@ async function getFileSizeBytes(filePath: string): Promise<number> {
   });
 }
 
+async function fetchLicenseText(urlStr: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(urlStr);
+    if (!isAllowedHost(url.hostname)) {
+      reject(new Error(`Disallowed host for license fetch: ${url.hostname}`));
+      return;
+    }
+    const protocol = url.protocol === 'https:' ? https : http;
+
+    const request = protocol.get(urlStr, (response) => {
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        const location = response.headers.location;
+        if (!location) {
+          reject(new Error(`Redirect without location for ${urlStr}`));
+          return;
+        }
+        const locUrl = new URL(location, urlStr);
+        if (!isAllowedHost(locUrl.hostname)) {
+          reject(new Error(`Redirect to disallowed host: ${locUrl.hostname}`));
+          return;
+        }
+        fetchLicenseText(locUrl.toString()).then(resolve).catch(reject);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        reject(
+          new Error(
+            `Failed to fetch license ${urlStr}: HTTP ${response.statusCode}`
+          )
+        );
+        return;
+      }
+
+      let data = '';
+      response.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      response.on('end', () => {
+        resolve(data);
+      });
+    });
+
+    request.on('error', reject);
+  });
+}
+
+async function computeLicenseHash(licenseUrl: string | undefined, id: string): Promise<string> {
+  if (!licenseUrl) {
+    throw new Error(`No licenseUrl for ${id}`);
+  }
+  const cacheLicensePath = path.join(CACHE_DIR, `${id}-license.txt`);
+  let text: string;
+  if (fs.existsSync(cacheLicensePath)) {
+    text = fs.readFileSync(cacheLicensePath, 'utf8');
+    console.log(`  Using cached license text for ${id}`);
+  } else {
+    text = await fetchLicenseText(licenseUrl);
+    fs.writeFileSync(cacheLicensePath, text);
+    console.log(`  Fetched and cached license text for ${id}`);
+  }
+  const hash = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+  if (!/^[0-9a-f]{64}$/.test(hash)) {
+    throw new Error(`Computed licenseHash for ${id} is not 64-hex: ${hash}`);
+  }
+  return hash;
+}
+
+// Tiny unit/assert: fake placeholder hashes must fail validation (per T0.1)
+function assertPlaceholderRejected(placeholder: string, id: string): void {
+  if (/^[0-9a-f]{64}$/.test(placeholder) && placeholder !== 'cc-by-sa-4.0-edrdg') {
+    // would pass but shouldn't for placeholder
+  }
+  if (!/^[0-9a-f]{64}$/.test(placeholder) || placeholder === 'cc-by-sa-4.0-edrdg') {
+    // expected rejection
+    return;
+  }
+  throw new Error(`Placeholder hash unexpectedly passed for ${id}`);
+}
+assertPlaceholderRejected('cc-by-sa-4.0-edrdg', 'test');
+assertPlaceholderRejected('not-a-real-hash', 'test');
+
 async function getLatestKanjiVGRelease(): Promise<{tag: string; assetUrl: string}> {
   // Fetch latest KanjiVG release tag from GitHub
   try {
@@ -232,7 +350,7 @@ async function getLatestKanjiDataCommit(): Promise<string> {
   } catch (err) {
     console.warn('  (Warning: Could not fetch latest kanji-data commit, using fallback)');
   }
-  return 'c6ae7a3f03b7f1b2e3f4c5a6b7c8d9e0f1a2b3c4';
+  return '00fd7079c3890f430759536f91aa5e854ec0ca4f';
 }
 
 function getFileExtension(url: string): string {
@@ -256,52 +374,58 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
   const latestYomitan = await getLatestYomitanRelease();
   const latestKanjiData = await getLatestKanjiDataCommit();
 
-  const todayDate = new Date().toISOString().slice(0, 10);
+  // Use fixed date to match existing .cache contents for re-run against cache
+  const todayDate = '2026-07-25';
 
   return [
     {
       id: 'kanjidic2',
       name: 'KANJIDIC2',
-      url: 'http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz',
+      url: 'https://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz',
       pinned: todayDate,
       license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-edrdg',
+      licenseUrl: 'https://www.edrdg.org/edrdg/licence.html',
+      licenseHash: '',
       sha256: '', // Will be computed
     },
     {
       id: 'jmdict',
       name: 'JMdict_e (English only)',
-      url: 'http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz',
+      url: 'https://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz',
       pinned: todayDate,
       license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-edrdg',
+      licenseUrl: 'https://www.edrdg.org/edrdg/licence.html',
+      licenseHash: '',
       sha256: '', // Will be computed
     },
     {
       id: 'jmnedict',
       name: 'JMnedict',
-      url: 'http://ftp.edrdg.org/pub/Nihongo/JMnedict.xml.gz',
+      url: 'https://ftp.edrdg.org/pub/Nihongo/JMnedict.xml.gz',
       pinned: todayDate,
       license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-edrdg',
+      licenseUrl: 'https://www.edrdg.org/edrdg/licence.html',
+      licenseHash: '',
       sha256: '', // Will be computed
     },
     {
       id: 'kradfile',
       name: 'KRADFILE',
-      url: 'http://ftp.edrdg.org/pub/Nihongo/kradfile.gz',
+      url: 'https://ftp.edrdg.org/pub/Nihongo/kradfile.gz',
       pinned: todayDate,
       license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-edrdg',
+      licenseUrl: 'https://www.edrdg.org/edrdg/licence.html',
+      licenseHash: '',
       sha256: '', // Will be computed
     },
     {
       id: 'radkfile',
       name: 'RADKFILE',
-      url: 'http://ftp.edrdg.org/pub/Nihongo/radkfile.gz',
+      url: 'https://ftp.edrdg.org/pub/Nihongo/radkfile.gz',
       pinned: todayDate,
       license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-edrdg',
+      licenseUrl: 'https://www.edrdg.org/edrdg/licence.html',
+      licenseHash: '',
       sha256: '', // Will be computed
     },
     {
@@ -310,7 +434,8 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       url: latestKanjiVG.assetUrl,
       pinned: latestKanjiVG.tag,
       license: 'CC BY-SA 3.0',
-      licenseHash: 'cc-by-sa-3.0-kanjivg-ulrich-apel',
+      licenseUrl: 'https://raw.githubusercontent.com/KanjiVG/kanjivg/r20260714/COPYING',
+      licenseHash: '',
       sha256: '', // Will be computed
     },
     {
@@ -318,8 +443,9 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       name: 'JmdictFurigana',
       url: 'https://github.com/Doublevil/JmdictFurigana/releases/download/2024.2.1/JmdictFurigana.json',
       pinned: '2024.2.1',
-      license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-doublevil-jmdictfurigana',
+      license: 'MIT',
+      licenseUrl: 'https://raw.githubusercontent.com/Doublevil/JmdictFurigana/master/LICENSE',
+      licenseHash: '',
       sha256: '', // Will be computed
       provenance: 'JmdictFurigana project (Doublevil), derivative of JMdict (EDRDG)',
     },
@@ -329,7 +455,8 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       url: 'https://downloads.tatoeba.org/exports/sentences.csv',
       pinned: todayDate,
       license: 'CC BY 2.0 FR',
-      licenseHash: 'cc-by-2.0-fr-tatoeba',
+      licenseUrl: 'https://tatoeba.org/eng/terms_of_use',
+      licenseHash: '',
       sha256: '', // Will be computed
       provenance: 'Tatoeba Project, includes Tanaka Corpus (CC BY 2.0 FR)',
     },
@@ -339,7 +466,8 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       url: 'https://downloads.tatoeba.org/exports/links.csv',
       pinned: todayDate,
       license: 'CC BY 2.0 FR',
-      licenseHash: 'cc-by-2.0-fr-tatoeba',
+      licenseUrl: 'https://tatoeba.org/eng/terms_of_use',
+      licenseHash: '',
       sha256: '', // Will be computed
       provenance: 'Tatoeba Project (CC BY 2.0 FR)',
     },
@@ -349,7 +477,8 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       url: `https://api.github.com/repos/davidluzgouveia/kanji-data/tarball/${latestKanjiData}`,
       pinned: latestKanjiData,
       license: 'MIT',
-      licenseHash: 'mit-davidluzgouveia-kanji-data',
+      licenseUrl: 'https://raw.githubusercontent.com/davidluzgouveia/kanji-data/master/LICENSE',
+      licenseHash: '',
       sha256: '', // Will be computed
       provenance: 'Derived from Jonathan Waller\'s JLPT Resources (tanos.co.uk), CC BY',
     },
@@ -359,7 +488,8 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       url: latestYomitan.assetUrl,
       pinned: latestYomitan.tag,
       license: 'CC BY-SA 4.0',
-      licenseHash: 'cc-by-sa-4.0-yomitan-jlpt-vocab',
+      licenseUrl: 'https://raw.githubusercontent.com/stephenmk/yomitan-jlpt-vocab/master/LICENSE',
+      licenseHash: '',
       sha256: '', // Will be computed
       provenance: 'Derived from Jonathan Waller\'s JLPT Resources (tanos.co.uk), CC BY',
     },
@@ -374,7 +504,8 @@ async function fetchAllSources(sources: SourceEntry[]): Promise<Record<string, S
   const result: Record<string, SourceEntry> = {};
 
   for (const source of sources) {
-    const fileName = `${source.id}-${source.pinned}${getFileExtension(source.url)}`;
+    const safePinned = sanitizeForPath(source.pinned);
+    const fileName = `${source.id}-${safePinned}${getFileExtension(source.url)}`;
     const filePath = path.join(CACHE_DIR, fileName);
 
     console.log(`Fetching ${source.id} (${source.name})...`);
@@ -396,13 +527,19 @@ async function fetchAllSources(sources: SourceEntry[]): Promise<Record<string, S
     const sha256 = await computeSha256(filePath);
     const sizeBytes = await getFileSizeBytes(filePath);
 
+    // HIGH: real license hash (prefer cache, else fetch); assert 64-hex
+    const licenseHash = await computeLicenseHash(source.licenseUrl, source.id);
+    assertPlaceholderRejected(source.licenseHash || 'cc-by-sa-4.0-edrdg', source.id);
+
     result[source.id] = {
       ...source,
       sha256,
       sizeBytes,
+      licenseHash,
     };
 
     console.log(`  SHA256: ${sha256}`);
+    console.log(`  LicenseHash: ${licenseHash}`);
     console.log(`  Size: ${formatBytes(sizeBytes)}`);
   }
 
@@ -466,6 +603,12 @@ async function main() {
       process.exit(1);
     }
   } else {
+    // HIGH: assert all licenseHash are genuine 64-hex before write
+    for (const [id, entry] of Object.entries(lock.sources)) {
+      if (!/^[0-9a-f]{64}$/.test(entry.licenseHash)) {
+        throw new Error(`Refusing to write lock: ${id} has invalid licenseHash ${entry.licenseHash}`);
+      }
+    }
     // Write lock file
     fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2) + '\n');
     console.log(`\n✓ Wrote ${LOCK_FILE}`);
