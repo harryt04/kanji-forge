@@ -41,3 +41,6 @@ Thumbs.db
 
 # Docs (preserve packs-dev for committed fixtures)
 .lavish/*
+
+# Data sources cache (build artifacts, not committed)
+scripts/build-packs/.cache/
