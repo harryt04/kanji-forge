@@ -1,12 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
-/**
- * FPS counter overlay for performance monitoring.
- * Displays rolling average FPS and frame timing data during pan/zoom.
- */
-export default function FpsOverlay(): ReactNode {
+export default function FpsOverlay({ canvasRef }: { canvasRef?: RefObject<HTMLCanvasElement | null> }): ReactNode {
   const [fps, setFps] = useState(0);
   const [avgFrameTime, setAvgFrameTime] = useState(0);
   const [isPanning, setIsPanning] = useState(false);
@@ -15,10 +11,9 @@ export default function FpsOverlay(): ReactNode {
   const rafIdRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    const canvas = document.querySelector('canvas');
+    const canvas = canvasRef?.current;
     if (!canvas) return;
 
-    // Detect pan/zoom activity
     const handlePointerDown = () => setIsPanning(true);
     const handlePointerUp = () => {
       setIsPanning(false);
@@ -29,19 +24,16 @@ export default function FpsOverlay(): ReactNode {
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointerleave', handlePointerUp);
 
-    // Track frame times
     const trackFrame = () => {
       const now = performance.now();
       const frameTime = now - lastFrameTimeRef.current;
       lastFrameTimeRef.current = now;
 
       frameTimesRef.current.push(frameTime);
-      // Keep rolling window of last 30 frames
       if (frameTimesRef.current.length > 30) {
         frameTimesRef.current.shift();
       }
 
-      // Update display
       if (frameTimesRef.current.length > 0) {
         const avgTime = frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length;
         setAvgFrameTime(Math.round(avgTime * 10) / 10);
@@ -61,7 +53,7 @@ export default function FpsOverlay(): ReactNode {
         cancelAnimationFrame(rafIdRef.current);
       }
     };
-  }, []);
+  }, [canvasRef]);
 
   return (
     <div className="fixed top-4 right-4 bg-card border border-border rounded-lg p-3 font-mono text-xs shadow-lg">

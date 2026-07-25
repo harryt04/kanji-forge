@@ -25,11 +25,13 @@ interface RendererState {
   levels: Uint8Array;
   glyphAtlas: HTMLCanvasElement | null;
   atlasCharMap: Map<string, { x: number; y: number }>;
+  atlasBuiltForTileSize: number | null;
   lastFramePixels: Uint8ClampedArray | null;
   backingBuffer: OffscreenCanvas | null;
   backingCtx: OffscreenCanvasRenderingContext2D | null;
   lastOffsetX: number;
   lastOffsetY: number;
+  lastTileSize: number;
   hitTestCallback?: (tileIndex: number) => void;
   lastIsDark?: boolean;
   levelColors: Record<number, string>;
@@ -87,9 +89,6 @@ function buildGlyphAtlas(
   canvas.height = atlasSize;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = getColorForLevel(0, state);
-  ctx.fillRect(0, 0, atlasSize, atlasSize);
-
   const charMap = new Map<string, { x: number; y: number }>();
   const textSize = Math.max(12, Math.min(32, tileSize * 1.2));
 
@@ -101,7 +100,6 @@ function buildGlyphAtlas(
     const x = col * atlasTileSize;
     const y = row * atlasTileSize;
 
-    // Draw character
     ctx.font = `600 ${textSize}px 'Klee One', sans-serif`;
     ctx.fillStyle = getColorForLevel(2, state); // medium level color for readability
     ctx.textAlign = 'center';
@@ -184,13 +182,30 @@ export function createRenderer(
     levels,
     glyphAtlas: null,
     atlasCharMap: new Map(),
+    atlasBuiltForTileSize: null,
     lastFramePixels: null,
     backingBuffer,
     backingCtx,
     lastOffsetX: 0,
     lastOffsetY: 0,
+    lastTileSize: 32,
     levelColors: resolveLevelColorsFromCSS(),
   };
+}
+
+export function resizeBackingBuffer(state: RendererState): void {
+  const canvas = state.canvas;
+  if (!canvas) return;
+  try {
+    state.backingBuffer = new OffscreenCanvas(canvas.width, canvas.height);
+    state.backingCtx = state.backingBuffer.getContext('2d')!;
+  } catch {
+    state.backingBuffer = null;
+    state.backingCtx = null;
+  }
+  state.lastOffsetX = state.offsetX;
+  state.lastOffsetY = state.offsetY;
+  state.lastTileSize = -1;
 }
 
 export function render(state: RendererState, isDark: boolean): void {
@@ -201,6 +216,8 @@ export function render(state: RendererState, isDark: boolean): void {
     invalidateColorCache();
     state.levelColors = resolveLevelColorsFromCSS();
     state.lastIsDark = isDark;
+    state.glyphAtlas = null;
+    state.atlasBuiltForTileSize = null;
   }
 
   // Determine rendering mode
@@ -218,30 +235,42 @@ export function render(state: RendererState, isDark: boolean): void {
 
 function renderLowZoom(state: RendererState) {
   const isDark = state.lastIsDark;
-  const { canvas, ctx, tileSize, offsetX, offsetY, tiles, levels, gridWidth, gridHeight, backingBuffer, backingCtx } =
+  const { canvas, ctx, tileSize, offsetX, offsetY, tiles, levels, gridWidth, gridHeight, backingBuffer, backingCtx, lastTileSize } =
     state;
 
   const panDeltaX = offsetX - state.lastOffsetX;
   const panDeltaY = offsetY - state.lastOffsetY;
   const hasPanned = Math.abs(panDeltaX) > 0 || Math.abs(panDeltaY) > 0;
 
-  // Dirty-rect panning: if we have a backing buffer and pan delta is small, blit and draw exposed strip
-  if (hasPanned && backingBuffer && backingCtx && Math.abs(panDeltaX) < canvas.width && Math.abs(panDeltaY) < canvas.height) {
-    // Step 1: Draw backing buffer (last complete frame) onto main canvas, offset by pan delta
-    ctx.drawImage(backingBuffer, panDeltaX, panDeltaY);
+  const dpr = window.devicePixelRatio || 1;
+  const logicalW = canvas.width / dpr;
+  const logicalH = canvas.height / dpr;
+  const absDx = Math.abs(panDeltaX);
+  const absDy = Math.abs(panDeltaY);
+  const stripArea = absDx * logicalH + absDy * logicalW - absDx * absDy;
+  const totalArea = logicalW * logicalH || 1;
+  const coverage = stripArea / totalArea;
+  const useDirty = hasPanned && backingBuffer && backingCtx && coverage < 0.4 && absDx < logicalW && absDy < logicalH && tileSize === lastTileSize;
+  if (useDirty) {
+    // Step 1: Draw backing buffer (last complete frame) onto main canvas, offset by pan delta.
+    // DPR-safe: reset to identity (device px) for blit since backingBuffer is sized in device pixels.
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(backingBuffer, panDeltaX * dpr, panDeltaY * dpr);
+    ctx.restore();
 
     // Step 2: Draw newly exposed vertical strip (right or left depending on pan direction)
     if (panDeltaX !== 0) {
-      const stripX = panDeltaX > 0 ? 0 : canvas.width + panDeltaX;
+      const stripX = panDeltaX > 0 ? 0 : logicalW + panDeltaX;
       const stripWidth = Math.abs(panDeltaX);
       ctx.fillStyle = getColorForLevel(0, state);
-      ctx.fillRect(stripX, 0, stripWidth, canvas.height);
+      ctx.fillRect(stripX, 0, stripWidth, logicalH);
 
       // Redraw tiles in the exposed vertical strip
       const startCol = Math.max(0, Math.floor((stripX - offsetX) / tileSize));
       const endCol = Math.min(gridWidth, Math.ceil((stripX + stripWidth - offsetX) / tileSize) + 1);
       const startRow = Math.max(0, Math.floor(-offsetY / tileSize));
-      const endRow = Math.min(gridHeight, Math.ceil((canvas.height - offsetY) / tileSize) + 1);
+      const endRow = Math.min(gridHeight, Math.ceil((logicalH - offsetY) / tileSize) + 1);
 
       for (let row = startRow; row < endRow; row++) {
         for (let col = startCol; col < endCol; col++) {
@@ -269,14 +298,14 @@ function renderLowZoom(state: RendererState) {
 
     // Draw newly exposed horizontal strip (bottom or top depending on pan direction)
     if (panDeltaY !== 0) {
-      const stripY = panDeltaY > 0 ? 0 : canvas.height + panDeltaY;
+      const stripY = panDeltaY > 0 ? 0 : logicalH + panDeltaY;
       const stripHeight = Math.abs(panDeltaY);
       ctx.fillStyle = getColorForLevel(0, state);
-      ctx.fillRect(0, stripY, canvas.width, stripHeight);
+      ctx.fillRect(0, stripY, logicalW, stripHeight);
 
       // Redraw tiles in the exposed horizontal strip
       const startCol = Math.max(0, Math.floor(-offsetX / tileSize));
-      const endCol = Math.min(gridWidth, Math.ceil((canvas.width - offsetX) / tileSize) + 1);
+      const endCol = Math.min(gridWidth, Math.ceil((logicalW - offsetX) / tileSize) + 1);
       const startRow = Math.max(0, Math.floor((stripY - offsetY) / tileSize));
       const endRow = Math.min(gridHeight, Math.ceil((stripY + stripHeight - offsetY) / tileSize) + 1);
 
@@ -304,18 +333,19 @@ function renderLowZoom(state: RendererState) {
       }
     }
 
-    // Step 3: Copy now-complete main canvas to backing for next frame
+    // Step 3: Copy now-complete main canvas to backing for next frame (DPR-safe, identity in device px)
+    backingCtx.setTransform(1, 0, 0, 1, 0, 0);
     backingCtx.drawImage(canvas, 0, 0);
   } else {
     // Full repaint (zoom or large pan)
     ctx.fillStyle = getColorForLevel(0, state);
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, logicalW, logicalH);
 
     // Calculate visible tile range
     const startCol = Math.max(0, Math.floor(-offsetX / tileSize));
-    const endCol = Math.min(gridWidth, Math.ceil((canvas.width - offsetX) / tileSize) + 1);
+    const endCol = Math.min(gridWidth, Math.ceil((logicalW - offsetX) / tileSize) + 1);
     const startRow = Math.max(0, Math.floor(-offsetY / tileSize));
-    const endRow = Math.min(gridHeight, Math.ceil((canvas.height - offsetY) / tileSize) + 1);
+    const endRow = Math.min(gridHeight, Math.ceil((logicalH - offsetY) / tileSize) + 1);
 
     for (let row = startRow; row < endRow; row++) {
       for (let col = startCol; col < endCol; col++) {
@@ -342,73 +372,210 @@ function renderLowZoom(state: RendererState) {
       }
     }
 
-    // Copy to backing buffer for next frame
+    // Copy to backing buffer for next frame (DPR-safe)
     if (backingBuffer && backingCtx) {
+      backingCtx.setTransform(1, 0, 0, 1, 0, 0);
       backingCtx.drawImage(canvas, 0, 0);
     }
   }
 
-  // Update last pan offset
+  // Update last pan offset + tileSize (for dirty validity across zooms)
+  state.lastTileSize = tileSize;
   state.lastOffsetX = offsetX;
   state.lastOffsetY = offsetY;
 }
 
 function renderMediumZoom(state: RendererState) {
-  const { canvas, ctx, tileSize, offsetX, offsetY, tiles, levels, gridWidth, gridHeight } =
+  const { canvas, ctx, tileSize, offsetX, offsetY, tiles, levels, gridWidth, gridHeight, backingBuffer, backingCtx, lastOffsetX, lastOffsetY, lastTileSize } =
     state;
 
-  // Rebuild atlas if tileSize or theme changed
-  if (!state.glyphAtlas || state.glyphAtlas.width < tileSize * 2) {
+  if (!state.glyphAtlas || state.atlasBuiltForTileSize !== tileSize) {
     const { canvas: atlasCanvas, charMap } = buildGlyphAtlas(tiles, tileSize, state);
     state.glyphAtlas = atlasCanvas;
     state.atlasCharMap = charMap;
+    state.atlasBuiltForTileSize = tileSize;
   }
 
-  // For medium zoom, do full repaint (atlas rebuild is expensive enough)
-  ctx.fillStyle = getColorForLevel(0, state);
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const dpr = window.devicePixelRatio || 1;
+  const logicalW = canvas.width / dpr;
+  const logicalH = canvas.height / dpr;
 
-  const startCol = Math.max(0, Math.floor(-offsetX / tileSize));
-  const endCol = Math.min(gridWidth, Math.ceil((canvas.width - offsetX) / tileSize) + 1);
-  const startRow = Math.max(0, Math.floor(-offsetY / tileSize));
-  const endRow = Math.min(gridHeight, Math.ceil((canvas.height - offsetY) / tileSize) + 1);
+  const panDeltaX = offsetX - lastOffsetX;  // note: lastOffsetX from destructure of state.lastOffsetX
+  const panDeltaY = offsetY - lastOffsetY;
+  const hasPanned = Math.abs(panDeltaX) > 0 || Math.abs(panDeltaY) > 0;
 
-  for (let row = startRow; row < endRow; row++) {
-    for (let col = startCol; col < endCol; col++) {
-      const tileIdx = row * gridWidth + col;
-      if (tileIdx >= tiles.length || tileIdx >= levels.length) continue;
+  const absDx = Math.abs(panDeltaX);
+  const absDy = Math.abs(panDeltaY);
+  const stripArea = absDx * logicalH + absDy * logicalW - absDx * absDy;
+  const totalArea = logicalW * logicalH || 1;
+  const coverage = stripArea / totalArea;
+  const useDirty = hasPanned && backingBuffer && backingCtx && coverage < 0.4 && absDx < logicalW && absDy < logicalH && tileSize === lastTileSize;
 
-      const x = col * tileSize + offsetX;
-      const y = row * tileSize + offsetY;
-      const level = levels[tileIdx] ?? 0;
+  if (useDirty) {
+    // DPR-safe blit in device pixels (backingBuffer is device-sized; ctx is scaled for CSS user space)
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(backingBuffer, panDeltaX * dpr, panDeltaY * dpr);
+    ctx.restore();
 
-      // Draw colored rect
-      ctx.fillStyle = getColorForLevel(level, state);
-      ctx.fillRect(x, y, tileSize, tileSize);
+    // Draw newly exposed vertical strip
+    if (panDeltaX !== 0) {
+      const stripX = panDeltaX > 0 ? 0 : logicalW + panDeltaX;
+      const stripWidth = Math.abs(panDeltaX);
+      ctx.fillStyle = getColorForLevel(0, state);
+      ctx.fillRect(stripX, 0, stripWidth, logicalH);
 
-      // Draw character from atlas
-      const tile = tiles[tileIdx];
-      if (!tile) continue;
-      const charPos = state.atlasCharMap.get(tile.char);
-      if (charPos && state.glyphAtlas) {
-        ctx.drawImage(
-          state.glyphAtlas,
-          charPos.x,
-          charPos.y,
-          tileSize * 2,
-          tileSize * 2,
-          x,
-          y,
-          tileSize,
-          tileSize,
-        );
+      // Redraw tiles (with glyphs) in the exposed vertical strip
+      const startCol = Math.max(0, Math.floor((stripX - offsetX) / tileSize));
+      const endCol = Math.min(gridWidth, Math.ceil((stripX + stripWidth - offsetX) / tileSize) + 1);
+      const startRow = Math.max(0, Math.floor(-offsetY / tileSize));
+      const endRow = Math.min(gridHeight, Math.ceil((logicalH - offsetY) / tileSize) + 1);
+
+      for (let row = startRow; row < endRow; row++) {
+        for (let col = startCol; col < endCol; col++) {
+          const tileIdx = row * gridWidth + col;
+          if (tileIdx >= tiles.length || tileIdx >= levels.length) continue;
+
+          const x = col * tileSize + offsetX;
+          const y = row * tileSize + offsetY;
+          if (x < stripX || x >= stripX + stripWidth) continue;
+
+          const level = levels[tileIdx] ?? 0;
+          ctx.fillStyle = getColorForLevel(level, state);
+          ctx.fillRect(x, y, tileSize, tileSize);
+
+          const tile = tiles[tileIdx];
+          if (tile) {
+            const charPos = state.atlasCharMap.get(tile.char);
+            if (charPos && state.glyphAtlas) {
+              ctx.drawImage(
+                state.glyphAtlas,
+                charPos.x,
+                charPos.y,
+                tileSize * 2,
+                tileSize * 2,
+                x,
+                y,
+                tileSize,
+                tileSize,
+              );
+            }
+          }
+
+          drawFoldOverlay(ctx, x, y, tileSize, level);
+        }
       }
+    }
 
-      // Draw fold overlay
-      drawFoldOverlay(ctx, x, y, tileSize, level);
+    // Draw newly exposed horizontal strip
+    if (panDeltaY !== 0) {
+      const stripY = panDeltaY > 0 ? 0 : logicalH + panDeltaY;
+      const stripHeight = Math.abs(panDeltaY);
+      ctx.fillStyle = getColorForLevel(0, state);
+      ctx.fillRect(0, stripY, logicalW, stripHeight);
+
+      // Redraw tiles (with glyphs) in the exposed horizontal strip
+      const startCol = Math.max(0, Math.floor(-offsetX / tileSize));
+      const endCol = Math.min(gridWidth, Math.ceil((logicalW - offsetX) / tileSize) + 1);
+      const startRow = Math.max(0, Math.floor((stripY - offsetY) / tileSize));
+      const endRow = Math.min(gridHeight, Math.ceil((stripY + stripHeight - offsetY) / tileSize) + 1);
+
+      for (let row = startRow; row < endRow; row++) {
+        for (let col = startCol; col < endCol; col++) {
+          const tileIdx = row * gridWidth + col;
+          if (tileIdx >= tiles.length || tileIdx >= levels.length) continue;
+
+          const x = col * tileSize + offsetX;
+          const y = row * tileSize + offsetY;
+          if (y < stripY || y >= stripY + stripHeight) continue;
+
+          const level = levels[tileIdx] ?? 0;
+          ctx.fillStyle = getColorForLevel(level, state);
+          ctx.fillRect(x, y, tileSize, tileSize);
+
+          const tile = tiles[tileIdx];
+          if (tile) {
+            const charPos = state.atlasCharMap.get(tile.char);
+            if (charPos && state.glyphAtlas) {
+              ctx.drawImage(
+                state.glyphAtlas,
+                charPos.x,
+                charPos.y,
+                tileSize * 2,
+                tileSize * 2,
+                x,
+                y,
+                tileSize,
+                tileSize,
+              );
+            }
+          }
+
+          drawFoldOverlay(ctx, x, y, tileSize, level);
+        }
+      }
+    }
+
+    // Copy to backing (DPR-safe, identity device px)
+    if (backingBuffer && backingCtx) {
+      backingCtx.setTransform(1, 0, 0, 1, 0, 0);
+      backingCtx.drawImage(canvas, 0, 0);
+    }
+  } else {
+    // Full repaint (zoom, large pan, or first frame after tileSize change)
+    ctx.fillStyle = getColorForLevel(0, state);
+    ctx.fillRect(0, 0, logicalW, logicalH);
+
+    const startCol = Math.max(0, Math.floor(-offsetX / tileSize));
+    const endCol = Math.min(gridWidth, Math.ceil((logicalW - offsetX) / tileSize) + 1);
+    const startRow = Math.max(0, Math.floor(-offsetY / tileSize));
+    const endRow = Math.min(gridHeight, Math.ceil((logicalH - offsetY) / tileSize) + 1);
+
+    for (let row = startRow; row < endRow; row++) {
+      for (let col = startCol; col < endCol; col++) {
+        const tileIdx = row * gridWidth + col;
+        if (tileIdx >= tiles.length || tileIdx >= levels.length) continue;
+
+        const x = col * tileSize + offsetX;
+        const y = row * tileSize + offsetY;
+        const level = levels[tileIdx] ?? 0;
+
+        // Draw colored rect
+        ctx.fillStyle = getColorForLevel(level, state);
+        ctx.fillRect(x, y, tileSize, tileSize);
+
+        // Draw character from atlas
+        const tile = tiles[tileIdx];
+        if (!tile) continue;
+        const charPos = state.atlasCharMap.get(tile.char);
+        if (charPos && state.glyphAtlas) {
+          ctx.drawImage(
+            state.glyphAtlas,
+            charPos.x,
+            charPos.y,
+            tileSize * 2,
+            tileSize * 2,
+            x,
+            y,
+            tileSize,
+            tileSize,
+          );
+        }
+
+        // Draw fold overlay
+        drawFoldOverlay(ctx, x, y, tileSize, level);
+      }
+    }
+
+    // Copy to backing buffer for next frame (DPR-safe)
+    if (backingBuffer && backingCtx) {
+      backingCtx.setTransform(1, 0, 0, 1, 0, 0);
+      backingCtx.drawImage(canvas, 0, 0);
     }
   }
 
+  // Update last for dirty validity (after full or dirty that updated backing)
+  state.lastTileSize = tileSize;
   state.lastOffsetX = offsetX;
   state.lastOffsetY = offsetY;
 }
@@ -430,6 +597,9 @@ export function panTo(state: RendererState, offsetX: number, offsetY: number): v
 export function setZoom(state: RendererState, tileSize: number, anchorX?: number, anchorY?: number): void {
   const oldZoom = state.tileSize;
   state.tileSize = Math.max(4, Math.min(128, tileSize)); // clamp to reasonable bounds
+
+  // Invalidate dirty-rect backing on zoom (prevents stale scale/content blits after zoom-then-pan)
+  state.lastTileSize = -1;
 
   // If anchor point is provided, adjust pan offset to keep content under anchor fixed
   if (anchorX !== undefined && anchorY !== undefined && state.tileSize !== oldZoom) {
@@ -485,10 +655,9 @@ export function setHitTestCallback(state: RendererState, callback?: (tileIndex: 
  */
 export function getCanvasCoordinates(canvas: HTMLCanvasElement, clientX: number, clientY: number): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
   return {
-    x: (clientX - rect.left) * dpr,
-    y: (clientY - rect.top) * dpr,
+    x: clientX - rect.left,
+    y: clientY - rect.top,
   };
 }
 

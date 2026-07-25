@@ -15,10 +15,6 @@ interface AccessibilityTileListProps {
 const LEVEL_NAMES = ['白 (Shiro)', '黄 (Ki)', '緑 (Midori)', '青 (Ao)', '黒 (Kuro)'];
 const LEVEL_COLORS = ['bg-level-0', 'bg-level-1', 'bg-level-2', 'bg-level-3', 'bg-level-4'];
 
-/**
- * Accessible fallback list view for the tile wall.
- * Keyboard navigation with grid semantics and screen-reader-friendly announcements.
- */
 export default function AccessibilityTileList({ tiles }: AccessibilityTileListProps): ReactNode {
   const [focusedIdx, setFocusedIdx] = useState(0);
   const [gridWidth] = useState(Math.ceil(Math.sqrt(tiles.length)));
@@ -65,12 +61,10 @@ export default function AccessibilityTileList({ tiles }: AccessibilityTileListPr
 
   return (
     <div role="application" className="space-y-4">
-      {/* Live region for screen reader announcements */}
       <div ref={announceRef} role="status" aria-live="polite" aria-atomic className="sr-only">
         {focusedTile && `Tile ${focusedIdx + 1}, character: ${focusedTile.char}, level: ${LEVEL_NAMES[focusedTile.level]}`}
       </div>
 
-      {/* Instructions */}
       <div className="bg-card border border-border rounded-lg p-4 text-sm">
         <p className="font-semibold mb-2">Keyboard navigation (grid mode):</p>
         <ul className="space-y-1 text-muted-foreground list-disc list-inside">
@@ -79,7 +73,6 @@ export default function AccessibilityTileList({ tiles }: AccessibilityTileListPr
         </ul>
       </div>
 
-      {/* Tile grid */}
       <div className="grid grid-cols-auto gap-2" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(64px, 1fr))` }}>
         {tiles.map((tile, idx) => (
           <div
@@ -108,7 +101,6 @@ export default function AccessibilityTileList({ tiles }: AccessibilityTileListPr
         ))}
       </div>
 
-      {/* Details for focused tile */}
       {focusedTile && (
         <div className="bg-card border border-border rounded-lg p-4">
           <h2 className="text-lg font-bold mb-2">Selected Tile Details</h2>

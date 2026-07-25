@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import TileWall from '@/components/tile-wall/tile-wall';
-import FpsOverlay from '@/components/tile-wall/fps-overlay';
-import AccessibilityTileList from '@/components/tile-wall/accessibility-tile-list';
+import TileWall from '@/prototype/tile-wall/tile-wall';
+import AccessibilityTileList from '@/prototype/tile-wall/accessibility-tile-list';
 
 /**
  * Phase 0 tile-view performance prototype.
@@ -45,16 +44,15 @@ export default function TilesPrototypePage(): ReactNode {
   const [tiles] = useState<Tile[]>(() => generateSyntheticTiles(2500));
   const [useAccessibilityMode, setUseAccessibilityMode] = useState(false);
 
-  // Detect reduced motion or screen reader
+  // Detect reduced motion (screen-reader branch removed: was dead code, never true)
   useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const hasScreenReader = navigator.userAgent.includes('Screen') ||
-      (document.body.getAttribute('role') === 'application' &&
-       'ScreenReaderAnnounce' in window);
-
-    if (prefersReduced || hasScreenReader) {
-      setUseAccessibilityMode(true);
-    }
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => {
+      if (mq.matches) setUseAccessibilityMode(true);
+    };
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
   }, []);
 
   if (useAccessibilityMode) {
@@ -63,8 +61,8 @@ export default function TilesPrototypePage(): ReactNode {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">Tile Wall — List View</h1>
           <p className="text-muted-foreground mb-6">
-            Accessibility mode: reduced motion or screen reader detected.
-            Showing list view instead of canvas.
+            Accessibility mode: reduced-motion detected.
+            Showing list view instead of canvas. (manual switch always available)
           </p>
           <AccessibilityTileList tiles={tiles} />
         </div>
@@ -85,7 +83,6 @@ export default function TilesPrototypePage(): ReactNode {
 
       <main className="flex-1 relative overflow-hidden flex">
         <TileWall tiles={tiles} />
-        <FpsOverlay />
       </main>
 
       <aside className="bg-card border-t border-border px-4 py-3">
