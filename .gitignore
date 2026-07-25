@@ -45,3 +45,9 @@ Thumbs.db
 # Data sources cache (build artifacts, not committed)
 scripts/build-packs/.cache/
 .claude/worktrees/
+
+# Generated content packs (reproducible from sources.lock; only packs-dev/ fixtures are committed)
+packs/*.sqlite
+packs/*.manifest.json
+!packs-dev/
+!packs-dev/**

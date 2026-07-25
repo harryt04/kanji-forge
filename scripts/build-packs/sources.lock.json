@@ -9,6 +9,7 @@
       "name": "KANJIDIC2",
       "url": "http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz",
       "pinned": "2026-07-25",
+      "file": "kanjidic2-2026-07-25.gz",
       "license": "CC BY-SA 4.0",
       "licenseHash": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
       "sizeBytes": 1486110,
