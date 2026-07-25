@@ -129,7 +129,7 @@ CC BY 2.0 FR requires attribution but **not** share-alike, so this pack has loos
 
 This solves a genuinely hard problem: given 食べ物 / たべもの, knowing that 食→た, べ, 物→もの. Do not attempt to derive this yourself; the edge cases (rendaku, jukujikun, ateji) are brutal.
 
-Verify the current license on the repo before shipping; it has been distributed under CC BY-SA terms consistent with its JMdict derivation.
+Verify the current license on the repo before shipping. Audit note (T0.1): the GitHub repo root contains an explicit MIT LICENSE file (hash c7d0d41a... of its body); we use that as the license for the published JSON artifact. (README claims "same licence as JMDict (CC BY-SA)", but explicit LICENSE file takes precedence for the release we pin.)
 
 ---
 

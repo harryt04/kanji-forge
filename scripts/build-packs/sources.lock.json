@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "builtAt": "2026-07-25T17:15:22.000Z",
   "description": "Pinned upstream data sources for KanjiForge MVP (T0.1 block)",
-  "notes": "All required T0.1 sources fetched and verified. Tatoeba (~900 MB combined CSV files) and JmdictFurigana included. License hashes record sha256 of actual fetched upstream license files (orchestrator caught and corrected two cases where the implementing agent had hashed 404 error pages for kanjivg and jmdictfurigana, and a third where tatoeba's license fetch returned a generic site error page instead of the terms-of-use content -- all three replaced with real license text on 2026-07-25).",
+  "notes": "All required T0.1 sources fetched and verified. Tatoeba (~900 MB combined CSV files) and JmdictFurigana included. License hashes record sha256 of actual fetched upstream license files (orchestrator caught and corrected two cases where the implementing agent had hashed 404 error pages for kanjivg and jmdictfurigana, and a third where tatoeba's license fetch returned a generic site error page instead of the terms-of-use content -- all three replaced with real license text on 2026-07-25). JmdictFurigana license recorded as \"MIT\" per the LICENSE file in https://github.com/Doublevil/JmdictFurigana (raw); note that README.md claims \"same licence as JMDict (CC BY-SA)\" -- we use the explicit LICENSE file as authoritative for the published artifact. EDRDG license text from https://www.edrdg.org/edrdg/licence.html .",
   "sources": {
     "kanjidic2": {
       "id": "kanjidic2",
@@ -10,7 +10,7 @@
       "url": "http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz",
       "pinned": "2026-07-25",
       "license": "CC BY-SA 4.0",
-      "licenseHash": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 1486110,
       "sha256": "79074f594fffe353bedde8c1019c186d3fe1d8b127f9c762011d1571e46fb5df"
     },
@@ -20,7 +20,7 @@
       "url": "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz",
       "pinned": "2026-07-25",
       "license": "CC BY-SA 4.0",
-      "licenseHash": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 10509626,
       "sha256": "a27e7429f35b69af5b3e092464369ee5f9f5c3269e8fcd1de2c71f502ce27603"
     },
@@ -30,7 +30,7 @@
       "url": "http://ftp.edrdg.org/pub/Nihongo/JMnedict.xml.gz",
       "pinned": "2026-07-25",
       "license": "CC BY-SA 4.0",
-      "licenseHash": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 12431523,
       "sha256": "7fd1b381b348b44d09730924968ea3f509b63756c3f7aeebd61b386b1f049cd4"
     },
@@ -40,7 +40,7 @@
       "url": "http://ftp.edrdg.org/pub/Nihongo/kradfile.gz",
       "pinned": "2026-07-25",
       "license": "CC BY-SA 4.0",
-      "licenseHash": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 47294,
       "sha256": "0c5487c1de77e36ffb5bde652f469f2de9c52efc8320137c115506f3500e9c5f"
     },
@@ -50,7 +50,7 @@
       "url": "http://ftp.edrdg.org/pub/Nihongo/radkfile.gz",
       "pinned": "2026-07-25",
       "license": "CC BY-SA 4.0",
-      "licenseHash": "52f60ea9ca68170a2f0663d7dba381ebf1bd57c17a3347dfe21153865c156692",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 40854,
       "sha256": "20baf276a98173466c29c373668e044719809f510487695fe40abfd0269a004e"
     },
@@ -87,7 +87,7 @@
       },
       "pinned": "2026-07-25",
       "license": "CC BY 2.0 FR",
-      "licenseHash": "f3e46eaac2d25bfacaab4e3cb834bd5252bb3df6367dd9da932bf46ec5ca2c22",
+      "licenseHash": "58be7312a781d26af1709feda2ac63b3655b71694b7fe77c06bf1d33048ddf21",
       "provenance": "Includes Tanaka Corpus JA-EN example sentences",
       "note": "Large multi-file corpus (~930 MB combined); use wwwjdic indices for JMdict sense linking"
     },
@@ -109,7 +109,7 @@
       "url": "https://api.github.com/repos/davidluzgouveia/kanji-data/tarball/00fd7079c3890f430759536f91aa5e854ec0ca4f",
       "pinned": "00fd7079c3890f430759536f91aa5e854ec0ca4f",
       "license": "MIT",
-      "licenseHash": "4c4fe92a5adf9df114ca9f04e50329d4565c3ce511660e934cb01eb110e2ca6e",
+      "licenseHash": "80f8d60f8c15f5c497ff95608a3e7d6c02653e991be10448eccb0bb557362a8c",
       "sizeBytes": 845992,
       "sha256": "295ac92063a30cddd293fa238ca7971a8c674c6135dd05d92d16e2a806046970",
       "provenance": "Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY",
@@ -121,7 +121,7 @@
       "url": "https://github.com/stephenmk/yomitan-jlpt-vocab/releases/download/2025.08.01.0/jlpt.zip",
       "pinned": "2025.08.01.0",
       "license": "CC BY-SA 4.0",
-      "licenseHash": "1a136fd307d66c99ae0f397566d2e383849cbc03da471bff91a5ef6ab1401996",
+      "licenseHash": "5704a57be1e85040c709008c5d643a78f6e6db9ebadbd85d5bfa62127a0a5ef4",
       "sizeBytes": 79029,
       "sha256": "b475e2605fbf6d5372bd1d16153981f3924a1237715d33dd44f3312f70a61ce5",
       "provenance": "Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY",

@@ -45,3 +45,9 @@ Thumbs.db
 # Data sources cache (build artifacts, not committed)
 scripts/build-packs/.cache/
 .claude/worktrees/
+
+# Large generated data packs
+packs/**
+!packs-dev/
+!packs-dev/**
+
