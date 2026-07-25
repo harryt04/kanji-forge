@@ -47,7 +47,8 @@ scripts/build-packs/.cache/
 .claude/worktrees/
 
 # Generated content packs (reproducible from sources.lock; only packs-dev/ fixtures are committed)
-packs/**
+packs/*.sqlite
+packs/*.manifest.json
 !packs-dev/
 !packs-dev/**
 
