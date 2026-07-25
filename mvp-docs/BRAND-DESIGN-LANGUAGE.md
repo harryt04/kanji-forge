@@ -224,7 +224,7 @@ Two get *meaningful* restyling, not just token substitution:
 |---|---|---|
 | **Sticky** | The core visual metaphor — a "paper object" card with the fold overlay, level strip, flip animation. Nothing in shadcn models a physical object. | Study (5), Detail (9) |
 | **LevelChip** | Ramp-colored, fold-shaped, numeral + belt-name always present per §3.5. Tappable to cycle/set level. | Browse-list (8), Deck chooser (3), Detail (9) |
-| **TileWall** | Canvas/WebGL + DOM hybrid renderer per `ARCHITECTURE.md` §5 — 2,500 tiles at 60fps is not a component category shadcn addresses at all. | Browse-tiles (7) |
+| **TileWall** | Canvas/WebGL + DOM hybrid renderer per `ARCHITECTURE.md` §5 — 2,500 tiles at ≥50fps is not a component category shadcn addresses at all. | Browse-tiles (7) |
 | **StrokePlayer** | KanjiVG path playback with numbered stroke start-points, play/pause/step. | Detail (9) |
 | **WritingCanvas** | Pointer Events stroke capture + KanjiVG matching, per `ARCHITECTURE.md` §8. | Writing (10) |
 | **RadicalGrid** | Multi-radical picker grid (PRD §4.9) — replaces the unlicensable SKIP search. | Dictionary (11) |
@@ -282,7 +282,7 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 - **Wordmark:** "Kanji" in `--foreground`, "Forge" in `--primary` (vermilion), set in Fraunces 800, tight tracking. No logotype beyond typography for MVP — a mark can be commissioned post-launch once the product is real.
 - **App icon / maskable:** 黒 (kuro, the level-4 belt kanji) or 鍛 (the product's own name-kanji, "forge/temper") centered in a `--primary`-on-`--background` (or reversed) square, with a 20% safe-zone margin on all sides for the Android maskable-icon spec. Export 192×192, 512×512, and a maskable 512×512 variant per `ARCHITECTURE.md` §7.3's manifest.
-- **`theme_color` / `background_color`:** the manifest in `ARCHITECTURE.md` §7.3 currently hardcodes `#0D0D0F` (Forge's dark background) — **must be updated** to Washi's light values now that the light-first direction won: `theme_color: "#f7f4ec"`, `background_color: "#f7f4ec"`. Flag this as a required follow-up edit to `ARCHITECTURE.md` §7.3, not just this doc.
+- **`theme_color` / `background_color`:** **Resolved** — `ARCHITECTURE.md` §7.3's manifest now uses Washi's light values (`theme_color: "#f7f4ec"`, `background_color: "#f7f4ec"`), updated from Forge's `#0D0D0F` now that the light-first direction won.
 - **GitHub social card:** the tile wall itself, mid-study (mixed belt levels), full-bleed — the product's signature screen is also its best marketing image. No separate illustrated graphic needed.
 - **README screenshots:** always capture the tile wall and the study card at minimum; prefer real data (a JLPT deck) over placeholder lorem-kanji once content packs exist.
 
@@ -298,6 +298,6 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 ## Open follow-ups
 
-1. `ARCHITECTURE.md` §7.3's manifest JSON needs its `theme_color`/`background_color` updated from Forge's `#0D0D0F` to Washi's `#f7f4ec` (§10 above) — this doc does not edit `ARCHITECTURE.md` directly to keep the diff scoped to design, but implementation must not silently ship the stale dark values.
+1. ~~`ARCHITECTURE.md` §7.3's manifest JSON needs its `theme_color`/`background_color` updated from Forge's `#0D0D0F` to Washi's `#f7f4ec`.~~ **Done** — §7.3 now ships `#f7f4ec` for both.
 2. Dark-theme values in §3.1/§3.2 are a first pass tuned by eye against the review artifact, not against Forge's dark theme (which was fully designed and rejected as the *primary* direction, but its `#0D0D0F`/`#161519` surface values are a reasonable reference point for Washi's `.dark` variant if it needs revisiting).
 3. Numeric WCAG contrast verification (§9) and CVD simulation (§3.2, §9) are stated as requirements here but not yet run against actual rendered pixels — do this once `tokens.css` is wired into a real page, not from the hex values alone.

@@ -282,6 +282,12 @@ progress = Σ(level) / (4 * cardCount)
 
 So a deck of 100 cards all at level 2 reads 50%. This matches user intuition ("half the wall is yellow-ish") better than counting only green cards.
 
+> **`cardCount` is the deck-definition size, not a row count.** Because `cardState` rows are
+> created **lazily** (only on first touch — `ARCHITECTURE.md §4.2`, `TRD.md §5.1.1`), a card
+> with no `cardState` **contributes level 0** to the sum. Iterate the deck's full defined card
+> set, treating missing states as level 0 — never divide by "number of touched cards," or a
+> barely-started deck would falsely read near-complete.
+
 Display alongside a stacked level-distribution bar showing exact counts per color. Never show only the percentage.
 
 ---

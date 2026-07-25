@@ -3,8 +3,9 @@
 **Name:** KanjiForge
 **Type:** Free & open-source Japanese kanji + vocabulary study PWA
 **Target:** Feature-complete open alternative to StickyStudy Japanese (iOS)
-**Doc version:** 1.0 — MVP definition
-**Status:** Draft for implementation
+**Doc version:** 1.1 — MVP definition (scoped)
+**Status:** Implementation — see **`TRD.md`** for the binding MVP ship list
+**Vision inventory:** `FEATURE-PARITY.md` (unchanged long-term target)
 
 ---
 
@@ -14,7 +15,9 @@ KanjiForge is an offline-first, installable Progressive Web App for studying Jap
 
 The defining idea: every card is a **sticky** that has a **color**. Red means new, green means mastered, and the colors in between are visible progress. A user can zoom out and see their entire deck as a wall of colored tiles turning from red to green over weeks. That single visualization is the product's emotional core and the number one thing to get right.
 
-KanjiForge must run entirely in the browser, work offline after first load, install to a phone home screen, and be usable on tablet, laptop, and desktop. Signing in is required (see §1.2) so progress can follow a user across devices from day one — but there is no tracking and no paywall.
+KanjiForge must run entirely in the browser, work offline after first load, install to a phone home screen, and be usable on tablet, laptop, and desktop. Signing in is required (see §1.2) — **no anonymous use** — so progress can follow a user across devices when online, with local-first study that never blocks on the network. There is no tracking and no paywall.
+
+> **MVP ship scope** is narrower than the full feature catalog below. Priorities still mark product intent; **what actually ships first is defined in [`TRD.md`](./TRD.md)**. In particular MVP defers custom decks, import, writing trainer validation, and history charts.
 
 ### 1.1 Why this exists
 
@@ -25,9 +28,9 @@ KanjiForge's wedge: **StickyStudy's UX and SRS legibility, delivered as an open,
 ### 1.2 Product principles
 
 1. **The color is the interface.** Progress must be visible at a glance, at every zoom level, on every screen.
-2. **Sign in once, then it's zero-friction.** An account is required before studying — this is a deliberate trade against instant anonymous use, made so that cross-device sync (picking up on a phone where you left off on a laptop) works from the very first session, with no later "upgrade" step and no local-data-merge edge case. After that one sign-in, picking a deck and starting a session takes under 60 seconds.
-3. **Offline is the default, not a mode.** Every study feature works on a plane, including recording answers — writes queue locally and sync when back online (see `ARCHITECTURE.md` §10). Network is required only for initial sign-in, content packs, and sync.
-4. **Your data is a file.** Everything exportable to open formats at any time.
+2. **Sign in once, then it's zero-friction.** An account is required before studying — **no guest/anonymous path, period.** Authentication is an expected baseline; it removes confusion about multi-device continuity and avoids any later "upgrade and merge local data" edge case. After that one sign-in, picking a deck and starting a session takes under 60 seconds.
+3. **Offline is the default, not a mode.** Every study feature works on a plane, including recording answers — writes commit to a **local database first** and sync when back online (see `ARCHITECTURE.md` §10, Electric + outbox). Network is required only for initial sign-in, content pack downloads, and catching other devices up.
+4. **Your data is a file.** Full backup/export to open formats at any time (import of arbitrary lists is post-MVP; see TRD).
 5. **Mobile-first, not mobile-only.** Thumb-reachable one-handed study on a phone; genuinely better on a large screen, not just stretched.
 6. **Honest licensing.** Every bundled byte has a documented, compatible open license. See `DATA-SOURCES.md`.
 
@@ -38,6 +41,7 @@ KanjiForge's wedge: **StickyStudy's UX and SRS legibility, delivered as an open,
 - Grammar lessons, conjugation drills, listening comprehension exercises
 - Monetization of any kind
 - Native app store distribution (PWA install only)
+- **MVP also defers** (still in long-term vision / FEATURE-PARITY): custom decks & import UX, writing trainer with stroke validation, history charts/forecast, text analyzer — see `TRD.md` §2.3
 
 ---
 
@@ -105,7 +109,7 @@ Requirements are labeled `[P0]` (MVP blocker), `[P1]` (MVP, cut only under sched
 - **[P0]** Interval **fuzz** of ±10% to prevent review pile-ups on a single day.
 - **[P0]** Levels are **manually overridable** — a user can tap a sticky's color in list/detail view and set it directly.
 - **[P0]** Every answer writes an **append-only review record** (sticky, deck, timestamp, grade, prior level, new level, response ms). This log is the source of truth; level state is a derived projection. This is what makes sync, undo, stats, and algorithm migration tractable.
-- **[P1]** Undo last answer within a session.
+- **[P0]** Undo last answer within a session. (Elevated for MVP — TRD D17.)
 - **[P2]** Optional **FSRS mode** as an alternative scheduler behind a setting, sharing the same review log. Do not build this in MVP but do not design the log so it's impossible.
 
 ### 4.2 Study screen
@@ -132,7 +136,7 @@ Requirements are labeled `[P0]` (MVP blocker), `[P1]` (MVP, cut only under sched
 This is the signature feature. Budget real engineering time here.
 
 - **[P0]** A **zoomable grid** of every sticky in the deck, each rendered as a colored tile. Pinch-zoom on touch, scroll-wheel/⌘± on desktop.
-- **[P0]** At maximum zoom-out, an entire 2,000-card deck fits on one screen as a wall of color. This must render and pan at 60fps. Implementation guidance in `ARCHITECTURE.md` (canvas/WebGL at low zoom, DOM at high zoom).
+- **[P0]** At maximum zoom-out, an entire 2,000-card deck fits on one screen as a wall of color. This must render and pan at **≥50fps** (the single tile-perf gate across all docs — see `TRD.md` §4.6/§5.5; 60fps is the aspiration on capable hardware, 50fps the mid-range-2021-Android floor that gates). Implementation guidance in `ARCHITECTURE.md` (canvas/WebGL at low zoom, DOM at high zoom).
 - **[P0]** Tile content is **configurable**: kanji only / kanji + reading / kanji + meaning / word + reading, etc.
 - **[P0]** Tap a tile → detail popover; long-press → quick actions (set level, flag, move to deck, remove).
 - **[P0]** Zoom ratio setting for large decks.
@@ -162,15 +166,17 @@ This is the signature feature. Budget real engineering time here.
 
 ### 4.6 Writing trainer
 
-- **[P0]** Full-screen writing canvas with a light guide grid (田-style 十字 crosshair).
-- **[P0]** Stroke input via Pointer Events — finger, stylus, mouse, Apple Pencil. Pressure/tilt ignored; position only.
-- **[P0]** **Stroke-order validation** against KanjiVG paths. Grade each stroke on start point, end point, direction, and shape similarity. See `ARCHITECTURE.md` §8 for the matching algorithm.
-- **[P0]** *Correct pen strokes* setting: when on, an incorrect stroke is rejected immediately with a shake and the correct stroke is hinted. When off, the character is graded only after all strokes are drawn (harder).
-- **[P0]** Hint escalation: after 2 failed attempts on a stroke, show the stroke's start dot; after 3, animate the stroke.
-- **[P0]** Undo last stroke, clear all.
-- **[P0]** Writing can be used as the **answer side of a study card** — the writing result feeds the grade.
-- **[P1]** Leniency slider (strict / normal / forgiving) for people with shaky hands or small screens.
-- **[P1]** Practice mode outside of study: pick a kanji, drill it N times.
+> **MVP:** stroke-order **animation** on detail only (`TRD.md`). Full trainer below is **post-MVP** (still specified so architecture does not preclude it).
+
+- **[P2]** Full-screen writing canvas with a light guide grid (田-style 十字 crosshair).
+- **[P2]** Stroke input via Pointer Events — finger, stylus, mouse, Apple Pencil. Pressure/tilt ignored; position only.
+- **[P2]** **Stroke-order validation** against KanjiVG paths. Grade each stroke on start point, end point, direction, and shape similarity. See `ARCHITECTURE.md` §8 for the matching algorithm.
+- **[P2]** *Correct pen strokes* setting: when on, an incorrect stroke is rejected immediately with a shake and the correct stroke is hinted. When off, the character is graded only after all strokes are drawn (harder).
+- **[P2]** Hint escalation: after 2 failed attempts on a stroke, show the stroke's start dot; after 3, animate the stroke.
+- **[P2]** Undo last stroke, clear all.
+- **[P2]** Writing can be used as the **answer side of a study card** — the writing result feeds the grade.
+- **[P2]** Leniency slider (strict / normal / forgiving) for people with shaky hands or small screens.
+- **[P2]** Practice mode outside of study: pick a kanji, drill it N times.
 
 ### 4.7 Deck management
 
@@ -183,12 +189,12 @@ This is the signature feature. Budget real engineering time here.
   - Jōyō Kanji (1981 list) and Jōyō Kanji (2010 revision)
   - Top 500 Kanji by frequency
   - Kana — Hiragana, Katakana, Kana Words
-- **[P0]** **Create a new deck** from scratch (empty) or **by combining existing decks**, with an option to take only the first *N* stickies from the combination. This is how StickyStudy lets you build "the next 50 kanji I need."
+- **[P2]** **Create a new deck** from scratch (empty) or **by combining existing decks**, with an option to take only the first *N* stickies from the combination. **Deferred to v2** — MVP is pre-built decks only (`TRD.md` D7).
 - **[P0]** **Reset options** per deck: reset colors only / reset statistics only / restore built-in deck to original.
-- **[P0]** **Remove duplicates** — delete stickies sharing the same question + reading.
-- **[P0]** **Transfer progress** between two decks that share stickies, so a user moving from "JLPT N3 Kanji" to a custom deck doesn't lose their colors.
+- **[P2]** **Remove duplicates** — delete stickies sharing the same question + reading. (v2 with custom content.)
+- **[P2]** **Transfer progress** between two decks that share stickies. (v2.)
 - **[P0]** Per-deck settings that override globals: study style, SRS intervals, goal date.
-- **[P1]** Deck folders / grouping.
+- **[P2]** Deck folders / grouping.
 - **[P2]** Deck sharing via exported file or URL.
 
 ### 4.8 Goal scheduler
@@ -200,7 +206,7 @@ This is the signature feature. Budget real engineering time here.
 - **[P0]** The home screen shows this prominently. The study screen shows live progress toward today's number.
 - **[P0]** Recompute daily; missing a day redistributes the load across the remaining days rather than silently failing.
 - **[P0]** Warn if the required daily volume becomes unrealistic (define threshold, e.g. >200 answers/day) and offer to extend the date.
-- **[P1]** Rest days / weekday-only schedules.
+- **[P2]** Rest days / weekday-only schedules.
 
 ### 4.9 Dictionary
 
@@ -230,27 +236,32 @@ StickyStudy's "Translation" feature: paste Japanese, get furigana and glosses, h
 
 ### 4.11 History and statistics
 
-- **[P0]** **Rolling bar chart** of study activity over time. Each bar = one day. Tap a bar for that day's detail (cards seen, correct %, time, level changes).
-- **[P0]** Selectable range: 2 weeks / 3 months / 1 year / all.
-- **[P0]** Per-deck and all-decks views.
-- **[P0]** Headline stats: total time studied, last studied, current progress %, level distribution (a stacked bar of red→green counts).
-- **[P0]** **Projected completion date** based on recent pace, shown against the goal date.
-- **[P1]** Forecast chart: how many reviews are due on each of the next 30 days.
-- **[P1]** Retention rate per level (what % of level-3 cards survive their review) — this is the diagnostic that tells a user their intervals are too aggressive.
-- **[P1]** Heatmap calendar.
+> **MVP:** headline progress on Home + simple goal only. Charts below are **post-MVP** (`TRD.md` D12).
+
+- **[P0]** Headline on Home: last studied, current progress %, level-aware progress color. (Charts not required for MVP.)
+- **[P2]** **Rolling bar chart** of study activity over time. Each bar = one day. Tap a bar for that day's detail (cards seen, correct %, time, level changes).
+- **[P2]** Selectable range: 2 weeks / 3 months / 1 year / all.
+- **[P2]** Per-deck and all-decks history views.
+- **[P2]** Level distribution stacked bar; total time studied detail screen.
+- **[P2]** **Projected completion date** based on recent pace, shown against the goal date.
+- **[P2]** Forecast chart: how many reviews are due on each of the next 30 days.
+- **[P2]** Retention rate per level (what % of level-3 cards survive their review).
+- **[P2]** Heatmap calendar.
 
 ### 4.12 Import and export
 
-- **[P0]** **Import** by pasting text directly into an import box, or by file upload. Supported formats:
+> **MVP:** export + full backup/restore only. **Import and custom-card flows are v2** (`TRD.md` D7–D9) so dogfood can focus on pre-built study UX first.
+
+- **[P2]** **Import** by pasting text directly into an import box, or by file upload. Supported formats:
   - CSV / TSV with a **column mapping UI** (don't guess; let the user map columns to fields)
   - One-per-line plain kanji or word lists
   - KanjiForge's own JSON deck format
-- **[P0]** Import must **enrich**: given a bare list of kanji or words, look them up in the dictionary and populate readings, meanings, stroke data automatically. A user pasting 40 kanji from a textbook should get 40 complete stickies.
-- **[P0]** Import preview with a per-row "matched / ambiguous / not found" status before committing. Ambiguous rows get a disambiguation picker.
+- **[P2]** Import must **enrich**: given a bare list of kanji or words, look them up in the dictionary and populate readings, meanings, stroke data automatically.
+- **[P2]** Import preview with a per-row "matched / ambiguous / not found" status before committing. Ambiguous rows get a disambiguation picker.
 - **[P0]** **Export** the current deck to clipboard as text, and to file as CSV and JSON.
 - **[P0]** **Full backup export** — all decks, all settings, the complete review log — as a single JSON file. **Full restore** from that file.
-- **[P1]** Anki `.apkg` import (read-only, best-effort field mapping).
-- **[P1]** Anki-compatible CSV export.
+- **[P2]** Anki `.apkg` import (read-only, best-effort field mapping).
+- **[P2]** Anki-compatible CSV export.
 
 ### 4.13 Audio
 
@@ -304,10 +315,10 @@ StickyStudy's "Translation" feature: paste Japanese, get furigana and glosses, h
 
 ### 4.16 Sync and backup
 
-- **[P0] MVP:** account-based, real-time cross-device sync via a self-hosted PowerSync + Postgres + better-auth server (see `ARCHITECTURE.md` §10). Sign-in is required (§1.2), so sync is live from a user's first session — not an opt-in add-on. Offline writes are queued locally and flushed on reconnect; the study loop never blocks on network state.
-- **[P0]** Manual full-backup export/import as a JSON file, plus per-deck export, kept as an independent escape hatch even though live sync exists — this is what makes the data genuinely portable and un-lockable-in (PRD §1.2 principle 4). Clearly surfaced, with a nag if no backup has been taken in 30 days.
+- **[P0] MVP:** account-based cross-device sync via self-hosted **ElectricSQL** (read path) + **authenticated write API/outbox** + Postgres + better-auth (see `ARCHITECTURE.md` §10). Sign-in is required (§1.2); **no anonymous**. Local SQLite/PGlite is the study source of truth; Electric keeps other devices current when online. Offline writes never block the study loop.
+- **[P0]** Manual full-backup export/restore as a JSON file, plus per-deck export — independent escape hatch even with live sync (principle 4). Nag if no backup in 30 days.
 - **[P1]** File System Access API on desktop: pick a backup folder once, auto-write a backup on a schedule.
-- Design constraint honored by the server design: **the review log is append-only and each record carries a stable UUID + device ID + timestamp**, so the same `replay()` projection that powers sync also powers backup/restore and any future scheduler migration. Deck/settings conflicts resolve last-write-wins per field.
+- Design constraint: **the review log is append-only**; each record carries a stable UUID + device ID + timestamp. `replay()` remains the projection for card state, backup/restore, and future scheduler migration. Deck/settings conflicts resolve last-write-wins per field.
 
 ### 4.17 Accessibility
 
@@ -326,26 +337,27 @@ StickyStudy's "Translation" feature: paste Japanese, get furigana and glosses, h
 
 | # | Screen | Purpose | Notes |
 |---|---|---|---|
-| 1 | Onboarding | Pick a starting deck, optionally set a goal, request storage persistence | ≤3 steps, skippable |
-| 2 | Home / Study status | Current deck, progress ring + %, days to goal, today's remaining, last studied, total time, big Start button | The app's front door |
-| 3 | Deck chooser | All decks, progress, last studied, rename/delete/new | Modal sheet from Home |
-| 4 | New deck | Name, combine-from-decks checklist, take-first-N | Modal |
-| 5 | Study | The card, reveal, three grades | Full-screen, chrome-minimal |
+| 0 | Sign-in | Account required — no guest | Blocking shell |
+| 1 | Onboarding | Pick a starting deck, optionally set a goal; persistence prompt after first session | ≤3 steps |
+| 2 | Home / Study status | Current deck, progress ring + %, days to goal, today's remaining, last studied, big Start | Front door |
+| 3 | Deck chooser | Pre-built decks, progress, last studied, rename | Modal sheet from Home |
+| 4 | New deck | Custom / combine | **Post-MVP (v2)** |
+| 5 | Study | The card, reveal, three grades, undo | Full-screen |
 | 6 | Session summary | What just happened | Dismissible sheet |
-| 7 | Browse — tiles | Zoomable color wall | The signature screen |
-| 8 | Browse — list | Sort, filter, multi-select, bulk edit | Toggle from tiles |
-| 9 | Detail | Kanji or word reference, hyperlinked | Push/pop navigation stack |
-| 10 | Writing | Stroke practice + validation | Full-screen |
-| 11 | Dictionary | Search + results | Tab-level destination |
-| 12 | Text analyzer | Paste → furigana → harvest | Tab-level destination |
-| 13 | History | Bar chart, stats, forecast | Tab-level destination |
-| 14 | Settings | Global + per-deck | Tab-level destination |
-| 15 | Import / Export | Paste box, file picker, column mapping, preview | From Settings |
+| 7 | Browse — tiles | Zoomable color wall | Signature screen |
+| 8 | Browse — list | Sort, filter, level edit | Toggle from tiles |
+| 9 | Detail | Kanji or word reference, hyperlinked, stroke animation | Push/pop stack |
+| 10 | Writing | Stroke practice + validation | **Post-MVP** |
+| 11 | Dictionary | Search + results | Tab destination |
+| 12 | Text analyzer | Paste → furigana → harvest | **Post-MVP** |
+| 13 | History | Bar chart, stats, forecast | **Post-MVP** (goal lives on Home) |
+| 14 | Settings | Global + per-deck | Tab destination |
+| 15 | Export / backup | Backup, restore, per-deck export | From Settings (**no import in MVP**) |
 | 16 | Content packs | Download/update/delete data bundles | From Settings |
 
 ### 5.1 Navigation model
 
-- **Mobile:** bottom tab bar with 5 destinations — **Study · Browse · Dictionary · History · Settings**. Text analyzer lives under Dictionary. Detail views push over the tab.
+- **Mobile (MVP):** bottom tab bar with 4 destinations — **Study · Browse · Dictionary · Settings**. History tab returns when charts ship. Text analyzer (post-MVP) lives under Dictionary. Detail views push over the tab.
 - **Tablet / desktop:** persistent left sidebar for the same 5 destinations, plus a two-pane layout where Browse (list) and Detail sit side by side. Dictionary results and detail also become two-pane. Study stays centered and full-bleed with a max width — do not stretch a flashcard to 2,560px.
 - The deck chooser is global and reachable from any screen via the header.
 
@@ -438,8 +450,8 @@ If any telemetry exists it must be opt-in, anonymous, and self-hostable. Suggest
 ### Phase 0 — Data pipeline (before any UI)
 Build the ETL that turns upstream open dictionaries into KanjiForge's content packs. Nothing else can be trusted until this is reproducible in CI. Deliverable: versioned `kanji`, `words`, `sentences`, `radicals`, `strokes` packs + the built-in deck definitions + `ATTRIBUTION.md`.
 
-### Phase 1 — Study loop
-Data model, SRS engine, review log, study screen, three grade buttons, one built-in deck, home screen. Nothing else. Ship this to yourself and use it daily.
+### Phase 1 — Auth + study loop
+better-auth gate (no anonymous), local user DB, SRS engine, review log, outbox skeleton, study screen, three grade buttons + undo, one built-in deck, home screen. Dogfood daily before Phase 2.
 
 ### Phase 2 — Decks and browse
 Deck chooser, all built-in decks, list view, tile view, filters/sorts, manual level editing.
@@ -447,19 +459,16 @@ Deck chooser, all built-in decks, list view, tile view, filters/sorts, manual le
 ### Phase 3 — Reference depth
 Detail view, stroke animations, example words/sentences, similar kanji, dictionary search, multi-radical search.
 
-### Phase 4 — Input and output
-Import (paste/CSV/enrichment/preview), export, full backup/restore, deck combining, transfer progress, reset options.
+### Phase 4 — Sync hardening + backup
+Electric read path + write outbox/API multi-device E2E; full backup/restore and per-deck export (**not** import).
 
-### Phase 5 — Goals, history, writing
-Goal scheduler, history charts, statistics, forecast, writing trainer with stroke validation.
+### Phase 5 — Goals (simple) + PWA polish
+Simple goal scheduler on Home; install prompts, offline hardening, storage persistence, content pack manager, update flow, theming, accessibility audit, performance pass.
 
-### Phase 6 — PWA polish
-Install prompts, offline hardening, storage persistence, content pack manager, update flow, theming, accessibility audit, performance pass.
+### Phase 6+ — Post-MVP (ordered separately in TRD)
+Import + custom decks (v2), history charts, writing trainer, text analyzer + audio packs.
 
-### Phase 7 — Text analyzer + audio
-Tokenizer integration, furigana rendering, bulk harvest, share target, audio tiering.
-
-**MVP = Phases 0–6.** Phase 7 ships as v1.1 alongside optional sync.
+**MVP ship = TRD phases through backup/PWA polish** (see `TRD.md` §7). `FEATURE-PARITY.md` remains the long-term checklist.
 
 ---
 
@@ -473,15 +482,17 @@ Tokenizer integration, furigana rendering, bulk harvest, share target, audio tie
 | JLPT level lists have no official source post-2010 | Deck accuracy questioned | Use openly-licensed community lists, cite them explicitly in the deck description, allow user correction |
 | SKIP indexing is not openly licensable | Lost search feature | Replace with multi-radical + stroke count search; pursue permission separately |
 | No openly-licensed human audio at scale | Weaker than StickyStudy | Tiered fallback to device TTS; label honestly; leave the pack format open for community contribution |
-| Stroke-order validation false negatives frustrate users | Feature abandoned | Leniency setting; hint escalation; never block progress on a failed stroke |
-| Scope creep from feature-parity ambition | Never ships | Phase discipline; Phase 1 must be dogfooded before Phase 2 starts |
+| Stroke-order validation false negatives frustrate users | Feature abandoned | Deferred with writing trainer; animation-only in MVP |
+| Scope creep from feature-parity ambition | Never ships | `TRD.md` kill list; Phase 1 dogfood before Phase 2; FEATURE-PARITY is vision-only |
+| Electric write-path incomplete | Multi-device broken offline | Local DB + outbox is P0; multi-device E2E before polish |
 
 **Resolved:**
-1. ~~Code license~~ → **MIT.** Rationale: enforcement of a copyleft license is not realistically available to a solo maintainer, and permissive licensing lowers the barrier to contribution. Note that this decision applies to the *code only* — bundled and derived data remains CC BY-SA 4.0 by obligation, which already forecloses a fully-closed fork of the content packs. See §9.1.
-2. ~~Is a hosted instance offered at all, or is it strictly self-host?~~ → **Strictly self-host, account required.** The maintainer self-hosts their own instance (Postgres + better-auth + PowerSync) via Coolify; there is no maintainer-run hosted service in scope. The client app remains a static deploy (`ARCHITECTURE.md` §2), but it is not usable without a running account/sync server — that server is a mandatory deployable for anyone running KanjiForge, not an optional v1.1 extra. See `ARCHITECTURE.md` §10 for the full stack and env vars.
-
-**Open questions for the maintainer:**
-3. Should the built-in decks be bundled in the initial install or downloaded as packs on first run? Trade-off: install size vs. offline-from-zero.
+1. ~~Code license~~ → **MIT.** Code only; packs CC BY-SA 4.0. See §9.1.
+2. ~~Hosted vs self-host~~ → **Strictly self-host, account required, no anonymous.** Maintainer Coolify: Postgres + better-auth + write API + **ElectricSQL**. Static client; backend mandatory. See `ARCHITECTURE.md` §10.
+3. ~~Packs bundled vs download~~ → **Starter bundled + remainder on demand** (`TRD.md` D6).
+4. ~~Sync engine~~ → **Electric (read) + custom authenticated write outbox** — not PowerSync, not Rocicorp Zero (Zero rejects offline writes).
+5. ~~MVP scope vs full PRD~~ → Binding ship list in **`TRD.md`**. Custom decks/import, writing validation, history charts deferred.
+6. ~~Built-in deck set~~ → Full PRD catalog day one (`TRD.md` D5).
 
 ### 9.1 Licensing structure
 
@@ -507,7 +518,9 @@ Practical consequences:
 
 | Document | Contents |
 |---|---|
-| `FEATURE-PARITY.md` | Complete StickyStudy feature inventory mapped to KanjiForge status |
+| **`TRD.md`** | **Binding MVP technical requirements and ship checklist** |
+| `FEATURE-PARITY.md` | Complete StickyStudy feature inventory — **long-term vision** (not MVP cut list) |
 | `SRS-SPEC.md` | The scheduling algorithm, queue builder, and goal math in implementable detail |
 | `DATA-SOURCES.md` | Every dataset, its license, its size, and its extraction plan |
-| `ARCHITECTURE.md` | Stack, data model, storage, rendering, tokenization, stroke matching, sync design |
+| `ARCHITECTURE.md` | Stack, data model, storage, rendering, Electric sync + outbox |
+| `BRAND-DESIGN-LANGUAGE.md` | Visual system and tokens |
