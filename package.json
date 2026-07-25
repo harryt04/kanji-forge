@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "build:sentences-pack": "npx --yes tsx scripts/build-packs/build-sentences-pack.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
