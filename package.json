@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "build:kanji": "tsx scripts/build-packs/build-kanji-pack.ts",
-    "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts"
+    "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts",
+    "build:strokes-pack": "npx tsx scripts/build-packs/build-strokes-pack.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
