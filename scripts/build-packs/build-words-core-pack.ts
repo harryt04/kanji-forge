@@ -6,13 +6,12 @@
  * Creates SQLite database with:
  *   - entries table: id, common_score, data (JSON blob)
  *   - forms table: entry_id, form, kind ('kanji' | 'kana'), is_common
- *   - glosses table: entry_id, gloss (simple table for searching)
+ *   - glosses_fts virtual table (FTS5) for ranked full-text search
  *
- * Note: FTS5 virtual tables aren't available in sql.js, so we use a simpler
- * glosses table that can still be queried with LIKE patterns.
+ * Uses better-sqlite3 (supports FTS5). Matches ARCHITECTURE.md §4.1 schema.
  *
  * Usage:
- *   npx tsx scripts/build-packs/build-words-core-pack.ts
+ *   pnpm exec tsx scripts/build-packs/build-words-core-pack.ts
  */
 
 import * as fs from 'fs';
@@ -20,7 +19,7 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import * as crypto from 'crypto';
 import { createReadStream } from 'fs';
-import initSqlJs from 'sql.js';
+import Database from 'better-sqlite3';
 
 // Minimal XML parser using streaming/regex
 interface JmdictEntry {
@@ -45,13 +44,11 @@ interface JmdictEntry {
   }>;
 }
 
-const JMDICT_PATH = path.join(
-  process.cwd(),
-  'scripts/build-packs/.cache/jmdict-2026-07-25.gz'
-);
 const OUTPUT_DIR = path.join(process.cwd(), 'packs');
 const OUTPUT_DB = path.join(OUTPUT_DIR, 'words-core-v1.sqlite');
+const OUTPUT_DB_TMP = OUTPUT_DB + '.tmp';
 const OUTPUT_MANIFEST = path.join(OUTPUT_DIR, 'words-core-v1.manifest.json');
+const LOCK_FILE = path.join(process.cwd(), 'scripts/build-packs/sources.lock.json');
 
 // Priority scoring for *_pri tags
 const PRI_SCORE: Record<string, number> = {
@@ -64,6 +61,58 @@ const PRI_SCORE: Record<string, number> = {
   gai1: 40,
   gai2: 30,
 };
+
+/**
+ * Decode JMdict DTD entities and XML predefined entities.
+ * JMdict uses &n; &uk; &ateji; etc which the DTD expands to the short code itself (n, uk, ateji).
+ * Also handles &amp; etc and numeric refs.
+ */
+function decodeJmdictEntities(s: string): string {
+  if (!s) return s;
+  // numeric first
+  s = s.replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
+  s = s.replace(/&#([0-9]+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
+  // named: predefined + JMdict (identity for &foo; -> foo)
+  const ENTITY_MAP: Record<string, string> = {
+    amp: '&',
+    lt: '<',
+    gt: '>',
+    quot: '"',
+    apos: "'",
+  };
+  s = s.replace(/&([a-zA-Z0-9.-]+);/g, (_, name) => {
+    if (name in ENTITY_MAP) return ENTITY_MAP[name];
+    return name; // e.g. &n; -> "n", &uk; -> "uk", &ateji; -> "ateji"
+  });
+  return s;
+}
+
+function resolveAndVerifyJmdictPath(): string {
+  if (!fs.existsSync(LOCK_FILE)) {
+    throw new Error(`sources.lock.json not found at ${LOCK_FILE}`);
+  }
+  const lock = JSON.parse(fs.readFileSync(LOCK_FILE, 'utf8'));
+  const jmdictEntry = lock.sources && lock.sources.jmdict;
+  if (!jmdictEntry || !jmdictEntry.sha256) {
+    throw new Error('No valid jmdict entry with sha256 in sources.lock.json');
+  }
+  // filename from id-pinned + ext (do not hardcode date)
+  const urlExt = path.extname(new URL(jmdictEntry.url).pathname) || '.gz';
+  const fileName = `${jmdictEntry.id}-${jmdictEntry.pinned}${urlExt}`;
+  const filePath = path.join(process.cwd(), 'scripts/build-packs/.cache', fileName);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`JMdict source not found at ${filePath} (from lock pinned=${jmdictEntry.pinned})`);
+  }
+  // verify sha256 fail closed
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+  if (hash !== jmdictEntry.sha256) {
+    throw new Error(
+      `Input gz sha256 mismatch for jmdict (fail closed): expected ${jmdictEntry.sha256} got ${hash}`
+    );
+  }
+  console.log(`✓ Verified jmdict input ${fileName} against sources.lock.json`);
+  return filePath;
+}
 
 interface ParseState {
   inEntry: boolean;
@@ -111,17 +160,17 @@ function parseJmdictLine(line: string, state: ParseState): JmdictEntry | null {
   } else if (state.inKEle && trimmed.startsWith('<keb>')) {
     const match = trimmed.match(/<keb>(.*?)<\/keb>/);
     if (match && state.currentKEle) {
-      state.currentKEle.keb = match[1];
+      state.currentKEle.keb = decodeJmdictEntities(match[1]);
     }
   } else if (state.inKEle && trimmed.startsWith('<ke_inf>')) {
     const match = trimmed.match(/<ke_inf>(.*?)<\/ke_inf>/);
     if (match && state.currentKEle) {
-      state.currentKEle.keInf!.push(match[1]);
+      state.currentKEle.keInf!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inKEle && trimmed.startsWith('<ke_pri>')) {
     const match = trimmed.match(/<ke_pri>(.*?)<\/ke_pri>/);
     if (match && state.currentKEle) {
-      state.currentKEle.kePri!.push(match[1]);
+      state.currentKEle.kePri!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inEntry && trimmed.startsWith('<r_ele>')) {
     state.inREle = true;
@@ -135,7 +184,7 @@ function parseJmdictLine(line: string, state: ParseState): JmdictEntry | null {
   } else if (state.inREle && trimmed.startsWith('<reb>')) {
     const match = trimmed.match(/<reb>(.*?)<\/reb>/);
     if (match && state.currentREle) {
-      state.currentREle.reb = match[1];
+      state.currentREle.reb = decodeJmdictEntities(match[1]);
     }
   } else if (state.inREle && trimmed.includes('<re_nokanji/>')) {
     if (state.currentREle) {
@@ -144,12 +193,12 @@ function parseJmdictLine(line: string, state: ParseState): JmdictEntry | null {
   } else if (state.inREle && trimmed.startsWith('<re_restr>')) {
     const match = trimmed.match(/<re_restr>(.*?)<\/re_restr>/);
     if (match && state.currentREle) {
-      state.currentREle.reRestr!.push(match[1]);
+      state.currentREle.reRestr!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inREle && trimmed.startsWith('<re_pri>')) {
     const match = trimmed.match(/<re_pri>(.*?)<\/re_pri>/);
     if (match && state.currentREle) {
-      state.currentREle.rePri!.push(match[1]);
+      state.currentREle.rePri!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inEntry && trimmed.startsWith('<sense>')) {
     state.inSense = true;
@@ -173,32 +222,32 @@ function parseJmdictLine(line: string, state: ParseState): JmdictEntry | null {
   } else if (state.inSense && trimmed.startsWith('<pos>')) {
     const match = trimmed.match(/<pos>(.*?)<\/pos>/);
     if (match && state.currentSense) {
-      state.currentSense.pos!.push(match[1]);
+      state.currentSense.pos!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inSense && trimmed.startsWith('<misc>')) {
     const match = trimmed.match(/<misc>(.*?)<\/misc>/);
     if (match && state.currentSense) {
-      state.currentSense.misc!.push(match[1]);
+      state.currentSense.misc!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inSense && trimmed.startsWith('<field>')) {
     const match = trimmed.match(/<field>(.*?)<\/field>/);
     if (match && state.currentSense) {
-      state.currentSense.field!.push(match[1]);
+      state.currentSense.field!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inSense && trimmed.startsWith('<dial>')) {
     const match = trimmed.match(/<dial>(.*?)<\/dial>/);
     if (match && state.currentSense) {
-      state.currentSense.dial!.push(match[1]);
+      state.currentSense.dial!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inSense && trimmed.startsWith('<stagk>')) {
     const match = trimmed.match(/<stagk>(.*?)<\/stagk>/);
     if (match && state.currentSense) {
-      state.currentSense.stagk!.push(match[1]);
+      state.currentSense.stagk!.push(decodeJmdictEntities(match[1]));
     }
   } else if (state.inSense && trimmed.startsWith('<stagr>')) {
     const match = trimmed.match(/<stagr>(.*?)<\/stagr>/);
     if (match && state.currentSense) {
-      state.currentSense.stagr!.push(match[1]);
+      state.currentSense.stagr!.push(decodeJmdictEntities(match[1]));
     }
   } else if (
     state.inSense &&
@@ -208,8 +257,9 @@ function parseJmdictLine(line: string, state: ParseState): JmdictEntry | null {
     const langMatch = trimmed.match(/xml:lang="([^"]*)"/);
     const textMatch = trimmed.match(/>([^<]*)</);
     if (state.currentSense) {
+      const rawText = textMatch ? textMatch[1] : '';
       state.currentSense.gloss.push({
-        text: textMatch ? textMatch[1] : '',
+        text: decodeJmdictEntities(rawText),
         lang: langMatch ? langMatch[1] : 'eng', // Default to English
       });
     }
@@ -289,25 +339,27 @@ function hasCommonScore(entry: JmdictEntry): number {
   return maxScore;
 }
 
-async function buildWordsCoreDB(): Promise<{
+async function buildWordsCoreDB(jmdictPath: string): Promise<{
   entryCount: number;
   formCount: number;
   glossCount: number;
 }> {
-  // Initialize SQL.js
-  const SQL = await initSqlJs();
-  const db = new SQL.Database();
+  // Ensure output dir
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  // do not delete final here; use tmp for atomic
+  if (fs.existsSync(OUTPUT_DB_TMP)) {
+    fs.unlinkSync(OUTPUT_DB_TMP);
+  }
 
-  // Create schema
-  db.run(`
+  const db = new Database(OUTPUT_DB_TMP);
+
+  // Create schema per ARCHITECTURE.md §4.1 (with FTS5)
+  db.exec(`
     CREATE TABLE entries (
       id INTEGER PRIMARY KEY,
       common_score INTEGER NOT NULL,
       data BLOB NOT NULL
     );
-  `);
-
-  db.run(`
     CREATE TABLE forms (
       entry_id INTEGER NOT NULL,
       form TEXT NOT NULL,
@@ -315,17 +367,8 @@ async function buildWordsCoreDB(): Promise<{
       is_common INTEGER NOT NULL,
       FOREIGN KEY (entry_id) REFERENCES entries(id)
     );
-  `);
-
-  db.run(`CREATE INDEX idx_forms_form ON forms(form);`);
-
-  // Simple glosses table for searching (no FTS5 in sql.js)
-  db.run(`
-    CREATE TABLE glosses (
-      entry_id INTEGER NOT NULL,
-      gloss TEXT NOT NULL,
-      FOREIGN KEY (entry_id) REFERENCES entries(id)
-    );
+    CREATE INDEX idx_forms_form ON forms(form);
+    CREATE VIRTUAL TABLE glosses_fts USING fts5(entry_id UNINDEXED, gloss);
   `);
 
   let entryCount = 0;
@@ -339,25 +382,23 @@ async function buildWordsCoreDB(): Promise<{
   const insertForm = db.prepare(
     'INSERT INTO forms (entry_id, form, kind, is_common) VALUES (?, ?, ?, ?)'
   );
-  const insertGloss = db.prepare(
-    'INSERT INTO glosses (entry_id, gloss) VALUES (?, ?)'
+  const insertGlossFts = db.prepare(
+    'INSERT INTO glosses_fts (entry_id, gloss) VALUES (?, ?)'
   );
 
   // Parse and insert entries
-  for await (const entry of parseJmdictStream(JMDICT_PATH)) {
+  for await (const entry of parseJmdictStream(jmdictPath)) {
     const score = hasCommonScore(entry);
 
-    // Only include entries with pri tags
+    // Only include entries with pri tags (words-core per DATA-SOURCES §2.3)
     if (score === 0) {
       continue;
     }
 
     filteredCount++;
 
-    // Use entry sequence as ID
     const entryId = entry.ent_seq;
 
-    // Insert entry with full data as JSON
     const entryData = JSON.stringify({
       seq: entry.ent_seq,
       kanji: entry.kEle.map((k) => ({
@@ -374,33 +415,28 @@ async function buildWordsCoreDB(): Promise<{
       senses: entry.sense,
     });
 
-    insertEntry.bind([entryId, score, entryData]).step();
-    insertEntry.reset();
+    insertEntry.run(entryId, score, Buffer.from(entryData));
     entryCount++;
 
     // Insert kanji forms
     for (const kEle of entry.kEle) {
       const isCommon = kEle.kePri && kEle.kePri.length > 0 ? 1 : 0;
-      insertForm.bind([entryId, kEle.keb, 'kanji', isCommon]).step();
-      insertForm.reset();
+      insertForm.run(entryId, kEle.keb, 'kanji', isCommon);
       formCount++;
     }
 
     // Insert kana forms
     for (const rEle of entry.rEle) {
       const isCommon = rEle.rePri && rEle.rePri.length > 0 ? 1 : 0;
-      insertForm.bind([entryId, rEle.reb, 'kana', isCommon]).step();
-      insertForm.reset();
+      insertForm.run(entryId, rEle.reb, 'kana', isCommon);
       formCount++;
     }
 
-    // Insert glosses for searching
+    // Insert to FTS5 for offline ranked search
     for (const sense of entry.sense) {
       for (const gloss of sense.gloss) {
-        // Only include English glosses (lang is 'eng' or undefined, which defaults to eng)
         if (!gloss.lang || gloss.lang === 'eng') {
-          insertGloss.bind([entryId, gloss.text]).step();
-          insertGloss.reset();
+          insertGlossFts.run(entryId, gloss.text);
           glossCount++;
         }
       }
@@ -411,15 +447,10 @@ async function buildWordsCoreDB(): Promise<{
     }
   }
 
-  // Export database to binary
-  const data = db.export();
-  const buffer = Buffer.from(data);
+  db.close();
 
-  // Ensure output directory exists
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
-  // Write database file
-  fs.writeFileSync(OUTPUT_DB, buffer);
+  // atomic rename after success (before manifest)
+  fs.renameSync(OUTPUT_DB_TMP, OUTPUT_DB);
 
   console.log(
     `Built words-core: ${entryCount} entries, ${formCount} forms, ${glossCount} glosses`
@@ -440,12 +471,19 @@ async function writeManifest(stats: {
     .update(dbContent)
     .digest('hex');
 
+  // compute gzip compressed size (for done-check budget note; brotli may be smaller in future)
+  const gzipped = zlib.gzipSync(dbContent);
+  const compressedSizeBytes = gzipped.length;
+  const compressedMB = (compressedSizeBytes / 1024 / 1024).toFixed(2);
+
   const manifest = {
     id: 'words-core',
     version: 'v1',
     schemaVersion: 1,
     sha256,
     sizeBytes: dbStats.size,
+    compressedSizeBytes,
+    compressedSizeMB: compressedMB,
     license: 'CC BY-SA 4.0',
     attribution:
       'JMdict — © Electronic Dictionary Research and Development Group, Monash University. Used under CC BY-SA 4.0. Modified: converted to a database format, some fields omitted, filtered to common-tagged entries.',
@@ -460,7 +498,11 @@ async function writeManifest(stats: {
     stats,
   };
 
-  fs.writeFileSync(OUTPUT_MANIFEST, JSON.stringify(manifest, null, 2));
+  const manifestTmp = OUTPUT_MANIFEST + '.tmp';
+  fs.writeFileSync(manifestTmp, JSON.stringify(manifest, null, 2));
+  fs.renameSync(manifestTmp, OUTPUT_MANIFEST);
+
+  console.log(`✓ Gzip compressed size: ${compressedMB} MB (note: spec budget ~6 MB compressed; brotli in later T0.x)`);
 
   return sha256;
 }
@@ -468,14 +510,17 @@ async function writeManifest(stats: {
 async function main() {
   console.log('Building words-core pack from JMdict...');
 
-  if (!fs.existsSync(JMDICT_PATH)) {
-    console.error(`JMdict source not found at ${JMDICT_PATH}`);
-    console.error('Run: npx tsx scripts/build-packs/fetch-sources.ts');
+  let jmdictPath: string;
+  try {
+    jmdictPath = resolveAndVerifyJmdictPath();
+  } catch (e) {
+    console.error(String(e));
+    console.error('Run: pnpm exec tsx scripts/build-packs/fetch-sources.ts');
     process.exit(1);
   }
 
   try {
-    const stats = await buildWordsCoreDB();
+    const stats = await buildWordsCoreDB(jmdictPath);
     const sha256 = await writeManifest(stats);
 
     console.log(`✓ Created ${OUTPUT_DB}`);
@@ -485,6 +530,10 @@ async function main() {
     );
     console.log(`✓ Manifest: ${OUTPUT_MANIFEST}`);
   } catch (error) {
+    // cleanup temp on failure; do not leave partial db or write manifest
+    try {
+      if (fs.existsSync(OUTPUT_DB_TMP)) fs.unlinkSync(OUTPUT_DB_TMP);
+    } catch {}
     console.error('Build failed:', error);
     process.exit(1);
   }

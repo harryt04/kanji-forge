@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
@@ -46,6 +47,7 @@
     "sql.js": "^1.14.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   },
   "engines": {
