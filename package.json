@@ -11,7 +11,8 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "build:kanji": "tsx scripts/build-packs/build-kanji-pack.ts"
+    "build:kanji": "tsx scripts/build-packs/build-kanji-pack.ts",
+    "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
@@ -48,6 +49,7 @@
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   },
   "engines": {
