@@ -1,0 +1,281 @@
+/*
+ * KanjiForge design tokens — Tailwind v4.
+ * Companion to mvp-docs/BRAND-DESIGN-LANGUAGE.md.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Noto+Sans+JP:wght@400;500;700&family=Fraunces:wght@500;600;700;900&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=block');
+
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-perfect: var(--perfect);
+  --color-perfect-foreground: var(--perfect-foreground);
+  --color-flag: var(--flag);
+  --color-due: var(--due);
+  --color-level-0: var(--level-0);
+  --color-level-0-foreground: var(--level-0-foreground);
+  --color-level-1: var(--level-1);
+  --color-level-1-foreground: var(--level-1-foreground);
+  --color-level-2: var(--level-2);
+  --color-level-2-foreground: var(--level-2-foreground);
+  --color-level-3: var(--level-3);
+  --color-level-3-foreground: var(--level-3-foreground);
+  --color-level-4: var(--level-4);
+  --color-level-4-foreground: var(--level-4-foreground);
+  --font-jp-display: var(--font-jp-display);
+  --font-jp-ui: var(--font-jp-ui);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+:root {
+  /* ---- shadcn base tokens (light, default theme) ---- */
+  --background: oklch(97.3% 0.012 85);
+  --foreground: oklch(24.5% 0.02 55);
+  --card: oklch(99.1% 0.006 85);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(45% 0.13 25);
+  --primary-foreground: oklch(98% 0.01 85);
+  --secondary: oklch(93% 0.015 85);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(93% 0.015 85);
+  --muted-foreground: oklch(52% 0.02 60);
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+  --destructive: oklch(50% 0.17 25);
+  --destructive-foreground: oklch(98% 0.01 85);
+  --border: oklch(90% 0.015 85);
+  --input: var(--border);
+  --ring: var(--primary);
+  --radius: 0.875rem; /* 14px */
+
+  /* ---- semantic (event/state, distinct from the level ramp) ---- */
+  --success: oklch(48% 0.1 145);
+  --success-foreground: oklch(97% 0.02 145);
+  --perfect: oklch(45% 0.11 165);
+  --perfect-foreground: oklch(97% 0.02 165);
+  --flag: var(--primary);
+  --due: oklch(70% 0.13 75);
+
+  /* ---- level ramp: belt rank, light theme ---- */
+  --level-0: #d9d2c3; /* 白 Shiro */
+  --level-0-foreground: #2b2620;
+  --level-1: #e8b23d; /* 黄 Ki */
+  --level-1-foreground: #3a2708;
+  --level-2: #6b9950; /* 緑 Midori */
+  --level-2-foreground: #16240d;
+  --level-3: #3d5a9e; /* 青 Ao */
+  --level-3-foreground: #eef1fa;
+  --level-4: #1e1b18; /* 黒 Kuro */
+  --level-4-foreground: #efece6;
+  /* level 0 sits close to --background by design (an unmarked "blank" belt) —
+     always render its border, in both themes, so it never disappears. */
+  --level-0-border: rgba(43, 38, 32, 0.35);
+  --level-4-border: transparent; /* light theme: level 4 already contrasts against --background */
+
+  /* ---- typography ---- */
+  --font-jp-display: 'Klee One', sans-serif;
+  --font-jp-ui: 'Noto Sans JP', sans-serif;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Public Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --text-display: 8.75rem; /* 140px, study-card kanji */
+  --text-3xl: 2.5rem;
+  --text-2xl: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-base: 1rem; /* never smaller on mobile — iOS zoom-on-focus guard */
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  /* ---- elevation ("paper object" rule) ---- */
+  --shadow-card: 0 1px 2px rgba(60, 45, 20, 0.06), 0 6px 16px rgba(60, 45, 20, 0.05);
+
+  /* ---- motion ---- */
+  --duration-reveal: 180ms;
+  --duration-grade: 220ms;
+  --duration-level-transition: 200ms;
+  --duration-hover: 150ms;
+  --duration-page-reveal: 350ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-grade: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dark {
+  --background: oklch(19% 0.012 55);
+  --foreground: oklch(91% 0.012 70);
+  --card: oklch(23% 0.014 55);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(62% 0.15 30);
+  --primary-foreground: oklch(15% 0.01 55);
+  --secondary: oklch(27% 0.014 55);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(27% 0.014 55);
+  --muted-foreground: oklch(65% 0.015 65);
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+  --destructive: oklch(62% 0.18 25);
+  --destructive-foreground: oklch(15% 0.01 55);
+  --border: oklch(31% 0.014 55);
+  --input: var(--border);
+  --ring: var(--primary);
+
+  --success: oklch(62% 0.11 145);
+  --success-foreground: oklch(15% 0.02 145);
+  --perfect: oklch(60% 0.12 165);
+  --perfect-foreground: oklch(15% 0.02 165);
+  --flag: var(--primary);
+  --due: oklch(72% 0.13 75);
+
+  /* level ramp: belt rank, dark theme — endpoints re-tuned so neither vanishes
+     into --background (see BRAND-DESIGN-LANGUAGE.md §3.2's "hairline border on
+     whichever endpoint is closest to the background luminance" rule). */
+  --level-0: #ede7da;
+  --level-0-foreground: #221f1b;
+  --level-1: #e8b23d;
+  --level-1-foreground: #3a2708;
+  --level-2: #7fb05c;
+  --level-2-foreground: #12210b;
+  --level-3: #5b7fc7;
+  --level-3-foreground: #101a2e;
+  --level-4: #3a352e;
+  --level-4-foreground: #ede9e0;
+  --level-0-border: transparent; /* dark theme: level 0 already contrasts against --background */
+  --level-4-border: rgba(237, 233, 224, 0.25);
+}
+
+/* Reduced motion: collapse every duration to instant, unconditionally. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-reveal: 0ms;
+    --duration-grade: 0ms;
+    --duration-level-transition: 0ms;
+    --duration-hover: 0ms;
+    --duration-page-reveal: 0ms;
+  }
+}
+
+/* Shape encoding — the always-on fold overlay. Apply `.sticky-shape` plus one
+ * of `.l0`..`.l4` to any sticky-shaped element (tile-wall cells, deck chips,
+ * study-card level strip). Reads by luminance contrast alone, independent of
+ * hue — survives any CVD type and full greyscale.
+ */
+.sticky-shape {
+  position: relative;
+  overflow: hidden;
+}
+.sticky-shape::before,
+.sticky-shape::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+.sticky-shape::before {
+  border-color: transparent rgba(0, 0, 0, 0.32) transparent transparent;
+}
+.sticky-shape::after {
+  border-color: transparent rgba(255, 255, 255, 0.92) transparent transparent;
+}
+.sticky-shape.l0::before,
+.sticky-shape.l0::after {
+  border-width: 0;
+}
+.sticky-shape.l1::before {
+  border-width: 0 6px 6px 0;
+}
+.sticky-shape.l1::after {
+  border-width: 0 5px 5px 0;
+}
+.sticky-shape.l2::before {
+  border-width: 0 9px 9px 0;
+}
+.sticky-shape.l2::after {
+  border-width: 0 8px 8px 0;
+}
+.sticky-shape.l3::before {
+  border-width: 0 12px 12px 0;
+}
+.sticky-shape.l3::after {
+  border-width: 0 11px 11px 0;
+}
+.sticky-shape.l4::before {
+  border-width: 0 16px 16px 0;
+}
+.sticky-shape.l4::after {
+  border-width: 0 15px 15px 0;
+}
+
+/* Level swatch helper — background/foreground/hairline-border in one class,
+ * for anything that just needs to render as "this level's color" (LevelChip,
+ * deck-row chips, ramp legends). Pair with .sticky-shape separately if the
+ * fold overlay is also needed. */
+.level-swatch[data-level='0'] {
+  background: var(--level-0);
+  color: var(--level-0-foreground);
+  box-shadow: inset 0 0 0 1px var(--level-0-border);
+}
+.level-swatch[data-level='1'] {
+  background: var(--level-1);
+  color: var(--level-1-foreground);
+}
+.level-swatch[data-level='2'] {
+  background: var(--level-2);
+  color: var(--level-2-foreground);
+}
+.level-swatch[data-level='3'] {
+  background: var(--level-3);
+  color: var(--level-3-foreground);
+}
+.level-swatch[data-level='4'] {
+  background: var(--level-4);
+  color: var(--level-4-foreground);
+  box-shadow: inset 0 0 0 1px var(--level-4-border);
+}
+
+/* Base styles */
+html {
+  font-family: var(--font-body);
+  color: var(--foreground);
+  background-color: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
