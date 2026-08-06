@@ -1,0 +1,13 @@
+{
+  "id": "kanji",
+  "version": "v1",
+  "schemaVersion": 1,
+  "license": "CC BY-SA 4.0",
+  "attribution": "KANJIDIC2 — © Electronic Dictionary Research and Development Group, Monash University. CC BY-SA 4.0. Modified: retained the 200 most frequent records from the generated pack. See packs-dev/README.md.",
+  "source": "KANJIDIC2 via packs/kanji-v1.sqlite; omitted fields remain omitted",
+  "sha256": "770d3921281bea22ed983fdac8109575e6d8e838e0ed803e5ae56c6390b99e1e",
+  "sizeBytes": 61440,
+  "stats": {
+    "kanjiCount": 200
+  }
+}

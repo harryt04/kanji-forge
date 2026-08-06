@@ -129,7 +129,7 @@ CC BY 2.0 FR requires attribution but **not** share-alike, so this pack has loos
 
 This solves a genuinely hard problem: given 食べ物 / たべもの, knowing that 食→た, べ, 物→もの. Do not attempt to derive this yourself; the edge cases (rendaku, jukujikun, ateji) are brutal.
 
-Verify the current license on the repo before shipping. Audit note (T0.1): the GitHub repo root contains an explicit MIT LICENSE file (hash c7d0d41a... of its body); we use that as the license for the published JSON artifact. (README claims "same licence as JMDict (CC BY-SA)", but explicit LICENSE file takes precedence for the release we pin.)
+Verify the current license on the repo before shipping. Audit note (T0.1): the GitHub repo root contains an explicit MIT LICENSE file (hash c7d0d41a... of its body), which applies to the repository code. The published alignment data is derived from JMdict and therefore retains JMdict's CC BY-SA 4.0 obligations; record both the code and data provenance in shipped attribution.
 
 ---
 
@@ -243,6 +243,7 @@ The pipeline lives in `scripts/build-packs/` and must be:
 
 - **Reproducible** — every upstream source pinned to a specific release tag or dated snapshot, with a checksum recorded in `sources.lock.json`. A build from the same lock file produces byte-identical packs.
 - **CI-runnable** — a scheduled workflow refreshes upstream sources monthly, rebuilds, runs assertions, and opens a PR with the diff.
+- **Reproducibility modes** — pull-request CI validates the committed pack fixture and its assertions. The authoritative reproducibility check runs on the monthly scheduled refresh after it has fetched the full locked cache: it executes the kanji, words-core, strokes, sentences, similar, and decks builders twice in separate output workspaces using that same cache, writes deterministic Brotli publication artifacts, and byte-compares every generated file. It is intentionally not a synthetic fixture generator. The committed fixture currently validates assertions only; it is not an authoritative builder-reproduction input.
 - **Assertive** — the build fails, loudly, if:
   - Any SKIP or misclassification field appears in output
   - Any source's license file hash changed since the lock

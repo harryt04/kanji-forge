@@ -3,9 +3,11 @@
  * Fetch upstream sources and compute checksums for sources.lock.json
  *
  * Usage:
- *   npx tsx scripts/build-packs/fetch-sources.ts [--verify]
+ *   npx tsx scripts/build-packs/fetch-sources.ts --refresh [--approve-license-change]
+ *   npx tsx scripts/build-packs/fetch-sources.ts --preflight
  *
- * --verify: Compare against existing sources.lock.json and fail if checksums differ
+ * The lock is the single cache contract: every builder input has a `file` field
+ * (including nested Tatoeba components) and builders resolve only that field.
  */
 
 import * as fs from 'fs';
@@ -14,6 +16,7 @@ import * as crypto from 'crypto';
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
+import { execFileSync } from 'child_process';
 
 interface SourceEntry {
   id: string;
@@ -47,6 +50,8 @@ const ALLOWED_HOSTS = new Set([
   'github.com',
   'api.github.com',
   'raw.githubusercontent.com',
+  'release-assets.githubusercontent.com',
+  'objects.githubusercontent.com',
   'downloads.tatoeba.org',
   'tatoeba.org',
   'creativecommons.org',
@@ -292,6 +297,45 @@ async function computeLicenseHash(licenseUrl: string | undefined, id: string): P
   return hash;
 }
 
+const LICENSE_URLS: Record<string, string> = {
+  kanjidic2: 'https://www.edrdg.org/edrdg/licence.html', jmdict: 'https://www.edrdg.org/edrdg/licence.html', jmnedict: 'https://www.edrdg.org/edrdg/licence.html', kradfile: 'https://www.edrdg.org/edrdg/licence.html', radkfile: 'https://www.edrdg.org/edrdg/licence.html',
+  kanjivg: 'https://raw.githubusercontent.com/KanjiVG/kanjivg/r20260714/COPYING', jmdictfurigana: 'https://raw.githubusercontent.com/Doublevil/JmdictFurigana/master/LICENSE', tatoeba: 'https://tatoeba.org/eng/terms_of_use',
+  'jlpt-kanji-data': 'https://raw.githubusercontent.com/davidluzgouveia/kanji-data/master/LICENSE', 'jlpt-vocab-yomitan': 'https://raw.githubusercontent.com/stephenmk/yomitan-jlpt-vocab/master/LICENSE', 'noto-serif-jp': 'https://raw.githubusercontent.com/notofonts/noto-cjk/main/LICENSE',
+};
+
+function canonicalFile(entry: any, fallbackId: string): string {
+  if (typeof entry.file === 'string' && path.basename(entry.file) === entry.file) return entry.file;
+  const ext = getFileExtension(entry.url);
+  return `${fallbackId}-${sanitizeForPath(entry.pinned ?? 'unpinned')}${ext}`;
+}
+
+function sourceParts(lock: any): Array<{ id: string; entry: any; parent?: any }> {
+  const parts: Array<{ id: string; entry: any; parent?: any }> = [];
+  for (const [id, source] of Object.entries<any>(lock.sources ?? {})) {
+    if (source.url) parts.push({ id, entry: source });
+    for (const [componentId, component] of Object.entries<any>(source.components ?? {})) parts.push({ id: `${id}.${componentId}`, entry: component, parent: source });
+  }
+  return parts;
+}
+
+export function assertLicenseChangesAllowed(previous: any, candidate: any, approved: boolean): void {
+  const changes = Object.entries<any>(candidate.sources ?? {}).flatMap(([id, entry]) => {
+    const old = previous.sources?.[id];
+    return old?.licenseHash && entry.licenseHash && old.licenseHash !== entry.licenseHash ? [`${id}: ${old.licenseHash} -> ${entry.licenseHash}`] : [];
+  });
+  if (changes.length && !approved) throw new Error(`LICENSE CHANGE DETECTED; refusing to replace sources.lock.json. Review and rerun with --approve-license-change:\n${changes.join('\n')}`);
+}
+
+function assertContract(lock: any, requireFiles = false): void {
+  for (const { id, entry } of sourceParts(lock)) {
+    if (!entry.url || !entry.sha256 || !/^[a-f0-9]{64}$/.test(entry.sha256)) throw new Error(`Invalid locked source ${id}: url and sha256 are required`);
+    const file = canonicalFile(entry, id.replace('.', '-'));
+    if (path.basename(file) !== file) throw new Error(`Invalid locked source ${id}: file must be a cache filename`);
+    if (requireFiles && entry.cacheRequired !== false && !fs.existsSync(path.join(CACHE_DIR, file))) throw new Error(`Missing locked cache input ${id}: ${file}`);
+  }
+  for (const [id, source] of Object.entries<any>(lock.sources ?? {})) if (!/^[a-f0-9]{64}$/.test(source.licenseHash ?? '')) throw new Error(`Invalid locked license hash for ${id}`);
+}
+
 // Tiny unit/assert: fake placeholder hashes must fail validation (per T0.1)
 function assertPlaceholderRejected(placeholder: string, id: string): void {
   if (/^[0-9a-f]{64}$/.test(placeholder) && placeholder !== 'cc-by-sa-4.0-edrdg') {
@@ -443,11 +487,11 @@ async function buildSourcesList(): Promise<SourceEntry[]> {
       name: 'JmdictFurigana',
       url: 'https://github.com/Doublevil/JmdictFurigana/releases/download/2024.2.1/JmdictFurigana.json',
       pinned: '2024.2.1',
-      license: 'MIT',
+      license: 'CC BY-SA 4.0',
       licenseUrl: 'https://raw.githubusercontent.com/Doublevil/JmdictFurigana/master/LICENSE',
       licenseHash: '',
       sha256: '', // Will be computed
-      provenance: 'JmdictFurigana project (Doublevil), derivative of JMdict (EDRDG)',
+      provenance: 'JmdictFurigana alignment DATA (Doublevil), derivative of JMdict (EDRDG) under CC BY-SA 4.0; repository code is separately MIT-licensed.',
     },
     {
       id: 'tatoeba-sentences',
@@ -582,37 +626,48 @@ async function verifyLock(lock: SourcesLock, sources: SourceEntry[]): Promise<bo
 
 async function main() {
   const args = process.argv.slice(2);
-  const isVerify = args.includes('--verify');
+  const isPreflight = args.includes('--preflight');
+  const approved = args.includes('--approve-license-change');
+  const assertion = args.indexOf('--assert-license-change');
+  if (assertion >= 0) {
+    const previous = JSON.parse(fs.readFileSync(args[assertion + 1], 'utf8'));
+    const candidate = JSON.parse(fs.readFileSync(args[assertion + 2], 'utf8'));
+    assertLicenseChangesAllowed(previous, candidate, approved);
+    console.log('✓ License change policy passed');
+    return;
+  }
 
   console.log('=== KanjiForge Source Fetcher ===\n');
-
-  const sources = await buildSourcesList();
-  const fetchedSources = await fetchAllSources(sources);
-
-  const lock: SourcesLock = {
-    version: '1.0.0',
-    builtAt: new Date().toISOString(),
-    sources: fetchedSources,
-  };
-
-  if (isVerify && fs.existsSync(LOCK_FILE)) {
-    const existingLock = JSON.parse(fs.readFileSync(LOCK_FILE, 'utf-8'));
-    const allMatch = await verifyLock(existingLock, sources);
-    if (!allMatch) {
-      console.error('\n✗ Verification failed: checksums do not match');
-      process.exit(1);
-    }
-  } else {
-    // HIGH: assert all licenseHash are genuine 64-hex before write
-    for (const [id, entry] of Object.entries(lock.sources)) {
-      if (!/^[0-9a-f]{64}$/.test(entry.licenseHash)) {
-        throw new Error(`Refusing to write lock: ${id} has invalid licenseHash ${entry.licenseHash}`);
-      }
-    }
-    // Write lock file
-    fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2) + '\n');
-    console.log(`\n✓ Wrote ${LOCK_FILE}`);
+  const previous = JSON.parse(fs.readFileSync(LOCK_FILE, 'utf8'));
+  assertContract(previous, isPreflight);
+  if (isPreflight) { console.log('✓ Refresh preflight passed: checked-out lock has canonical builder cache inputs.'); return; }
+  if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+  const candidate = JSON.parse(JSON.stringify(previous));
+  for (const { id, entry, parent } of sourceParts(candidate)) {
+    entry.file = canonicalFile(entry, id.replace('.', '-'));
+    const target = path.join(CACHE_DIR, entry.file);
+    console.log(`Fetching ${id} -> ${entry.file}`);
+    if (!fs.existsSync(target)) await downloadFile(entry.url, target, id);
+    entry.sha256 = await computeSha256(target);
+    entry.sizeBytes = await getFileSizeBytes(target);
+    if (entry.derivedFile && !fs.existsSync(path.join(CACHE_DIR, entry.derivedFile))) execFileSync('tar', ['-xzf', target, '-C', CACHE_DIR]);
   }
+  for (const [id, entry] of Object.entries<any>(candidate.sources)) {
+    // Licenses are intentionally fetched fresh during refresh, never silently reused.
+    const licenseUrl = entry.licenseUrl ?? LICENSE_URLS[id];
+    if (!licenseUrl) throw new Error(`No license URL configured for ${id}`);
+    const text = await fetchLicenseText(licenseUrl);
+    fs.writeFileSync(path.join(CACHE_DIR, `${id}-license.txt`), text);
+    entry.licenseFile = `${id}-license.txt`;
+    entry.licenseHash = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
+  }
+  // Critical ordering: a changed license aborts before the checked-out lock is replaced.
+  assertLicenseChangesAllowed(previous, candidate, approved);
+  candidate.builtAt = new Date().toISOString();
+  assertContract(candidate);
+  fs.writeFileSync(LOCK_FILE, JSON.stringify(candidate, null, 2) + '\n');
+  const lock = candidate;
+  console.log(`\n✓ Wrote ${LOCK_FILE}`);
 
   // Print summary
   console.log('\n=== Summary ===');
@@ -631,7 +686,7 @@ async function main() {
   console.log(`All sources have licenseHash: ${Object.values(lock.sources).every(s => s.licenseHash)}`);
 }
 
-main().catch((err) => {
+if (import.meta.url === `file://${process.argv[1]}`) main().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

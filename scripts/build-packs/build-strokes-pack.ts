@@ -40,7 +40,14 @@ interface StrokesManifest {
   sizeBytes: number;
   license: string;
   attribution: string;
-  sources: Array<{ id: string; url: string; pinned: string }>;
+  sources: Array<{
+    id: string;
+    url: string;
+    pinned: string;
+    sha256: string;
+    license: string;
+    licenseHash?: string;
+  }>;
   chunks: Array<{
     filename: string;
     sha256: string;
@@ -49,15 +56,87 @@ interface StrokesManifest {
   }>;
 }
 
-const KANJIVG_ZIP = path.join(
-  process.cwd(),
-  'scripts/build-packs/.cache/kanjivg-r20260714.zip'
-);
+const CACHE_DIR = path.join(process.cwd(), 'scripts/build-packs/.cache');
 const OUTPUT_DIR = path.join(process.cwd(), 'packs/strokes');
 const SOURCES_LOCK_PATH = path.join(
   process.cwd(),
   'scripts/build-packs/sources.lock.json'
 );
+
+interface KanjiVGSource {
+  id: string;
+  url: string;
+  pinned: string;
+  file: string;
+  sha256: string;
+  license: string;
+  licenseHash?: string;
+}
+
+function requiredString(
+  value: unknown,
+  field: string,
+  sourceName: string
+): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`sources.lock.json ${sourceName} is missing ${field}`);
+  }
+  return value;
+}
+
+/**
+ * Resolve and verify the pinned KanjiVG cache artifact before any pack outputs
+ * are touched. Exported so checksum handling can be tested without building.
+ */
+export function resolveAndVerifyKanjiVGInput(
+  sourcesLockPath = SOURCES_LOCK_PATH,
+  cacheDir = CACHE_DIR
+): { source: KanjiVGSource; filePath: string } {
+  const lock = JSON.parse(fs.readFileSync(sourcesLockPath, 'utf-8')) as {
+    sources?: { kanjivg?: Partial<KanjiVGSource> };
+  };
+  const entry = lock.sources?.kanjivg;
+  if (!entry) {
+    throw new Error('sources.lock.json is missing sources.kanjivg');
+  }
+
+  const source: KanjiVGSource = {
+    id: requiredString(entry.id, 'id', 'kanjivg'),
+    url: requiredString(entry.url, 'url', 'kanjivg'),
+    pinned: requiredString(entry.pinned, 'pinned', 'kanjivg'),
+    file: requiredString(entry.file, 'file', 'kanjivg'),
+    sha256: requiredString(entry.sha256, 'sha256', 'kanjivg'),
+    license: requiredString(entry.license, 'license', 'kanjivg'),
+    ...(typeof entry.licenseHash === 'string' && {
+      licenseHash: entry.licenseHash,
+    }),
+  };
+  if (source.id !== 'kanjivg' || !/^[a-f0-9]{64}$/.test(source.sha256)) {
+    throw new Error('sources.lock.json has an invalid kanjivg source identity');
+  }
+  if (path.basename(source.file) !== source.file) {
+    throw new Error('sources.lock.json kanjivg.file must be a cache filename');
+  }
+
+  const filePath = path.join(cacheDir, source.file);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(
+      `KanjiVG zip not found at ${filePath}. Run fetch-sources.ts first.`
+    );
+  }
+  const actualSha256 = crypto
+    .createHash('sha256')
+    .update(fs.readFileSync(filePath))
+    .digest('hex');
+  if (actualSha256 !== source.sha256) {
+    throw new Error(
+      `KanjiVG SHA256 mismatch (fail closed): expected ${source.sha256}, got ${actualSha256}`
+    );
+  }
+
+  console.log(`Verified KanjiVG input ${source.file} against sources.lock.json`);
+  return { source, filePath };
+}
 
 // 5-way Unicode block chunking for main CJK (sensible split per T0.5 done-check)
 const UNICODE_BLOCKS = [
@@ -239,7 +318,7 @@ function parseComponentTree(svgContent: string): ComponentNode {
 }
 
 // Extract SVG files from zip and parse them
-function extractAndParseKanjiVG(): Map<string, StrokeData> {
+function extractAndParseKanjiVG(kanjivgZip: string): Map<string, StrokeData> {
   const strokes = new Map<string, StrokeData>();
 
   // Use unzip command to extract all SVG files
@@ -248,7 +327,7 @@ function extractAndParseKanjiVG(): Map<string, StrokeData> {
 
   try {
     // Extract all kanji SVG files
-    execSync(`cd "${tmpDir}" && unzip -q "${KANJIVG_ZIP}" "kanji/*.svg"`, {
+    execSync(`cd "${tmpDir}" && unzip -q "${kanjivgZip}" "kanji/*.svg"`, {
       stdio: 'pipe',
     });
 
@@ -429,14 +508,10 @@ function createManifest(chunks: Array<{
   sha256: string;
   sizeBytes: number;
   unicodeRange: string;
-}>): StrokesManifest {
-  const sourcesLock = JSON.parse(
-    fs.readFileSync(SOURCES_LOCK_PATH, 'utf-8')
-  );
-  const kanjivgSource = sourcesLock.sources.kanjivg;
+}>, kanjivgSource: KanjiVGSource): StrokesManifest {
 
   // Compute combined hash and total size
-  let combinedHash = crypto.createHash('sha256');
+  const combinedHash = crypto.createHash('sha256');
   let totalSize = 0;
 
   for (const chunk of chunks) {
@@ -458,6 +533,11 @@ function createManifest(chunks: Array<{
         id: 'kanjivg',
         url: kanjivgSource.url,
         pinned: kanjivgSource.pinned,
+        sha256: kanjivgSource.sha256,
+        license: kanjivgSource.license,
+        ...(kanjivgSource.licenseHash && {
+          licenseHash: kanjivgSource.licenseHash,
+        }),
       },
     ],
     chunks,
@@ -468,12 +548,9 @@ function createManifest(chunks: Array<{
 async function main() {
   console.log('Building strokes pack from KanjiVG...');
 
-  // Verify KanjiVG zip exists
-  if (!fs.existsSync(KANJIVG_ZIP)) {
-    throw new Error(
-      `KanjiVG zip not found at ${KANJIVG_ZIP}. Run fetch-sources.ts first.`
-    );
-  }
+  // Verify the locked input before clearing or writing any output.
+  const { source: kanjivgSource, filePath: kanjivgZip } =
+    resolveAndVerifyKanjiVGInput();
 
   // Create output directory
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -489,7 +566,7 @@ async function main() {
 
   // Extract and parse
   console.log('Extracting and parsing KanjiVG SVG files...');
-  const strokes = extractAndParseKanjiVG();
+  const strokes = extractAndParseKanjiVG(kanjivgZip);
 
   // Group by Unicode block
   console.log('Grouping by Unicode block...');
@@ -501,7 +578,7 @@ async function main() {
 
   // Write manifest
   console.log('Writing manifest...');
-  const manifest = createManifest(chunks);
+  const manifest = createManifest(chunks, kanjivgSource);
   const manifestPath = path.join(OUTPUT_DIR, 'manifest.json');
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
 
@@ -513,7 +590,9 @@ async function main() {
   );
 }
 
-main().catch((err) => {
-  console.error('Fatal error:', err.message);
-  process.exit(1);
-});
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error('Fatal error:', err.message);
+    process.exit(1);
+  });
+}

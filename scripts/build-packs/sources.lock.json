@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "builtAt": "2026-07-25T17:15:22.000Z",
   "description": "Pinned upstream data sources for KanjiForge MVP (T0.1 block)",
-  "notes": "All required T0.1 sources fetched and verified. Tatoeba (~900 MB combined CSV files) and JmdictFurigana included. License hashes record sha256 of actual fetched upstream license files (orchestrator caught and corrected two cases where the implementing agent had hashed 404 error pages for kanjivg and jmdictfurigana, and a third where tatoeba's license fetch returned a generic site error page instead of the terms-of-use content -- all three replaced with real license text on 2026-07-25). JmdictFurigana license recorded as \"MIT\" per the LICENSE file in https://github.com/Doublevil/JmdictFurigana (raw); note that README.md claims \"same licence as JMDict (CC BY-SA)\" -- we use the explicit LICENSE file as authoritative for the published artifact. EDRDG license text from https://www.edrdg.org/edrdg/licence.html .",
+  "notes": "All required T0.1 sources fetched and verified. Tatoeba exports include the pinned sentences_detailed.csv input used to preserve author attribution for every shipped JA-EN pair. License hashes record sha256 of actual fetched upstream license files (orchestrator caught and corrected two cases where the implementing agent had hashed 404 error pages for kanjivg and jmdictfurigana, and a third where tatoeba's license fetch returned a generic site error page instead of the terms-of-use content -- all three replaced with real license text on 2026-07-25). JmdictFurigana repository code has an MIT LICENSE, but its alignment DATA maps JMdict writing/reading pairs and is treated as JMdict-derived CC BY-SA 4.0 data; the MIT code license does not replace the data attribution or share-alike obligations. EDRDG license text from https://www.edrdg.org/edrdg/licence.html .",
   "sources": {
     "kanjidic2": {
       "id": "kanjidic2",
@@ -20,6 +20,7 @@
       "name": "JMdict_e (English only)",
       "url": "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz",
       "pinned": "2026-07-25",
+      "file": "jmdict-2026-07-25.gz",
       "license": "CC BY-SA 4.0",
       "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 10509626,
@@ -30,6 +31,7 @@
       "name": "JMnedict",
       "url": "http://ftp.edrdg.org/pub/Nihongo/JMnedict.xml.gz",
       "pinned": "2026-07-25",
+      "file": "jmnedict-2026-07-25.gz",
       "license": "CC BY-SA 4.0",
       "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 12431523,
@@ -40,6 +42,7 @@
       "name": "KRADFILE",
       "url": "http://ftp.edrdg.org/pub/Nihongo/kradfile.gz",
       "pinned": "2026-07-25",
+      "file": "kradfile-2026-07-25.gz",
       "license": "CC BY-SA 4.0",
       "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 47294,
@@ -50,6 +53,7 @@
       "name": "RADKFILE",
       "url": "http://ftp.edrdg.org/pub/Nihongo/radkfile.gz",
       "pinned": "2026-07-25",
+      "file": "radkfile-2026-07-25.gz",
       "license": "CC BY-SA 4.0",
       "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
       "sizeBytes": 40854,
@@ -60,11 +64,28 @@
       "name": "KanjiVG",
       "url": "https://github.com/KanjiVG/kanjivg/releases/download/r20260714/kanjivg-20260714-all.zip",
       "pinned": "r20260714",
+      "file": "kanjivg-r20260714.zip",
       "license": "CC BY-SA 3.0",
       "licenseHash": "d255e07978fd16ddfec38bc59dc9d857b885dd44ddbf4e79baf207d30746bdcc",
       "sizeBytes": 22674264,
       "sha256": "534bd222052f4960747ff624014e426b08052164a837b15044f58517e85e4db5",
       "attribution": "Stroke data derived from KanjiVG by Ulrich Apel, CC BY-SA 3.0. Paths normalized and re-encoded."
+    },
+    "noto-serif-jp": {
+      "id": "noto-serif-jp",
+      "name": "Noto Serif JP Regular",
+      "url": "https://github.com/notofonts/noto-cjk/releases/download/Serif2.003/12_NotoSerifJP.zip",
+      "pinned": "Serif2.003",
+      "cacheRequired": false,
+      "license": "SIL OFL 1.1",
+      "licenseHash": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "sizeBytes": 36830191,
+      "sha256": "53bdd2a6e4eb63bf24f7890e018dddb94366e3555d0814c72b74fbb128f328f0",
+      "fontFile": {
+        "path": "scripts/build-packs/assets/NotoSerifJP-Regular.otf",
+        "sha256": "2c9a12dbd4f2408c4610c7ee84a108b62d7236c3775baed618c64d9cb44b2f04"
+      },
+      "note": "Project-pinned generator-only font extracted from the listed release. Build never fetches it."
     },
     "tatoeba": {
       "id": "tatoeba",
@@ -72,16 +93,26 @@
       "components": {
         "sentences": {
           "url": "https://downloads.tatoeba.org/exports/sentences.csv",
+          "file": "sentences.csv",
           "sizeBytes": 478050324,
           "sha256": "4631dea8a1dddb666081957bf5425d6ded95003d17adda1d475ef41d43973cdd"
         },
+        "sentencesDetailed": {
+          "url": "https://downloads.tatoeba.org/exports/sentences_detailed.csv",
+          "file": "sentences_detailed.csv",
+          "sizeBytes": 1399786063,
+          "sha256": "7c4151e6990c301ff15f20772e5256db907234bbb510cfe4b8530a16a55ca8fc",
+          "purpose": "Author attribution for retained Japanese sentence IDs and English translation IDs"
+        },
         "links": {
           "url": "https://downloads.tatoeba.org/exports/links.csv",
+          "file": "links.csv",
           "sizeBytes": 423603276,
           "sha256": "a3b435a8e168088b103ebc15fe25a209fa35a1560569ac39ad02b438f4980655"
         },
         "wwwjdic": {
           "url": "https://downloads.tatoeba.org/exports/wwwjdic.csv",
+          "file": "wwwjdic.csv",
           "sizeBytes": 31643594,
           "sha256": "45f64d2aed1cbcf890acc8eafe277692641416801a9c76235233e762a1d345d6"
         }
@@ -90,28 +121,32 @@
       "license": "CC BY 2.0 FR",
       "licenseHash": "58be7312a781d26af1709feda2ac63b3655b71694b7fe77c06bf1d33048ddf21",
       "provenance": "Includes Tanaka Corpus JA-EN example sentences",
-      "note": "Large multi-file corpus (~930 MB combined); use wwwjdic indices for JMdict sense linking"
+      "note": "Large multi-file corpus; use wwwjdic indices for JMdict sense linking and sentences_detailed.csv for shipped per-sentence author attribution"
     },
     "jmdictfurigana": {
       "id": "jmdictfurigana",
       "name": "JmdictFurigana (per-character furigana alignments)",
       "url": "https://github.com/Doublevil/JmdictFurigana/releases/download/2.3.1%2B2026-07-25/JmdictFurigana.json.tar.gz",
       "pinned": "2.3.1+2026-07-25",
-      "license": "MIT",
+      "file": "JmdictFurigana.json.tar.gz",
+      "derivedFile": "JmdictFurigana.json",
+      "license": "CC BY-SA 4.0",
+      "repositoryCodeLicense": "MIT",
       "licenseHash": "c7d0d41a2df5c30b2d9c45dabc224103fa897021ab444fc0f109feb89b64f190",
       "sizeBytes": 5243744,
       "sha256": "fc02519134ba75389db1885127cd06b8beb3e4f1922c68c510b73f3b7175b01a",
-      "provenance": "Maps JMdict (kanji-writing, kana-reading) pairs to furigana alignments",
-      "note": "Solves rendaku/jukujikun/ateji alignment; critical for reading support"
+      "provenance": "Alignment DATA maps JMdict (kanji-writing, kana-reading) pairs to furigana alignments and is JMdict-derived",
+      "note": "Data is subject to JMdict CC BY-SA 4.0 attribution/share-alike obligations; the repository's MIT code license does not apply to the alignment data. Solves rendaku/jukujikun/ateji alignment; critical for reading support"
     },
     "jlpt-kanji-data": {
       "id": "jlpt-kanji-data",
       "name": "JLPT Kanji Data (davidluzgouveia)",
       "url": "https://api.github.com/repos/davidluzgouveia/kanji-data/tarball/00fd7079c3890f430759536f91aa5e854ec0ca4f",
       "pinned": "00fd7079c3890f430759536f91aa5e854ec0ca4f",
+      "file": "jlpt-kanji-data-00fd7079c3890f430759536f91aa5e854ec0ca4f.tar.gz",
       "license": "MIT",
       "licenseHash": "80f8d60f8c15f5c497ff95608a3e7d6c02653e991be10448eccb0bb557362a8c",
-      "sizeBytes": 845992,
+      "sizeBytes": 845867,
       "sha256": "295ac92063a30cddd293fa238ca7971a8c674c6135dd05d92d16e2a806046970",
       "provenance": "Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY",
       "note": "Actual commit SHA fetched from GitHub API; prior entry used fabricated hash"
@@ -121,6 +156,7 @@
       "name": "JLPT Vocabulary (yomitan)",
       "url": "https://github.com/stephenmk/yomitan-jlpt-vocab/releases/download/2025.08.01.0/jlpt.zip",
       "pinned": "2025.08.01.0",
+      "file": "jlpt-vocab-yomitan-2025.08.01.0.zip",
       "license": "CC BY-SA 4.0",
       "licenseHash": "5704a57be1e85040c709008c5d643a78f6e6db9ebadbd85d5bfa62127a0a5ef4",
       "sizeBytes": 79029,

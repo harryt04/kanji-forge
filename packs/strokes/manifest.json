@@ -1,0 +1,57 @@
+{
+  "id": "strokes-v1",
+  "version": "1.0.0",
+  "schemaVersion": "1.0",
+  "sha256": "9300f579b42a9e3fb23fac63505d5dc0412be20c637fde36b2966abaf7261e23",
+  "sizeBytes": 9744046,
+  "license": "CC BY-SA 3.0",
+  "attribution": "Stroke data derived from KanjiVG by Ulrich Apel, CC BY-SA 3.0. Paths normalized and re-encoded.",
+  "sources": [
+    {
+      "id": "kanjivg",
+      "url": "https://github.com/KanjiVG/kanjivg/releases/download/r20260714/kanjivg-20260714-all.zip",
+      "pinned": "r20260714",
+      "sha256": "534bd222052f4960747ff624014e426b08052164a837b15044f58517e85e4db5",
+      "license": "CC BY-SA 3.0",
+      "licenseHash": "d255e07978fd16ddfec38bc59dc9d857b885dd44ddbf4e79baf207d30746bdcc"
+    }
+  ],
+  "chunks": [
+    {
+      "filename": "strokes-4E00-4FFF.json",
+      "sha256": "83f6a2bcb8aee0ff7b2c61f93960334321765e218ff4346a1f989f41462384a2",
+      "sizeBytes": 181224,
+      "unicodeRange": "4E00-4FFF"
+    },
+    {
+      "filename": "strokes-5000-5FFF.json",
+      "sha256": "d16f8144cf31c699b5533ec591ae3a552d085309aa9da72d0f3c3dc81beff9ce",
+      "sizeBytes": 1785600,
+      "unicodeRange": "5000-5FFF"
+    },
+    {
+      "filename": "strokes-6000-6FFF.json",
+      "sha256": "00bae16112cc54356fc276230370bcbdbb48785a56c53208993253efc2f53110",
+      "sizeBytes": 1976373,
+      "unicodeRange": "6000-6FFF"
+    },
+    {
+      "filename": "strokes-7000-7FFF.json",
+      "sha256": "efd55673660f4ce46166c56f74bca74c321ff5f469a3f66e32920f6f44f5c220",
+      "sizeBytes": 1871748,
+      "unicodeRange": "7000-7FFF"
+    },
+    {
+      "filename": "strokes-8000-9FFF.json",
+      "sha256": "0718cec290d3f09805de5ee39729f3882c782928b970fc66697d3427926b9995",
+      "sizeBytes": 3803622,
+      "unicodeRange": "8000-9FFF"
+    },
+    {
+      "filename": "strokes-CJK_Extended.json",
+      "sha256": "f7fc06dda25155872ae94b78a6b8ed9f49dd0213aa5e4e0d2614deeaca72aeac",
+      "sizeBytes": 125479,
+      "unicodeRange": "CJK_Extended"
+    }
+  ]
+}

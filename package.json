@@ -14,7 +14,16 @@
     "build:kanji": "tsx scripts/build-packs/build-kanji-pack.ts",
     "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts",
     "build:strokes-pack": "npx tsx scripts/build-packs/build-strokes-pack.ts",
-    "build:sentences-pack": "npx --yes tsx scripts/build-packs/build-sentences-pack.ts"
+    "build:similar": "tsx scripts/build-packs/build-similar-pack.ts",
+    "build:sentences-pack": "npx --yes tsx scripts/build-packs/build-sentences-pack.ts",
+    "build:decks": "tsx scripts/build-packs/build-decks.ts",
+    "test:decks": "vitest run scripts/build-packs/build-decks.test.ts",
+    "packs:verify": "node scripts/build-packs/pipeline.mjs --mode ci",
+    "packs:test": "vitest run scripts/build-packs/pipeline.test.mjs scripts/build-packs/fetch-sources.test.ts",
+    "packs:repro": "node scripts/build-packs/reproducibility.mjs",
+    "packs:full": "node scripts/build-packs/pipeline.mjs --mode full",
+    "packs:refresh": "pnpm fetch:sources -- --refresh && pnpm build:kanji && pnpm build:words-core && pnpm build:strokes-pack && pnpm build:sentences-pack && pnpm build:similar && pnpm build:decks && pnpm packs:full",
+    "fetch:sources": "tsx scripts/build-packs/fetch-sources.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
@@ -26,6 +35,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "serwist": "^9.5.0",
+    "sql.js": "^1.14.1",
     "tailwind-merge": "^2.6.0",
     "zustand": "^4.5.5"
   },
@@ -40,6 +50,7 @@
     "@types/react-dom": "^19.0.0",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.4.20",
     "better-sqlite3": "^13.0.1",
     "eslint": "^9.16.0",
@@ -47,11 +58,10 @@
     "jsdom": "^24.0.0",
     "playwright": "^1.48.2",
     "postcss": "^8.4.48",
-    "sql.js": "^1.14.1",
+    "sharp": "0.34.5",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   },
   "engines": {

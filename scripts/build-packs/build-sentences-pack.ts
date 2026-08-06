@@ -48,7 +48,10 @@ interface JmdictFuriganaEntry {
 interface OutputSentence {
   id: number;
   ja: string;
+  jaAuthor: string;
+  enId: number;
   en: string;
+  enAuthor: string;
   furiganaJson: string; // stringified array of {text, furigana}
   readabilityScore: number;
 }
@@ -65,18 +68,38 @@ const CACHE_DIR = path.join(process.cwd(), 'scripts/build-packs/.cache');
 const PACKS_DIR = path.join(process.cwd(), 'packs');
 const OUTPUT_DB = path.join(PACKS_DIR, 'sentences-v1.sqlite');
 const OUTPUT_MANIFEST = path.join(PACKS_DIR, 'sentences-v1.manifest.json');
+const SOURCES_LOCK = path.join(process.cwd(), 'scripts/build-packs/sources.lock.json');
+const lockedInputs = new Map<string, string>();
+function lockedInput(sourceId: string, componentId?: string): string {
+  const key = `${sourceId}.${componentId ?? ''}`;
+  if (lockedInputs.has(key)) return lockedInputs.get(key)!;
+  const lock = JSON.parse(fs.readFileSync(SOURCES_LOCK, 'utf8'));
+  const source = lock.sources?.[sourceId]; const entry = componentId ? source?.components?.[componentId] : source;
+  const file = componentId ? entry?.file : (entry?.derivedFile ?? entry?.file);
+  if (!entry?.sha256 || !entry?.file || !file || path.basename(file) !== file) throw new Error(`sources.lock.json lacks canonical ${key} input`);
+  const archive = path.join(CACHE_DIR, entry.file); const resolved = path.join(CACHE_DIR, file);
+  if (!fs.existsSync(archive) || !fs.existsSync(resolved)) throw new Error(`Locked ${key} input is missing: ${file}`);
+  if (crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex') !== entry.sha256) throw new Error(`Locked ${key} input hash mismatch`);
+  lockedInputs.set(key, resolved); return resolved;
+}
 
 // Simple profanity filter (basic, spot-check recommended per spec)
 const INAPPROPRIATE_KEYWORDS = [
   'sex', 'porn', 'xxx', 'nude', 'naked', 'fuck', 'shit', 'bitch',
 ];
 
+async function sha256File(filePath: string): Promise<string> {
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of fs.createReadStream(filePath)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
 /**
  * Parse JmdictFurigana JSON and build a lookup map keyed by text|reading
  */
 async function loadJmdictFurigana(): Promise<Map<string, JmdictFuriganaEntry>> {
   console.log('Loading JmdictFurigana...');
-  const furiganaFile = path.join(CACHE_DIR, 'JmdictFurigana.json');
+  const furiganaFile = lockedInput('jmdictfurigana');
   if (!fs.existsSync(furiganaFile)) {
     throw new Error(`JmdictFurigana.json not found at ${furiganaFile}. Run fetch or check cache.`);
   }
@@ -107,7 +130,7 @@ async function loadJmdictFurigana(): Promise<Map<string, JmdictFuriganaEntry>> {
  */
 async function loadWWWJDICIndices(): Promise<Map<number, TatoebaIndicesEntry>> {
   console.log('Loading WWWJDIC indices...');
-  const indicesFile = path.join(CACHE_DIR, 'wwwjdic.csv');
+  const indicesFile = lockedInput('tatoeba', 'wwwjdic');
   if (!fs.existsSync(indicesFile)) {
     throw new Error(`wwwjdic.csv not found at ${indicesFile}`);
   }
@@ -187,7 +210,7 @@ async function loadWWWJDICIndices(): Promise<Map<number, TatoebaIndicesEntry>> {
  */
 async function loadJapaneseSentences(): Promise<Map<number, string>> {
   console.log('Loading Japanese sentences (length 6-30)...');
-  const sentencesFile = path.join(CACHE_DIR, 'sentences.csv');
+  const sentencesFile = lockedInput('tatoeba', 'sentences');
   if (!fs.existsSync(sentencesFile)) {
     throw new Error(`sentences.csv not found at ${sentencesFile}`);
   }
@@ -227,7 +250,7 @@ async function loadJapaneseSentences(): Promise<Map<number, string>> {
  */
 async function loadEnglishSentences(): Promise<Map<number, string>> {
   console.log('Loading English sentences...');
-  const sentencesFile = path.join(CACHE_DIR, 'sentences.csv');
+  const sentencesFile = lockedInput('tatoeba', 'sentences');
   const sentences = new Map<number, string>();
 
   const rl = readline.createInterface({
@@ -255,6 +278,68 @@ async function loadEnglishSentences(): Promise<Map<number, string>> {
 
   console.log(`  Loaded ${engCount} English sentences`);
   return sentences;
+}
+
+/**
+ * Tatoeba's compact sentences.csv export deliberately has no contributor field.
+ * Read the pinned sentences_detailed.csv export after selection so every shipped
+ * Japanese/English pair retains its upstream author and translation ID.
+ */
+async function attachTatoebaAuthors(sentences: Array<Omit<OutputSentence, 'jaAuthor' | 'enAuthor'>>): Promise<OutputSentence[]> {
+  const detailedFile = lockedInput('tatoeba', 'sentencesDetailed');
+  if (!fs.existsSync(detailedFile)) {
+    throw new Error(`sentences_detailed.csv not found at ${detailedFile}; author attribution is required for shipped Tatoeba pairs.`);
+  }
+
+  const lock = JSON.parse(fs.readFileSync(SOURCES_LOCK, 'utf-8'));
+  const detailedSource = lock?.sources?.tatoeba?.components?.sentencesDetailed;
+  if (!detailedSource || detailedSource.file !== 'sentences_detailed.csv') {
+    throw new Error('sources.lock.json is missing pinned Tatoeba sentencesDetailed attribution metadata.');
+  }
+  const actualHash = await sha256File(detailedFile);
+  if (actualHash !== detailedSource.sha256 || fs.statSync(detailedFile).size !== detailedSource.sizeBytes) {
+    throw new Error('Pinned Tatoeba sentences_detailed.csv does not match sources.lock.json.');
+  }
+
+  const wanted = new Map<number, { lang: 'jpn' | 'eng'; text: string }>();
+  for (const sentence of sentences) {
+    wanted.set(sentence.id, { lang: 'jpn', text: sentence.ja });
+    wanted.set(sentence.enId, { lang: 'eng', text: sentence.en });
+  }
+  const authors = new Map<number, string>();
+  const missingAuthorIds = new Set<number>();
+  const rl = readline.createInterface({ input: fs.createReadStream(detailedFile), crlfDelay: Infinity });
+  for await (const line of rl) {
+    const parts = line.split('\t');
+    if (parts.length < 6) continue;
+    const id = parseInt(parts[0], 10);
+    const expected = wanted.get(id);
+    if (!expected) continue;
+    if (parts[1] !== expected.lang || parts[2] !== expected.text) {
+      throw new Error(`Pinned Tatoeba detailed metadata does not match retained ${expected.lang} sentence ${id}.`);
+    }
+    const author = parts[3];
+    if (!author || author === '\\N') {
+      missingAuthorIds.add(id);
+      continue;
+    }
+    authors.set(id, author);
+  }
+
+  const attributed = sentences.flatMap(sentence => {
+    const jaAuthor = authors.get(sentence.id);
+    const enAuthor = authors.get(sentence.enId);
+    if (!jaAuthor || !enAuthor) {
+      return [];
+    }
+    return { ...sentence, jaAuthor, enAuthor };
+  });
+  const excluded = sentences.length - attributed.length;
+  if (excluded > 0) {
+    console.log(`  Excluded ${excluded} pairs with unavailable Tatoeba author metadata (${missingAuthorIds.size} source sentence IDs).`);
+  }
+  if (attributed.length === 0) throw new Error('No sentence pairs have complete verified Tatoeba author attribution.');
+  return attributed;
 }
 
 /**
@@ -390,11 +475,11 @@ async function buildSentencesPack() {
 
   console.log('\nBuilding sentence pairs (streaming links.csv, enforcing sense cap)...');
 
-  const candidateSentences: OutputSentence[] = [];
+  const candidateSentences: Array<Omit<OutputSentence, 'jaAuthor' | 'enAuthor'>> = [];
   const seenJpns = new Set<number>();
   const senseToCandidates: Map<string, Array<{ sentenceId: number; score: number }>> = new Map();
 
-  const linksFile = path.join(CACHE_DIR, 'links.csv');
+  const linksFile = lockedInput('tatoeba', 'links');
   if (!fs.existsSync(linksFile)) {
     throw new Error(`links.csv not found at ${linksFile}`);
   }
@@ -437,6 +522,7 @@ async function buildSentencesPack() {
     const outSentence: OutputSentence = {
       id: jpnId,
       ja: jpnText,
+      enId: engId,
       en: engText,
       furiganaJson: JSON.stringify(furiganaData),
       readabilityScore,
@@ -478,10 +564,12 @@ async function buildSentencesPack() {
 
   // Filter to kept only (this also drops sentences not linked to any capped sense)
   let finalSentences = candidateSentences.filter(s => keptSentenceIds.has(s.id));
+  console.log('Loading Tatoeba authors from pinned sentences_detailed.csv...');
+  const attributedSentences = await attachTatoebaAuthors(finalSentences);
 
   // Rebuild word links ONLY for kept sentences, and ONLY for the (sense,sent) pairs that were in top-5 for that sense
   const wordLinks: SentenceWordLink[] = [];
-  for (const sent of finalSentences) {
+  for (const sent of attributedSentences) {
     const indicesEntry = wwwjdicIndices.get(sent.id);
     if (!indicesEntry) continue;
     let charPos = 0;
@@ -503,7 +591,8 @@ async function buildSentencesPack() {
     }
   }
 
-  console.log(`  After cap <=5/sense: ${finalSentences.length} sentences kept.`);
+  console.log(`  After cap <=5/sense (before author availability check): ${finalSentences.length} sentences selected.`);
+  console.log(`  Shipped with complete author attribution: ${attributedSentences.length} sentences.`);
   console.log(`  Word-sense links for kept: ${wordLinks.length}`);
 
   // Ensure output dir
@@ -523,7 +612,10 @@ async function buildSentencesPack() {
     CREATE TABLE sentences (
       id INTEGER PRIMARY KEY,
       ja TEXT NOT NULL,
+      ja_author TEXT NOT NULL,
+      en_sentence_id INTEGER NOT NULL,
       en TEXT NOT NULL,
+      en_author TEXT NOT NULL,
       furigana_json TEXT NOT NULL,
       readability_score REAL NOT NULL
     );
@@ -544,19 +636,19 @@ async function buildSentencesPack() {
   // Insert sentences (batch for speed)
   console.log('Inserting sentences...');
   const insertStmt = db.prepare(`
-    INSERT INTO sentences (id, ja, en, furigana_json, readability_score)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO sentences (id, ja, ja_author, en_sentence_id, en, en_author, furigana_json, readability_score)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const BATCH = 5000;
-  for (let i = 0; i < finalSentences.length; i += BATCH) {
-    const batch = finalSentences.slice(i, i + BATCH);
+  for (let i = 0; i < attributedSentences.length; i += BATCH) {
+    const batch = attributedSentences.slice(i, i + BATCH);
     for (const row of batch) {
-      insertStmt.bind([row.id, row.ja, row.en, row.furiganaJson, row.readabilityScore]);
+      insertStmt.bind([row.id, row.ja, row.jaAuthor, row.enId, row.en, row.enAuthor, row.furiganaJson, row.readabilityScore]);
       insertStmt.step();
       insertStmt.reset();
     }
     if (i % 20000 === 0) {
-      console.log(`  Inserted ${Math.min(i + BATCH, finalSentences.length)} / ${finalSentences.length}`);
+      console.log(`  Inserted ${Math.min(i + BATCH, attributedSentences.length)} / ${attributedSentences.length}`);
     }
   }
   insertStmt.free();
@@ -585,22 +677,22 @@ async function buildSentencesPack() {
   const sha256 = crypto.createHash('sha256').update(dbBuffer).digest('hex');
   const sizeBytes = dbBuffer.length;
 
-  // Manifest (CC BY 2.0 FR, no share-alike required)
+  // Manifest: component-wise obligations are retained in the mixed-source pack.
   const manifest = {
     id: 'sentences',
     version: 'v1',
-    schemaVersion: 1,
+    schemaVersion: 2,
     sha256,
     sizeBytes,
-    license: 'CC BY 2.0 FR',
-    attribution: 'Tatoeba Project — sentences used under CC BY 2.0 FR. Modified: filtered to length 6-30, ≥1 EN, ≤5 per sense (by ent_seq:sense or headword:sense) ranked by readability. JmdictFurigana alignments (CC BY-SA 4.0) applied to dictionary forms where available via indices; pack contains dual-licensed content.',
+    license: 'CC BY 2.0 FR and CC BY-SA 4.0 (component-wise)',
+    attribution: 'Tatoeba Project — sentences used under CC BY 2.0 FR. Each shipped pair retains its Tatoeba Japanese sentence ID/author and English translation ID/author in the sentences table, sourced from the pinned sentences_detailed.csv export. Modified: filtered to length 6-30, ≥1 EN, ≤5 per sense (by ent_seq:sense or headword:sense) ranked by readability. JmdictFurigana alignment DATA is derived from JMdict and is used under CC BY-SA 4.0; any MIT repository code license does not replace these data obligations.',
     sources: [
       {
         id: 'tatoeba',
         name: 'Tatoeba (sentences + links + WWWJDIC indices)',
         pinned: '2026-07-25',
         license: 'CC BY 2.0 FR',
-        provenance: 'Includes Tanaka Corpus JA-EN example sentences',
+        provenance: 'Includes Tanaka Corpus JA-EN example sentences; authors are preserved from pinned sentences_detailed.csv by retained sentence IDs',
         url: 'https://downloads.tatoeba.org/exports/',
       },
       {
@@ -608,26 +700,26 @@ async function buildSentencesPack() {
         name: 'JmdictFurigana',
         pinned: '2.3.1+2026-07-25',
         license: 'CC BY-SA 4.0',
-        provenance: 'Furigana alignment data for kanji readings (Doublevil); derived from JMdict under CC BY-SA',
+        provenance: 'Furigana alignment DATA for kanji readings (Doublevil), derived from JMdict under CC BY-SA 4.0; repository code may be MIT but does not govern the data',
         url: 'https://github.com/Doublevil/JmdictFurigana',
       },
     ],
     stats: {
-      sentenceCount: finalSentences.length,
+      sentenceCount: attributedSentences.length,
       linkCount: wordLinks.length,
-      uniqueSenses: senseToCandidates.size,
+      uniqueSenses: new Set(wordLinks.map(link => link.jmdictSenseId)).size,
     },
   };
 
   fs.writeFileSync(OUTPUT_MANIFEST, JSON.stringify(manifest, null, 2));
 
   console.log(`\n=== Build complete ===`);
-  console.log(`Sentences: ${finalSentences.length}`);
+  console.log(`Sentences: ${attributedSentences.length}`);
   console.log(`Word links: ${wordLinks.length}`);
   console.log(`DB: ${OUTPUT_DB} (${(sizeBytes / 1024 / 1024).toFixed(2)} MB)`);
   console.log(`SHA256: ${sha256}`);
   console.log(`Manifest: ${OUTPUT_MANIFEST}`);
-  console.log(`License: ${manifest.license} (no share-alike)`);
+  console.log(`License: ${manifest.license}`);
 }
 
 // Run
