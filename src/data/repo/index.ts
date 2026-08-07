@@ -115,6 +115,7 @@ export interface UserRepositories {
   readonly sessions: {
     start(session: StudySession): Promise<void>
     end(id: string, endedAt: number): Promise<void>
+    list(deckId?: string): Promise<readonly StudySession[]>
   }
   readonly settings: {
     set(setting: Setting): Promise<void>
@@ -416,6 +417,18 @@ export function createUserRepositories(
           'UPDATE sessions SET ended_at = ? WHERE id = ? AND user_id = ?',
           [endedAt, id, userId],
         )
+      },
+      async list(deckId) {
+        const rows = await database.read(
+          'SELECT id, deck_id, started_at, ended_at FROM sessions WHERE user_id = ? AND (? IS NULL OR deck_id = ?) ORDER BY started_at',
+          [userId, deckId ?? null, deckId ?? null],
+        )
+        return rows.map((row) => ({
+          id: text(row, 'id'),
+          deckId: text(row, 'deck_id'),
+          startedAt: numberValue(row, 'started_at'),
+          endedAt: nullableNumber(row, 'ended_at'),
+        }))
       },
     },
     settings: {

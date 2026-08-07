@@ -68,7 +68,29 @@ describe('HomeScreen', () => {
       }),
     ).toHaveAttribute('data-level', '0')
     expect(screen.getByText('Not studied yet')).toBeInTheDocument()
+    expect(screen.getByText('Total time studied:')).toBeInTheDocument()
+    expect(screen.getByText('0s')).toBeInTheDocument()
     expect(screen.getByText('No goal date set yet.')).toBeInTheDocument()
+  })
+
+  it('shows the total duration of completed study sessions', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.sessions.start({
+      id: 'session-1',
+      deckId: 'dev-kanji',
+      startedAt: 1_700_000_000_000,
+      endedAt: null,
+    })
+    await repo.sessions.end('session-1', 1_700_000_065_000)
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Development Kanji')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('1m 5s')).toBeInTheDocument()
   })
 
   it('reflects progress from recorded card states in the progress bar', async () => {

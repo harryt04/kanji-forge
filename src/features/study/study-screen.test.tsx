@@ -10,7 +10,12 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import {
+  bootstrapUserRuntime,
+  clearUserRuntime,
+  getActiveUserRuntime,
+} from '@/auth/runtime'
+import { createUserRepositories } from '@/data/repo'
 import { useStudyStore } from './store'
 import { StudyScreen } from './study-screen'
 
@@ -179,6 +184,25 @@ describe('StudyScreen', () => {
     )
     expect(screen.getByText('Cards seen').nextElementSibling).toHaveTextContent(
       String(useStudyStore.getState().summary.seen),
+    )
+  })
+
+  it('persists and closes the study session when finished', async () => {
+    await renderReady()
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+
+    await waitFor(async () =>
+      expect(await repo.sessions.list('dev-kanji')).toHaveLength(1),
+    )
+    expect((await repo.sessions.list('dev-kanji'))[0]?.endedAt).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Finish' }))
+
+    await waitFor(async () =>
+      expect(
+        (await repo.sessions.list('dev-kanji'))[0]?.endedAt,
+      ).not.toBeNull(),
     )
   })
 })

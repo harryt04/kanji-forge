@@ -207,8 +207,39 @@ describe('session lifecycle', () => {
       endedAt: null,
     })
     await repos.sessions.end('session-1', 2)
-    // Sessions have no read accessor beyond side effects visible through direct SQL,
-    // so this asserts the calls resolve without throwing (no dedicated getter exists).
+    expect(await repos.sessions.list()).toEqual([
+      {
+        id: 'session-1',
+        deckId: 'jlpt-n5',
+        startedAt: 1,
+        endedAt: 2,
+      },
+    ])
+  })
+
+  it('filters sessions by deck while preserving active sessions', async () => {
+    const repos = await freshRepo()
+    await repos.sessions.start({
+      id: 'session-1',
+      deckId: 'jlpt-n5',
+      startedAt: 1,
+      endedAt: null,
+    })
+    await repos.sessions.start({
+      id: 'session-2',
+      deckId: 'jlpt-n4',
+      startedAt: 2,
+      endedAt: 4,
+    })
+
+    expect(await repos.sessions.list('jlpt-n5')).toEqual([
+      {
+        id: 'session-1',
+        deckId: 'jlpt-n5',
+        startedAt: 1,
+        endedAt: null,
+      },
+    ])
   })
 })
 

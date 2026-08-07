@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 19 (117 test cases: 117 passing) |
-| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 15 cases, included above) |
+| Unit/integration test files | 19 (120 test cases: 120 passing) |
+| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 17 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — both skip cleanly without a running auth backend |
 | Overall statement coverage | **77.58%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -54,23 +54,23 @@ idempotency, level-domain invariants, schedule/queue/goal boundary helpers) plus
 and the progress-to-belt-rank mapping.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 31 cases across 4 files
+### `src/data` — 33 cases across 4 files
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v1 creates all 9 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (15, up from 1) — derived-deck projection, `recordGrade()` atomicity
+- **`repo/index.test.ts`** (16, up from 1) — derived-deck projection, `recordGrade()` atomicity
   and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
-  lifecycle, daily-stat rollup across grades, session start/end, settings round-trip with
+  lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
   `reviews.list()` filtering by deck and content ref independently.
 - **`packs/index.test.ts`** (7) — `parseContentRef` valid/malformed, deck-definition loading and
   caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching.
 
-### `src/features/study` — 31 cases across 4 files
+### `src/features/study` — 32 cases across 4 files
 
 - **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
@@ -83,19 +83,19 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
-- **`study-screen.test.tsx`** (10, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
+- **`study-screen.test.tsx`** (11, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
   the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
   the previous card and re-disables itself, session-summary totals match store state, and the
-  tap-to-show elapsed timer updates while visible.
+  tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
 
-### `src/features/home` — 5 cases
+### `src/features/home` — 6 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
-(via `recordGrade()` against a real local DB), setting a goal date drives the on-pace/behind-pace
-readout.
+(via `recordGrade()` against a real local DB), total duration from completed sessions, and setting
+a goal date drives the on-pace/behind-pace readout.
 
 ### `src/auth` — 13 cases across 3 files
 

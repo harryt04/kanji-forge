@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { createUserRepositories } from '@/data/repo'
+import { createUserRepositories, type UserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import {
   Dialog,
@@ -36,6 +36,8 @@ export function StudyScreen({
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [showTimer, setShowTimer] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const sessionId = useRef<string | null>(null)
+  const sessionRepo = useRef<UserRepositories | null>(null)
 
   const {
     deckName,
@@ -54,16 +56,42 @@ export function StudyScreen({
     finish,
   } = useStudyStore()
 
+  const endSession = useCallback(() => {
+    const activeSessionId = sessionId.current
+    const repoForSession = sessionRepo.current
+    if (!activeSessionId || !repoForSession) return
+    sessionId.current = null
+    sessionRepo.current = null
+    void repoForSession.sessions.end(activeSessionId, Date.now()).catch(() => {
+      // The database may already be closing during route teardown.
+    })
+  }, [])
+
   useEffect(() => {
     if (!runtime) return
     let cancelled = false
     setLoading(true)
     ;(async () => {
       await runtime.database.ready
+      const repoForSession = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
+      const startedAt = Date.now()
+      const startedSessionId = crypto.randomUUID()
+      await repoForSession.sessions.start({
+        id: startedSessionId,
+        deckId: loaded.deckId,
+        startedAt,
+        endedAt: null,
+      })
+      if (cancelled) {
+        await repoForSession.sessions.end(startedSessionId, Date.now())
+        return
+      }
+      sessionId.current = startedSessionId
+      sessionRepo.current = repoForSession
       if (!cancelled) {
         start(loaded)
-        setSessionStartedAt(Date.now())
+        setSessionStartedAt(startedAt)
         setElapsedSeconds(0)
         setShowTimer(false)
         setLoading(false)
@@ -78,8 +106,13 @@ export function StudyScreen({
     })
     return () => {
       cancelled = true
+      endSession()
     }
-  }, [runtime, deckDefinitionId, start])
+  }, [runtime, deckDefinitionId, endSession, start])
+
+  useEffect(() => {
+    if (finished) endSession()
+  }, [endSession, finished])
 
   useEffect(() => {
     if (sessionStartedAt === null || !showTimer || finished) return
@@ -109,6 +142,11 @@ export function StudyScreen({
   const handleToggleFlag = useCallback(() => {
     if (repo) void toggleFlag(repo)
   }, [repo, toggleFlag])
+
+  const handleFinish = useCallback(() => {
+    endSession()
+    finish()
+  }, [endSession, finish])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -253,7 +291,7 @@ export function StudyScreen({
             >
               Undo
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => finish()}>
+            <Button variant="ghost" size="sm" onClick={handleFinish}>
               Finish
             </Button>
           </div>
@@ -264,7 +302,7 @@ export function StudyScreen({
         </div>
       )}
 
-      <Dialog open={finished} onOpenChange={(open) => !open && finish()}>
+      <Dialog open={finished} onOpenChange={(open) => !open && handleFinish()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Session summary</DialogTitle>
