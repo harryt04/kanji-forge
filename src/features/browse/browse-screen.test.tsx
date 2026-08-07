@@ -11,7 +11,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
-import { BROWSE_VIEW_SETTING, BrowseScreen } from './browse-screen'
+import {
+  BROWSE_TILE_CONTENT_SETTING,
+  BROWSE_VIEW_SETTING,
+  BrowseScreen,
+} from './browse-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -99,6 +103,47 @@ describe('BrowseScreen', () => {
     expect(await repo.settings.get(BROWSE_VIEW_SETTING)).toMatchObject({
       value: 'list',
     })
+  })
+
+  it('persists configurable tile content and renders the selected field', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.settings.set({
+      key: BROWSE_VIEW_SETTING,
+      value: 'tiles',
+      updatedAt: Date.now(),
+    })
+    await repo.settings.set({
+      key: BROWSE_TILE_CONTENT_SETTING,
+      value: 'reading',
+      updatedAt: Date.now(),
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    const dayTile = screen
+      .getAllByTestId('browse-tile')
+      .find((tile) => tile.getAttribute('data-content-ref') === 'kanji:日')
+    expect(dayTile).toBeDefined()
+    expect(dayTile).toHaveAccessibleName(/日, reading:/u)
+    expect(dayTile?.textContent).not.toContain('日')
+    expect(screen.getByRole('combobox', { name: 'Tile content' })).toHaveValue(
+      'reading',
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Tile content' }), {
+      target: { value: 'meaning' },
+    })
+    await waitFor(async () =>
+      expect(
+        await repo.settings.get(BROWSE_TILE_CONTENT_SETTING),
+      ).toMatchObject({ value: 'meaning' }),
+    )
+    expect(dayTile).toHaveTextContent(/day|sun|Japan/u)
   })
 
   it('shows each card level and flag state from the local database', async () => {

@@ -21,11 +21,19 @@ import { sortBrowseCards, type BrowseSort } from './browse-sort'
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 export const BROWSE_VIEW_SETTING = 'browse.view'
+export const BROWSE_TILE_CONTENT_SETTING = 'browse.tile-content'
 
 type BrowseView = 'list' | 'tiles'
+type BrowseTileContent = 'kanji' | 'reading' | 'meaning'
 
 function isBrowseView(value: string | undefined): value is BrowseView {
   return value === 'list' || value === 'tiles'
+}
+
+function isBrowseTileContent(
+  value: string | undefined,
+): value is BrowseTileContent {
+  return value === 'kanji' || value === 'reading' || value === 'meaning'
 }
 
 interface BrowseCard {
@@ -86,6 +94,18 @@ function searchBrowseCards(
   })
 }
 
+function tileText(card: BrowseCard, content: BrowseTileContent): string {
+  if (content === 'reading') return card.kana || 'No reading'
+  if (content === 'meaning') return card.meanings[0] || 'No meaning'
+  return card.literal
+}
+
+function tileContentLabel(content: BrowseTileContent): string {
+  if (content === 'reading') return 'reading'
+  if (content === 'meaning') return 'meaning'
+  return 'kanji'
+}
+
 export function BrowseScreen({
   deckDefinitionId = 'dev-kanji',
 }: {
@@ -98,9 +118,11 @@ export function BrowseScreen({
   const [sort, setSort] = useState<BrowseSort>('deck-order')
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_BROWSE_FILTERS)
   const [view, setView] = useState<BrowseView>('list')
+  const [tileContent, setTileContent] = useState<BrowseTileContent>('kanji')
   const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [viewError, setViewError] = useState<string | null>(null)
+  const [tileContentError, setTileContentError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -113,8 +135,13 @@ export function BrowseScreen({
       const savedView = await createUserRepositories(
         runtime.database,
       ).settings.get(BROWSE_VIEW_SETTING)
+      const savedTileContent = await createUserRepositories(
+        runtime.database,
+      ).settings.get(BROWSE_TILE_CONTENT_SETTING)
       if (active) setDeck(loaded)
       if (active && isBrowseView(savedView?.value)) setView(savedView.value)
+      if (active && isBrowseTileContent(savedTileContent?.value))
+        setTileContent(savedTileContent.value)
     })().catch((reason: unknown) => {
       if (active)
         setError(
@@ -262,6 +289,27 @@ export function BrowseScreen({
     }
   }
 
+  async function chooseTileContent(next: BrowseTileContent): Promise<void> {
+    if (!runtime || next === tileContent) return
+    const previous = tileContent
+    setTileContent(next)
+    setTileContentError(null)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: BROWSE_TILE_CONTENT_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setTileContent(previous)
+      setTileContentError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save tile content.',
+      )
+    }
+  }
+
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to browse.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
@@ -297,37 +345,61 @@ export function BrowseScreen({
             Tiles make the filtered deck visible at a glance.
           </p>
         </div>
-        <div
-          className="border-border inline-flex rounded-md border p-1"
-          role="group"
-          aria-label="Browse view"
-        >
-          <Button
-            type="button"
-            size="sm"
-            variant={view === 'list' ? 'secondary' : 'ghost'}
-            aria-pressed={view === 'list'}
-            aria-label="Show list view"
-            onClick={() => void chooseView('list')}
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1" htmlFor="browse-tile-content">
+            <span className="text-muted-foreground text-xs">Tile content</span>
+            <select
+              id="browse-tile-content"
+              value={tileContent}
+              onChange={(event) =>
+                void chooseTileContent(event.target.value as BrowseTileContent)
+              }
+              aria-label="Tile content"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="kanji">Kanji</option>
+              <option value="reading">Reading</option>
+              <option value="meaning">Meaning</option>
+            </select>
+          </label>
+          <div
+            className="border-border inline-flex rounded-md border p-1"
+            role="group"
+            aria-label="Browse view"
           >
-            List
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === 'tiles' ? 'secondary' : 'ghost'}
-            aria-pressed={view === 'tiles'}
-            aria-label="Show tile view"
-            onClick={() => void chooseView('tiles')}
-          >
-            Tiles
-          </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === 'list' ? 'secondary' : 'ghost'}
+              aria-pressed={view === 'list'}
+              aria-label="Show list view"
+              onClick={() => void chooseView('list')}
+            >
+              List
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === 'tiles' ? 'secondary' : 'ghost'}
+              aria-pressed={view === 'tiles'}
+              aria-label="Show tile view"
+              onClick={() => void chooseView('tiles')}
+            >
+              Tiles
+            </Button>
+          </div>
         </div>
       </div>
 
       {viewError && (
         <p className="text-destructive" role="alert">
           {viewError}
+        </p>
+      )}
+
+      {tileContentError && (
+        <p className="text-destructive" role="alert">
+          {tileContentError}
         </p>
       )}
 
@@ -540,18 +612,27 @@ export function BrowseScreen({
           {sortedCards.map((card) => {
             const level = card.state?.level ?? 0
             const flagged = card.state?.flagged ?? false
+            const text = tileText(card, tileContent)
+            const japanese = tileContent !== 'meaning'
+            const accessibleLabel =
+              tileContent === 'kanji'
+                ? `${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
             return (
               <div
                 key={card.contentRef}
-                className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border text-2xl shadow-sm`}
+                className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} shadow-sm`}
                 data-level={level}
                 data-content-ref={card.contentRef}
                 data-testid="browse-tile"
                 role="gridcell"
-                aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
+                aria-label={accessibleLabel}
               >
-                <span className="font-jp-display" lang="ja">
-                  {card.literal}
+                <span
+                  className={japanese ? 'font-jp-display' : undefined}
+                  lang={japanese ? 'ja' : undefined}
+                >
+                  {text}
                 </span>
                 {flagged && (
                   <span
