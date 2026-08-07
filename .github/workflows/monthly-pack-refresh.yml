@@ -31,7 +31,7 @@ jobs:
       - name: Rebuild twice from the refreshed locked cache
         run: pnpm packs:repro
       - name: Run pack and application tests
-        run: pnpm test && pnpm packs:test
+        run: pnpm test && pnpm test:decks && pnpm packs:test
       - name: Open a PR only when the refresh changed tracked outputs
         uses: peter-evans/create-pull-request@v7
         with:
