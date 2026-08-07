@@ -13,6 +13,7 @@ export interface StudyCard {
   readonly frequency: number | null
   readonly jlptLegacy: number | null
   readonly grade: number | null
+  readonly nanori: readonly string[]
   readonly meanings: readonly string[]
   readonly onReadings: readonly string[]
   readonly kunReadings: readonly string[]
@@ -73,6 +74,7 @@ export async function loadStarterDeck(
       frequency: record.freq,
       jlptLegacy: record.jlptLegacy,
       grade: record.grade,
+      nanori: record.nanori,
       meanings: record.meanings,
       onReadings: record.onReadings,
       kunReadings: record.kunReadings,

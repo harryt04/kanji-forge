@@ -94,6 +94,9 @@ describe('BrowseScreen', () => {
     expect(
       screen.getByRole('button', { name: 'Show tile view' }),
     ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('gridcell', { name: '日, Level 0, New' }).closest('a'),
+    ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E6%97%A5')
 
     await fireEvent.click(
       screen.getByRole('button', { name: 'Show list view' }),

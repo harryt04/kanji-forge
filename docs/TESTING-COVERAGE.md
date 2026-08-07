@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 28 (187 test cases: 187 passing) |
-| Component test files | 6 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `settings-screen.test.tsx` — 45 cases, included above) |
+| Unit/integration test files | 29 (189 test cases: 189 passing) |
+| Component test files | 7 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx` — 47 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **85.52%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -116,7 +116,7 @@ breakdown and pressed state.
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
 loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
-wall, persisted tile-content selection (kanji/reading/meaning), persisted tile zoom density, rendering persisted local level and flag state, filtering
+wall, tile links to the selected card's offline detail route, persisted tile-content selection (kanji/reading/meaning), persisted tile zoom density, rendering persisted local level and flag state, filtering
  by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
  sorting by local level with stable deck-order ties, and manually assigning a card level while
  preserving review totals and omitting the manual adjustment from daily review statistics.
@@ -135,6 +135,10 @@ user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
+
+### `src/features/detail` — 2 cases
+
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging and loading a selected kanji's readings, meanings, stroke count, and local level from the offline content pack.
 
 ### `src/features/settings` — 7 cases
 

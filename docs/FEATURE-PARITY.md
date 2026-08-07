@@ -62,7 +62,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.1 | Tile view — zoom out to see all stickies | ✅ | 2026-08-07 | Browse now has a persisted compact tile wall for the filtered/sorted deck; tiles encode level and flag state accessibly. The canvas performance prototype remains available for the future 2,500-tile gate. |
 | 3.2 | Configurable tile content | ✅ | 2026-08-07 | Browse tiles can show kanji, reading, or the first English meaning; the choice persists per user offline |
 | 3.3 | Zoom ratio setting | ✅ | 2026-08-07 | Browse persists 75% compact, 100% standard, and 150% large tile density per user and applies it to the tile wall |
-| 3.4 | Tap tile for detail | ✅ | — | |
+| 3.4 | Tap tile for detail | ✅ | 2026-08-07 | Browse tiles open an authenticated offline kanji detail view backed by the installed content pack |
 | 3.5 | List view | ✅ | 2026-08-07 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; virtualization remains a follow-up for very large packs |
 | 3.6 | Inline color editing in list view | ✅ | 2026-08-07 | Accessible per-card level picker schedules the new level and persists a manual override offline |
 | 3.7 | Sorting | ✅ | 2026-08-07 | Browse list sorts offline by deck order, level, stroke count, frequency, JLPT, school grade, review count, last review, or kana; ties retain deck order and missing metadata sorts last |

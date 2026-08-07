@@ -684,9 +684,10 @@ export function BrowseScreen({
                 ? `${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
                 : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
             return (
-              <div
+              <Link
+                href={`/detail?contentRef=${encodeURIComponent(card.contentRef)}`}
                 key={card.contentRef}
-                className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} shadow-sm`}
+                className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none`}
                 data-level={level}
                 data-content-ref={card.contentRef}
                 data-testid="browse-tile"
@@ -707,7 +708,7 @@ export function BrowseScreen({
                     ⚑
                   </span>
                 )}
-              </div>
+              </Link>
             )
           })}
         </div>
