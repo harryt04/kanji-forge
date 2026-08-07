@@ -7,6 +7,10 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // better-sqlite3's native addon crashes when loaded into a worker_thread
+    // (Vitest's default 'threads' pool) on Linux; run tests in child
+    // processes instead.
+    pool: 'forks',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'json-summary'],
