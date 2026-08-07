@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 19 (121 test cases: 121 passing) |
-| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 18 cases, included above) |
-| E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — both skip cleanly without a running auth backend |
-| Overall statement coverage | **77.58%** |
+| Unit/integration test files | 20 (126 test cases: 126 passing) |
+| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 22 cases, included above) |
+| E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
+| Overall statement coverage | **81.18%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,17 +27,17 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.2 / 85.4 / 100 / 93.2 · packs 97.3 / 75 / 100 / 97.3 · repo 97.3 / 87.8 / 93.5 / 97.3 | ✅ comfortable margin |
-| `src/features/**` | 70% | home 99.3 / 86.2 / 100 / 99.3 · study 97.9 / 79.8 / 77.3 / 97.9 | ✅ comfortable margin |
-| Global floor | 60% | 77.58 / 85.49 / 86.88 / 77.58 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.2 / 85.7 / 100 / 93.2 · packs 97.3 / 75 / 100 / 97.3 · repo 98.1 / 90.5 / 97.1 / 98.1 | ✅ comfortable margin |
+| `src/features/**` | 70% | history 100 / 100 / 100 / 100 · home 97.6 / 88.5 / 100 / 97.6 · study 97.9 / 83.9 / 80 / 97.9 | ✅ comfortable margin |
+| Global floor | 60% | 81.18 / 88.01 / 89.13 / 81.18 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
 
 | Area | Coverage | Why |
 |---|---|---|
-| `apps/api/src/{auth,index}.ts`, `apps/api/src/db/**` | 0% | Server-side backend; not exercised by the frontend unit suite. Not part of this plan's Phase 2 list. |
-| `src/auth/auth-gate.tsx` | 0% | UI shell; not one of the two Phase 3 component-test targets (`study-screen.tsx`, `home-screen.tsx`). |
+| `apps/api/src/{auth,index}.ts`, `apps/api/src/db/**` | 0% | Server-side backend; not exercised by the frontend unit suite. |
+| `src/auth/auth-gate.tsx` | 0% | UI shell; not one of the component-test targets. |
 | `src/app/layout.tsx` | 0% | Route shell, excluded by convention (`src/app/**/page.tsx` is excluded outright; `layout.tsx` is just never imported by a test). |
 | `src/lib/store.ts` | 0% | Legacy/unused file, not referenced by `testing-coverage-plan.md`. |
 | `src/features/study/index.ts` | 0% | A four-line re-export barrel; the real modules it re-exports (`store.ts`, `adapters.ts`, `deck-loader.ts`, `study-screen.tsx`) are each independently covered above. |
@@ -54,14 +54,14 @@ idempotency, level-domain invariants, schedule/queue/goal boundary helpers) plus
 and the progress-to-belt-rank mapping.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 33 cases across 4 files
+### `src/data` — 34 cases across 4 files
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v1 creates all 9 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (16, up from 1) — derived-deck projection, `recordGrade()` atomicity
+- **`repo/index.test.ts`** (17, up from 1) — derived-deck projection, `recordGrade()` atomicity
   and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
@@ -90,7 +90,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
 
-### `src/features/home` — 7 cases
+### `src/features/home` — 8 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
@@ -98,6 +98,12 @@ with no goal set and its accessible belt-rank label, progress bar reflects a rea
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
 the goal date.
+
+### `src/features/history` — 3 cases
+
+**`history-screen.test.tsx`** (Testing Library) — sign-in-required state, empty 30-day chart for a
+new learner, and recorded daily activity plotted with review/correct/again totals and an accessible
+per-day label.
 
 ### `src/auth` — 13 cases across 3 files
 
@@ -130,8 +136,8 @@ first.
 
 | Spec | What it covers | Status in this environment |
 |---|---|---|
-| `e2e/auth.spec.ts` | Sign-up through the real form, sign-out returns to the auth screen | Skips via `test.skip(!API_URL, …)` — no `NEXT_PUBLIC_API_URL` / running auth backend here |
-| `e2e/offline-study.spec.ts` | Sign in → start a session → go offline → grade a card → **reload while offline** → assert the grade survived (remaining-count check, plus a best-effort direct OPFS file check where the browser supports it) → back online | Same skip guard — this is the priority test per `ARCHITECTURE.md` §12 but requires the Postgres/better-auth stack, which isn't running in this environment |
+| `e2e/auth.spec.ts` | Sign-up through the real form, sign-out returns to the auth screen | 4 browser passes (Chromium + WebKit) in the configured local run |
+| `e2e/offline-study.spec.ts` | Sign in → start a session → go offline → grade a card → **reload while offline** → assert the grade survived (remaining-count check, plus a best-effort direct OPFS file check where the browser supports it) → back online | 1 Chromium/WebKit pass and 1 skip in the configured local run; requires the Postgres/better-auth stack when `NEXT_PUBLIC_API_URL` is unavailable |
 | `e2e/fixtures.ts` | Shared `registerUser()` (via API request, not the UI) and an `authedUser` fixture so specs don't each re-drive the sign-up form | n/a (helper, not a spec) |
 
 **To actually run these:** start the API stack (`deploy/docker-compose.yml`), set

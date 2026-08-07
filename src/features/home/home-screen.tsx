@@ -291,6 +291,9 @@ export function HomeScreen(): React.ReactElement {
           <Button size="lg" asChild className="w-full">
             <Link href="/study">Start studying</Link>
           </Button>
+          <Button variant="outline" size="lg" asChild className="w-full">
+            <Link href="/history">View study history</Link>
+          </Button>
         </CardContent>
       </Card>
 

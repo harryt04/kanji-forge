@@ -195,6 +195,41 @@ describe('daily-stat rollup', () => {
       again: 1,
     })
   })
+
+  it('lists all daily stats in stable update order', async () => {
+    const repos = await freshRepo()
+    const first = review({ id: 'daily-1', at: 1_699_999_000_000 })
+    const second = review({ id: 'daily-2', at: 1_700_000_000_000 })
+    await repos.recordGrade({
+      review: first,
+      nextState: state({ contentRef: 'kanji:一' }),
+      day: '2023-11-14',
+      mutation: {
+        id: first.id,
+        mutType: 'review.append',
+        payload: '{}',
+        createdAt: first.at,
+        attempts: 0,
+      },
+    })
+    await repos.recordGrade({
+      review: second,
+      nextState: state({ contentRef: 'kanji:二' }),
+      day: '2023-11-15',
+      mutation: {
+        id: second.id,
+        mutType: 'review.append',
+        payload: '{}',
+        createdAt: second.at,
+        attempts: 0,
+      },
+    })
+
+    expect(await repos.dailyStats.list()).toEqual([
+      expect.objectContaining({ day: '2023-11-14', reviews: 1 }),
+      expect.objectContaining({ day: '2023-11-15', reviews: 1 }),
+    ])
+  })
 })
 
 describe('session lifecycle', () => {

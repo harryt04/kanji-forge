@@ -121,7 +121,10 @@ export interface UserRepositories {
     set(setting: Setting): Promise<void>
     get(key: string): Promise<Setting | undefined>
   }
-  readonly dailyStats: { get(day: string): Promise<DailyStat | undefined> }
+  readonly dailyStats: {
+    get(day: string): Promise<DailyStat | undefined>
+    list(): Promise<readonly DailyStat[]>
+  }
   readonly outbox: {
     pending(): Promise<readonly OutboxMutation[]>
     markAttempt(id: string): Promise<void>
@@ -471,6 +474,19 @@ export function createUserRepositories(
               updatedAt: numberValue(row, 'updated_at'),
             }
           : undefined
+      },
+      async list() {
+        const rows = await database.read(
+          'SELECT day, reviews, correct, again, updated_at FROM daily_stats WHERE user_id = ? ORDER BY updated_at, day',
+          [userId],
+        )
+        return rows.map((row) => ({
+          day: text(row, 'day'),
+          reviews: numberValue(row, 'reviews'),
+          correct: numberValue(row, 'correct'),
+          again: numberValue(row, 'again'),
+          updatedAt: numberValue(row, 'updated_at'),
+        }))
       },
     },
     outbox: {

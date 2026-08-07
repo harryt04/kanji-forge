@@ -1,10 +1,6 @@
-import React from 'react'
+import type { ReactElement } from 'react'
+import { HistoryScreen } from '@/features/history'
 
-export default function HistoryPage(): React.ReactElement {
-  return (
-    <main>
-      <h1>History</h1>
-      <p>TODO(T5.0): Implement history and progress tracking</p>
-    </main>
-  )
+export default function HistoryPage(): ReactElement {
+  return <HistoryScreen />
 }
