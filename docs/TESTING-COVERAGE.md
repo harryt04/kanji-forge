@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 29 (189 test cases: 189 passing) |
-| Component test files | 7 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx` — 47 cases, included above) |
+| Unit/integration test files | 30 (191 test cases: 191 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 49 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **85.52%** |
+| Overall statement coverage | **85.75%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -139,6 +139,10 @@ promotion, and pinned-search toggling.
 ### `src/features/detail` — 2 cases
 
 **`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging and loading a selected kanji's readings, meanings, stroke count, and local level from the offline content pack.
+
+### `src/features/navigation` — 2 cases
+
+**`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
 ### `src/features/settings` — 7 cases
 
