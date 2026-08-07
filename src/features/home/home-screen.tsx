@@ -6,12 +6,15 @@ import { getActiveUserRuntime } from '@/auth/runtime'
 import {
   progress as computeProgress,
   progressLevel as computeProgressLevel,
+  projectedCompletion,
   goalTarget,
 } from '@/core/srs/goal'
+import { emptyCardState } from '@/core/srs/types'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 import { loadStarterDeck } from '@/features/study/deck-loader'
+import { toCoreState } from '@/features/study/adapters'
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
@@ -42,6 +45,31 @@ interface HomeData {
   readonly totalStudyTimeMs: number
   readonly goalDate: number | null
   readonly goal: ReturnType<typeof goalTarget> | null
+  readonly projectedCompletionAt: number | null
+}
+
+function localReviewDay(timestamp: number): string {
+  return new Date(timestamp).toDateString()
+}
+
+function projectedComparison(
+  projectedAt: number,
+  goalDate: number,
+  now: number,
+): string {
+  const projectedDays = Math.max(0, (projectedAt - now) / DAY_MS)
+  const goalDays = Math.max(1, (goalDate - now) / DAY_MS)
+  if (projectedDays > goalDays * 1.2)
+    return 'At this pace, you are projected to finish after your goal date.'
+  if (projectedDays < goalDays * 0.8)
+    return 'At this pace, you are projected to finish ahead of your goal date.'
+  return 'Your projected completion is on pace for your goal date.'
+}
+
+function formatProjectedDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    dateStyle: 'medium',
+  })
 }
 
 export function HomeScreen(): React.ReactElement {
@@ -76,10 +104,11 @@ export function HomeScreen(): React.ReactElement {
           : Math.max(0, session.endedAt - session.startedAt)),
       0,
     )
-    const coreStates = states.map(({ contentRef, ...rest }) => ({
-      ...rest,
-      stickyId: contentRef,
-    }))
+    const coreStates = loaded.cards.map(({ contentRef, state }) =>
+      state
+        ? toCoreState(state)
+        : emptyCardState(STARTER_DECK_ID, contentRef, runtime.userId),
+    )
     const progressPercent = Math.round(
       computeProgress(loaded.cards.length, coreStates) * 100,
     )
@@ -87,15 +116,24 @@ export function HomeScreen(): React.ReactElement {
 
     const goalSetting = await repo.settings.get(`goal:${STARTER_DECK_ID}`)
     const goalDate = goalSetting ? Number(goalSetting.value) : null
+    const recentReviews = await repo.reviews.list(STARTER_DECK_ID)
+    const now = Date.now()
+    const cutoff = now - 14 * DAY_MS
+    const recent = recentReviews.filter((review) => review.at >= cutoff)
+    const correct14d = recent.filter(
+      (review) => review.grade !== 'again',
+    ).length
+    const activeDays14d = new Set(
+      recent.map((review) => localReviewDay(review.at)),
+    ).size
+    const projectedCompletionAt = projectedCompletion(
+      now,
+      coreStates,
+      correct14d,
+      activeDays14d,
+    )
     let goal: ReturnType<typeof goalTarget> | null = null
     if (goalDate) {
-      const now = Date.now()
-      const recentReviews = await repo.reviews.list(STARTER_DECK_ID)
-      const cutoff = now - 14 * DAY_MS
-      const recent = recentReviews.filter((review) => review.at >= cutoff)
-      const correct14d = recent.filter(
-        (review) => review.grade !== 'again',
-      ).length
       goal = goalTarget(coreStates, goalDate, now, correct14d, recent.length, 1)
     }
 
@@ -108,6 +146,7 @@ export function HomeScreen(): React.ReactElement {
       totalStudyTimeMs,
       goalDate,
       goal,
+      projectedCompletionAt,
     })
   }
 
@@ -213,6 +252,30 @@ export function HomeScreen(): React.ReactElement {
           ) : (
             <p className="text-muted-foreground text-sm">
               No goal date set yet.
+            </p>
+          )}
+          {data.projectedCompletionAt ? (
+            <div className="border-border rounded-md border p-3 text-sm">
+              <p>
+                <span className="text-muted-foreground">
+                  Projected completion:
+                </span>{' '}
+                {formatProjectedDate(data.projectedCompletionAt)}
+              </p>
+              {data.goalDate ? (
+                <p className="text-muted-foreground mt-1">
+                  {projectedComparison(
+                    data.projectedCompletionAt,
+                    data.goalDate,
+                    Date.now(),
+                  )}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Projected completion will appear after a study day with correct
+              answers.
             </p>
           )}
           <div className="flex gap-2">

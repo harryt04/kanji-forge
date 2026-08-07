@@ -93,6 +93,47 @@ describe('HomeScreen', () => {
     expect(screen.getByText('1m 5s')).toBeInTheDocument()
   })
 
+  it('shows projected completion against the goal using active review days', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    const review = (id: string, at: number) => ({
+      id,
+      deckId: 'dev-kanji' as const,
+      contentRef: 'kanji:日' as const,
+      at,
+      grade: 'good' as const,
+      levelBefore: 0 as const,
+      levelAfter: 1 as const,
+      intervalBefore: 0,
+      elapsedDays: 0,
+      responseMs: 100,
+      source: 'study' as const,
+      deviceId: 'device',
+    })
+    await repo.reviews.append(review('review-1', now - 2 * 86_400_000))
+    await repo.reviews.append(review('review-2', now - 86_400_000))
+    await repo.settings.set({
+      key: 'goal:dev-kanji',
+      value: String(now + 30 * 86_400_000),
+      updatedAt: now,
+    })
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('Projected completion:', { exact: false }),
+      ).toBeInTheDocument(),
+    )
+    expect(
+      screen.getByText(
+        'At this pace, you are projected to finish after your goal date.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('reflects progress from recorded card states in the progress bar', async () => {
     const runtime = bootstrapUserRuntime(`home-${userId}`)
     await runtime.database.ready

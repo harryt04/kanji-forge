@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 19 (120 test cases: 120 passing) |
-| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 17 cases, included above) |
+| Unit/integration test files | 19 (121 test cases: 121 passing) |
+| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 18 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — both skip cleanly without a running auth backend |
 | Overall statement coverage | **77.58%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -90,12 +90,13 @@ Locked at 100% by the CI gate; this directory should never regress.
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
 
-### `src/features/home` — 6 cases
+### `src/features/home` — 7 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
-(via `recordGrade()` against a real local DB), total duration from completed sessions, and setting
-a goal date drives the on-pace/behind-pace readout.
+(via `recordGrade()` against a real local DB), total duration from completed sessions, setting
+a goal date drives the on-pace/behind-pace readout, and projected completion compares recent
+correct-answer pace against the goal date.
 
 ### `src/auth` — 13 cases across 3 files
 
