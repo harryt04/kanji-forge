@@ -25,6 +25,18 @@ const BELT_NAMES = [
   'blue (Ao)',
   'black (Kuro)',
 ] as const
+type LevelCounts = readonly [number, number, number, number, number]
+
+function countCardsByLevel(
+  cards: readonly { state: CardState | undefined }[],
+): LevelCounts {
+  const counts: [number, number, number, number, number] = [0, 0, 0, 0, 0]
+  for (const card of cards) {
+    const level = card.state?.level ?? 0
+    counts[level] = counts[level]! + 1
+  }
+  return counts
+}
 
 function formatStudyDuration(durationMs: number): string {
   const totalSeconds = Math.floor(Math.max(0, durationMs) / 1000)
@@ -41,6 +53,7 @@ interface HomeData {
   readonly cardCount: number
   readonly progressPercent: number
   readonly progressLevel: 0 | 1 | 2 | 3 | 4
+  readonly levelCounts: LevelCounts
   readonly lastStudiedAt: number | null
   readonly totalStudyTimeMs: number
   readonly goalDate: number | null
@@ -113,6 +126,7 @@ export function HomeScreen(): React.ReactElement {
       computeProgress(loaded.cards.length, coreStates) * 100,
     )
     const progressLevel = computeProgressLevel(progressPercent / 100)
+    const levelCounts = countCardsByLevel(loaded.cards)
 
     const goalSetting = await repo.settings.get(`goal:${STARTER_DECK_ID}`)
     const goalDate = goalSetting ? Number(goalSetting.value) : null
@@ -142,6 +156,7 @@ export function HomeScreen(): React.ReactElement {
       cardCount: loaded.cards.length,
       progressPercent,
       progressLevel,
+      levelCounts,
       lastStudiedAt,
       totalStudyTimeMs,
       goalDate,
@@ -211,6 +226,56 @@ export function HomeScreen(): React.ReactElement {
                 style={{ width: `${data.progressPercent}%` }}
               />
             </div>
+          </div>
+          <div className="space-y-3" data-testid="level-distribution">
+            <div className="text-muted-foreground flex items-center justify-between text-sm">
+              <span>Level distribution</span>
+              <span>{data.cardCount} cards</span>
+            </div>
+            <div
+              role="img"
+              aria-label={`Level distribution: ${data.levelCounts
+                .map(
+                  (count, level) =>
+                    `Level ${level}, ${BELT_NAMES[level]}: ${count} ${count === 1 ? 'card' : 'cards'}`,
+                )
+                .join('; ')}`}
+              className="bg-muted flex h-3 w-full overflow-hidden rounded-full"
+            >
+              {data.levelCounts.map((count, level) =>
+                count > 0 ? (
+                  <div
+                    key={level}
+                    aria-hidden="true"
+                    data-level={level}
+                    className="level-swatch h-full"
+                    style={{ width: `${(count / data.cardCount) * 100}%` }}
+                  />
+                ) : null,
+              )}
+            </div>
+            <ul className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+              {data.levelCounts.map((count, level) => (
+                <li
+                  key={level}
+                  className="text-muted-foreground flex items-center justify-between gap-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      data-level={level}
+                      className="level-swatch h-3 w-3 shrink-0 rounded-sm"
+                    />
+                    <span>
+                      Level {level}, {BELT_NAMES[level]}
+                    </span>
+                  </span>
+                  <span>
+                    {count} {count === 1 ? 'card' : 'cards'}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
           <p className="text-muted-foreground text-sm">
             {data.lastStudiedAt

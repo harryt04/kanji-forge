@@ -94,9 +94,10 @@ Locked at 100% by the CI gate; this directory should never regress.
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
-(via `recordGrade()` against a real local DB), total duration from completed sessions, setting
-a goal date drives the on-pace/behind-pace readout, and projected completion compares recent
-correct-answer pace against the goal date.
+(via `recordGrade()` against a real local DB), level-distribution bar and counts include untouched
+cards at level 0, total duration from completed sessions, setting a goal date drives the
+on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
+the goal date.
 
 ### `src/auth` — 13 cases across 3 files
 

@@ -146,7 +146,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 7.8 | Tap a bar for that day's detail | ✅ | — | |
 | — | On-pace / ahead / behind status | ➕ ✅ | 2026-08-06 | |
 | — | Projected completion date vs. goal | ➕ ✅ | 2026-08-07 | Home projects completion from correct answers per active day over the trailing 14 days and explains >20% divergence from the goal date |
-| — | Level distribution stacked bar | ➕ ✅ | — | |
+| — | Level distribution stacked bar | ➕ ✅ | 2026-08-07 | Home shows all five belt-rank levels, including untouched cards as level 0, with an accessible stacked bar and count legend |
 | — | 30-day review forecast | ➕ 🔷 | — | |
 | — | Retention rate per level | ➕ 🔷 | — | |
 | — | Leech identification | ➕ 🔷 | — | |

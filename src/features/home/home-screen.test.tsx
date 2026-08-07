@@ -191,6 +191,75 @@ describe('HomeScreen', () => {
     expect(progressBar.style.width).not.toBe('0%')
   })
 
+  it('shows the level distribution including untouched cards as level zero', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = 1_700_000_000_000
+    const cards = [
+      { contentRef: 'kanji:日', level: 1 as const, grade: 'good' as const },
+      { contentRef: 'kanji:一', level: 2 as const, grade: 'good' as const },
+      { contentRef: 'kanji:国', level: 4 as const, grade: 'easy' as const },
+    ]
+    for (const [index, card] of cards.entries()) {
+      await repo.recordGrade({
+        review: {
+          id: `distribution-${index}`,
+          deckId: 'dev-kanji',
+          contentRef: card.contentRef,
+          at: now + index,
+          grade: card.grade,
+          levelBefore: 0,
+          levelAfter: card.level,
+          intervalBefore: 0,
+          elapsedDays: 0,
+          responseMs: 1,
+          source: 'study',
+          deviceId: 'device',
+        },
+        nextState: {
+          deckId: 'dev-kanji',
+          contentRef: card.contentRef,
+          level: card.level,
+          dueAt: null,
+          lastReviewedAt: now + index,
+          correctStreak: 1,
+          totalReviews: 1,
+          totalCorrect: 1,
+          lapses: 0,
+          flagged: false,
+          manualOverride: false,
+          updatedAt: now + index,
+          updatedBy: 'device',
+        },
+        day: '2023-11-14',
+        mutation: {
+          id: `distribution-${index}`,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: now + index,
+          attempts: 0,
+        },
+      })
+    }
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('level-distribution')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('Level 0, white (Shiro)')).toBeInTheDocument()
+    expect(screen.getByText('197 cards')).toBeInTheDocument()
+    expect(screen.getByText('Level 1, yellow (Ki)')).toBeInTheDocument()
+    expect(screen.getByText('Level 2, green (Midori)')).toBeInTheDocument()
+    expect(screen.getByText('Level 4, black (Kuro)')).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', {
+        name: /Level distribution: Level 0, white \(Shiro\): 197 cards/,
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('setting a goal date shows ahead/behind pace status', async () => {
     bootstrapUserRuntime(`home-${userId}`)
     render(<HomeScreen />)
