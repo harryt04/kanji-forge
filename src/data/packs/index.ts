@@ -2,6 +2,7 @@
  * full download/update/delete pack manager). Packs are read-only and shared across users, so a
  * pack handle is cached process-wide once opened. */
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js'
+import { romajiToHiragana } from '@/core/text/romaji'
 
 export interface DeckDefinition {
   readonly id: string
@@ -16,10 +17,32 @@ export interface KanjiRecord {
   readonly literal: string
   readonly strokeCount: number
   readonly grade: number | null
+  readonly freq: number | null
+  readonly jlptLegacy: number | null
+  readonly nanori: readonly string[]
   readonly onReadings: readonly string[]
   readonly kunReadings: readonly string[]
   readonly meanings: readonly string[]
 }
+
+export interface WordRecord {
+  readonly id: number
+  readonly commonScore: number
+  readonly forms: readonly string[]
+  readonly readings: readonly string[]
+  readonly partsOfSpeech: readonly string[]
+  readonly meanings: readonly string[]
+}
+
+export type DictionaryResult =
+  | {
+      readonly type: 'kanji'
+      readonly record: KanjiRecord
+    }
+  | {
+      readonly type: 'word'
+      readonly record: WordRecord
+    }
 
 let sqlJsPromise: ReturnType<typeof initSqlJs> | undefined
 function loadSqlJs(): ReturnType<typeof initSqlJs> {
@@ -59,9 +82,33 @@ function openPack(fileName: string): Promise<SqlJsDatabase> {
 }
 
 function jsonArray(raw: unknown): readonly string[] {
-  if (typeof raw !== 'string') return []
-  const parsed: unknown = JSON.parse(raw)
-  return Array.isArray(parsed) ? parsed.map(String) : []
+  // Pack schemas guarantee JSON arrays for these columns.
+  return JSON.parse(String(raw)) as readonly string[]
+}
+
+function jsonBlob(raw: unknown): Record<string, unknown> {
+  return JSON.parse(new TextDecoder().decode(raw as Uint8Array)) as Record<
+    string,
+    unknown
+  >
+}
+
+function stringArray(value: unknown): readonly string[] {
+  return (value as readonly unknown[]).flatMap((item) =>
+    typeof item === 'string'
+      ? [item]
+      : item && typeof item === 'object' && 'text' in item
+        ? [String(item.text)]
+        : [],
+  )
+}
+
+function normalizeQuery(query: string): string {
+  return romajiToHiragana(query.trim().normalize('NFC'))
+}
+
+function lower(value: string): string {
+  return value.toLocaleLowerCase()
 }
 
 /** Looks up kanji by their bare literal (a `contentRef` of the form `kanji:<literal>`). */
@@ -72,7 +119,7 @@ export async function getKanjiByLiterals(
   const result = new Map<string, KanjiRecord>()
   for (const literal of literals) {
     const statement = database.prepare(
-      'SELECT literal, stroke_count, grade, on_readings, kun_readings, meanings FROM kanji WHERE literal = ?',
+      'SELECT literal, stroke_count, grade, freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori FROM kanji WHERE literal = ?',
       [literal],
     )
     if (statement.step()) {
@@ -81,6 +128,9 @@ export async function getKanjiByLiterals(
         literal: String(row.literal),
         strokeCount: Number(row.stroke_count),
         grade: row.grade === null ? null : Number(row.grade),
+        freq: row.freq === null ? null : Number(row.freq),
+        jlptLegacy: row.jlpt_legacy === null ? null : Number(row.jlpt_legacy),
+        nanori: jsonArray(row.nanori),
         onReadings: jsonArray(row.on_readings),
         kunReadings: jsonArray(row.kun_readings),
         meanings: jsonArray(row.meanings),
@@ -89,6 +139,138 @@ export async function getKanjiByLiterals(
     statement.free()
   }
   return result
+}
+
+let dictionaryKanjiPromise: Promise<readonly KanjiRecord[]> | undefined
+function loadDictionaryKanji(): Promise<readonly KanjiRecord[]> {
+  dictionaryKanjiPromise ??= openPack('kanji-v1.sqlite').then((database) => {
+    const statement = database.prepare(
+      'SELECT literal, stroke_count, grade, freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori FROM kanji',
+    )
+    const records: KanjiRecord[] = []
+    while (statement.step()) {
+      const row = statement.getAsObject()
+      records.push({
+        literal: String(row.literal),
+        strokeCount: Number(row.stroke_count),
+        grade: row.grade === null ? null : Number(row.grade),
+        freq: row.freq === null ? null : Number(row.freq),
+        jlptLegacy: row.jlpt_legacy === null ? null : Number(row.jlpt_legacy),
+        nanori: jsonArray(row.nanori),
+        onReadings: jsonArray(row.on_readings),
+        kunReadings: jsonArray(row.kun_readings),
+        meanings: jsonArray(row.meanings),
+      })
+    }
+    statement.free()
+    return records
+  })
+  return dictionaryKanjiPromise
+}
+
+let dictionaryWordsPromise: Promise<readonly WordRecord[]> | undefined
+function loadDictionaryWords(): Promise<readonly WordRecord[]> {
+  dictionaryWordsPromise ??= openPack('words-core-v1.sqlite').then(
+    (database) => {
+      const statement = database.prepare(
+        'SELECT id, common_score, data FROM entries ORDER BY common_score DESC, id ASC',
+      )
+      const records: WordRecord[] = []
+      while (statement.step()) {
+        const row = statement.getAsObject()
+        const data = jsonBlob(row.data)
+        const kanji = Array.isArray(data.kanji) ? data.kanji : []
+        const kana = Array.isArray(data.kana) ? data.kana : []
+        const senses = Array.isArray(data.senses) ? data.senses : []
+        const forms = stringArray(kanji)
+        const readings = stringArray(kana)
+        const meanings = senses.flatMap((sense) => {
+          if (!sense || typeof sense !== 'object' || !('gloss' in sense))
+            return []
+          return stringArray(sense.gloss)
+        })
+        const partsOfSpeech = senses.flatMap((sense) => {
+          if (!sense || typeof sense !== 'object' || !('pos' in sense))
+            return []
+          return stringArray(sense.pos)
+        })
+        records.push({
+          id: Number(row.id),
+          commonScore: Number(row.common_score),
+          forms,
+          readings,
+          partsOfSpeech,
+          meanings,
+        })
+      }
+      statement.free()
+      return records
+    },
+  )
+  return dictionaryWordsPromise
+}
+
+function matchScore(
+  query: string,
+  values: readonly string[],
+  english = false,
+): number {
+  const normalizedQuery = english ? lower(query) : normalizeQuery(query)
+  let best = 0
+  for (const value of values) {
+    const normalizedValue = english ? lower(value) : normalizeQuery(value)
+    if (normalizedValue === normalizedQuery) best = Math.max(best, 3)
+    else if (normalizedValue.startsWith(normalizedQuery))
+      best = Math.max(best, 2)
+    else if (normalizedValue.includes(normalizedQuery)) best = Math.max(best, 1)
+  }
+  return best
+}
+
+/** Searches the installed dictionary packs without network access. */
+export async function searchDictionary(
+  query: string,
+  limit = 30,
+): Promise<readonly DictionaryResult[]> {
+  const trimmed = query.trim()
+  if (!trimmed || limit <= 0) return []
+
+  const [kanji, words] = await Promise.all([
+    loadDictionaryKanji(),
+    loadDictionaryWords(),
+  ])
+  const results: Array<{ result: DictionaryResult; score: number }> = []
+  const normalized = normalizeQuery(trimmed)
+
+  for (const record of kanji) {
+    const score = Math.max(
+      matchScore(normalized, [
+        record.literal,
+        ...record.onReadings,
+        ...record.kunReadings,
+      ]),
+      matchScore(trimmed, record.meanings, true),
+    )
+    if (score > 0) results.push({ result: { type: 'kanji', record }, score })
+  }
+
+  for (const record of words) {
+    const score = Math.max(
+      matchScore(normalized, [...record.forms, ...record.readings]),
+      matchScore(trimmed, record.meanings, true),
+    )
+    if (score > 0) {
+      results.push({
+        result: { type: 'word', record },
+        score: score * 1000 + record.commonScore,
+      })
+    }
+  }
+
+  return results
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map(({ result }) => result)
 }
 
 /** Splits a `kanji:日` style contentRef into its pack type and lookup key. */

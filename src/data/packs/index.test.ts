@@ -85,4 +85,53 @@ describe('data/packs', () => {
       expect(packFetches).toHaveLength(1)
     })
   })
+
+  describe('searchDictionary', () => {
+    it('searches kanji and words by Japanese text, romaji, and English', async () => {
+      const { searchDictionary } = await freshPacks()
+
+      const kanjiResults = await searchDictionary('日')
+      expect(
+        kanjiResults.some(
+          (result) => result.type === 'kanji' && result.record.literal === '日',
+        ),
+      ).toBe(true)
+
+      const romajiResults = await searchDictionary('okane')
+      expect(
+        romajiResults.some(
+          (result) =>
+            result.type === 'word' && result.record.forms.includes('お金'),
+        ),
+      ).toBe(true)
+
+      const englishResults = await searchDictionary('money')
+      expect(
+        englishResults.some(
+          (result) =>
+            result.type === 'word' && result.record.forms.includes('お金'),
+        ),
+      ).toBe(true)
+
+      expect((await searchDictionary('明')).length).toBeGreaterThan(0)
+      expect((await searchDictionary('vious')).length).toBeGreaterThan(0)
+      expect(await searchDictionary('money', 0)).toEqual([])
+    })
+
+    it('returns no results for a blank query and caches dictionary packs', async () => {
+      const { searchDictionary } = await freshPacks()
+      expect(await searchDictionary('   ')).toEqual([])
+      await searchDictionary('money')
+      await searchDictionary('okane')
+      const packFetches = vi
+        .mocked(fetch)
+        .mock.calls.map(([url]) => String(url))
+      expect(
+        packFetches.filter((url) => url.includes('kanji-v1.sqlite')),
+      ).toHaveLength(1)
+      expect(
+        packFetches.filter((url) => url.includes('words-core-v1.sqlite')),
+      ).toHaveLength(1)
+    })
+  })
 })

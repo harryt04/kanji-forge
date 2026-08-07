@@ -157,8 +157,8 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 8.1 | Search by kanji, kana, or English | ✅ | — | JMdict + KANJIDIC2 |
-| 8.2 | Rōmaji input | ✅ | 2026-08-07 | Pure romaji-to-hiragana query normalization is implemented and tested; dictionary UI will consume it in T3.0 |
+| 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-07 | Offline search over the installed KANJIDIC2/JMdict fixture packs |
+| 8.2 | Rōmaji input | ✅ | 2026-08-07 | Dictionary search normalizes romaji to hiragana before matching |
 | 8.3 | ~700,000 entries including names and places | 🔷 | — | JMnedict as an optional pack |
 | 8.4 | Details for 6,355 kanji | ✅ | — | KANJIDIC2 covers 13,108 |
 | 8.5 | SKIP search | ❌ | — | Replaced by multi-radical search |
