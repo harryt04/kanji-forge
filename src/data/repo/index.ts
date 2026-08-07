@@ -142,6 +142,12 @@ export interface UserRepositories {
     state: CardState
     mutation: OutboxMutation
   }): Promise<void>
+  /** Persists a manual level assignment without counting it as a study review. */
+  recordManualOverride(input: {
+    review: Review
+    nextState: CardState
+    mutation: OutboxMutation
+  }): Promise<void>
 }
 
 function value(row: SqlRow, key: string): SqlValue {
@@ -549,6 +555,29 @@ export function createUserRepositories(
     async recordCardState({ state, mutation }) {
       await database.transaction([
         { sql: putState, parameters: stateParams(state) },
+        {
+          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
+    },
+    async recordManualOverride({ review, nextState, mutation }) {
+      if (review.id !== mutation.id)
+        throw new Error(
+          'A manual override mutation id must equal its review id.',
+        )
+      if (review.source !== 'manual')
+        throw new Error('Manual override reviews must use the manual source.')
+      await database.transaction([
+        { sql: putReview, parameters: reviewParams(review) },
+        { sql: putState, parameters: stateParams(nextState) },
         {
           sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
           parameters: [

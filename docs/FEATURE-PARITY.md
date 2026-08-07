@@ -28,7 +28,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 1.7 | Green sticky recycling, adjustable | ✅ | 2026-08-06 | |
 | 1.8 | New-cards-per-session control ("red slider") | ✅ | 2026-08-06 | |
 | 1.9 | Intervals as guidelines, other priorities can reorder | ✅ | 2026-08-06 | Queue builder, SRS-SPEC §5 |
-| 1.10 | Manual color override | ✅ | — | Detail + list view |
+| 1.10 | Manual color override | ✅ | 2026-08-07 | Browse list level picker persists a manual SRS assignment without changing review totals |
 | 1.11 | Grey stickies (hide color during study) | ✅ | — | |
 | 1.12 | Session summary dialog | ✅ | 2026-08-06 | |
 | 1.13 | Study timer, tap to show | ✅ | 2026-08-07 | Elapsed session timer is hidden until requested and updates once per second |
@@ -64,7 +64,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.3 | Zoom ratio setting | ✅ | — | |
 | 3.4 | Tap tile for detail | ✅ | — | |
 | 3.5 | List view | ✅ | 2026-08-07 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; virtualization remains a follow-up for very large packs |
-| 3.6 | Inline color editing in list view | ✅ | — | |
+| 3.6 | Inline color editing in list view | ✅ | 2026-08-07 | Accessible per-card level picker schedules the new level and persists a manual override offline |
 | 3.7 | Sorting | ✅ | 2026-08-07 | Browse list sorts offline by deck order, level, stroke count, frequency, JLPT, school grade, review count, last review, or kana; ties retain deck order and missing metadata sorts last |
 | 3.8 | Filtering | ✅ | 2026-08-07 | Browse filters offline by level/color, flagged state, inclusive stroke-count range, and JLPT level; filters combine with text search and can be cleared together |
 | 3.9 | Searching within a deck | ✅ | 2026-08-07 | Offline search matches kanji, kana readings, and English meanings; multiple terms are ANDed |

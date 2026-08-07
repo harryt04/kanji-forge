@@ -140,6 +140,85 @@ describe('recordCardState atomicity', () => {
       { id: 'flag-mutation-1', mutType: 'cardState.upsert' },
     ])
   })
+
+  it('persists a manual level override without a daily review stat', async () => {
+    const repos = await freshRepo()
+    const before = state({ level: 1, totalReviews: 4, totalCorrect: 3 })
+    const nextState = state({
+      ...before,
+      level: 4,
+      manualOverride: true,
+      updatedAt: before.updatedAt + 1,
+    })
+    const manualReview = review({
+      id: 'manual-level-1',
+      source: 'manual',
+      levelBefore: 1,
+      levelAfter: 4,
+      grade: 'good',
+    })
+
+    await repos.recordManualOverride({
+      review: manualReview,
+      nextState,
+      mutation: {
+        id: manualReview.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(manualReview),
+        createdAt: manualReview.at,
+        attempts: 0,
+      },
+    })
+
+    expect(
+      await repos.cardStates.get(nextState.deckId, nextState.contentRef),
+    ).toEqual(nextState)
+    expect(await repos.reviews.list()).toHaveLength(1)
+    expect(await repos.dailyStats.list()).toEqual([])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: manualReview.id, mutType: 'review.append' },
+    ])
+  })
+
+  it('rejects a manual override with a mismatched mutation id', async () => {
+    const repos = await freshRepo()
+    const manualReview = review({ id: 'manual-level-2', source: 'manual' })
+
+    await expect(
+      repos.recordManualOverride({
+        review: manualReview,
+        nextState: state(),
+        mutation: {
+          id: 'different-id',
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: manualReview.at,
+          attempts: 0,
+        },
+      }),
+    ).rejects.toThrow('must equal its review id')
+    expect(await repos.reviews.list()).toEqual([])
+  })
+
+  it('rejects a non-manual review passed to the manual override path', async () => {
+    const repos = await freshRepo()
+    const studyReview = review({ id: 'manual-level-3', source: 'study' })
+
+    await expect(
+      repos.recordManualOverride({
+        review: studyReview,
+        nextState: state(),
+        mutation: {
+          id: studyReview.id,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: studyReview.at,
+          attempts: 0,
+        },
+      }),
+    ).rejects.toThrow('manual source')
+    expect(await repos.reviews.list()).toEqual([])
+  })
 })
 
 describe('outbox lifecycle', () => {

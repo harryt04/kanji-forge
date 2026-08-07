@@ -217,4 +217,53 @@ describe('BrowseScreen', () => {
       screen.getByRole('article', { name: /日, Level 3, Known, flagged/ }),
     ).toBeInTheDocument()
   })
+
+  it('sets a card level manually without changing review totals', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const reviewedAt = Date.now() - 86_400_000
+    await repo.cardStates.upsert({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 1,
+      dueAt: reviewedAt + 86_400_000,
+      lastReviewedAt: reviewedAt,
+      correctStreak: 1,
+      totalReviews: 2,
+      totalCorrect: 1,
+      lapses: 1,
+      flagged: true,
+      manualOverride: false,
+      updatedAt: reviewedAt,
+      updatedBy: 'browse-test',
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Set level for 日' }),
+      ).toBeInTheDocument(),
+    )
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Set level for 日' }),
+      { target: { value: '4' } },
+    )
+
+    await waitFor(() =>
+      expect(screen.getByText('Level 4 · Mastered')).toBeInTheDocument(),
+    )
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+      level: 4,
+      manualOverride: true,
+      totalReviews: 2,
+      totalCorrect: 1,
+      lapses: 1,
+      flagged: true,
+    })
+    expect(await repo.dailyStats.list()).toEqual([])
+    expect(await repo.reviews.list('dev-kanji', 'kanji:日')).toHaveLength(1)
+    expect(await repo.outbox.pending()).toHaveLength(1)
+  })
 })

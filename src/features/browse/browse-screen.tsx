@@ -3,10 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
+import { DEFAULT_SRS_CONFIG, emptyCardState } from '@/core/srs/types'
+import { nextDue } from '@/core/srs/schedule'
 import type { CardState } from '@/data/repo'
+import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
 import { loadStarterDeck, type LoadedDeck } from '@/features/study/deck-loader'
+import { getDeviceId } from '@/lib/device-id'
 import {
   DEFAULT_BROWSE_FILTERS,
   filterBrowseCards,
@@ -86,6 +90,8 @@ export function BrowseScreen({
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<BrowseSort>('deck-order')
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_BROWSE_FILTERS)
+  const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -135,6 +141,93 @@ export function BrowseScreen({
     }))
   }
 
+  async function setCardLevel(
+    card: BrowseCard,
+    level: CardState['level'],
+  ): Promise<void> {
+    if (!runtime || !deck || savingContentRef !== null) return
+
+    const now = Date.now()
+    const deviceId = getDeviceId()
+    const before =
+      card.state ?? emptyCardState(deck.deckId, card.contentRef, deviceId)
+    const after: CardState = {
+      deckId: deck.deckId,
+      contentRef: card.contentRef,
+      level,
+      dueAt: nextDue(level, DEFAULT_SRS_CONFIG, now),
+      lastReviewedAt: now,
+      correctStreak: before.correctStreak,
+      totalReviews: before.totalReviews,
+      totalCorrect: before.totalCorrect,
+      lapses: before.lapses,
+      flagged: before.flagged,
+      manualOverride: true,
+      updatedAt: now,
+      updatedBy: deviceId,
+    }
+    const reviewId = crypto.randomUUID()
+
+    setSavingContentRef(card.contentRef)
+    setEditError(null)
+    try {
+      const repo = createUserRepositories(runtime.database)
+      await repo.recordManualOverride({
+        review: {
+          id: reviewId,
+          deckId: after.deckId,
+          contentRef: card.contentRef,
+          at: now,
+          grade: 'good',
+          levelBefore: before.level,
+          levelAfter: level,
+          intervalBefore: before.dueAt ? Math.max(0, before.dueAt - now) : 0,
+          elapsedDays: before.lastReviewedAt
+            ? Math.max(0, (now - before.lastReviewedAt) / 86_400_000)
+            : 0,
+          responseMs: 0,
+          source: 'manual',
+          deviceId,
+        },
+        nextState: after,
+        mutation: {
+          id: reviewId,
+          mutType: 'review.append',
+          payload: JSON.stringify({
+            deckId: after.deckId,
+            contentRef: card.contentRef,
+            source: 'manual',
+            levelBefore: before.level,
+            levelAfter: level,
+            at: now,
+          }),
+          createdAt: now,
+          attempts: 0,
+        },
+      })
+      setDeck((current) =>
+        current
+          ? {
+              ...current,
+              cards: current.cards.map((candidate) =>
+                candidate.contentRef === card.contentRef
+                  ? { ...candidate, state: after }
+                  : candidate,
+              ),
+            }
+          : current,
+      )
+    } catch (reason: unknown) {
+      setEditError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the manual level.',
+      )
+    } finally {
+      setSavingContentRef(null)
+    }
+  }
+
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to browse.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
@@ -162,6 +255,12 @@ export function BrowseScreen({
           <Link href="/study">Study this deck</Link>
         </Button>
       </header>
+
+      {editError && (
+        <p className="text-destructive" role="alert">
+          {editError}
+        </p>
+      )}
 
       <label className="grid gap-2" htmlFor="browse-search">
         <span className="text-sm font-semibold">Search this deck</span>
@@ -405,6 +504,29 @@ export function BrowseScreen({
                         {card.meanings.join('; ') || 'No meaning recorded'}
                       </p>
                     </div>
+                    <label className="grid shrink-0 gap-1 text-right">
+                      <span className="text-muted-foreground text-xs">
+                        Set level
+                      </span>
+                      <select
+                        value={level}
+                        disabled={savingContentRef !== null}
+                        onChange={(event) => {
+                          void setCardLevel(
+                            card,
+                            Number(event.target.value) as CardState['level'],
+                          )
+                        }}
+                        aria-label={`Set level for ${card.literal}`}
+                        className="border-input bg-background focus-visible:ring-ring h-10 min-w-24 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
+                      >
+                        {LEVEL_NAMES.map((name, candidateLevel) => (
+                          <option key={name} value={candidateLevel}>
+                            {candidateLevel} · {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </CardContent>
                 </Card>
               </li>

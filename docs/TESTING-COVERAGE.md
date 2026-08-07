@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 26 (169 test cases: 169 passing) |
-| Component test files | 5 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx` — 35 cases, included above) |
+| Unit/integration test files | 26 (173 test cases: 173 passing) |
+| Component test files | 5 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx` — 36 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.12%** |
+| Overall statement coverage | **86.33%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,10 +27,10 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.19 / 85.71 / 100 / 93.19 · packs 98.61 / 79.1 / 100 / 98.61 · repo 98.55 / 90.58 / 100 / 98.55 | ✅ comfortable margin |
-| `src/features/**` | 70% | browse 93.33 / 89.6 / 77.77 / 93.33 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.86 / 83.94 / 80 / 97.86 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.19 / 85.71 / 100 / 93.19 · packs 98.61 / 79.1 / 100 / 98.61 · repo 98.63 / 91.11 / 100 / 98.63 | ✅ comfortable margin |
+| `src/features/**` | 70% | browse 92.85 / 85.61 / 80 / 92.85 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.86 / 83.94 / 80 / 97.86 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.78 / 75.9 / 90.9 / 94.78 | ✅ comfortable margin |
-| Global floor | 60% | 86.07 / 87.42 / 90.72 / 86.07 | ✅ comfortable margin |
+| Global floor | 60% | 86.33 / 87.14 / 89.26 / 86.33 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -55,15 +55,15 @@ idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a f
 the progress-to-belt-rank mapping, and retention-by-level aggregation.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 36 cases across 4 files
+### `src/data` — 39 cases across 4 files
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v1 creates all 9 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (17, up from 1) — derived-deck projection, `recordGrade()` atomicity
-  and atomic manual card-state flag persistence
+- **`repo/index.test.ts`** (20, up from 1) — derived-deck projection, `recordGrade()` atomicity,
+  manual level override atomicity and validation, and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
@@ -110,12 +110,13 @@ heatmap for a new learner, recorded daily activity plotted with review/correct/a
 intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
 breakdown and pressed state.
 
-### `src/features/browse` — 19 cases
+### `src/features/browse` — 20 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
  loading into a 200-card accessible list, rendering persisted local level and flag state, filtering
  by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
- and sorting by local level with stable deck-order ties.
+ sorting by local level with stable deck-order ties, and manually assigning a card level while
+ preserving review totals and omitting the manual adjustment from daily review statistics.
 
 `browse-filter.test.ts` covers untouched cards as level zero, inclusive stroke ranges, flagged and
 level combinations, JLPT matching, and missing JLPT metadata.
