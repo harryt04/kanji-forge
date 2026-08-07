@@ -112,7 +112,8 @@ breakdown and pressed state.
 
 ### `src/features/dictionary` — 5 cases
 
-**`dictionary-screen.test.tsx`** (Testing Library) — offline search from the visible form, and
+**`dictionary-screen.test.tsx`** (Testing Library) — offline search from the visible form, complete
+KANJIDIC2 metadata for kanji results, and
 user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query

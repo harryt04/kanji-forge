@@ -240,20 +240,67 @@ export function DictionaryScreen(): React.ReactElement {
               </div>
               {result.type === 'kanji' ? (
                 <>
-                  <p lang="ja">
-                    {result.record.onReadings.join('、') || '—'}
-                    {result.record.kunReadings.length > 0 &&
-                      ` · ${result.record.kunReadings.join('、')}`}
-                  </p>
-                  <p>
-                    {result.record.meanings.join('; ') || 'No English gloss'}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {result.record.strokeCount} strokes
-                    {result.record.grade
-                      ? ` · school grade ${result.record.grade}`
-                      : ''}
-                  </p>
+                  <dl
+                    className="grid gap-3 text-sm sm:grid-cols-2"
+                    data-testid="kanji-details"
+                  >
+                    <div>
+                      <dt className="text-muted-foreground">On readings</dt>
+                      <dd className="font-jp-ui mt-0.5" lang="ja">
+                        {result.record.onReadings.join('、') || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Kun readings</dt>
+                      <dd className="font-jp-ui mt-0.5" lang="ja">
+                        {result.record.kunReadings.join('、') || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Meanings</dt>
+                      <dd className="mt-0.5">
+                        {result.record.meanings.join('; ') || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Stroke count</dt>
+                      <dd className="mt-0.5">
+                        {result.record.strokeCount || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">School grade</dt>
+                      <dd className="mt-0.5">
+                        {result.record.grade
+                          ? `Grade ${result.record.grade}`
+                          : 'Not listed'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">JLPT</dt>
+                      <dd className="mt-0.5">
+                        {result.record.jlptLegacy
+                          ? `N${result.record.jlptLegacy}`
+                          : 'Not listed'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Frequency rank</dt>
+                      <dd className="mt-0.5">
+                        {result.record.freq
+                          ? `#${result.record.freq}`
+                          : 'Not listed'}
+                      </dd>
+                    </div>
+                    {result.record.nanori.length > 0 && (
+                      <div>
+                        <dt className="text-muted-foreground">Name readings</dt>
+                        <dd className="font-jp-ui mt-0.5" lang="ja">
+                          {result.record.nanori.join('、')}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                 </>
               ) : (
                 <>

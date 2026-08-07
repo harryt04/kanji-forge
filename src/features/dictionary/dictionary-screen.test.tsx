@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -51,6 +51,25 @@ describe('DictionaryScreen', () => {
 
     expect(await screen.findByText('お金')).toBeInTheDocument()
     expect(screen.getByText('money')).toBeInTheDocument()
+  })
+
+  it('shows the available KANJIDIC2 metadata for kanji results', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), '日')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    const details = await screen.findAllByTestId('kanji-details')
+    expect(details.length).toBeGreaterThan(0)
+    const firstDetails = within(details[0]!)
+    expect(firstDetails.getByText('On readings')).toBeInTheDocument()
+    expect(firstDetails.getByText('Kun readings')).toBeInTheDocument()
+    expect(firstDetails.getByText('Meanings')).toBeInTheDocument()
+    expect(firstDetails.getByText('Stroke count')).toBeInTheDocument()
+    expect(firstDetails.getByText('School grade')).toBeInTheDocument()
+    expect(firstDetails.getByText('JLPT')).toBeInTheDocument()
+    expect(firstDetails.getByText('Frequency rank')).toBeInTheDocument()
   })
 
   it('persists recent searches and supports pinning and reusing them', async () => {

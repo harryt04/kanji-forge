@@ -160,7 +160,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-07 | Offline search over the installed KANJIDIC2/JMdict fixture packs |
 | 8.2 | Rōmaji input | ✅ | 2026-08-07 | Dictionary search normalizes romaji to hiragana before matching |
 | 8.3 | ~700,000 entries including names and places | 🔷 | — | JMnedict as an optional pack |
-| 8.4 | Details for 6,355 kanji | ✅ | — | KANJIDIC2 covers 13,108 |
+| 8.4 | Details for 6,355 kanji | ✅ | 2026-08-07 | Offline results expose KANJIDIC2 readings, meanings, stroke count, school grade, JLPT, frequency rank, and name readings; KANJIDIC2 covers 13,108 |
 | 8.5 | SKIP search | ❌ | — | Replaced by multi-radical search |
 | 8.6 | Search by radical | ✅ | — | KRADFILE/RADKFILE |
 | 8.7 | Search by stroke count | ✅ | — | |
