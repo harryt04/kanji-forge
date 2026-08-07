@@ -39,6 +39,7 @@ Real implementations with no corresponding test file today — see
 | Deck loading | `src/features/study/deck-loader.ts` | `loadStarterDeck()` resolves a `packs-dev` deck definition, lazily registers the deck in the local database on first load, fetches card content from the kanji pack, and assembles the `LoadedDeck` the store and screens consume. |
 | SRS/repo adapters | `src/features/study/adapters.ts` | The single translation point between `core/srs`'s `stickyId`-keyed `CardState` and `data/repo`'s `contentRef`-keyed `CardState` (they're the same shape under a different key name). |
 | Home screen | `src/features/home/home-screen.tsx` | The `/` route. Loads the starter deck's card states, computes percent-complete via `core/srs/goal`, shows last-studied and total completed-session time, renders a level-distribution stacked bar and count legend (with untouched cards treated as level 0), reports study-answer retention by starting level, surfaces cards with six or more lapses as leeches, projects completion from correct answers per active day over the trailing 14 days, and lets the user set/persist a goal date that drives a "days left / cards needed today / on pace vs. behind / projected completion" readout. |
+| Browse list | `src/features/browse/browse-screen.tsx`, `src/app/browse/page.tsx` | The `/browse` route loads the authenticated user's built-in deck from the local database and renders an accessible list with each card's kanji, readings, meanings, level/belt label, and flag state. |
 | History screen | `src/features/history/history-screen.tsx` | The `/history` route. Reads local daily-stat rollups and renders an accessible 30-day rolling study-activity bar chart with review, correct, again, and active-day summaries; selecting a bar shows that day's breakdown. |
 | Auth client | `src/auth/client.ts` | `signIn()`, `register()`, `signOut()`, `getSession()` against the better-auth backend (`NEXT_PUBLIC_API_URL` + `/api/auth/*`). `getSession()` falls back to a cached `localStorage` identity when the network is unreachable, deliberately, so offline reloads don't lock the user out. |
 | Auth gate | `src/auth/auth-gate.tsx` | The sign-in/register UI shell and the no-anonymous-access gate that wraps protected routes. |
@@ -64,7 +65,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 | Stroke processing | `src/core/stroke/{match,resample}.ts` | Each exports a single `*_STUB` constant. | T6.0 (writing trainer) |
 | Import/enrichment | `src/core/import/{parse,enrich}.ts` | Each exports a single `*_STUB` constant. | T8.0 (v2, deferred with custom decks) |
 | PWA registration | `src/pwa/index.ts` | Exports `PWA_STUB`; no Serwist registration or precache strategy wired despite `serwist` being a dependency and a `public/manifest.json` existing. | T5.0 |
-| Browse / Detail / Dictionary / Settings / Writing routes | `src/app/{browse,detail,dictionary,settings,writing}/…`, `src/features/{browse,detail,dictionary,settings,writing}/index.ts` | Route + feature-module placeholders; no real UI or data wiring. | Phases 2–3, or Deferred for Writing per TRD |
+| Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Route + feature-module placeholders; no real UI or data wiring. | Phases 2–3, or Deferred for Writing per TRD |
 
 ---
 
@@ -81,7 +82,7 @@ this snapshot:
 | Atomic local grade transaction | "not yet called by a study screen" | Now called on every grade via `useStudyStore.grade()` → `repo.recordGrade()` | `8475b74` |
 
 All other rows in `MVP-STATUS.md` — outbox stub, Electric stub, mutation-API 501, pack-manager stub,
-Browse/Detail/Dictionary/Settings/Writing placeholders, PWA stub — remain accurate as of this
+Browse tile/sort/filter/edit follow-ups, Detail/Settings/Writing placeholders, and PWA stub — remain accurate as of this
 snapshot and are restated in the "Stubs and explicit seams" table above for a single source of truth.
 
 ---
@@ -93,10 +94,12 @@ Consistent with the code above, not aspirational:
 - Sign in or register against a running API backend, or continue offline on a cached identity.
 - Land on Home, see the starter deck's name, percent-complete, and last-studied time; set a goal
   date and see days-left / cards-needed-today / on-pace feedback.
+- Open Browse to inspect the installed deck as a local-first list of colored cards with readings,
+  meanings, levels, and flag state.
 - Start a study session on the `dev-kanji` starter deck, reveal cards by tap/click/Space, grade by
   keyboard/swipe/button, undo the last grade, and see a session summary.
 - Have every grade persisted locally (SQLite-WASM/OPFS) atomically, surviving a reload.
 
-What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), Browse beyond
-the Phase-0 prototype, Dictionary/Detail, Settings, backup/export, and offline installability (no
-service worker registered yet).
+What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), Browse tile
+overview and list sorting/filtering/editing, Detail, Settings, backup/export, and offline
+installability (no service worker registered yet).

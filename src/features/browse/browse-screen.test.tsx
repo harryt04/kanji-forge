@@ -1,0 +1,90 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import { createUserRepositories } from '@/data/repo'
+import { BrowseScreen } from './browse-screen'
+
+const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
+
+function fixtureFetch(): typeof fetch {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const path = String(input).replace(/^\/packs-dev\//, '')
+    try {
+      const buffer = readFileSync(join(FIXTURE_ROOT, path))
+      const body = path.endsWith('.json')
+        ? buffer.toString('utf8')
+        : new Uint8Array(buffer)
+      return new Response(body as BodyInit, { status: 200 })
+    } catch {
+      return new Response('not found', { status: 404 })
+    }
+  }) as unknown as typeof fetch
+}
+
+let userId = 0
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', fixtureFetch())
+  userId += 1
+})
+
+afterEach(() => {
+  cleanup()
+  clearUserRuntime()
+})
+
+describe('BrowseScreen', () => {
+  it('prompts anonymous users to sign in', () => {
+    render(<BrowseScreen />)
+    expect(screen.getByText('Sign in to browse.')).toBeInTheDocument()
+  })
+
+  it('loads the deck into an accessible list of cards', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    expect(screen.getByText('Loading deck…')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(screen.getByText(/Development Kanji/)).toBeInTheDocument()
+    expect(screen.getByText(/200 cards/)).toBeInTheDocument()
+    expect(screen.getAllByText('日')).not.toHaveLength(0)
+    expect(
+      screen.getByText('day; sun; Japan; counter for days'),
+    ).toBeInTheDocument()
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(200)
+  })
+
+  it('shows each card level and flag state from the local database', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.cardStates.upsert({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      dueAt: Date.now(),
+      lastReviewedAt: Date.now(),
+      correctStreak: 3,
+      totalReviews: 3,
+      totalCorrect: 3,
+      lapses: 0,
+      flagged: true,
+      manualOverride: false,
+      updatedAt: Date.now(),
+      updatedBy: 'browse-test',
+    })
+
+    render(<BrowseScreen />)
+
+    await waitFor(() => expect(screen.getByText('Flagged')).toBeInTheDocument())
+    expect(screen.getByText('Level 3 · Known')).toBeInTheDocument()
+    expect(
+      screen.getByRole('article', { name: '日, Level 3, Known, flagged' }),
+    ).toBeInTheDocument()
+  })
+})

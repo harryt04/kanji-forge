@@ -63,7 +63,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.2 | Configurable tile content | ✅ | — | |
 | 3.3 | Zoom ratio setting | ✅ | — | |
 | 3.4 | Tap tile for detail | ✅ | — | |
-| 3.5 | List view | ✅ | — | Virtualized |
+| 3.5 | List view | ✅ | 2026-08-07 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; virtualization remains a follow-up for very large packs |
 | 3.6 | Inline color editing in list view | ✅ | — | |
 | 3.7 | Sorting | ✅ | — | Expanded set — PRD §4.4 |
 | 3.8 | Filtering | ✅ | — | Expanded set |

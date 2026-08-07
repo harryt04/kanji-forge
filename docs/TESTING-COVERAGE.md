@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 20 (138 test cases: 138 passing) |
-| Component test files | 4 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx` — 28 cases, included above) |
+| Unit/integration test files | 24 (153 test cases: 153 passing) |
+| Component test files | 5 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx` — 31 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **84.66%** |
+| Overall statement coverage | **85.51%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,10 +27,10 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.2 / 86 / 100 / 93.2 · packs 97.3 / 75 / 100 / 97.3 · repo 98.1 / 90.5 / 97.1 / 98.1 | ✅ comfortable margin |
-| `src/features/**` | 70% | history 100 / 100 / 100 / 100 · home 98.7 / 91.5 / 93.3 / 98.7 · study 97.9 / 83.9 / 80 / 97.9 | ✅ comfortable margin |
-| `src/features/dictionary/**` | 70% | 89.33 / 76.38 / 90.9 / 89.33 | ✅ comfortable margin |
-| Global floor | 60% | 82.34 / 88.79 / 89.11 / 82.34 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.19 / 85.71 / 100 / 93.19 · packs 98.61 / 79.1 / 100 / 98.61 · repo 98.55 / 90.58 / 100 / 98.55 | ✅ comfortable margin |
+| `src/features/**` | 70% | browse 93.44 / 80.76 / 100 / 93.44 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.85 / 83.94 / 80 / 97.85 | ✅ comfortable margin |
+| `src/features/dictionary/**` | 70% | 94.78 / 75.9 / 90.9 / 94.78 | ✅ comfortable margin |
+| Global floor | 60% | 85.51 / 87.12 / 90.32 / 85.51 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -48,7 +48,7 @@ any directory gate above):
 
 ## Test inventory
 
-### `src/core/srs` — 21 cases, 100% coverage
+### `src/core/srs` — 23 cases, 100% coverage
 
 `srs.test.ts` — the 15 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
 idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a fuzz-bounds case,
@@ -109,6 +109,11 @@ the 30-day scheduled review forecast buckets overdue and future due cards.
 heatmap for a new learner, recorded daily activity plotted with review/correct/again totals and
 intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
 breakdown and pressed state.
+
+### `src/features/browse` — 3 cases
+
+**`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
+loading into a 200-card accessible list, and rendering persisted local level and flag state.
 
 ### `src/features/dictionary` — 5 cases
 
