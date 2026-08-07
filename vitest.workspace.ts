@@ -1,4 +1,4 @@
-import { defineWorkspace } from 'vitest/config'
+import { configDefaults, defineWorkspace } from 'vitest/config'
 
 export default defineWorkspace([
   {
@@ -11,6 +11,22 @@ export default defineWorkspace([
         'apps/api/**/*.test.ts',
         'src/core/**/*.test.ts',
       ],
+      // build-decks.test.ts asserts against packs/*.sqlite, which are
+      // gitignored and only produced by `pnpm packs:refresh` (the monthly
+      // refresh pipeline). It lives in its own project below so the default
+      // suite (what PR CI runs) never touches it.
+      exclude: [
+        ...configDefaults.exclude,
+        'scripts/build-packs/build-decks.test.ts',
+      ],
+    },
+  },
+  {
+    extends: './vitest.config.ts',
+    test: {
+      name: 'unit-node-decks',
+      environment: 'node',
+      include: ['scripts/build-packs/build-decks.test.ts'],
     },
   },
   {
