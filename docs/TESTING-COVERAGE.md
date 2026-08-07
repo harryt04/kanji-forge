@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 28 (184 test cases: 184 passing) |
-| Component test files | 6 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `settings-screen.test.tsx` — 43 cases, included above) |
+| Unit/integration test files | 28 (187 test cases: 187 passing) |
+| Component test files | 6 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `settings-screen.test.tsx` — 45 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.33%** |
+| Overall statement coverage | **85.52%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -28,7 +28,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
 | `src/data/**` | 85% | db 93.19 / 85.71 / 100 / 93.19 · packs 98.61 / 79.1 / 100 / 98.61 · repo 98.63 / 91.11 / 100 / 98.63 | ✅ comfortable margin |
-| `src/features/**` | 70% | browse 92.85 / 85.61 / 80 / 92.85 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.86 / 83.94 / 80 / 97.86 | ✅ comfortable margin |
+| `src/features/**` | 70% | browse 90.36 / 81.21 / 84.84 / 90.36 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.86 / 83.94 / 80 / 97.86 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.78 / 75.9 / 90.9 / 94.78 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | covered by theme and SettingsScreen tests | ✅ |
 | Global floor | 60% | 86.33 / 87.14 / 89.26 / 86.33 | ✅ comfortable margin |
@@ -112,11 +112,11 @@ heatmap for a new learner, recorded daily activity plotted with review/correct/a
 intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
 breakdown and pressed state.
 
-### `src/features/browse` — 22 cases
+### `src/features/browse` — 23 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
 loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
-wall, persisted tile-content selection (kanji/reading/meaning), rendering persisted local level and flag state, filtering
+wall, persisted tile-content selection (kanji/reading/meaning), persisted tile zoom density, rendering persisted local level and flag state, filtering
  by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
  sorting by local level with stable deck-order ties, and manually assigning a card level while
  preserving review totals and omitting the manual adjustment from daily review statistics.

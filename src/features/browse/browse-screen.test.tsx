@@ -15,6 +15,7 @@ import {
   BROWSE_TILE_CONTENT_SETTING,
   BROWSE_VIEW_SETTING,
   BrowseScreen,
+  BROWSE_TILE_ZOOM_SETTING,
 } from './browse-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -144,6 +145,47 @@ describe('BrowseScreen', () => {
       ).toMatchObject({ value: 'meaning' }),
     )
     expect(dayTile).toHaveTextContent(/day|sun|Japan/u)
+  })
+
+  it('persists the selected tile zoom ratio and applies its density', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.settings.set({
+      key: BROWSE_VIEW_SETTING,
+      value: 'tiles',
+      updatedAt: Date.now(),
+    })
+    await repo.settings.set({
+      key: BROWSE_TILE_ZOOM_SETTING,
+      value: '0.75',
+      updatedAt: Date.now(),
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    const wall = screen.getByTestId('browse-tile-wall')
+    expect(screen.getByRole('combobox', { name: 'Tile zoom' })).toHaveValue(
+      '0.75',
+    )
+    expect(wall).toHaveStyle(
+      'grid-template-columns: repeat(auto-fill, minmax(42px, 1fr))',
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Tile zoom' }), {
+      target: { value: '1.5' },
+    })
+    await waitFor(async () =>
+      expect(await repo.settings.get(BROWSE_TILE_ZOOM_SETTING)).toMatchObject({
+        value: '1.5',
+      }),
+    )
+    expect(wall).toHaveStyle(
+      'grid-template-columns: repeat(auto-fill, minmax(84px, 1fr))',
+    )
   })
 
   it('shows each card level and flag state from the local database', async () => {

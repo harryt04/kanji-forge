@@ -22,9 +22,11 @@ const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 export const BROWSE_VIEW_SETTING = 'browse.view'
 export const BROWSE_TILE_CONTENT_SETTING = 'browse.tile-content'
+export const BROWSE_TILE_ZOOM_SETTING = 'browse.tile-zoom'
 
 type BrowseView = 'list' | 'tiles'
 type BrowseTileContent = 'kanji' | 'reading' | 'meaning'
+type BrowseTileZoom = 0.75 | 1 | 1.5
 
 function isBrowseView(value: string | undefined): value is BrowseView {
   return value === 'list' || value === 'tiles'
@@ -34,6 +36,16 @@ function isBrowseTileContent(
   value: string | undefined,
 ): value is BrowseTileContent {
   return value === 'kanji' || value === 'reading' || value === 'meaning'
+}
+
+function isBrowseTileZoom(
+  value: string | undefined,
+): value is `${BrowseTileZoom}` {
+  return value === '0.75' || value === '1' || value === '1.5'
+}
+
+function browseTileZoomValue(value: BrowseTileZoom): string {
+  return String(value)
 }
 
 interface BrowseCard {
@@ -119,10 +131,12 @@ export function BrowseScreen({
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_BROWSE_FILTERS)
   const [view, setView] = useState<BrowseView>('list')
   const [tileContent, setTileContent] = useState<BrowseTileContent>('kanji')
+  const [tileZoom, setTileZoom] = useState<BrowseTileZoom>(1)
   const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [viewError, setViewError] = useState<string | null>(null)
   const [tileContentError, setTileContentError] = useState<string | null>(null)
+  const [tileZoomError, setTileZoomError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -138,10 +152,15 @@ export function BrowseScreen({
       const savedTileContent = await createUserRepositories(
         runtime.database,
       ).settings.get(BROWSE_TILE_CONTENT_SETTING)
+      const savedTileZoom = await createUserRepositories(
+        runtime.database,
+      ).settings.get(BROWSE_TILE_ZOOM_SETTING)
       if (active) setDeck(loaded)
       if (active && isBrowseView(savedView?.value)) setView(savedView.value)
       if (active && isBrowseTileContent(savedTileContent?.value))
         setTileContent(savedTileContent.value)
+      if (active && isBrowseTileZoom(savedTileZoom?.value))
+        setTileZoom(Number(savedTileZoom.value) as BrowseTileZoom)
     })().catch((reason: unknown) => {
       if (active)
         setError(
@@ -310,6 +329,25 @@ export function BrowseScreen({
     }
   }
 
+  async function chooseTileZoom(next: BrowseTileZoom): Promise<void> {
+    if (!runtime || next === tileZoom) return
+    const previous = tileZoom
+    setTileZoom(next)
+    setTileZoomError(null)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: BROWSE_TILE_ZOOM_SETTING,
+        value: browseTileZoomValue(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setTileZoom(previous)
+      setTileZoomError(
+        reason instanceof Error ? reason.message : 'Could not save tile zoom.',
+      )
+    }
+  }
+
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to browse.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
@@ -362,6 +400,24 @@ export function BrowseScreen({
               <option value="meaning">Meaning</option>
             </select>
           </label>
+          <label className="grid gap-1" htmlFor="browse-tile-zoom">
+            <span className="text-muted-foreground text-xs">Tile zoom</span>
+            <select
+              id="browse-tile-zoom"
+              value={tileZoom}
+              onChange={(event) =>
+                void chooseTileZoom(
+                  Number(event.target.value) as BrowseTileZoom,
+                )
+              }
+              aria-label="Tile zoom"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="0.75">75% · Compact</option>
+              <option value="1">100% · Standard</option>
+              <option value="1.5">150% · Large</option>
+            </select>
+          </label>
           <div
             className="border-border inline-flex rounded-md border p-1"
             role="group"
@@ -400,6 +456,12 @@ export function BrowseScreen({
       {tileContentError && (
         <p className="text-destructive" role="alert">
           {tileContentError}
+        </p>
+      )}
+
+      {tileZoomError && (
+        <p className="text-destructive" role="alert">
+          {tileZoomError}
         </p>
       )}
 
@@ -604,7 +666,10 @@ export function BrowseScreen({
         </Card>
       ) : view === 'tiles' ? (
         <div
-          className="grid grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))] gap-2"
+          className="grid gap-2"
+          style={{
+            gridTemplateColumns: `repeat(auto-fill, minmax(${56 * tileZoom}px, 1fr))`,
+          }}
           data-testid="browse-tile-wall"
           role="grid"
           aria-label={`${deck.name} tile wall`}
