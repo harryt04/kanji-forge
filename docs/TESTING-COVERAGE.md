@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 20 (117 test cases: 112 passing, 5 pre-existing failures — see [Known issues](#known-issues)) |
-| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 13 cases, included above) |
+| Unit/integration test files | 19 (116 test cases: 116 passing) |
+| Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 15 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — both skip cleanly without a running auth backend |
 | Overall statement coverage | **77.58%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -60,7 +60,8 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (14, up from 1) — derived-deck projection, `recordGrade()` atomicity
+- **`repo/index.test.ts`** (15, up from 1) — derived-deck projection, `recordGrade()` atomicity
+  and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
@@ -68,19 +69,21 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`packs/index.test.ts`** (7) — `parseContentRef` valid/malformed, deck-definition loading and
   caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching.
 
-### `src/features/study` — 28 cases across 4 files
+### `src/features/study` — 31 cases across 4 files
 
-- **`store.test.ts`** (14) — the highest-value target per the plan. Queue construction from a loaded
+- **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
   advancement, `wentGreen` tally, "again" requeue position matches `requeueAfterAgain()` exactly,
   session finish on last card, **persistence-failure isolation** (a rejected `recordGrade()` leaves
   the in-memory queue/index/summary untouched), no-op on an exhausted queue, undo restores the exact
-  prior snapshot, undo writes a compensating manual-source review, undo no-op with nothing to undo.
+  prior snapshot, undo writes a compensating manual-source review, undo no-op with nothing to undo,
+  and flag/unflag persistence for the current card.
 - **`adapters.test.ts`** (2) — `contentRef`↔`stickyId` round-trip in both directions.
 - **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
-- **`study-screen.test.tsx`** (9, Testing Library) — sign-in-required state, tap-to-reveal, the
+- **`study-screen.test.tsx`** (10, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
+  the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
   the previous card and re-disables itself, session-summary totals match store state, and the
@@ -151,15 +154,8 @@ pnpm test:e2e
 
 ## Known issues
 
-**`scripts/build-packs/pipeline.test.mjs` — 5 pre-existing failures, unrelated to this plan.**
-All five fail with `ASSERTION FAILED: repro source hash changed`, thrown by
-`assertSourceIntegrity()` in `pipeline.mjs` before the negative-assertion scenarios under test ever
-run. Confirmed via `git stash` that this fails identically on `master` before any of this plan's
-changes — it is not a regression introduced here, and it is outside `testing-coverage-plan.md`'s
-scope (Phase 2 explicitly does not touch `scripts/build-packs`). `pnpm packs:verify` also fails
-directly for the same reason. This will show CI red on the existing `ci.yml`'s
-"Verify Phase 0 pack fixture assertions" step regardless of this plan's changes, until someone
-investigates the source-hash mismatch separately.
+No known unit-test failures in the current local run. The E2E specs still skip when the auth
+backend is not configured or running; see [E2E](#e2e-playwright) for the required setup.
 
 ---
 

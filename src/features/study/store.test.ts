@@ -65,6 +65,26 @@ describe('useStudyStore.reveal', () => {
   })
 })
 
+describe('useStudyStore.toggleFlag', () => {
+  it('persists and toggles the current card flag', async () => {
+    useStudyStore.getState().start(loadedDeck(1))
+    const repo = fakeRepo({ recordCardState: vi.fn(async () => {}) })
+
+    await useStudyStore.getState().toggleFlag(repo)
+
+    expect(useStudyStore.getState().queue[0]?.state?.flagged).toBe(true)
+    expect(repo.recordCardState).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(repo.recordCardState).mock.calls[0]![0]).toMatchObject({
+      state: { deckId: 'dev-kanji', contentRef: 'kanji:0', flagged: true },
+      mutation: { mutType: 'cardState.upsert' },
+    })
+
+    await useStudyStore.getState().toggleFlag(repo)
+    expect(useStudyStore.getState().queue[0]?.state?.flagged).toBe(false)
+    expect(repo.recordCardState).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('useStudyStore.grade', () => {
   it('persists the grade via repo.recordGrade with the current card', async () => {
     useStudyStore.getState().start(loadedDeck(2))

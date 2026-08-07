@@ -48,6 +48,7 @@ export function StudyScreen({
     content,
     start,
     reveal,
+    toggleFlag,
     grade,
     undo,
     finish,
@@ -105,6 +106,10 @@ export function StudyScreen({
     [repo, revealed, grade],
   )
 
+  const handleToggleFlag = useCallback(() => {
+    if (repo) void toggleFlag(repo)
+  }, [repo, toggleFlag])
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === ' ') {
@@ -143,6 +148,7 @@ export function StudyScreen({
   if (error) return <p className="text-destructive p-6">{error}</p>
 
   const level = card?.state?.level ?? 0
+  const flagged = card?.state?.flagged ?? false
   const remaining = Math.max(0, queue.length - index)
 
   return (
@@ -177,6 +183,17 @@ export function StudyScreen({
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={flagged}
+            aria-label={flagged ? 'Unflag card' : 'Flag card'}
+            onClick={handleToggleFlag}
+            className="border-l-4"
+            style={{ borderLeftColor: `var(--level-${level})` }}
+          >
+            {flagged ? 'Flagged' : 'Flag'}
+          </Button>
           <div
             className={`bg-card w-full max-w-sm rounded-[var(--radius)] border-4 p-10 text-center shadow-[var(--shadow-card)] transition-colors motion-reduce:transition-none`}
             style={{ borderColor: `var(--level-${level})` }}

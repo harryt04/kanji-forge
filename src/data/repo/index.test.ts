@@ -118,6 +118,30 @@ describe('recordGrade atomicity', () => {
   })
 })
 
+describe('recordCardState atomicity', () => {
+  it('persists a manual flag change together with its outbox mutation', async () => {
+    const repos = await freshRepo()
+    const nextState = state({ flagged: true })
+    await repos.recordCardState({
+      state: nextState,
+      mutation: {
+        id: 'flag-mutation-1',
+        mutType: 'cardState.upsert',
+        payload: JSON.stringify({ flagged: true }),
+        createdAt: nextState.updatedAt,
+        attempts: 0,
+      },
+    })
+
+    expect(
+      await repos.cardStates.get(nextState.deckId, nextState.contentRef),
+    ).toEqual(nextState)
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'flag-mutation-1', mutType: 'cardState.upsert' },
+    ])
+  })
+})
+
 describe('outbox lifecycle', () => {
   it('tracks attempts and removal', async () => {
     const repos = await freshRepo()

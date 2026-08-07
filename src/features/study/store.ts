@@ -41,6 +41,7 @@ interface StudyState {
   lastGrade: UndoEntry | null
   start(loaded: LoadedDeck): void
   reveal(): void
+  toggleFlag(repo: UserRepositories): Promise<void>
   grade(repo: UserRepositories, grade: Grade): Promise<void>
   undo(repo: UserRepositories): Promise<void>
   finish(): void
@@ -95,6 +96,45 @@ export const useStudyStore = create<StudyState>((set, get) => ({
 
   reveal() {
     set({ revealed: true })
+  },
+
+  async toggleFlag(repo) {
+    const state = get()
+    const card = state.queue[state.index]
+    if (!card || !state.deckId) return
+
+    const now = Date.now()
+    const deviceId = getDeviceId()
+    const before =
+      card.state ?? emptyCardState(card.deckId, card.stickyId, deviceId)
+    const after = {
+      ...before,
+      flagged: !before.flagged,
+      updatedAt: now,
+      updatedBy: deviceId,
+    }
+    const mutationId = crypto.randomUUID()
+
+    await repo.recordCardState({
+      state: toRepoState(after),
+      mutation: {
+        id: mutationId,
+        mutType: 'cardState.upsert',
+        payload: JSON.stringify({
+          deckId: card.deckId,
+          contentRef: card.stickyId,
+          flagged: after.flagged,
+          updatedAt: now,
+          updatedBy: deviceId,
+        }),
+        createdAt: now,
+        attempts: 0,
+      },
+    })
+
+    const queue = [...state.queue]
+    queue[state.index] = { ...card, state: after }
+    set({ queue })
   },
 
   async grade(repo, grade) {

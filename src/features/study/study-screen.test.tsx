@@ -67,6 +67,28 @@ describe('StudyScreen', () => {
     expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
   })
 
+  it('flags and unflags the current card from the study screen', async () => {
+    await renderReady()
+    const flagButton = screen.getByRole('button', { name: 'Flag card' })
+
+    await userEvent.click(flagButton)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Unflag card' }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    )
+    expect(useStudyStore.getState().queue[0]?.state?.flagged).toBe(true)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Unflag card' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Flag card' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      ),
+    )
+  })
+
   it('applies the motion-reduce class to the flashcard', async () => {
     await renderReady()
     const card = screen.getByRole('button', { name: 'Reveal answer' })

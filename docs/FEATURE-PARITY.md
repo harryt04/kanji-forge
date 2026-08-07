@@ -32,7 +32,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 1.11 | Grey stickies (hide color during study) | ✅ | — | |
 | 1.12 | Session summary dialog | ✅ | 2026-08-06 | |
 | 1.13 | Study timer, tap to show | ✅ | 2026-08-07 | Elapsed session timer is hidden until requested and updates once per second |
-| 1.14 | Flag a sticky during study | ✅ | — | |
+| 1.14 | Flag a sticky during study | ✅ | 2026-08-07 | Accessible flag/unflag control persists the card state locally and queues it for sync |
 | 1.15 | External keyboard shortcuts (←→↑↓, space, a) | ✅ | 2026-08-06 | Same bindings |
 | 1.16 | Swipe left/right to grade | ✅ | 2026-08-06 | |
 | — | Undo last answer | ➕ ✅ | 2026-08-06 | StickyStudy lacks this |

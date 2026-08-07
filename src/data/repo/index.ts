@@ -69,6 +69,7 @@ export interface OutboxMutation {
   id: string
   mutType:
     | 'review.append'
+    | 'cardState.upsert'
     | 'deck.upsert'
     | 'settings.upsert'
     | 'deckMembership.upsert'
@@ -130,6 +131,11 @@ export interface UserRepositories {
     review: Review
     nextState: CardState
     day: string
+    mutation: OutboxMutation
+  }): Promise<void>
+  /** Persists a manual card-state change and its sync mutation atomically. */
+  recordCardState(input: {
+    state: CardState
     mutation: OutboxMutation
   }): Promise<void>
 }
@@ -498,6 +504,22 @@ export function createUserRepositories(
             review.at,
           ],
         },
+        {
+          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
+    },
+    async recordCardState({ state, mutation }) {
+      await database.transaction([
+        { sql: putState, parameters: stateParams(state) },
         {
           sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
           parameters: [
