@@ -67,7 +67,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.6 | Inline color editing in list view | ✅ | — | |
 | 3.7 | Sorting | ✅ | — | Expanded set — PRD §4.4 |
 | 3.8 | Filtering | ✅ | — | Expanded set |
-| 3.9 | Searching within a deck | ✅ | — | |
+| 3.9 | Searching within a deck | ✅ | 2026-08-07 | Offline search matches kanji, kana readings, and English meanings; multiple terms are ANDed |
 | 3.10 | Sticky count badge on the Browse icon | ✅ | — | Tab badge |
 | 3.11 | Set current deck's browse settings as the default for all decks | ✅ | — | |
 | — | Multi-select + bulk actions | ➕ ✅ | — | |

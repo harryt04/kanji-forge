@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
@@ -85,6 +91,33 @@ describe('BrowseScreen', () => {
     expect(screen.getByText('Level 3 · Known')).toBeInTheDocument()
     expect(
       screen.getByRole('article', { name: '日, Level 3, Known, flagged' }),
+    ).toBeInTheDocument()
+  })
+
+  it('filters cards by kanji, reading, and English meaning', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    const search = screen.getByRole('searchbox', { name: 'Search this deck' })
+    fireEvent.change(search, { target: { value: 'sun' } })
+
+    expect(
+      screen.getByText('Development Kanji · 1 of 200 cards'),
+    ).toBeInTheDocument()
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
+    expect(screen.getAllByText('日')).not.toHaveLength(0)
+
+    fireEvent.change(search, { target: { value: 'ひ' } })
+    expect(screen.getAllByTestId('browse-card').length).toBeGreaterThan(0)
+
+    fireEvent.change(search, { target: { value: 'does-not-exist' } })
+    expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('No cards match “does-not-exist”.'),
     ).toBeInTheDocument()
   })
 })

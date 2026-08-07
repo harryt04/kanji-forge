@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import type { CardState } from '@/data/repo'
@@ -37,6 +37,26 @@ function toBrowseCards(deck: LoadedDeck): readonly BrowseCard[] {
   })
 }
 
+function searchBrowseCards(
+  cards: readonly BrowseCard[],
+  query: string,
+): readonly BrowseCard[] {
+  const terms = query.trim().toLocaleLowerCase().split(/\s+/u).filter(Boolean)
+  if (terms.length === 0) return cards
+
+  return cards.filter((card) => {
+    const searchableText = [
+      card.literal,
+      ...card.onReadings,
+      ...card.kunReadings,
+      ...card.meanings,
+    ]
+      .join(' ')
+      .toLocaleLowerCase()
+    return terms.every((term) => searchableText.includes(term))
+  })
+}
+
 export function BrowseScreen({
   deckDefinitionId = 'dev-kanji',
 }: {
@@ -45,6 +65,7 @@ export function BrowseScreen({
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!runtime) return
@@ -66,6 +87,12 @@ export function BrowseScreen({
     }
   }, [runtime, deckDefinitionId])
 
+  const cards = useMemo(() => (deck ? toBrowseCards(deck) : []), [deck])
+  const filteredCards = useMemo(
+    () => searchBrowseCards(cards, query),
+    [cards, query],
+  )
+
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to browse.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
@@ -76,8 +103,6 @@ export function BrowseScreen({
       </main>
     )
 
-  const cards = toBrowseCards(deck)
-
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8 sm:px-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -85,7 +110,10 @@ export function BrowseScreen({
           <p className="font-jp-ui text-muted-foreground text-sm">一覧</p>
           <h1 className="font-display mt-1 text-3xl font-bold">Browse</h1>
           <p className="text-muted-foreground mt-2">
-            {deck.name} · {cards.length} cards
+            {deck.name} ·{' '}
+            {query.trim()
+              ? `${filteredCards.length} of ${cards.length} cards`
+              : `${cards.length} cards`}
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -93,10 +121,33 @@ export function BrowseScreen({
         </Button>
       </header>
 
+      <label className="grid gap-2" htmlFor="browse-search">
+        <span className="text-sm font-semibold">Search this deck</span>
+        <input
+          id="browse-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Kanji, reading, or meaning"
+          aria-label="Search this deck"
+          className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+          aria-describedby="browse-search-help"
+        />
+        <span id="browse-search-help" className="text-muted-foreground text-sm">
+          Search matches kanji, kana readings, and English meanings.
+        </span>
+      </label>
+
       {cards.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-8 text-center">
             This deck has no cards available in the installed content pack.
+          </CardContent>
+        </Card>
+      ) : filteredCards.length === 0 ? (
+        <Card>
+          <CardContent className="text-muted-foreground py-8 text-center">
+            No cards match “{query}”.
           </CardContent>
         </Card>
       ) : (
@@ -105,7 +156,7 @@ export function BrowseScreen({
           data-testid="browse-card-list"
           aria-label={`${deck.name} cards`}
         >
-          {cards.map((card) => {
+          {filteredCards.map((card) => {
             const level = card.state?.level ?? 0
             const flagged = card.state?.flagged ?? false
             const reading = [...card.onReadings, ...card.kunReadings].join('、')
