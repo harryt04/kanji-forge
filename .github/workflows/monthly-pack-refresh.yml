@@ -1,0 +1,47 @@
+name: Monthly pack refresh
+
+on:
+  schedule:
+    - cron: '17 3 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # This deliberately uses the full locked-source path, never a CI fixture.
+      - name: Refresh locked sources, rebuild packs, and assert publication artifacts
+        run: pnpm packs:refresh
+      - name: Rebuild twice from the refreshed locked cache
+        run: pnpm packs:repro
+      - name: Run pack and application tests
+        run: pnpm test && pnpm packs:test
+      - name: Open a PR only when the refresh changed tracked outputs
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/monthly-pack-refresh
+          delete-branch: true
+          title: 'chore(data): monthly pack refresh'
+          commit-message: 'chore(data): monthly pack refresh'
+          body: 'Automated locked-source refresh, full pack rebuild, assertions, and deterministic Brotli artifacts.'
+          add-paths: |
+            packs/**
+            scripts/build-packs/sources.lock.json
+            ATTRIBUTION.md
+            attribution.json

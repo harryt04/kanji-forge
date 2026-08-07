@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "maxBytes": {
+    "kanji": 6291456,
+    "words-core": 8388608,
+    "sentences": 16777216,
+    "strokes-v1": 12582912,
+    "similar": 1048576,
+    "decks": 1048576
+  },
+  "fixtureMaxBytes": {
+    "kanji": 1048576,
+    "words-core": 1048576,
+    "sentences": 1048576
+  }
+}

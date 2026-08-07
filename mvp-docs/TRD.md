@@ -399,12 +399,14 @@ Import tests deferred with import feature. Writing matcher tests deferred with w
 
 Resolve during build without reopening product scope:
 
-1. PGlite vs SQLite-WASM for **user** DB (both acceptable; pick one and document).
-2. Exact better-auth providers (email magic link vs password).
+1. Exact better-auth providers (email magic link vs password).
 
 **Resolved (moved out of “open” — see body):**
 - ~~cardStates synced as rows vs derived~~ → **derived only, never synced** (§5.1.1, §5.4).
 - ~~Saved-deck mechanism~~ → **`Saved` system deck + `deckMembership` table** (§5.1.1).
+- ~~PGlite vs SQLite-WASM for user DB~~ → **SQLite-WASM (`sql.js`) with user-scoped OPFS
+  persistence**; it reuses the project’s existing SQLite-WASM dependency/model and avoids adding
+  an otherwise-unused PGlite runtime. See `src/data/db/DECISION.md`.
 
 ---
 

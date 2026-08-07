@@ -1,0 +1,14 @@
+{
+  "id": "sentences",
+  "version": "v1",
+  "schemaVersion": 2,
+  "license": "CC BY 2.0 FR and CC BY-SA 4.0 (component-wise)",
+  "attribution": "Tatoeba Project sentences: CC BY 2.0 FR; JmdictFurigana alignment data: CC BY-SA 4.0. Modified: retained 100 readable Japanese–English pairs and their links. See packs-dev/README.md.",
+  "source": "Tatoeba/JmdictFurigana via packs/sentences-v1.sqlite; retained 100 readable JA-EN pairs and their links",
+  "sha256": "8e38fdd3371b716a7161164fd037f75d19c0c1fb906d03b99c354c3119a2577a",
+  "sizeBytes": 65536,
+  "stats": {
+    "sentenceCount": 100,
+    "linkCount": 224
+  }
+}

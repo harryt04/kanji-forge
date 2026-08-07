@@ -1,0 +1,15 @@
+{
+  "id": "words-core",
+  "version": "v1",
+  "schemaVersion": 1,
+  "license": "CC BY-SA 4.0",
+  "attribution": "JMdict — © Electronic Dictionary Research and Development Group, Monash University. CC BY-SA 4.0. Modified: retained 500 high-scoring entries and their forms/glosses. See packs-dev/README.md.",
+  "source": "JMdict via packs/words-core-v1.sqlite; retained 500 highest-scored entries and all their forms/glosses",
+  "sha256": "393ebbba9843f67b5906ad4e47428689d2a6ad702f7cf6d1466f2b9f3f5968f9",
+  "sizeBytes": 552960,
+  "stats": {
+    "entryCount": 500,
+    "formCount": 1216,
+    "glossCount": 2276
+  }
+}

@@ -1,0 +1,1 @@
+Fixture license text for deterministic pipeline validation.

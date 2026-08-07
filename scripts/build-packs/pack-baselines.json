@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "maxDriftPercent": 5,
+  "counts": {
+    "kanji": 13108,
+    "words-core": 30146,
+    "sentences": 19848
+  },
+  "fixtureCounts": {
+    "kanji": 200,
+    "words-core": 500,
+    "sentences": 100
+  }
+}

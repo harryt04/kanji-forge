@@ -1,0 +1,206 @@
+# Similar-kanji manual curation checklist
+
+Review the generated candidates for each of the 200 most frequent KANJIDIC2 kanji. Check useful confusions, remove false positives, and record any desired additions in the future curated override file.
+
+Generated deterministically from validated kanji-v1.sqlite, KanjiVG, and pinned Noto Serif JP; threshold 0.48, maximum six candidates.
+
+- [ ] 日 (freq 1): no generated matches
+- [ ] 一 (freq 2): no generated matches
+- [ ] 国 (freq 3): 固, 囹, 囿, 図, 困, 圀
+- [ ] 会 (freq 4): 伝, 企, 芸, 令, 价, 余
+- [ ] 人 (freq 5): no generated matches
+- [ ] 年 (freq 6): 幵, 平, 并, 午, 汗, 扞
+- [ ] 大 (freq 7): no generated matches
+- [ ] 十 (freq 8): no generated matches
+- [ ] 二 (freq 9): no generated matches
+- [ ] 本 (freq 10): 朮, 末, 未, 札, 林, 禾
+- [ ] 中 (freq 11): 司, 号, 石, 韋, 串, 谷
+- [ ] 長 (freq 12): no generated matches
+- [ ] 出 (freq 13): 凸, 凹, 凶
+- [ ] 三 (freq 14): no generated matches
+- [ ] 同 (freq 15): 向, 司, 叫, 咼, 吃, 冏
+- [ ] 時 (freq 16): 晦, 特, 畤, 晒, 峙, 晄
+- [ ] 政 (freq 17): 故, 放, 效, 敏, 攷, 改
+- [ ] 事 (freq 18): 亊, 妻, 争, 秉, 爭
+- [ ] 自 (freq 19): 眉, 鼎
+- [ ] 行 (freq 20): 衍
+- [ ] 社 (freq 21): 祉, 杜, 祈, 牡, 礼
+- [ ] 見 (freq 22): 覓, 覧, 視, 覽, 覚
+- [ ] 月 (freq 23): no generated matches
+- [ ] 分 (freq 24): 兮, 刃, 切
+- [ ] 議 (freq 25): 譱, 譲, 譯, 護, 譫, 譟
+- [ ] 後 (freq 26): 很, 律, 徊, 彼, 待, 徇
+- [ ] 前 (freq 27): 削, 則, 剪, 剋, 剌, 剃
+- [ ] 民 (freq 28): no generated matches
+- [ ] 生 (freq 29): no generated matches
+- [ ] 連 (freq 30): 速, 逐, 通, 追, 途, 造
+- [ ] 五 (freq 31): 于, 互, 亞, 云, 元, 亜
+- [ ] 発 (freq 32): 癸
+- [ ] 間 (freq 33): 閘, 閏, 閑, 閖, 開, 閔
+- [ ] 対 (freq 34): 寿, 吝, 斈
+- [ ] 上 (freq 35): 下, 止, 丐
+- [ ] 部 (freq 36): 郭, 郤, 都, 郵, 陪, 培
+- [ ] 東 (freq 37): 杲, 杳, 果, 林, 柚, 柬
+- [ ] 者 (freq 38): 考, 耆, 老, 坦, 昌, 坤
+- [ ] 党 (freq 39): 堂, 兌, 克
+- [ ] 地 (freq 40): 圸, 圭, 圷, 址, 在, 坏
+- [ ] 合 (freq 41): 含, 吟, 吉, 名, 台, 后
+- [ ] 市 (freq 42): 布, 帝, 帥, 師
+- [ ] 業 (freq 43): 楽, 椪, 楙, 楫, 槌, 棄
+- [ ] 内 (freq 44): 円, 丙, 册, 禸, 冉, 囘
+- [ ] 相 (freq 45): 眉, 眛, 看, 県, 省, 盻
+- [ ] 方 (freq 46): 立, 之, 衣, 亢, 亦
+- [ ] 四 (freq 47): 囚, 回, 因, 団, 圀, 困
+- [ ] 定 (freq 48): 実, 宝, 寔, 宗, 官, 宕
+- [ ] 今 (freq 49): 介, 令, 从, 以, 个, 仄
+- [ ] 回 (freq 50): 団, 因, 圍, 四, 囚, 圜
+- [ ] 新 (freq 51): 斯
+- [ ] 場 (freq 52): 塲, 揚, 堰, 湯, 暘, 陽
+- [ ] 金 (freq 53): no generated matches
+- [ ] 員 (freq 54): 唄, 囂, 貢, 屓, 頁, 唇
+- [ ] 九 (freq 55): no generated matches
+- [ ] 入 (freq 56): no generated matches
+- [ ] 選 (freq 57): 遷, 遺, 遵, 遼, 撰, 遯
+- [ ] 立 (freq 58): 衣, 方, 亦, 之, 主, 竝
+- [ ] 開 (freq 59): 間, 閏, 閔, 閑, 閖, 閙
+- [ ] 手 (freq 60): no generated matches
+- [ ] 米 (freq 61): no generated matches
+- [ ] 力 (freq 62): no generated matches
+- [ ] 学 (freq 63): 孛, 孚, 季, 孥, 孟, 字
+- [ ] 問 (freq 64): 啜, 唱, 啖, 啗, 啝, 唯
+- [ ] 高 (freq 65): 髞, 衰, 蒿
+- [ ] 代 (freq 66): 伐, 仕, 仔, 他, 仞, 付
+- [ ] 明 (freq 67): 昌, 旺, 昏, 易, 昂, 昭
+- [ ] 実 (freq 68): 官, 定, 宙, 宜, 宗, 宝
+- [ ] 円 (freq 69): 册, 内, 丹, 禸, 冉, 冊
+- [ ] 関 (freq 70): 閧, 閣, 閨, 閥, 閤, 閲
+- [ ] 決 (freq 71): 沃, 汰, 泱, 沈, 快, 浹
+- [ ] 子 (freq 72): 孑
+- [ ] 動 (freq 73): 勒, 勲, 勘, 勳, 勤, 勗
+- [ ] 京 (freq 74): 享, 亰, 亨, 亭, 亮, 㐬
+- [ ] 全 (freq 75): 合, 企
+- [ ] 目 (freq 76): no generated matches
+- [ ] 表 (freq 77): 衷, 衰, 裘, 哀, 袰, 袁
+- [ ] 戦 (freq 78): 戠, 戟, 戡, 戰, 截, 禅
+- [ ] 経 (freq 79): 組, 紳, 紲, 細, 終, 紬
+- [ ] 通 (freq 80): 連, 逐, 速, 途, 逝, 逓
+- [ ] 外 (freq 81): 夘, 多, 夛
+- [ ] 最 (freq 82): 曼, 替, 曾, 娶, 娵, 掫
+- [ ] 言 (freq 83): 呂, 谷, 豆, 告, 杏, 韋
+- [ ] 氏 (freq 84): no generated matches
+- [ ] 現 (freq 85): 視, 琢, 理, 珸, 琉, 規
+- [ ] 理 (freq 86): 琅, 琢, 球, 現, 珸, 琉
+- [ ] 調 (freq 87): 論, 課, 諌, 談, 諂, 請
+- [ ] 体 (freq 88): 休, 佐, 住, 作, 佑, 伸
+- [ ] 化 (freq 89): 北, 比
+- [ ] 田 (freq 90): 由, 甲
+- [ ] 当 (freq 91): no generated matches
+- [ ] 八 (freq 92): no generated matches
+- [ ] 六 (freq 93): 兮, 公
+- [ ] 約 (freq 94): 糾, 紂, 紅, 紀, 紆, 級
+- [ ] 主 (freq 95): 立, 玉, 丼
+- [ ] 題 (freq 96): 顕, 類, 顋, 顎, 顆, 額
+- [ ] 下 (freq 97): 上, 丐, 止, 丁
+- [ ] 首 (freq 98): 臭, 馗, 夏, 眉
+- [ ] 意 (freq 99): 暗, 憶, 惷, 惠, 慈, 愚
+- [ ] 法 (freq 100): 沫, 治, 怯, 泱, 波, 泣
+- [ ] 不 (freq 101): 丕
+- [ ] 来 (freq 102): 束, 李, 朱, 条, 杢, 杣
+- [ ] 作 (freq 103): 低, 体, 伸, 住, 佑, 佇
+- [ ] 性 (freq 104): 怙, 怏, 怺, 怛, 怜, 怫
+- [ ] 的 (freq 105): 皈, 皀, 岶, 皇, 皃
+- [ ] 要 (freq 106): 姦
+- [ ] 用 (freq 107): no generated matches
+- [ ] 制 (freq 108): 刷, 刺, 刹, 到, 刻, 刳
+- [ ] 治 (freq 109): 沿, 沽, 沾, 沼, 洽, 河
+- [ ] 度 (freq 110): 庶, 庠, 庚, 席, 底, 庫
+- [ ] 務 (freq 111): 勒, 動, 勗, 勘
+- [ ] 強 (freq 112): 張, 弸, 蛆, 弧, 掻, 弾
+- [ ] 気 (freq 113): 氣
+- [ ] 小 (freq 114): no generated matches
+- [ ] 七 (freq 115): no generated matches
+- [ ] 成 (freq 116): 我, 戎, 戍, 戌, 戊, 戔
+- [ ] 期 (freq 117): 朞, 斯, 朝, 欺, 棊, 棋
+- [ ] 公 (freq 118): 兮, 允, 六
+- [ ] 持 (freq 119): 拷, 挂, 恃, 拵, 峙, 待
+- [ ] 野 (freq 120): 量
+- [ ] 協 (freq 121): 恊, 卓, 卒, 卑
+- [ ] 取 (freq 122): 叔, 受, 叙, 双, 叟, 及
+- [ ] 都 (freq 123): 郵, 堵, 郭, 猪, 部, 著
+- [ ] 和 (freq 124): 味, 啝, 呆, 咋, 呼, 咒
+- [ ] 統 (freq 125): 絖, 絞, 絵, 結, 絲, 絨
+- [ ] 以 (freq 126): 令, 从, 今, 介, 仄, 囚
+- [ ] 機 (freq 127): 樸, 橢, 磯, 橄, 橸, 橇
+- [ ] 平 (freq 128): 幵, 年, 午, 并, 干, 幸
+- [ ] 総 (freq 129): 聡, 綾, 緋, 維, 綸, 綛
+- [ ] 加 (freq 130): 功, 劼, 劬, 勅, 劭, 司
+- [ ] 山 (freq 131): no generated matches
+- [ ] 思 (freq 132): 急, 怎, 怱, 怒, 怨, 恐
+- [ ] 家 (freq 133): 宦, 宸, 害, 宮, 宴, 宵
+- [ ] 話 (freq 134): 詰, 詬, 詣, 詩, 該, 誄
+- [ ] 世 (freq 135): 甘, 丗, 且, 丘
+- [ ] 受 (freq 136): 取, 叔, 爰
+- [ ] 区 (freq 137): 匹, 區
+- [ ] 領 (freq 138): 頗, 頚, 預, 頓, 頒, 頤
+- [ ] 多 (freq 139): 夛, 夙, 夘, 外, 名
+- [ ] 県 (freq 140): 省, 眇, 眉, 盻, 看, 相
+- [ ] 続 (freq 141): 継, 綉, 絳, 絖, 綏, 絹
+- [ ] 進 (freq 142): 逸, 逮, 造, 週, 連, 逞
+- [ ] 正 (freq 143): 止, 此, 疋, 武, 凪, 企
+- [ ] 安 (freq 144): 守, 宅, 宏, 宴, 宋, 宇
+- [ ] 設 (freq 145): 訟, 訪, 訳, 訣, 訛, 許
+- [ ] 保 (freq 146): 侶, 促, 俗, 信, 俣, 係
+- [ ] 改 (freq 147): 攸, 收, 攷, 攻, 放, 孜
+- [ ] 数 (freq 148): 敢, 散, 敝, 敞, 數, 敦
+- [ ] 記 (freq 149): 訖, 訊, 訌, 討, 訓, 訐
+- [ ] 院 (freq 150): 浣, 陝, 陜, 莞, 陣, 降
+- [ ] 女 (freq 151): no generated matches
+- [ ] 初 (freq 152): 刧, 切, 刪, 別, 朷
+- [ ] 北 (freq 153): 比, 化, 尼
+- [ ] 午 (freq 154): 平, 卆, 年, 千, 南, 卅
+- [ ] 指 (freq 155): 括, 担, 抽, 拍, 捏, 挧
+- [ ] 権 (freq 156): 椎, 樵, 櫂, 樅, 權, 横
+- [ ] 心 (freq 157): 必
+- [ ] 界 (freq 158): 畍, 畏, 畐, 畋, 畑, 畉
+- [ ] 支 (freq 159): 攴, 友
+- [ ] 第 (freq 160): 笛, 笙, 笥, 笞, 笠, 笨
+- [ ] 産 (freq 161): no generated matches
+- [ ] 結 (freq 162): 絡, 給, 絲, 絶, 綢, 紿
+- [ ] 百 (freq 163): 皀, 白, 皇, 皃, 皙, 皆
+- [ ] 派 (freq 164): 洒, 洫, 津, 海, 洩, 浄
+- [ ] 点 (freq 165): 為, 炯, 烏, 炬
+- [ ] 教 (freq 166): 敖, 敕, 救, 敘, 敦, 敗
+- [ ] 報 (freq 167): 執, 塀, 堅, 堪, 堰, 逹
+- [ ] 済 (freq 168): 涼, 液, 淳, 淬, 淆, 斎
+- [ ] 書 (freq 169): 晝, 曽, 曹, 曼, 會
+- [ ] 府 (freq 170): 庖, 庚, 店, 底, 庠, 序
+- [ ] 活 (freq 171): 洽, 濶, 洛, 洒, 浴, 恬
+- [ ] 原 (freq 172): 厘, 厚, 厖, 厠, 愿
+- [ ] 先 (freq 173): 免, 光, 兎, 兆, 兀, 充
+- [ ] 共 (freq 174): 兮, 并, 兵, 关, 儿, 與
+- [ ] 得 (freq 175): 徘, 徠, 復, 從, 徙, 徨
+- [ ] 解 (freq 176): 觧, 触, 觚, 觝, 觜
+- [ ] 名 (freq 177): 后, 合, 各, 呂, 吏, 吉
+- [ ] 交 (freq 178): 亦, 亥, 㐬
+- [ ] 資 (freq 179): 賈, 賃, 貲, 賀, 貴, 貿
+- [ ] 予 (freq 180): 矛
+- [ ] 川 (freq 181): no generated matches
+- [ ] 向 (freq 182): 同, 叫, 吃, 咼, 吉, 名
+- [ ] 際 (freq 183): 隠, 障, 隙, 蔡, 阻, 察
+- [ ] 査 (freq 184): 柤, 柬, 柢, 栂, 枷, 某
+- [ ] 勝 (freq 185): 椦, 勤, 劵, 勞, 募, 動
+- [ ] 面 (freq 186): no generated matches
+- [ ] 委 (freq 187): 妹, 妾, 妻, 姓, 妛, 姐
+- [ ] 告 (freq 188): 吽, 含, 吾, 否, 吉, 吝
+- [ ] 軍 (freq 189): 軌, 軋, 轟
+- [ ] 文 (freq 190): 爻, 攵
+- [ ] 反 (freq 191): 友, 双, 収, 及, 叉, 叟
+- [ ] 元 (freq 192): 兀, 允, 兄, 无, 五, 先
+- [ ] 重 (freq 193): 乗
+- [ ] 近 (freq 194): 返, 迎, 逝, 追, 迪, 述
+- [ ] 千 (freq 195): 干, 卍, 廾, 升, 卆, 午
+- [ ] 考 (freq 196): 老, 者, 耂
+- [ ] 判 (freq 197): 別, 刪, 利, 刑, 刳, 刋
+- [ ] 認 (freq 198): 誌, 語, 誤, 誣, 誦, 誥
+- [ ] 画 (freq 199): 畄, 畏, 男, 畐, 畑, 甼
+- [ ] 海 (freq 200): 津, 派, 洟, 洩, 浄, 洒
