@@ -18,7 +18,7 @@
  *   npx tsx scripts/build-packs/build-names-pack.ts
  */
 
-console.log('names builder stub — not implemented in T0.4');
-console.log('JMnedict pack is optional per DATA-SOURCES.md §2.3');
-console.log('To implement: parse name_elem/readings, tier by frequency');
-process.exit(0);
+console.log('names builder stub — not implemented in T0.4')
+console.log('JMnedict pack is optional per DATA-SOURCES.md §2.3')
+console.log('To implement: parse name_elem/readings, tier by frequency')
+process.exit(0)

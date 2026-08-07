@@ -4,4 +4,4 @@
  * TODO(T3.0): Implement romaji for dictionary search.
  */
 
-export const ROMAJI_STUB = true;
+export const ROMAJI_STUB = true

@@ -209,9 +209,6 @@
   "provenance": {
     "license": "CC BY-SA 4.0",
     "source": "kanjidic2",
-    "generatedFrom": [
-      "kanji-v1.sqlite",
-      "words-core-v1.sqlite"
-    ]
+    "generatedFrom": ["kanji-v1.sqlite", "words-core-v1.sqlite"]
   }
 }

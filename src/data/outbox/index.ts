@@ -5,11 +5,12 @@
  */
 
 export interface OutboxFlusher {
-  stop(): void;
+  stop(): void
 }
 
 /** T1.1 lifecycle seam; T1.4 supplies queueing and authenticated retries. */
 export function startOutboxFlusher(userId: string): OutboxFlusher {
-  if (!userId.trim()) throw new Error('A user id is required for outbox flushing.');
-  return { stop() {} };
+  if (!userId.trim())
+    throw new Error('A user id is required for outbox flushing.')
+  return { stop() {} }
 }

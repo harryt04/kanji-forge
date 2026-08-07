@@ -1,7 +1,10 @@
 /** SQLite-WASM schema for one authenticated user's local database. */
-export const USER_DATABASE_SCHEMA_VERSION = 1;
+export const USER_DATABASE_SCHEMA_VERSION = 1
 
-export const USER_DATABASE_MIGRATIONS: readonly { readonly version: number; readonly sql: readonly string[] }[] = [
+export const USER_DATABASE_MIGRATIONS: readonly {
+  readonly version: number
+  readonly sql: readonly string[]
+}[] = [
   {
     version: 1,
     sql: [
@@ -18,4 +21,4 @@ export const USER_DATABASE_MIGRATIONS: readonly { readonly version: number; read
       'CREATE INDEX IF NOT EXISTS outbox_pending ON outbox(created_at)',
     ],
   },
-];
+]

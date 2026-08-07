@@ -4,4 +4,4 @@
  * TODO(T8.0): Implement with import feature (v2).
  */
 
-export const PARSE_STUB = true;
+export const PARSE_STUB = true

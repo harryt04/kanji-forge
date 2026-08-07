@@ -4,4 +4,4 @@
  * TODO(T2.0): Implement TileWall component and list view with virtualization.
  */
 
-export const BROWSE_STUB = true;
+export const BROWSE_STUB = true

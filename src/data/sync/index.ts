@@ -5,7 +5,7 @@
  */
 
 export interface ShapeSubscription {
-  stop(): void;
+  stop(): void
 }
 
 /**
@@ -13,6 +13,7 @@ export interface ShapeSubscription {
  * The user id is required now so a future shape cannot accidentally be global.
  */
 export function startShapeSubscription(userId: string): ShapeSubscription {
-  if (!userId.trim()) throw new Error('A user id is required for shape subscriptions.');
-  return { stop() {} };
+  if (!userId.trim())
+    throw new Error('A user id is required for shape subscriptions.')
+  return { stop() {} }
 }

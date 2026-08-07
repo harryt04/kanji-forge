@@ -4,4 +4,4 @@
  * TODO(T5.0): Initialize Serwist, set up precaching strategy.
  */
 
-export const PWA_STUB = true;
+export const PWA_STUB = true

@@ -4,4 +4,4 @@
  * TODO(T0.0): Implement pack builder from DATA-SOURCES.md §11.
  */
 
-export const PACKS_BUILD_STUB = true;
+export const PACKS_BUILD_STUB = true

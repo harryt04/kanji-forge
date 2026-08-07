@@ -4,6 +4,6 @@ const nextConfig = {
   images: { unoptimized: true },
   reactStrictMode: true,
   experimental: { optimizePackageImports: ['motion'] },
-};
+}
 
-export default nextConfig;
+export default nextConfig

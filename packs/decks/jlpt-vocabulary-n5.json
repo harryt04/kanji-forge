@@ -663,9 +663,6 @@
   "provenance": {
     "license": "CC BY-SA 4.0",
     "source": "jlpt-vocab-yomitan",
-    "generatedFrom": [
-      "kanji-v1.sqlite",
-      "words-core-v1.sqlite"
-    ]
+    "generatedFrom": ["kanji-v1.sqlite", "words-core-v1.sqlite"]
   }
 }

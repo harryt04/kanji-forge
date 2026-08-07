@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 
 export default function BrowsePage(): React.ReactElement {
   return (
@@ -6,5 +6,5 @@ export default function BrowsePage(): React.ReactElement {
       <h1>Browse</h1>
       <p>TODO(T2.0): Implement browse screen with tile and list views</p>
     </main>
-  );
+  )
 }

@@ -214,10 +214,7 @@
       "provenance": {
         "license": "CC BY-SA 4.0",
         "attribution": "KanjiForge development fixture: a small, mechanically filtered derivative of the separately licensed upstream packs. See packs-dev/README.md.",
-        "generatedFrom": [
-          "kanji-v1.sqlite",
-          "words-core-v1.sqlite"
-        ]
+        "generatedFrom": ["kanji-v1.sqlite", "words-core-v1.sqlite"]
       }
     },
     {
@@ -731,10 +728,7 @@
       "provenance": {
         "license": "CC BY-SA 4.0",
         "attribution": "KanjiForge development fixture: a small, mechanically filtered derivative of the separately licensed upstream packs. See packs-dev/README.md.",
-        "generatedFrom": [
-          "kanji-v1.sqlite",
-          "words-core-v1.sqlite"
-        ]
+        "generatedFrom": ["kanji-v1.sqlite", "words-core-v1.sqlite"]
       }
     }
   ]

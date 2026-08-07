@@ -4,4 +4,4 @@
  * TODO(T7.0): Implement history charts and retention diagnostics (v2).
  */
 
-export const HISTORY_STUB = true;
+export const HISTORY_STUB = true

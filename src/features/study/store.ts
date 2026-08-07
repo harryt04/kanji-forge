@@ -1,48 +1,58 @@
-import { create } from 'zustand';
-import { applyGrade } from '@/core/srs/grade';
-import { buildQueue, requeueAfterAgain, type QueueCard } from '@/core/srs/queue';
-import { nextDue } from '@/core/srs/schedule';
-import { DEFAULT_SRS_CONFIG, emptyCardState, type Grade } from '@/core/srs/types';
-import type { UserRepositories } from '@/data/repo';
-import { getDeviceId } from '@/lib/device-id';
-import { toCoreState, toRepoState } from './adapters';
-import type { LoadedDeck, StudyCard } from './deck-loader';
+import { create } from 'zustand'
+import { applyGrade } from '@/core/srs/grade'
+import { buildQueue, requeueAfterAgain, type QueueCard } from '@/core/srs/queue'
+import { nextDue } from '@/core/srs/schedule'
+import {
+  DEFAULT_SRS_CONFIG,
+  emptyCardState,
+  type Grade,
+} from '@/core/srs/types'
+import type { UserRepositories } from '@/data/repo'
+import { getDeviceId } from '@/lib/device-id'
+import { toCoreState, toRepoState } from './adapters'
+import type { LoadedDeck, StudyCard } from './deck-loader'
 
 export interface SessionSummary {
-  readonly seen: number;
-  readonly correct: number;
-  readonly incorrect: number;
-  readonly wentGreen: number;
-  readonly wentRed: number;
+  readonly seen: number
+  readonly correct: number
+  readonly incorrect: number
+  readonly wentGreen: number
+  readonly wentRed: number
 }
 
 interface UndoEntry {
-  readonly queueSnapshot: readonly QueueCard[];
-  readonly indexSnapshot: number;
-  readonly summarySnapshot: SessionSummary;
-  readonly deckId: string;
-  readonly contentRef: string;
-  readonly restoreToLevel: 0 | 1 | 2 | 3 | 4;
+  readonly queueSnapshot: readonly QueueCard[]
+  readonly indexSnapshot: number
+  readonly summarySnapshot: SessionSummary
+  readonly deckId: string
+  readonly contentRef: string
+  readonly restoreToLevel: 0 | 1 | 2 | 3 | 4
 }
 
 interface StudyState {
-  deckId: string | null;
-  deckName: string;
-  content: ReadonlyMap<string, StudyCard>;
-  queue: QueueCard[];
-  index: number;
-  revealed: boolean;
-  finished: boolean;
-  summary: SessionSummary;
-  lastGrade: UndoEntry | null;
-  start(loaded: LoadedDeck): void;
-  reveal(): void;
-  grade(repo: UserRepositories, grade: Grade): Promise<void>;
-  undo(repo: UserRepositories): Promise<void>;
-  finish(): void;
+  deckId: string | null
+  deckName: string
+  content: ReadonlyMap<string, StudyCard>
+  queue: QueueCard[]
+  index: number
+  revealed: boolean
+  finished: boolean
+  summary: SessionSummary
+  lastGrade: UndoEntry | null
+  start(loaded: LoadedDeck): void
+  reveal(): void
+  grade(repo: UserRepositories, grade: Grade): Promise<void>
+  undo(repo: UserRepositories): Promise<void>
+  finish(): void
 }
 
-const emptySummary: SessionSummary = { seen: 0, correct: 0, incorrect: 0, wentGreen: 0, wentRed: 0 };
+const emptySummary: SessionSummary = {
+  seen: 0,
+  correct: 0,
+  incorrect: 0,
+  wentGreen: 0,
+  wentRed: 0,
+}
 
 export const useStudyStore = create<StudyState>((set, get) => ({
   deckId: null,
@@ -56,20 +66,20 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   lastGrade: null,
 
   start(loaded) {
-    const now = Date.now();
+    const now = Date.now()
     const queueCards: QueueCard[] = loaded.cards.map((card, order) => ({
       deckId: card.deckId,
       stickyId: card.contentRef,
       state: card.state ? toCoreState(card.state) : undefined,
       order,
       characters: [loaded.content.get(card.contentRef)?.literal ?? ''],
-    }));
+    }))
     const queue = buildQueue(queueCards, {
       now,
       config: DEFAULT_SRS_CONFIG,
       dayOfYear: Math.floor(now / 86_400_000),
       dailyGoal: DEFAULT_SRS_CONFIG.newPerSession,
-    });
+    })
     set({
       deckId: loaded.deckId,
       deckName: loaded.name,
@@ -80,30 +90,40 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       finished: queue.length === 0,
       summary: emptySummary,
       lastGrade: null,
-    });
+    })
   },
 
   reveal() {
-    set({ revealed: true });
+    set({ revealed: true })
   },
 
   async grade(repo, grade) {
-    const state = get();
-    const card = state.queue[state.index];
-    if (!card || !state.deckId) return;
+    const state = get()
+    const card = state.queue[state.index]
+    if (!card || !state.deckId) return
 
-    const queueSnapshot = state.queue;
-    const indexSnapshot = state.index;
-    const summarySnapshot = state.summary;
+    const queueSnapshot = state.queue
+    const indexSnapshot = state.index
+    const summarySnapshot = state.summary
 
-    const now = Date.now();
-    const deviceId = getDeviceId();
-    const before = card.state ?? emptyCardState(card.deckId, card.stickyId, deviceId);
-    const redCount = state.queue.filter((entry) => (entry.state?.level ?? 0) === 0).length;
-    const after = applyGrade({ state: before, grade, config: DEFAULT_SRS_CONFIG, redCount, at: now, deviceId });
-    after.dueAt = nextDue(after.level, DEFAULT_SRS_CONFIG, now);
+    const now = Date.now()
+    const deviceId = getDeviceId()
+    const before =
+      card.state ?? emptyCardState(card.deckId, card.stickyId, deviceId)
+    const redCount = state.queue.filter(
+      (entry) => (entry.state?.level ?? 0) === 0,
+    ).length
+    const after = applyGrade({
+      state: before,
+      grade,
+      config: DEFAULT_SRS_CONFIG,
+      redCount,
+      at: now,
+      deviceId,
+    })
+    after.dueAt = nextDue(after.level, DEFAULT_SRS_CONFIG, now)
 
-    const reviewId = crypto.randomUUID();
+    const reviewId = crypto.randomUUID()
     await repo.recordGrade({
       review: {
         id: reviewId,
@@ -114,7 +134,9 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         levelBefore: before.level,
         levelAfter: after.level,
         intervalBefore: before.dueAt ? Math.max(0, before.dueAt - now) : 0,
-        elapsedDays: before.lastReviewedAt ? (now - before.lastReviewedAt) / 86_400_000 : 0,
+        elapsedDays: before.lastReviewedAt
+          ? (now - before.lastReviewedAt) / 86_400_000
+          : 0,
         responseMs: 0,
         source: 'study',
         deviceId,
@@ -124,29 +146,40 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       mutation: {
         id: reviewId,
         mutType: 'review.append',
-        payload: JSON.stringify({ deckId: card.deckId, contentRef: card.stickyId, grade, at: now }),
+        payload: JSON.stringify({
+          deckId: card.deckId,
+          contentRef: card.stickyId,
+          grade,
+          at: now,
+        }),
         createdAt: now,
         attempts: 0,
       },
-    });
+    })
 
-    const updatedCard: QueueCard = { ...card, state: after };
-    let queue = [...state.queue];
-    queue[state.index] = updatedCard;
-    let nextIndex = state.index + 1;
+    const updatedCard: QueueCard = { ...card, state: after }
+    let queue = [...state.queue]
+    queue[state.index] = updatedCard
+    let nextIndex = state.index + 1
     if (grade === 'again') {
-      const withoutCurrent = queue.filter((_entry, position) => position !== state.index);
-      queue = requeueAfterAgain(withoutCurrent, updatedCard, before.lapses + 1);
-      nextIndex = state.index; // the next card has shifted into this position
+      const withoutCurrent = queue.filter(
+        (_entry, position) => position !== state.index,
+      )
+      queue = requeueAfterAgain(withoutCurrent, updatedCard, before.lapses + 1)
+      nextIndex = state.index // the next card has shifted into this position
     }
 
     const summary: SessionSummary = {
       seen: state.summary.seen + 1,
       correct: state.summary.correct + (grade === 'again' ? 0 : 1),
       incorrect: state.summary.incorrect + (grade === 'again' ? 1 : 0),
-      wentGreen: state.summary.wentGreen + (after.level === 4 && before.level !== 4 ? 1 : 0),
-      wentRed: state.summary.wentRed + (after.level === 0 && before.level !== 0 ? 1 : 0),
-    };
+      wentGreen:
+        state.summary.wentGreen +
+        (after.level === 4 && before.level !== 4 ? 1 : 0),
+      wentRed:
+        state.summary.wentRed +
+        (after.level === 0 && before.level !== 0 ? 1 : 0),
+    }
 
     set({
       queue,
@@ -162,16 +195,16 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         restoreToLevel: before.level,
       },
       finished: nextIndex >= queue.length,
-    });
+    })
   },
 
   async undo(repo) {
-    const entry = get().lastGrade;
-    if (!entry) return;
+    const entry = get().lastGrade
+    if (!entry) return
 
-    const now = Date.now();
-    const deviceId = getDeviceId();
-    const reviewId = crypto.randomUUID();
+    const now = Date.now()
+    const deviceId = getDeviceId()
+    const reviewId = crypto.randomUUID()
     // A manual-source review is an absolute level assignment in replay() (SRS-SPEC), so this
     // compensating record restores the pre-grade level without deleting review history.
     await repo.recordGrade({
@@ -190,7 +223,8 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         deviceId,
       },
       nextState: toRepoState({
-        ...(entry.queueSnapshot[entry.indexSnapshot]?.state ?? emptyCardState(entry.deckId, entry.contentRef, deviceId)),
+        ...(entry.queueSnapshot[entry.indexSnapshot]?.state ??
+          emptyCardState(entry.deckId, entry.contentRef, deviceId)),
         level: entry.restoreToLevel,
         updatedAt: now,
         updatedBy: deviceId,
@@ -200,11 +234,15 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       mutation: {
         id: reviewId,
         mutType: 'review.append',
-        payload: JSON.stringify({ undo: true, deckId: entry.deckId, contentRef: entry.contentRef }),
+        payload: JSON.stringify({
+          undo: true,
+          deckId: entry.deckId,
+          contentRef: entry.contentRef,
+        }),
         createdAt: now,
         attempts: 0,
       },
-    });
+    })
 
     set({
       queue: [...entry.queueSnapshot],
@@ -213,10 +251,10 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       revealed: false,
       finished: false,
       lastGrade: null,
-    });
+    })
   },
 
   finish() {
-    set({ finished: true });
+    set({ finished: true })
   },
-}));
+}))

@@ -4,4 +4,4 @@
  * TODO(T3.0): Implement dictionary search UI and entry detail.
  */
 
-export const DICTIONARY_STUB = true;
+export const DICTIONARY_STUB = true

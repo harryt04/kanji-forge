@@ -5,31 +5,275 @@
   "title": "Data sources",
   "intro": "KanjiForge is built on open Japanese-language data. The pack files are self-describing; this catalog is the offline screen data.",
   "licenses": [
-    { "id": "cc-by-sa-4.0", "name": "Creative Commons Attribution-ShareAlike 4.0 International", "spdx": "CC-BY-SA-4.0", "url": "https://creativecommons.org/licenses/by-sa/4.0/" },
-    { "id": "cc-by-sa-3.0", "name": "Creative Commons Attribution-ShareAlike 3.0 Unported", "spdx": "CC-BY-SA-3.0", "url": "https://creativecommons.org/licenses/by-sa/3.0/" },
-    { "id": "cc-by-2.0-fr", "name": "Creative Commons Attribution 2.0 France", "spdx": "CC-BY-2.0-FR", "url": "https://creativecommons.org/licenses/by/2.0/fr/" },
-    { "id": "mit", "name": "MIT License", "spdx": "MIT", "url": "https://opensource.org/license/mit/" },
-    { "id": "ofl-1.1", "name": "SIL Open Font License 1.1", "spdx": "OFL-1.1", "url": "https://openfontlicense.org/open-font-license-official-text/" }
+    {
+      "id": "cc-by-sa-4.0",
+      "name": "Creative Commons Attribution-ShareAlike 4.0 International",
+      "spdx": "CC-BY-SA-4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "id": "cc-by-sa-3.0",
+      "name": "Creative Commons Attribution-ShareAlike 3.0 Unported",
+      "spdx": "CC-BY-SA-3.0",
+      "url": "https://creativecommons.org/licenses/by-sa/3.0/"
+    },
+    {
+      "id": "cc-by-2.0-fr",
+      "name": "Creative Commons Attribution 2.0 France",
+      "spdx": "CC-BY-2.0-FR",
+      "url": "https://creativecommons.org/licenses/by/2.0/fr/"
+    },
+    {
+      "id": "mit",
+      "name": "MIT License",
+      "spdx": "MIT",
+      "url": "https://opensource.org/license/mit/"
+    },
+    {
+      "id": "ofl-1.1",
+      "name": "SIL Open Font License 1.1",
+      "spdx": "OFL-1.1",
+      "url": "https://openfontlicense.org/open-font-license-official-text/"
+    }
   ],
   "sources": [
-    { "id": "kanjidic2", "name": "KANJIDIC2", "copyright": "Electronic Dictionary Research and Development Group, Monash University", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0", "url": "http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz", "pinned": "2026-07-25", "sha256": "79074f594fffe353bedde8c1019c186d3fe1d8b127f9c762011d1571e46fb5df", "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640", "use": "Kanji literals, codepoints, radicals, grades, stroke counts, frequency, readings, nanori and English meanings.", "modification": "Converted to SQLite; omitted selected fields and stripped all qc_type=skip and qc_type=misclass entries." },
-    { "id": "jmdict", "name": "JMdict_e (English only)", "copyright": "Electronic Dictionary Research and Development Group, Monash University", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0", "url": "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz", "pinned": "2026-07-25", "sha256": "a27e7429f35b69af5b3e092464369ee5f9f5c3269e8fcd1de2c71f502ce27603", "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640", "use": "English dictionary entries, forms, senses, glosses and commonness tags.", "modification": "Converted to SQLite with FTS; English-only fields retained, uncommon entries filtered, commonScore derived." },
-    { "id": "jmnedict", "name": "JMnedict", "copyright": "Electronic Dictionary Research and Development Group, Monash University", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0", "url": "http://ftp.edrdg.org/pub/Nihongo/JMnedict.xml.gz", "pinned": "2026-07-25", "sha256": "7fd1b381b348b44d09730924968ea3f509b63756c3f7aeebd61b386b1f049cd4", "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640", "use": "No JMnedict data is present in the current shipped manifests; it is recorded for the optional names pack.", "modification": "None shipped in MVP." },
-    { "id": "kradfile", "name": "KRADFILE / RADKFILE", "copyright": "Electronic Dictionary Research and Development Group, Monash University", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0", "url": "http://ftp.edrdg.org/pub/Nihongo/kradfile.gz", "pinned": "2026-07-25", "sha256": "0c5487c1de77e36ffb5bde652f469f2de9c52efc8320137c115506f3500e9c5f", "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640", "use": "Radical/component lookup backing multi-radical search.", "modification": "Derived lookup data; the separate RADKFILE archive is pinned in sources.lock.json." },
-    { "id": "radkfile", "name": "RADKFILE", "copyright": "Electronic Dictionary Research and Development Group, Monash University", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0", "url": "http://ftp.edrdg.org/pub/Nihongo/radkfile.gz", "pinned": "2026-07-25", "sha256": "20baf276a98173466c29c373668e044719809f510487695fe40abfd0269a004e", "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640", "use": "Radical/component lookup provenance.", "modification": "Pinned as a separate upstream input; no standalone output pack is currently shipped." },
-    { "id": "kanjivg", "name": "KanjiVG", "copyright": "Ulrich Apel", "license": "cc-by-sa-3.0", "licenseName": "CC BY-SA 3.0", "url": "https://github.com/KanjiVG/kanjivg/releases/download/r20260714/kanjivg-20260714-all.zip", "pinned": "r20260714", "sha256": "534bd222052f4960747ff624014e426b08052164a837b15044f58517e85e4db5", "licenseHash": "d255e07978fd16ddfec38bc59dc9d857b885dd44ddbf4e79baf207d30746bdcc", "use": "Ordered stroke paths, stroke start points and component trees; also input to similar-kanji generation.", "modification": "Paths normalized to 109x109 and re-encoded; stored separately from CC BY-SA 4.0 packs." },
-    { "id": "tatoeba", "name": "Tatoeba Project", "copyright": "Tatoeba contributors", "license": "cc-by-2.0-fr", "licenseName": "CC BY 2.0 FR", "url": "https://downloads.tatoeba.org/exports/", "pinned": "2026-07-25", "licenseHash": "58be7312a781d26af1709feda2ac63b3655b71694b7fe77c06bf1d33048ddf21", "use": "Japanese sentences, English links and WWWJDIC sense indices; includes Tanaka Corpus JA-EN examples. The pinned sentences_detailed.csv export supplies authors for each retained Japanese and English sentence ID.", "modification": "Filtered to length 6-30, at least one English translation and at most five per sense, ranked by readability. The sentences pack stores id/ja_author and en_sentence_id/en_author for every shipped pair." },
-    { "id": "jmdictfurigana", "name": "JmdictFurigana alignment data", "copyright": "Doublevil; derived from JMdict / Electronic Dictionary Research and Development Group, Monash University", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0 (JMdict-derived data; repository code is MIT)", "url": "https://github.com/Doublevil/JmdictFurigana", "pinned": "2.3.1+2026-07-25", "sha256": "fc02519134ba75389db1885127cd06b8beb3e4f1922c68c510b73f3b7175b01a", "licenseHash": "c7d0d41a2df5c30b2d9c45dabc224103fa897021ab444fc0f109feb89b64f190", "use": "JMdict-derived per-character furigana alignments for dictionary forms.", "modification": "Applied alignments to filtered sentence/dictionary records. The upstream repository's MIT code license does not replace CC BY-SA 4.0 obligations for the alignment data." },
-    { "id": "jlpt-kanji-data", "name": "JLPT Kanji Data (davidluzgouveia)", "copyright": "davidluzgouveia; derived from Jonathan Waller's JLPT Resources", "license": "mit", "licenseName": "MIT", "url": "https://api.github.com/repos/davidluzgouveia/kanji-data/tarball/00fd7079c3890f430759536f91aa5e854ec0ca4f", "pinned": "00fd7079c3890f430759536f91aa5e854ec0ca4f", "sha256": "295ac92063a30cddd293fa238ca7971a8c674c6135dd05d92d16e2a806046970", "licenseHash": "80f8d60f8c15f5c497ff95608a3e7d6c02653e991be10448eccb0bb557362a8c", "use": "JLPT kanji deck membership.", "modification": "Resolved against the kanji pack and pinned as an explicitly unofficial community estimate." },
-    { "id": "jlpt-vocab-yomitan", "name": "JLPT Vocabulary (yomitan)", "copyright": "yomitan contributors; derived from Jonathan Waller's JLPT Resources", "license": "cc-by-sa-4.0", "licenseName": "CC BY-SA 4.0", "url": "https://github.com/stephenmk/yomitan-jlpt-vocab/releases/download/2025.08.01.0/jlpt.zip", "pinned": "2025.08.01.0", "sha256": "b475e2605fbf6d5372bd1d16153981f3924a1237715d33dd44f3312f70a61ce5", "licenseHash": "5704a57be1e85040c709008c5d643a78f6e6db9ebadbd85d5bfa62127a0a5ef4", "use": "JLPT vocabulary deck membership.", "modification": "Resolved against words-core and pinned as an explicitly unofficial community estimate; unresolved entries are reported in jlpt-coverage.json." },
-    { "id": "noto-serif-jp", "name": "Noto Serif JP", "copyright": "The Noto Project Authors", "license": "ofl-1.1", "licenseName": "SIL OFL 1.1", "url": "https://github.com/notofonts/noto-cjk/releases/download/Serif2.003/12_NotoSerifJP.zip", "pinned": "Serif2.003", "sha256": "53bdd2a6e4eb63bf24f7890e018dddb94366e3555d0814c72b74fbb128f328f0", "licenseHash": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2", "use": "Pinned generator-only font for deterministic similar-kanji rasterization.", "modification": "A glyph raster is used by the generator; the font itself is not part of the similar JSON pack." }
+    {
+      "id": "kanjidic2",
+      "name": "KANJIDIC2",
+      "copyright": "Electronic Dictionary Research and Development Group, Monash University",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0",
+      "url": "http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz",
+      "pinned": "2026-07-25",
+      "sha256": "79074f594fffe353bedde8c1019c186d3fe1d8b127f9c762011d1571e46fb5df",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
+      "use": "Kanji literals, codepoints, radicals, grades, stroke counts, frequency, readings, nanori and English meanings.",
+      "modification": "Converted to SQLite; omitted selected fields and stripped all qc_type=skip and qc_type=misclass entries."
+    },
+    {
+      "id": "jmdict",
+      "name": "JMdict_e (English only)",
+      "copyright": "Electronic Dictionary Research and Development Group, Monash University",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0",
+      "url": "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz",
+      "pinned": "2026-07-25",
+      "sha256": "a27e7429f35b69af5b3e092464369ee5f9f5c3269e8fcd1de2c71f502ce27603",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
+      "use": "English dictionary entries, forms, senses, glosses and commonness tags.",
+      "modification": "Converted to SQLite with FTS; English-only fields retained, uncommon entries filtered, commonScore derived."
+    },
+    {
+      "id": "jmnedict",
+      "name": "JMnedict",
+      "copyright": "Electronic Dictionary Research and Development Group, Monash University",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0",
+      "url": "http://ftp.edrdg.org/pub/Nihongo/JMnedict.xml.gz",
+      "pinned": "2026-07-25",
+      "sha256": "7fd1b381b348b44d09730924968ea3f509b63756c3f7aeebd61b386b1f049cd4",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
+      "use": "No JMnedict data is present in the current shipped manifests; it is recorded for the optional names pack.",
+      "modification": "None shipped in MVP."
+    },
+    {
+      "id": "kradfile",
+      "name": "KRADFILE / RADKFILE",
+      "copyright": "Electronic Dictionary Research and Development Group, Monash University",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0",
+      "url": "http://ftp.edrdg.org/pub/Nihongo/kradfile.gz",
+      "pinned": "2026-07-25",
+      "sha256": "0c5487c1de77e36ffb5bde652f469f2de9c52efc8320137c115506f3500e9c5f",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
+      "use": "Radical/component lookup backing multi-radical search.",
+      "modification": "Derived lookup data; the separate RADKFILE archive is pinned in sources.lock.json."
+    },
+    {
+      "id": "radkfile",
+      "name": "RADKFILE",
+      "copyright": "Electronic Dictionary Research and Development Group, Monash University",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0",
+      "url": "http://ftp.edrdg.org/pub/Nihongo/radkfile.gz",
+      "pinned": "2026-07-25",
+      "sha256": "20baf276a98173466c29c373668e044719809f510487695fe40abfd0269a004e",
+      "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
+      "use": "Radical/component lookup provenance.",
+      "modification": "Pinned as a separate upstream input; no standalone output pack is currently shipped."
+    },
+    {
+      "id": "kanjivg",
+      "name": "KanjiVG",
+      "copyright": "Ulrich Apel",
+      "license": "cc-by-sa-3.0",
+      "licenseName": "CC BY-SA 3.0",
+      "url": "https://github.com/KanjiVG/kanjivg/releases/download/r20260714/kanjivg-20260714-all.zip",
+      "pinned": "r20260714",
+      "sha256": "534bd222052f4960747ff624014e426b08052164a837b15044f58517e85e4db5",
+      "licenseHash": "d255e07978fd16ddfec38bc59dc9d857b885dd44ddbf4e79baf207d30746bdcc",
+      "use": "Ordered stroke paths, stroke start points and component trees; also input to similar-kanji generation.",
+      "modification": "Paths normalized to 109x109 and re-encoded; stored separately from CC BY-SA 4.0 packs."
+    },
+    {
+      "id": "tatoeba",
+      "name": "Tatoeba Project",
+      "copyright": "Tatoeba contributors",
+      "license": "cc-by-2.0-fr",
+      "licenseName": "CC BY 2.0 FR",
+      "url": "https://downloads.tatoeba.org/exports/",
+      "pinned": "2026-07-25",
+      "licenseHash": "58be7312a781d26af1709feda2ac63b3655b71694b7fe77c06bf1d33048ddf21",
+      "use": "Japanese sentences, English links and WWWJDIC sense indices; includes Tanaka Corpus JA-EN examples. The pinned sentences_detailed.csv export supplies authors for each retained Japanese and English sentence ID.",
+      "modification": "Filtered to length 6-30, at least one English translation and at most five per sense, ranked by readability. The sentences pack stores id/ja_author and en_sentence_id/en_author for every shipped pair."
+    },
+    {
+      "id": "jmdictfurigana",
+      "name": "JmdictFurigana alignment data",
+      "copyright": "Doublevil; derived from JMdict / Electronic Dictionary Research and Development Group, Monash University",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0 (JMdict-derived data; repository code is MIT)",
+      "url": "https://github.com/Doublevil/JmdictFurigana",
+      "pinned": "2.3.1+2026-07-25",
+      "sha256": "fc02519134ba75389db1885127cd06b8beb3e4f1922c68c510b73f3b7175b01a",
+      "licenseHash": "c7d0d41a2df5c30b2d9c45dabc224103fa897021ab444fc0f109feb89b64f190",
+      "use": "JMdict-derived per-character furigana alignments for dictionary forms.",
+      "modification": "Applied alignments to filtered sentence/dictionary records. The upstream repository's MIT code license does not replace CC BY-SA 4.0 obligations for the alignment data."
+    },
+    {
+      "id": "jlpt-kanji-data",
+      "name": "JLPT Kanji Data (davidluzgouveia)",
+      "copyright": "davidluzgouveia; derived from Jonathan Waller's JLPT Resources",
+      "license": "mit",
+      "licenseName": "MIT",
+      "url": "https://api.github.com/repos/davidluzgouveia/kanji-data/tarball/00fd7079c3890f430759536f91aa5e854ec0ca4f",
+      "pinned": "00fd7079c3890f430759536f91aa5e854ec0ca4f",
+      "sha256": "295ac92063a30cddd293fa238ca7971a8c674c6135dd05d92d16e2a806046970",
+      "licenseHash": "80f8d60f8c15f5c497ff95608a3e7d6c02653e991be10448eccb0bb557362a8c",
+      "use": "JLPT kanji deck membership.",
+      "modification": "Resolved against the kanji pack and pinned as an explicitly unofficial community estimate."
+    },
+    {
+      "id": "jlpt-vocab-yomitan",
+      "name": "JLPT Vocabulary (yomitan)",
+      "copyright": "yomitan contributors; derived from Jonathan Waller's JLPT Resources",
+      "license": "cc-by-sa-4.0",
+      "licenseName": "CC BY-SA 4.0",
+      "url": "https://github.com/stephenmk/yomitan-jlpt-vocab/releases/download/2025.08.01.0/jlpt.zip",
+      "pinned": "2025.08.01.0",
+      "sha256": "b475e2605fbf6d5372bd1d16153981f3924a1237715d33dd44f3312f70a61ce5",
+      "licenseHash": "5704a57be1e85040c709008c5d643a78f6e6db9ebadbd85d5bfa62127a0a5ef4",
+      "use": "JLPT vocabulary deck membership.",
+      "modification": "Resolved against words-core and pinned as an explicitly unofficial community estimate; unresolved entries are reported in jlpt-coverage.json."
+    },
+    {
+      "id": "noto-serif-jp",
+      "name": "Noto Serif JP",
+      "copyright": "The Noto Project Authors",
+      "license": "ofl-1.1",
+      "licenseName": "SIL OFL 1.1",
+      "url": "https://github.com/notofonts/noto-cjk/releases/download/Serif2.003/12_NotoSerifJP.zip",
+      "pinned": "Serif2.003",
+      "sha256": "53bdd2a6e4eb63bf24f7890e018dddb94366e3555d0814c72b74fbb128f328f0",
+      "licenseHash": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "use": "Pinned generator-only font for deterministic similar-kanji rasterization.",
+      "modification": "A glyph raster is used by the generator; the font itself is not part of the similar JSON pack."
+    }
   ],
   "packs": [
-    { "id": "kanji", "manifest": "packs/kanji-v1.manifest.json", "version": "v1", "license": "cc-by-sa-4.0", "sha256": "1271f5af664b9ff6b9e1fed4be6356976a82e3d8502c8731c497a7293a93b7f4", "sizeBytes": 1966080, "sources": ["kanjidic2"], "details": "Kanji reference SQLite; SKIP and misclassification fields are omitted." },
-    { "id": "words-core", "manifest": "packs/words-core-v1.manifest.json", "version": "v1", "license": "cc-by-sa-4.0", "sha256": "3f42f9fce2e5acd79ddc817ae3c2e71a44a4e9bb97337c71eda8576f09cb2224", "sizeBytes": 27009024, "compressedSizeBytes": 7526734, "sources": ["jmdict"], "details": "Common-tagged JMdict English dictionary in SQLite with FTS and derived commonScore." },
-    { "id": "strokes-v1", "manifest": "packs/strokes/manifest.json", "version": "1.0.0", "license": "cc-by-sa-3.0", "sha256": "9300f579b42a9e3fb23fac63505d5dc0412be20c637fde36b2966abaf7261e23", "sizeBytes": 9744046, "sources": ["kanjivg"], "details": "Separate chunked stroke paths, start points and component trees. Paths normalized and re-encoded; six Unicode-range chunks are listed in the manifest." },
-    { "id": "sentences", "manifest": "packs/sentences-v1.manifest.json", "version": "v1", "license": "combined", "licenses": ["cc-by-2.0-fr", "cc-by-sa-4.0"], "sha256": "e9bd65f598cb3079631d51e673016fe4b5fc7ff63c920d6550b69b65f8641975", "sizeBytes": 10940416, "sources": ["tatoeba", "jmdictfurigana"], "details": "Filtered JA-EN Tatoeba sentences with stored Japanese/English Tatoeba authors and stable IDs; pairs with unavailable upstream author metadata are excluded. Includes JMdict-derived CC BY-SA 4.0 JmdictFurigana alignment data. The upstream repository's MIT code license does not apply MIT-only terms to alignment data." },
-    { "id": "similar", "manifest": "packs/similar.manifest.json", "version": "v1", "license": "cc-by-sa-4.0", "sha256": "d896cdd6bde76c651edbb304154c593a6594bf19c9b20f9957f2a886b004ade4", "sizeBytes": 480357, "sources": ["kanjidic2", "kanjivg", "noto-serif-jp"], "details": "Generated lookup: component Jaccard 0.35, stroke proximity 0.15, radical identity 0.15 and 64x64 glyph raster Dice 0.35; threshold 0.48, maximum six matches per character. Derived dataset is ours under CC BY-SA 4.0." },
-    { "id": "decks", "manifest": "packs/decks/manifest.json", "version": "v1", "license": "cc-by-sa-4.0", "catalogSha256": "d98cded60ce506ce825c6101a7e072af84468de46cff2fd9c6a2574437f07384", "sources": ["kanjidic2", "jmdict", "jlpt-kanji-data", "jlpt-vocab-yomitan"], "details": "CC BY-SA 4.0 derived deck definitions and coverage report; 25 deck JSON files plus jlpt-coverage.json. JLPT descriptions state that levels are unofficial community estimates. Jōyō 1981 uses the reviewed 196-added/5-removed diff; Jōyō 2010 contains 2,136 characters; school grades 7-9 are frequency tiers; kana decks use words-core.", "files": ["hiragana.json", "katakana.json", "kana-words.json", "jlpt-kanji-n1.json", "jlpt-kanji-n2.json", "jlpt-kanji-n3.json", "jlpt-kanji-n4.json", "jlpt-kanji-n5.json", "jlpt-vocabulary-n1.json", "jlpt-vocabulary-n2.json", "jlpt-vocabulary-n3.json", "jlpt-vocabulary-n4.json", "jlpt-vocabulary-n5.json", "school-grade-1.json", "school-grade-2.json", "school-grade-3.json", "school-grade-4.json", "school-grade-5.json", "school-grade-6.json", "school-grade-7.json", "school-grade-8.json", "school-grade-9.json", "joyo-1981.json", "joyo-2010.json", "top-500-kanji.json", "jlpt-coverage.json"] }
+    {
+      "id": "kanji",
+      "manifest": "packs/kanji-v1.manifest.json",
+      "version": "v1",
+      "license": "cc-by-sa-4.0",
+      "sha256": "1271f5af664b9ff6b9e1fed4be6356976a82e3d8502c8731c497a7293a93b7f4",
+      "sizeBytes": 1966080,
+      "sources": ["kanjidic2"],
+      "details": "Kanji reference SQLite; SKIP and misclassification fields are omitted."
+    },
+    {
+      "id": "words-core",
+      "manifest": "packs/words-core-v1.manifest.json",
+      "version": "v1",
+      "license": "cc-by-sa-4.0",
+      "sha256": "3f42f9fce2e5acd79ddc817ae3c2e71a44a4e9bb97337c71eda8576f09cb2224",
+      "sizeBytes": 27009024,
+      "compressedSizeBytes": 7526734,
+      "sources": ["jmdict"],
+      "details": "Common-tagged JMdict English dictionary in SQLite with FTS and derived commonScore."
+    },
+    {
+      "id": "strokes-v1",
+      "manifest": "packs/strokes/manifest.json",
+      "version": "1.0.0",
+      "license": "cc-by-sa-3.0",
+      "sha256": "9300f579b42a9e3fb23fac63505d5dc0412be20c637fde36b2966abaf7261e23",
+      "sizeBytes": 9744046,
+      "sources": ["kanjivg"],
+      "details": "Separate chunked stroke paths, start points and component trees. Paths normalized and re-encoded; six Unicode-range chunks are listed in the manifest."
+    },
+    {
+      "id": "sentences",
+      "manifest": "packs/sentences-v1.manifest.json",
+      "version": "v1",
+      "license": "combined",
+      "licenses": ["cc-by-2.0-fr", "cc-by-sa-4.0"],
+      "sha256": "e9bd65f598cb3079631d51e673016fe4b5fc7ff63c920d6550b69b65f8641975",
+      "sizeBytes": 10940416,
+      "sources": ["tatoeba", "jmdictfurigana"],
+      "details": "Filtered JA-EN Tatoeba sentences with stored Japanese/English Tatoeba authors and stable IDs; pairs with unavailable upstream author metadata are excluded. Includes JMdict-derived CC BY-SA 4.0 JmdictFurigana alignment data. The upstream repository's MIT code license does not apply MIT-only terms to alignment data."
+    },
+    {
+      "id": "similar",
+      "manifest": "packs/similar.manifest.json",
+      "version": "v1",
+      "license": "cc-by-sa-4.0",
+      "sha256": "d896cdd6bde76c651edbb304154c593a6594bf19c9b20f9957f2a886b004ade4",
+      "sizeBytes": 480357,
+      "sources": ["kanjidic2", "kanjivg", "noto-serif-jp"],
+      "details": "Generated lookup: component Jaccard 0.35, stroke proximity 0.15, radical identity 0.15 and 64x64 glyph raster Dice 0.35; threshold 0.48, maximum six matches per character. Derived dataset is ours under CC BY-SA 4.0."
+    },
+    {
+      "id": "decks",
+      "manifest": "packs/decks/manifest.json",
+      "version": "v1",
+      "license": "cc-by-sa-4.0",
+      "catalogSha256": "d98cded60ce506ce825c6101a7e072af84468de46cff2fd9c6a2574437f07384",
+      "sources": [
+        "kanjidic2",
+        "jmdict",
+        "jlpt-kanji-data",
+        "jlpt-vocab-yomitan"
+      ],
+      "details": "CC BY-SA 4.0 derived deck definitions and coverage report; 25 deck JSON files plus jlpt-coverage.json. JLPT descriptions state that levels are unofficial community estimates. Jōyō 1981 uses the reviewed 196-added/5-removed diff; Jōyō 2010 contains 2,136 characters; school grades 7-9 are frequency tiers; kana decks use words-core.",
+      "files": [
+        "hiragana.json",
+        "katakana.json",
+        "kana-words.json",
+        "jlpt-kanji-n1.json",
+        "jlpt-kanji-n2.json",
+        "jlpt-kanji-n3.json",
+        "jlpt-kanji-n4.json",
+        "jlpt-kanji-n5.json",
+        "jlpt-vocabulary-n1.json",
+        "jlpt-vocabulary-n2.json",
+        "jlpt-vocabulary-n3.json",
+        "jlpt-vocabulary-n4.json",
+        "jlpt-vocabulary-n5.json",
+        "school-grade-1.json",
+        "school-grade-2.json",
+        "school-grade-3.json",
+        "school-grade-4.json",
+        "school-grade-5.json",
+        "school-grade-6.json",
+        "school-grade-7.json",
+        "school-grade-8.json",
+        "school-grade-9.json",
+        "joyo-1981.json",
+        "joyo-2010.json",
+        "top-500-kanji.json",
+        "jlpt-coverage.json"
+      ]
+    }
   ]
 }

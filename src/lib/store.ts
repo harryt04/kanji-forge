@@ -7,14 +7,14 @@
  * TODO(T1.1): Implement real stores for study queue, settings, theme, etc. under src/features/
  */
 
-import { create } from 'zustand';
+import { create } from 'zustand'
 
 interface UIStore {
-  theme: 'light' | 'dark' | 'auto';
-  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
+  theme: 'light' | 'dark' | 'auto'
+  setTheme: (theme: 'light' | 'dark' | 'auto') => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
   theme: 'auto',
   setTheme: (theme) => set({ theme }),
-}));
+}))

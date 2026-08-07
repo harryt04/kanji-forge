@@ -17,9 +17,7 @@
  *   npx tsx scripts/build-packs/build-words-full-pack.ts
  */
 
-console.log('words-full builder stub — not implemented in T0.4');
-console.log(
-  'Full JMdict pack is a later feature per DATA-SOURCES.md §2.3'
-);
-console.log('To implement: extract all ~200k entries, tier by frequency/grade');
-process.exit(0);
+console.log('words-full builder stub — not implemented in T0.4')
+console.log('Full JMdict pack is a later feature per DATA-SOURCES.md §2.3')
+console.log('To implement: extract all ~200k entries, tier by frequency/grade')
+process.exit(0)

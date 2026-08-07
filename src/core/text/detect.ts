@@ -4,4 +4,4 @@
  * TODO(T3.0): Implement for dictionary search.
  */
 
-export const DETECT_STUB = true;
+export const DETECT_STUB = true

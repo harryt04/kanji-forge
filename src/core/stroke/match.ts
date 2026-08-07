@@ -4,4 +4,4 @@
  * TODO(T6.0): Implement with writing trainer (ARCHITECTURE §8).
  */
 
-export const MATCH_STUB = true;
+export const MATCH_STUB = true
