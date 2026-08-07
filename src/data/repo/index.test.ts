@@ -407,6 +407,41 @@ describe('deckMembership', () => {
       (await repos.deckMembership.list()).map((m) => m.contentRef),
     ).toEqual(['kanji:二'])
   })
+
+  it('atomically creates the Saved deck, membership, and sync mutation', async () => {
+    const repos = await freshRepo()
+    await repos.recordDeckMembership({
+      deck: {
+        id: 'saved',
+        name: 'Saved',
+        kind: 'saved',
+        definitionId: null,
+        updatedAt: 10,
+      },
+      membership: {
+        deckId: 'saved',
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: 10,
+        updatedAt: 10,
+      },
+      mutation: {
+        id: 'saved-mutation-1',
+        mutType: 'deckMembership.upsert',
+        payload: '{"contentRef":"kanji:日"}',
+        createdAt: 10,
+        attempts: 0,
+      },
+    })
+
+    expect(await repos.decks.get('saved')).toMatchObject({ name: 'Saved' })
+    expect(await repos.deckMembership.list()).toMatchObject([
+      { contentRef: 'kanji:日' },
+    ])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'saved-mutation-1', mutType: 'deckMembership.upsert' },
+    ])
+  })
 })
 
 describe('decks', () => {

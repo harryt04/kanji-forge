@@ -72,6 +72,34 @@ describe('DictionaryScreen', () => {
     expect(firstDetails.getByText('Frequency rank')).toBeInTheDocument()
   })
 
+  it('saves a dictionary result to the offline Saved deck', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), '日')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    const saveButtons = await screen.findAllByRole('button', {
+      name: 'Save to Saved',
+    })
+    await user.click(saveButtons[0]!)
+
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeDisabled()
+    const runtime = getActiveUserRuntime()!
+    expect(
+      await createUserRepositories(runtime.database).decks.get('saved'),
+    ).toMatchObject({
+      name: 'Saved',
+    })
+    expect(
+      (await createUserRepositories(runtime.database).deckMembership.list())
+        .length,
+    ).toBeGreaterThan(0)
+    expect(
+      await createUserRepositories(runtime.database).outbox.pending(),
+    ).toMatchObject([{ mutType: 'deckMembership.upsert' }])
+  })
+
   it('persists recent searches and supports pinning and reusing them', async () => {
     const user = userEvent.setup()
     render(<DictionaryScreen />)

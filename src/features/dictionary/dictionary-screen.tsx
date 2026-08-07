@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { createUserRepositories } from '@/data/repo'
+import { createUserRepositories, type OutboxMutation } from '@/data/repo'
 import { searchDictionary, type DictionaryResult } from '@/data/packs'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
@@ -17,6 +17,12 @@ import {
   togglePinnedSearch,
 } from './search-history'
 
+function contentRefForResult(result: DictionaryResult): string {
+  return result.type === 'kanji'
+    ? `kanji:${result.record.literal}`
+    : `word:${result.record.id}`
+}
+
 function submitLabel(result: DictionaryResult): string {
   return result.type === 'kanji' ? 'Kanji' : 'Word'
 }
@@ -28,6 +34,10 @@ export function DictionaryScreen(): React.ReactElement {
   const [searchedQuery, setSearchedQuery] = useState('')
   const [history, setHistory] = useState<readonly string[]>([])
   const [pinned, setPinned] = useState<readonly string[]>([])
+  const [savedContentRefs, setSavedContentRefs] = useState<readonly string[]>(
+    [],
+  )
+  const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,13 +47,17 @@ export function DictionaryScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const repo = createUserRepositories(runtime.database)
-      const [savedHistory, savedPinned] = await Promise.all([
+      const [savedHistory, savedPinned, savedMembership] = await Promise.all([
         repo.settings.get(DICTIONARY_HISTORY_SETTING),
         repo.settings.get(DICTIONARY_PINNED_SETTING),
+        repo.deckMembership.list(),
       ])
       if (active) {
         setHistory(parseSearchHistory(savedHistory?.value))
         setPinned(parsePinnedSearches(savedPinned?.value))
+        setSavedContentRefs(
+          savedMembership.map((membership) => membership.contentRef),
+        )
       }
     })()
     return () => {
@@ -104,6 +118,56 @@ export function DictionaryScreen(): React.ReactElement {
           ? reason.message
           : 'Could not save pinned search.',
       )
+    }
+  }
+
+  async function saveResult(result: DictionaryResult): Promise<void> {
+    if (!runtime) return
+    const contentRef = contentRefForResult(result)
+    if (savedContentRefs.includes(contentRef)) return
+    const now = Date.now()
+    const mutation: OutboxMutation = {
+      id: crypto.randomUUID(),
+      mutType: 'deckMembership.upsert',
+      payload: JSON.stringify({
+        deckId: 'saved',
+        contentRef,
+        updatedAt: now,
+      }),
+      createdAt: now,
+      attempts: 0,
+    }
+    setSavingContentRef(contentRef)
+    setError(null)
+    try {
+      const repo = createUserRepositories(runtime.database)
+      const saved = await repo.deckMembership.list()
+      await repo.recordDeckMembership({
+        deck: {
+          id: 'saved',
+          name: 'Saved',
+          kind: 'saved',
+          definitionId: null,
+          updatedAt: now,
+        },
+        membership: {
+          deckId: 'saved',
+          contentRef,
+          sortOrder: saved.length,
+          addedAt: now,
+          updatedAt: now,
+        },
+        mutation,
+      })
+      setSavedContentRefs((current) =>
+        current.includes(contentRef) ? current : [...current, contentRef],
+      )
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not save result.',
+      )
+    } finally {
+      setSavingContentRef(null)
     }
   }
 
@@ -238,6 +302,23 @@ export function DictionaryScreen(): React.ReactElement {
                   {submitLabel(result)}
                 </span>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                disabled={
+                  savingContentRef !== null ||
+                  savedContentRefs.includes(contentRefForResult(result))
+                }
+                onClick={() => void saveResult(result)}
+              >
+                {savedContentRefs.includes(contentRefForResult(result))
+                  ? 'Saved'
+                  : savingContentRef === contentRefForResult(result)
+                    ? 'Saving…'
+                    : 'Save to Saved'}
+              </Button>
               {result.type === 'kanji' ? (
                 <>
                   <dl

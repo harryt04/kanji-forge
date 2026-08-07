@@ -148,6 +148,12 @@ export interface UserRepositories {
     nextState: CardState
     mutation: OutboxMutation
   }): Promise<void>
+  /** Persists the MVP Saved deck, membership, and sync mutation atomically. */
+  recordDeckMembership(input: {
+    deck: Deck
+    membership: DeckMembership
+    mutation: OutboxMutation
+  }): Promise<void>
 }
 
 function value(row: SqlRow, key: string): SqlValue {
@@ -238,21 +244,22 @@ export function createUserRepositories(
   ]
   const putReview =
     'INSERT INTO reviews(id, user_id, deck_id, content_ref, at, grade, level_before, level_after, interval_before, elapsed_days, response_ms, source, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  const putDeck =
+    'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at'
+  const putMembership =
+    'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, updated_at=excluded.updated_at'
 
   return {
     decks: {
       async upsert(deck) {
-        await database.write(
-          'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at',
-          [
-            deck.id,
-            userId,
-            deck.name,
-            deck.kind,
-            deck.definitionId,
-            deck.updatedAt,
-          ],
-        )
+        await database.write(putDeck, [
+          deck.id,
+          userId,
+          deck.name,
+          deck.kind,
+          deck.definitionId,
+          deck.updatedAt,
+        ])
       },
       async get(id) {
         const row = (
@@ -321,17 +328,14 @@ export function createUserRepositories(
     },
     deckMembership: {
       async save(membership) {
-        await database.write(
-          'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, updated_at=excluded.updated_at',
-          [
-            userId,
-            membership.deckId,
-            membership.contentRef,
-            membership.sortOrder,
-            membership.addedAt,
-            membership.updatedAt,
-          ],
-        )
+        await database.write(putMembership, [
+          userId,
+          membership.deckId,
+          membership.contentRef,
+          membership.sortOrder,
+          membership.addedAt,
+          membership.updatedAt,
+        ])
       },
       async remove(contentRef) {
         await database.write(
@@ -578,6 +582,47 @@ export function createUserRepositories(
       await database.transaction([
         { sql: putReview, parameters: reviewParams(review) },
         { sql: putState, parameters: stateParams(nextState) },
+        {
+          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
+    },
+    async recordDeckMembership({ deck, membership, mutation }) {
+      if (deck.id !== 'saved' || deck.kind !== 'saved')
+        throw new Error('Only the Saved deck can receive MVP memberships.')
+      if (membership.deckId !== 'saved')
+        throw new Error('MVP memberships must belong to the Saved deck.')
+      await database.transaction([
+        {
+          sql: putDeck,
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ],
+        },
+        {
+          sql: putMembership,
+          parameters: [
+            userId,
+            membership.deckId,
+            membership.contentRef,
+            membership.sortOrder,
+            membership.addedAt,
+            membership.updatedAt,
+          ],
+        },
         {
           sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
           parameters: [

@@ -165,7 +165,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 8.6 | Search by radical | ✅ | — | KRADFILE/RADKFILE |
 | 8.7 | Search by stroke count | ✅ | — | |
 | 8.8 | Wildcard search | ✅ | — | |
-| 8.9 | Save any result to a deck | ✅ | — | |
+| 8.9 | Save any result to a deck | ✅ | 2026-08-07 | Dictionary results can be saved offline to the per-user Saved system deck and queue a membership sync mutation |
 | 8.10 | Fully offline | ✅ | 2026-08-06 | SQLite-WASM over OPFS (content pipeline) |
 | — | Search history / pinned searches | ➕ 🔷 | 2026-08-07 | Recent searches and pinned queries persist per authenticated user in the local database and work offline |
 
