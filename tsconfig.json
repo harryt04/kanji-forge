@@ -49,6 +49,7 @@
     "e2e",
     "playwright.config.ts",
     "scripts",
-    "apps"
+    "apps",
+    "src/pwa/sw.ts"
   ]
 }

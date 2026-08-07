@@ -1,11 +1,19 @@
+import nextEnv from '@next/env'
 import { defineConfig, devices } from '@playwright/test'
+
+// Playwright's own process doesn't read .env.local the way `next dev` does, so
+// NEXT_PUBLIC_API_URL (and friends) would be undefined here even though the webServer
+// picks them up fine. Load them the same way Next.js does so specs that gate on it run.
+nextEnv.loadEnvConfig(process.cwd())
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  // Specs share a single local auth backend whose default rate limiter allows only
+  // 3 sign-up/sign-in requests per 10s per IP, so they can't run concurrently against it.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:3000',
@@ -22,9 +30,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // `pnpm dev` runs the `predev` pack-copy step (sql-wasm + packs-dev fixtures) first.
-    command: 'pnpm dev',
+    // The offline/PWA specs need a real service worker, which `@serwist/next` only emits
+    // for `next build` (it's disabled in `next dev` to avoid a rebuild loop — see
+    // next.config.js). Build the static export and serve it, rather than running the dev
+    // server, so the service worker is actually present for these specs to exercise.
+    command: 'pnpm build && pnpm exec serve out -l 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
   },
 })
