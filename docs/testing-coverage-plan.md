@@ -2,8 +2,8 @@
 
 ## Context
 
-KanjiForge has good testing *intentions* and thin testing *reality*. `mvp-docs/ARCHITECTURE.md` §12
-already specifies the target strategy, and `mvp-docs/ORCHESTRATION.md` makes "new logic has tests"
+KanjiForge has good testing *intentions* and thin testing *reality*. `docs/ARCHITECTURE.md` §12
+already specifies the target strategy, and `docs/ORCHESTRATION.md` makes "new logic has tests"
 part of the definition of done for every block. But the repo currently has **10 test files / ~21
 test cases** covering a codebase where the first end-to-end study loop just landed (commit `8475b74`).
 
@@ -51,14 +51,14 @@ implemented (removing a file from the exclusion list is part of that block's wor
 
 ---
 
-## Phase 0 — Write `mvp-docs/implemented-already.md`
+## Phase 0 — Write `docs/implemented-already.md`
 
 The user separately asked for a written record of what is actually implemented today.
-`mvp-docs/MVP-STATUS.md` covers similar ground but is **dated 2026-08-02 and now stale** — it still
+`docs/MVP-STATUS.md` covers similar ground but is **dated 2026-08-02 and now stale** — it still
 lists "Study screen: Not started", "Home and simple goals: Not started", and "Authentication
 backend: Partial", all of which were superseded by commits `831840d` and `8475b74`.
 
-`mvp-docs/implemented-already.md` is a current, evidence-based snapshot covering:
+`docs/implemented-already.md` is a current, evidence-based snapshot covering:
 
 - **Implemented & tested:** `core/srs` (all 5 modules + types), `data/db` (SQLite-WASM, OPFS,
   migrations, schema v1 / 10 tables), `data/repo` (7 repositories + atomic `recordGrade()`),
@@ -74,7 +74,7 @@ backend: Partial", all of which were superseded by commits `831840d` and `8475b7
 - **Corrections to MVP-STATUS.md** called out explicitly, with the commit that superseded each row.
 
 This doc is a prerequisite for Phase 5 (it defines which files are legitimately exempt from
-coverage) and should be cross-linked from `mvp-docs/README.md`.
+coverage) and should be cross-linked from `AGENTS.md`.
 
 ---
 

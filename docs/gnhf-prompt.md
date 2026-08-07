@@ -1,6 +1,6 @@
-Go ahead and take in this context as needed: /Users/harry/Documents/git/kanji-forge/mvp-docs/README.md
+Go ahead and take in this context as needed: /Users/harry/Documents/git/kanji-forge/AGENTS.md
 
-Then, please see /Users/harry/Documents/git/kanji-forge/mvp-docs/FEATURE-PARITY.md and identify a feature that you would like to implement that hasn't been implemented yet. This feature parity document exists as the source of truth and backlog for the final implementation I would like to have for this application which aims to be a clone of the Sticky Study Japanese study app that was available for iOS only but no longer available. 
+Then, please see /Users/harry/Documents/git/kanji-forge/docs/FEATURE-PARITY.md and identify a feature that you would like to implement that hasn't been implemented yet. This feature parity document exists as the source of truth and backlog for the final implementation I would like to have for this application which aims to be a clone of the Sticky Study Japanese study app that was available for iOS only but no longer available. 
 
 For your feature, please: 
 

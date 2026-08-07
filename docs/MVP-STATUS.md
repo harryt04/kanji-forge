@@ -38,7 +38,7 @@ The first MVP deliberately excludes custom cards and decks, import, writing vali
 | TRD area | Status | Evidence | What this means |
 |---|---|---|---|
 | Repository and Next.js scaffold | **Implemented** | `src/app/`, `src/ui/`, `package.json`, `tsconfig.json` | The application shell, TypeScript configuration, Tailwind tokens, and basic UI primitives exist. |
-| Brand/design tokens | **Implemented** | `src/app/globals.css`, `mvp-docs/BRAND-DESIGN-LANGUAGE.md` | The Washi visual system, typography, themes, and belt-rank level tokens are present. |
+| Brand/design tokens | **Implemented** | `src/app/globals.css`, `docs/BRAND-DESIGN-LANGUAGE.md` | The Washi visual system, typography, themes, and belt-rank level tokens are present. |
 | Content ETL pipeline | **Partial** | `scripts/build-packs/`, `packs/`, `ATTRIBUTION.md`, `.github/workflows/` | Generated packs and pipeline scripts exist. Reproducibility and CI still need final verification. |
 | Development content fixtures | **Implemented** | `packs-dev/` | A small offline fixture set exists for local development: kanji, words, sentences, and deck definitions. |
 | Built-in deck definitions | **Partial** | `packs/decks/`, `packs-dev/decks.json` | The full catalog is represented in generated JSON, but the application does not yet load and present these decks. |

@@ -7,7 +7,7 @@ urgent infrastructure problem (see §1) that must be resolved before continuing 
 **The governing plan** (phases, gates, per-block loop, agent roster) is at
 `/Users/harry/.claude/plans/please-load-in-this-generic-galaxy.md` — read that first if you
 haven't already; this doc assumes it. The source playbook it operationalizes is
-`mvp-docs/ORCHESTRATION.md`.
+`docs/ORCHESTRATION.md`.
 
 **Repo:** `/Users/harry/Documents/git/kanji-forge`. **Working branch:** `t0.0-scaffold` (this has
 become the de facto Phase 0 integration branch — nothing has been merged to `master` yet, and per
@@ -241,7 +241,7 @@ just never actually used by the tool.
 ## 3. What's genuinely done and verified (safe to build on)
 
 ### T0.0 — Repo & client scaffold ✅ merged, independently verified
-Next.js 15 static export, React 19, TS strict, Tailwind v4 wired to `mvp-docs/tokens.css` via
+Next.js 15 static export, React 19, TS strict, Tailwind v4 wired to `docs/tokens.css` via
 `@theme inline` (fixed from an initial hardcoded-literal-values bug), Zustand, Serwist, shadcn/ui
 vendored in `src/ui/` on Radix, the full `core/data/features/ui/pwa` tree with pure `core/` stubs,
 Vitest + Playwright, CI stub, `LICENSE` + `LICENSE-DATA`. Went through a full review→consolidate→
@@ -296,7 +296,7 @@ Route `/prototype/tiles`, fully merged into `t0.0-scaffold`. The orchestrator pe
 this in a live browser (not just build/test/lint) and confirmed: real tiles render (9,565/10,000
 sampled pixels non-background), correct belt-rank colors from CSS tokens, fold-overlay shapes,
 correct pan direction, and reasonable per-interaction cost under realistic small-increment
-dragging (~2ms/handler call). See `mvp-docs/phase0-tile-perf-report.md` for the full, honest
+dragging (~2ms/handler call). See `docs/recycle/phase0-tile-perf-report.md` for the full, honest
 verification history (including an unresolved large-pan-delta perf inconsistency that wasn't fully
 root-caused — flagged, not hidden).
 

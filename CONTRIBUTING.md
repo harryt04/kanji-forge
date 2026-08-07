@@ -1,6 +1,6 @@
 # Contributing
 
-Docs PRs to mvp-docs/.
+- Docs PRs to `docs/`.
 - Branch: chores/dumbledore/*
 - Target: master
-- Follow AGENTS.md
+- Follow [AGENTS.md](AGENTS.md).
