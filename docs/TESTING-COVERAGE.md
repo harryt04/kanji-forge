@@ -104,9 +104,10 @@ the 30-day scheduled review forecast buckets overdue and future due cards.
 
 ### `src/features/history` — 3 cases
 
-**`history-screen.test.tsx`** (Testing Library) — sign-in-required state, empty 30-day chart for a
-new learner, and recorded daily activity plotted with review/correct/again totals and an accessible
-per-day label; selecting a bar reveals its daily breakdown and pressed state.
+**`history-screen.test.tsx`** (Testing Library) — sign-in-required state, empty 30-day chart and
+heatmap for a new learner, recorded daily activity plotted with review/correct/again totals and
+intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
+breakdown and pressed state.
 
 ### `src/auth` — 13 cases across 3 files
 

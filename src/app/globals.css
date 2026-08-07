@@ -263,6 +263,23 @@
   box-shadow: inset 0 0 0 1px var(--level-4-border);
 }
 
+.history-heatmap-cell[data-activity-level='0'] {
+  background: var(--muted);
+  border-color: var(--border);
+}
+.history-heatmap-cell[data-activity-level='1'] {
+  background: color-mix(in oklab, var(--primary) 25%, var(--card));
+}
+.history-heatmap-cell[data-activity-level='2'] {
+  background: color-mix(in oklab, var(--primary) 45%, var(--card));
+}
+.history-heatmap-cell[data-activity-level='3'] {
+  background: color-mix(in oklab, var(--primary) 70%, var(--card));
+}
+.history-heatmap-cell[data-activity-level='4'] {
+  background: var(--primary);
+}
+
 /* Base styles */
 html {
   font-family: var(--font-body);

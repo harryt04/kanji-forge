@@ -83,6 +83,12 @@ describe('HistoryScreen', () => {
       expect(screen.getByText('Study history')).toBeInTheDocument(),
     )
     expect(screen.getAllByTestId('history-bar')).toHaveLength(30)
+    expect(screen.getAllByTestId('history-heatmap-day')).toHaveLength(30)
+    expect(
+      screen.getByRole('group', {
+        name: 'Review activity heatmap for the last 30 days',
+      }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('group', {
         name: 'Study activity for the last 30 days. 0 reviews, 0 correct.',
@@ -111,10 +117,13 @@ describe('HistoryScreen', () => {
       '2',
     )
     expect(screen.getByText('Again').nextElementSibling).toHaveTextContent('1')
-    const selectedBar = screen.getByRole('button', {
+    const selectedDays = screen.getAllByRole('button', {
       name: /2 reviews, 1 correct, 1 again/,
     })
-    expect(selectedBar).toBeInTheDocument()
+    expect(selectedDays).toHaveLength(2)
+    const selectedBar = selectedDays[0]!
+    const selectedHeatmapDay = selectedDays[1]!
+    expect(selectedHeatmapDay).toHaveAttribute('data-activity-level', '4')
 
     fireEvent.click(selectedBar)
     const detail = screen.getByTestId('history-day-detail')
@@ -123,5 +132,6 @@ describe('HistoryScreen', () => {
     expect(values[1]).toHaveTextContent('1')
     expect(values[2]).toHaveTextContent('1')
     expect(selectedBar).toHaveAttribute('aria-pressed', 'true')
+    expect(selectedHeatmapDay).toHaveAttribute('aria-pressed', 'true')
   })
 })

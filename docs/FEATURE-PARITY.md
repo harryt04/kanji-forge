@@ -150,7 +150,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | 30-day review forecast | ➕ 🔷 | 2026-08-07 | Home shows the currently scheduled due-review workload for the next 30 calendar days; overdue cards count today and unscheduled new cards are excluded |
 | — | Retention rate per level | ➕ 🔷 | — | |
 | — | Leech identification | ➕ 🔷 | 2026-08-07 | Home surfaces cards with six or more lapses for manual attention, following SRS-SPEC §8 |
-| — | Heatmap calendar | ➕ 🔷 | — | |
+| — | Heatmap calendar | ➕ 🔷 | 2026-08-07 | History includes a keyboard-accessible 30-day activity grid with intensity by review count and shared day detail selection |
 | — | Unrealistic-pace warning with inline fixes | ➕ ✅ | 2026-08-07 | Home warns above 200 answers/day and offers a one-tap later-date suggestion; smaller-deck selection remains unavailable for the built-in fixture deck |
 
 ## 8. Dictionary

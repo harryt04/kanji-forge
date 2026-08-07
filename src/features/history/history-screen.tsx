@@ -47,6 +47,11 @@ function formatDetailDay(date: Date): string {
   })
 }
 
+function activityLevel(reviews: number, maxReviews: number): number {
+  if (reviews === 0) return 0
+  return Math.max(1, Math.ceil((reviews / maxReviews) * 4))
+}
+
 function buildActivityDays(
   stats: readonly DailyStat[],
   now = Date.now(),
@@ -109,6 +114,7 @@ export function HistoryScreen(): React.ReactElement {
     )
 
   const maxReviews = Math.max(1, ...data.days.map((day) => day.reviews))
+  const firstDayOffset = data.days[0]!.date.getDay()
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
@@ -151,6 +157,63 @@ export function HistoryScreen(): React.ReactElement {
               <span>{formatDay(data.days[data.days.length - 1]!.date)}</span>
             </div>
           </div>
+          <section className="border-border mt-6 border-t pt-5">
+            <div className="flex items-baseline justify-between gap-4">
+              <div>
+                <h3 className="font-semibold">Activity heatmap</h3>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Each square is one local calendar day. Darker squares mean
+                  more reviews.
+                </p>
+              </div>
+              <div
+                className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs"
+                aria-label="Review activity scale: less to more"
+              >
+                <span>Less</span>
+                {[0, 1, 2, 3, 4].map((level) => (
+                  <span
+                    key={level}
+                    aria-hidden="true"
+                    className="history-heatmap-cell h-3 w-3 rounded-sm"
+                    data-activity-level={level}
+                  />
+                ))}
+                <span>More</span>
+              </div>
+            </div>
+            <div
+              className="text-muted-foreground mt-4 grid grid-cols-7 gap-1 text-center text-[0.65rem]"
+              aria-hidden="true"
+            >
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((weekday, index) => (
+                <span key={`${weekday}-${index}`}>{weekday}</span>
+              ))}
+            </div>
+            <div
+              role="group"
+              aria-label={`Review activity heatmap for the last ${HISTORY_DAYS} days`}
+              className="mt-1 grid grid-cols-7 gap-1"
+            >
+              {Array.from({ length: firstDayOffset }, (_, index) => (
+                <span key={`empty-${index}`} aria-hidden="true" />
+              ))}
+              {data.days.map((day) => (
+                <button
+                  key={`heatmap-${day.day}`}
+                  data-testid="history-heatmap-day"
+                  data-day={day.day}
+                  data-activity-level={activityLevel(day.reviews, maxReviews)}
+                  type="button"
+                  className="history-heatmap-cell focus-visible:ring-ring aspect-square min-h-7 rounded-sm border border-transparent transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none motion-reduce:transition-none"
+                  aria-pressed={selectedDay?.day === day.day}
+                  aria-label={`${formatDay(day.date)}: ${day.reviews} ${day.reviews === 1 ? 'review' : 'reviews'}, ${day.correct} correct, ${day.again} again`}
+                  title={`${formatDay(day.date)}: ${day.reviews} reviews`}
+                  onClick={() => setSelectedDay(day)}
+                />
+              ))}
+            </div>
+          </section>
           {selectedDay ? (
             <section
               className="border-border mt-6 rounded-md border p-4"
