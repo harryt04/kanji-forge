@@ -1,6 +1,6 @@
 # Testing Coverage — current state
 
-**As of:** 2026-08-06, after executing [`testing-coverage-plan.md`](../mvp-docs/testing-coverage-plan.md)
+**As of:** 2026-08-07, after executing [`testing-coverage-plan.md`](../mvp-docs/testing-coverage-plan.md)
 (Phases 0–6). This is a factual snapshot generated from a real `pnpm test:coverage` run — not a
 target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
@@ -80,10 +80,11 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
-- **`study-screen.test.tsx`** (8, Testing Library) — sign-in-required state, tap-to-reveal, the
+- **`study-screen.test.tsx`** (9, Testing Library) — sign-in-required state, tap-to-reveal, the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
-  the previous card and re-disables itself, session-summary totals match store state.
+  the previous card and re-disables itself, session-summary totals match store state, and the
+  tap-to-show elapsed timer updates while visible.
 
 ### `src/features/home` — 5 cases
 

@@ -18,6 +18,12 @@ import { useStudyStore } from './store'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 
+function formatElapsedTime(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = String(totalSeconds % 60).padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
 export function StudyScreen({
   deckDefinitionId = 'dev-kanji',
 }: {
@@ -26,6 +32,9 @@ export function StudyScreen({
   const runtime = getActiveUserRuntime()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [showTimer, setShowTimer] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const {
@@ -53,6 +62,9 @@ export function StudyScreen({
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
       if (!cancelled) {
         start(loaded)
+        setSessionStartedAt(Date.now())
+        setElapsedSeconds(0)
+        setShowTimer(false)
         setLoading(false)
       }
     })().catch((reason: unknown) => {
@@ -67,6 +79,19 @@ export function StudyScreen({
       cancelled = true
     }
   }, [runtime, deckDefinitionId, start])
+
+  useEffect(() => {
+    if (sessionStartedAt === null || !showTimer || finished) return
+
+    const updateElapsedTime = (): void => {
+      setElapsedSeconds(
+        Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)),
+      )
+    }
+    updateElapsedTime()
+    const timerId = window.setInterval(updateElapsedTime, 1000)
+    return () => window.clearInterval(timerId)
+  }, [finished, sessionStartedAt, showTimer])
 
   const card = queue[index]
   const studyCard = card ? content.get(card.stickyId) : undefined
@@ -124,7 +149,26 @@ export function StudyScreen({
     <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
       <div className="border-border text-muted-foreground flex items-center justify-between border-b px-4 py-3 text-sm">
         <span>{deckName}</span>
-        <span>{remaining} remaining</span>
+        <div className="flex items-center gap-3">
+          {!finished && (
+            <>
+              {showTimer && (
+                <span aria-live="polite">
+                  Time {formatElapsedTime(elapsedSeconds)}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={showTimer}
+                onClick={() => setShowTimer((visible) => !visible)}
+              >
+                {showTimer ? 'Hide timer' : 'Show timer'}
+              </Button>
+            </>
+          )}
+          <span>{remaining} remaining</span>
+        </div>
       </div>
 
       {!finished && card && studyCard ? (

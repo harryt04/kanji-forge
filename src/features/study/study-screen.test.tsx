@@ -1,6 +1,13 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
@@ -33,6 +40,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   cleanup()
   clearUserRuntime()
   useStudyStore.setState(useStudyStore.getInitialState(), true)
@@ -63,6 +71,18 @@ describe('StudyScreen', () => {
     await renderReady()
     const card = screen.getByRole('button', { name: 'Reveal answer' })
     expect(card.className).toContain('motion-reduce:transition-none')
+  })
+
+  it('keeps the session timer hidden until requested and updates it while visible', async () => {
+    await renderReady()
+    expect(screen.queryByText('Time 0:00')).not.toBeInTheDocument()
+
+    vi.useFakeTimers()
+    fireEvent.click(screen.getByRole('button', { name: 'Show timer' }))
+    expect(screen.getByText('Time 0:00')).toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(61_000))
+    expect(screen.getByText('Time 1:01')).toBeInTheDocument()
   })
 
   it('grades via keyboard once revealed', async () => {
