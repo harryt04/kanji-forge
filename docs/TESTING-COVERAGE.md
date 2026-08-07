@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 20 (132 test cases: 132 passing) |
-| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 25 cases, included above) |
+| Unit/integration test files | 20 (138 test cases: 138 passing) |
+| Component test files | 4 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx` — 28 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **82.34%** |
+| Overall statement coverage | **84.66%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -29,6 +29,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
 | `src/data/**` | 85% | db 93.2 / 86 / 100 / 93.2 · packs 97.3 / 75 / 100 / 97.3 · repo 98.1 / 90.5 / 97.1 / 98.1 | ✅ comfortable margin |
 | `src/features/**` | 70% | history 100 / 100 / 100 / 100 · home 98.7 / 91.5 / 93.3 / 98.7 · study 97.9 / 83.9 / 80 / 97.9 | ✅ comfortable margin |
+| `src/features/dictionary/**` | 70% | 89.33 / 76.38 / 90.9 / 89.33 | ✅ comfortable margin |
 | Global floor | 60% | 82.34 / 88.79 / 89.11 / 82.34 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
@@ -108,6 +109,14 @@ the 30-day scheduled review forecast buckets overdue and future due cards.
 heatmap for a new learner, recorded daily activity plotted with review/correct/again totals and
 intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
 breakdown and pressed state.
+
+### `src/features/dictionary` — 5 cases
+
+**`dictionary-screen.test.tsx`** (Testing Library) — offline search from the visible form, and
+user-scoped recent-search persistence with pinning, reuse, and clear behavior.
+
+**`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
+promotion, and pinned-search toggling.
 
 ### `src/auth` — 13 cases across 3 files
 
