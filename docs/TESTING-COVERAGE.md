@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 26 (175 test cases: 175 passing) |
-| Component test files | 5 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx` — 38 cases, included above) |
+| Unit/integration test files | 28 (182 test cases: 182 passing) |
+| Component test files | 6 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `settings-screen.test.tsx` — 41 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.33%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -30,6 +30,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/data/**` | 85% | db 93.19 / 85.71 / 100 / 93.19 · packs 98.61 / 79.1 / 100 / 98.61 · repo 98.63 / 91.11 / 100 / 98.63 | ✅ comfortable margin |
 | `src/features/**` | 70% | browse 92.85 / 85.61 / 80 / 92.85 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.86 / 83.94 / 80 / 97.86 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.78 / 75.9 / 90.9 / 94.78 | ✅ comfortable margin |
+| `src/features/settings/**` | 70% | covered by theme and SettingsScreen tests | ✅ |
 | Global floor | 60% | 86.33 / 87.14 / 89.26 / 86.33 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
@@ -133,6 +134,10 @@ user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
+
+### `src/features/settings` — 7 cases
+
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, and restoration of a saved night preference.
 
 ### `src/auth` — 11 cases across 3 files
 

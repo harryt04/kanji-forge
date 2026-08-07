@@ -10,6 +10,7 @@ import {
   type AuthUser,
 } from '@/auth/client'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import { ThemeController } from '@/features/settings'
 import { Button } from '@/ui/button'
 
 export function AuthGate({
@@ -59,10 +60,23 @@ export function AuthGate({
         <Link className="font-display text-xl font-bold" href="/">
           KanjiForge
         </Link>
-        <Button variant="ghost" size="sm" onClick={() => void handleSignOut()}>
-          Sign out
-        </Button>
+        <nav className="flex items-center gap-1" aria-label="Account">
+          <Link
+            className="text-muted-foreground hover:text-foreground rounded-md px-3 py-2 text-sm"
+            href="/settings"
+          >
+            Settings
+          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleSignOut()}
+          >
+            Sign out
+          </Button>
+        </nav>
       </header>
+      <ThemeController userId={user.id} />
       {children}
     </>
   )
