@@ -1,6 +1,8 @@
 import { DAY_MS } from './schedule'
 import type { CardLevel, CardState } from './types'
 
+export const GOAL_WARNING_THRESHOLD = 200
+
 export interface GoalResult {
   remainingSteps: number
   daysLeft: number
@@ -33,8 +35,24 @@ export function goalTarget(
     accuracy,
     lapseLoad,
     dailyTarget,
-    warns: dailyTarget > 200,
+    warns: dailyTarget > GOAL_WARNING_THRESHOLD,
   }
+}
+
+/** Returns the earliest date that brings a warned goal back to 200 answers/day. */
+export function suggestedGoalDate(
+  goal: Pick<GoalResult, 'remainingSteps' | 'lapseLoad'>,
+  now: number,
+): number {
+  const adjustedSteps = goal.remainingSteps * (1 + goal.lapseLoad)
+  let days = Math.max(1, Math.ceil(adjustedSteps / GOAL_WARNING_THRESHOLD))
+  while (
+    Math.ceil(Math.ceil(goal.remainingSteps / days) * (1 + goal.lapseLoad)) >
+    GOAL_WARNING_THRESHOLD
+  ) {
+    days += 1
+  }
+  return now + days * DAY_MS
 }
 
 export function projectedCompletion(

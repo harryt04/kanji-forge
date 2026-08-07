@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 20 (126 test cases: 126 passing) |
-| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 22 cases, included above) |
+| Unit/integration test files | 20 (128 test cases: 128 passing) |
+| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 23 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **81.18%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -47,7 +47,7 @@ any directory gate above):
 
 ## Test inventory
 
-### `src/core/srs` — 19 cases, 100% coverage
+### `src/core/srs` — 20 cases, 100% coverage
 
 `srs.test.ts` — the 15 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
 idempotency, level-domain invariants, schedule/queue/goal boundary helpers) plus a fuzz-bounds case
@@ -90,14 +90,14 @@ Locked at 100% by the CI gate; this directory should never regress.
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
 
-### `src/features/home` — 8 cases
+### `src/features/home` — 9 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
 (via `recordGrade()` against a real local DB), level-distribution bar and counts include untouched
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
-the goal date.
+the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action.
 
 ### `src/features/history` — 3 cases
 

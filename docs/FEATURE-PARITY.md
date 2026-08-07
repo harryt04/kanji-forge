@@ -151,7 +151,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Retention rate per level | ➕ 🔷 | — | |
 | — | Leech identification | ➕ 🔷 | — | |
 | — | Heatmap calendar | ➕ 🔷 | — | |
-| — | Unrealistic-pace warning with inline fixes | ➕ ✅ | — | |
+| — | Unrealistic-pace warning with inline fixes | ➕ ✅ | 2026-08-07 | Home warns above 200 answers/day and offers a one-tap later-date suggestion; smaller-deck selection remains unavailable for the built-in fixture deck |
 
 ## 8. Dictionary
 

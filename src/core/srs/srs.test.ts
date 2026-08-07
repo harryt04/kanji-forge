@@ -12,6 +12,7 @@ import {
   progress,
   progressLevel,
   projectedCompletion,
+  suggestedGoalDate,
 } from './goal'
 import {
   buildQueue,
@@ -166,6 +167,34 @@ describe('SRS-SPEC §10', () => {
     expect(
       goalTarget(states, now + 30 * DAY_MS, now, 0, 0, 1.2).dailyTarget,
     ).toBe(21)
+  })
+  it('calculates a later goal date at the warning threshold', () => {
+    const states = Array.from({ length: 200 }, () => state(0))
+    const goal = goalTarget(states, now + DAY_MS, now, 0, 0, 1)
+    const suggested = suggestedGoalDate(goal, now)
+    expect(suggested).toBe(now + 5 * DAY_MS)
+    expect(
+      goalTarget(states, suggested, now, 0, 0, 1).dailyTarget,
+    ).toBeLessThanOrEqual(200)
+
+    const largeGoal = goalTarget(
+      Array.from({ length: 5000 }, () => state(0)),
+      now + DAY_MS,
+      now,
+      0,
+      0,
+      1,
+    )
+    expect(
+      goalTarget(
+        Array.from({ length: 5000 }, () => state(0)),
+        suggestedGoalDate(largeGoal, now),
+        now,
+        0,
+        0,
+        1,
+      ).dailyTarget,
+    ).toBeLessThanOrEqual(200)
   })
   it('12: replay reproduces the same projection after backup import', () => {
     const log = [review('1', 'good', now, 1), review('2', 'easy', now + 2, 4)]

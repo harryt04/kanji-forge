@@ -8,6 +8,7 @@ import {
   progressLevel as computeProgressLevel,
   projectedCompletion,
   goalTarget,
+  suggestedGoalDate,
 } from '@/core/srs/goal'
 import { emptyCardState } from '@/core/srs/types'
 import { createUserRepositories, type CardState } from '@/data/repo'
@@ -85,10 +86,19 @@ function formatProjectedDate(timestamp: number): string {
   })
 }
 
+function formatDateInput(timestamp: number): string {
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function HomeScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [data, setData] = useState<HomeData | null>(null)
   const [goalInput, setGoalInput] = useState('')
+  const [goalWarningDismissed, setGoalWarningDismissed] = useState(false)
 
   async function refresh(): Promise<void> {
     if (!runtime) return
@@ -170,17 +180,29 @@ export function HomeScreen(): React.ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runtime])
 
-  async function setGoal(): Promise<void> {
-    if (!runtime || !goalInput) return
+  async function saveGoalDate(date: number): Promise<void> {
+    if (!runtime) return
     const repo = createUserRepositories(runtime.database)
-    const date = new Date(goalInput).getTime()
-    if (Number.isNaN(date)) return
     await repo.settings.set({
       key: `goal:${STARTER_DECK_ID}`,
       value: String(date),
       updatedAt: Date.now(),
     })
     await refresh()
+  }
+
+  async function setGoal(): Promise<void> {
+    if (!goalInput) return
+    const date = new Date(goalInput).getTime()
+    if (Number.isNaN(date)) return
+    await saveGoalDate(date)
+  }
+
+  async function moveGoalToSuggestedDate(): Promise<void> {
+    if (!data?.goal) return
+    const date = suggestedGoalDate(data.goal, Date.now())
+    setGoalInput(formatDateInput(date))
+    await saveGoalDate(date)
   }
 
   if (!runtime)
@@ -322,6 +344,36 @@ export function HomeScreen(): React.ReactElement {
               No goal date set yet.
             </p>
           )}
+          {data.goal?.warns && !goalWarningDismissed ? (
+            <div
+              role="alert"
+              className="border-destructive/40 bg-destructive/5 space-y-3 rounded-md border p-3 text-sm"
+            >
+              <p>
+                At this pace, you&apos;d need{' '}
+                <strong>{data.goal.dailyTarget} correct answers a day</strong>.
+                Move the goal date, or keep this goal and choose a smaller deck
+                when deck selection is available.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void moveGoalToSuggestedDate()}
+                >
+                  Move goal date to{' '}
+                  {formatDateInput(suggestedGoalDate(data.goal, Date.now()))}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setGoalWarningDismissed(true)}
+                >
+                  Keep current goal
+                </Button>
+              </div>
+            </div>
+          ) : null}
           {data.projectedCompletionAt ? (
             <div className="border-border rounded-md border p-3 text-sm">
               <p>

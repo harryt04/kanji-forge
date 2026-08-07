@@ -281,4 +281,32 @@ describe('HomeScreen', () => {
     )
     expect(screen.getByText(/On pace|Behind pace/)).toBeInTheDocument()
   })
+
+  it('warns about an unrealistic pace and can move the goal inline', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    await repo.settings.set({
+      key: 'goal:dev-kanji',
+      value: String(now + 86_400_000),
+      updatedAt: now,
+    })
+
+    render(<HomeScreen />)
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /At this pace, you'd need 920 correct answers a day/,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /Move goal date to/ }),
+    )
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText('On pace')).toBeInTheDocument()
+  })
 })
