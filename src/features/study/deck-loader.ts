@@ -9,6 +9,10 @@ import {
 export interface StudyCard {
   readonly contentRef: string
   readonly literal: string
+  readonly strokeCount: number
+  readonly frequency: number | null
+  readonly jlptLegacy: number | null
+  readonly grade: number | null
   readonly meanings: readonly string[]
   readonly onReadings: readonly string[]
   readonly kunReadings: readonly string[]
@@ -65,6 +69,10 @@ export async function loadStarterDeck(
     content.set(ref, {
       contentRef: ref,
       literal: record.literal,
+      strokeCount: record.strokeCount,
+      frequency: record.freq,
+      jlptLegacy: record.jlptLegacy,
+      grade: record.grade,
       meanings: record.meanings,
       onReadings: record.onReadings,
       kunReadings: record.kunReadings,

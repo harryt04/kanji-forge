@@ -7,28 +7,41 @@ import type { CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
 import { loadStarterDeck, type LoadedDeck } from '@/features/study/deck-loader'
+import { sortBrowseCards, type BrowseSort } from './browse-sort'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 
 interface BrowseCard {
   readonly contentRef: string
+  readonly deckIndex: number
   readonly state: CardState | undefined
   readonly literal: string
+  readonly strokeCount: number
+  readonly frequency: number | null
+  readonly jlptLegacy: number | null
+  readonly grade: number | null
+  readonly kana: string
   readonly meanings: readonly string[]
   readonly onReadings: readonly string[]
   readonly kunReadings: readonly string[]
 }
 
 function toBrowseCards(deck: LoadedDeck): readonly BrowseCard[] {
-  return deck.cards.flatMap((card) => {
+  return deck.cards.flatMap((card, deckIndex) => {
     const content = deck.content.get(card.contentRef)
     if (!content) return []
     return [
       {
         contentRef: card.contentRef,
+        deckIndex,
         state: card.state,
         literal: content.literal,
+        strokeCount: content.strokeCount,
+        frequency: content.frequency,
+        jlptLegacy: content.jlptLegacy,
+        grade: content.grade,
+        kana: [...content.onReadings, ...content.kunReadings].join(' '),
         meanings: content.meanings,
         onReadings: content.onReadings,
         kunReadings: content.kunReadings,
@@ -66,6 +79,7 @@ export function BrowseScreen({
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<BrowseSort>('deck-order')
 
   useEffect(() => {
     if (!runtime) return
@@ -91,6 +105,10 @@ export function BrowseScreen({
   const filteredCards = useMemo(
     () => searchBrowseCards(cards, query),
     [cards, query],
+  )
+  const sortedCards = useMemo(
+    () => sortBrowseCards(filteredCards, sort),
+    [filteredCards, sort],
   )
 
   if (!runtime)
@@ -138,6 +156,32 @@ export function BrowseScreen({
         </span>
       </label>
 
+      <label className="grid max-w-sm gap-2" htmlFor="browse-sort">
+        <span className="text-sm font-semibold">Sort cards</span>
+        <select
+          id="browse-sort"
+          value={sort}
+          onChange={(event) => setSort(event.target.value as BrowseSort)}
+          aria-label="Sort cards"
+          className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+          aria-describedby="browse-sort-help"
+        >
+          <option value="deck-order">Deck order</option>
+          <option value="level">Level (new → mastered)</option>
+          <option value="stroke-count">Stroke count</option>
+          <option value="frequency">Frequency rank</option>
+          <option value="jlpt">JLPT level (N5 → N1)</option>
+          <option value="grade">School grade</option>
+          <option value="times-reviewed">Times reviewed</option>
+          <option value="last-reviewed">Last reviewed</option>
+          <option value="kana">Kana alphabetical</option>
+        </select>
+        <span id="browse-sort-help" className="text-muted-foreground text-sm">
+          Missing metadata is placed after cards with a value. Ties keep deck
+          order.
+        </span>
+      </label>
+
       {cards.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-8 text-center">
@@ -156,7 +200,7 @@ export function BrowseScreen({
           data-testid="browse-card-list"
           aria-label={`${deck.name} cards`}
         >
-          {filteredCards.map((card) => {
+          {sortedCards.map((card) => {
             const level = card.state?.level ?? 0
             const flagged = card.state?.flagged ?? false
             const reading = [...card.onReadings, ...card.kunReadings].join('、')
@@ -165,6 +209,7 @@ export function BrowseScreen({
                 <Card
                   className={`sticky-shape ${LEVEL_SHAPES[level]}`}
                   data-level={level}
+                  data-content-ref={card.contentRef}
                   data-testid="browse-card"
                   role="article"
                   aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}

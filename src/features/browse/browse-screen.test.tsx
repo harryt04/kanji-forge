@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -118,6 +119,53 @@ describe('BrowseScreen', () => {
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
     expect(
       screen.getByText('No cards match “does-not-exist”.'),
+    ).toBeInTheDocument()
+  })
+
+  it('sorts cards by level while preserving deck order for ties', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    for (const [contentRef, level] of [
+      ['kanji:日', 3],
+      ['kanji:一', 1],
+    ] as const) {
+      await repo.cardStates.upsert({
+        deckId: 'dev-kanji',
+        contentRef,
+        level,
+        dueAt: now,
+        lastReviewedAt: now,
+        correctStreak: level,
+        totalReviews: level,
+        totalCorrect: level,
+        lapses: 0,
+        flagged: false,
+        manualOverride: false,
+        updatedAt: now,
+        updatedBy: 'browse-sort-test',
+      })
+    }
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort cards' }), {
+      target: { value: 'level' },
+    })
+
+    const cards = screen.getAllByTestId('browse-card')
+    const positionOf = (contentRef: string) =>
+      cards.findIndex(
+        (item) => item.getAttribute('data-content-ref') === contentRef,
+      )
+    expect(positionOf('kanji:二')).toBeLessThan(positionOf('kanji:一'))
+    expect(positionOf('kanji:一')).toBeLessThan(positionOf('kanji:日'))
+    expect(
+      within(cards[positionOf('kanji:一')]).getByText('Level 1 · Seen'),
     ).toBeInTheDocument()
   })
 })
