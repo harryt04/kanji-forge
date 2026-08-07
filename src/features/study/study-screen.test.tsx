@@ -17,7 +17,7 @@ import {
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import { useStudyStore } from './store'
-import { StudyScreen } from './study-screen'
+import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -110,6 +110,46 @@ describe('StudyScreen', () => {
 
     act(() => vi.advanceTimersByTime(61_000))
     expect(screen.getByText('Time 1:01')).toBeInTheDocument()
+  })
+
+  it('persists the grey-stickies preference and hides study colors', async () => {
+    await renderReady()
+    const sticky = screen.getByRole('button', { name: 'Reveal answer' })
+    const toggle = screen.getByRole('button', { name: 'Hide sticky colors' })
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(toggle)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Show sticky colors' }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    )
+    expect(sticky).toHaveAttribute('data-grey-stickies', 'true')
+    expect(sticky).toHaveStyle({ borderColor: 'var(--muted-foreground)' })
+    expect(
+      await createUserRepositories(
+        getActiveUserRuntime()!.database,
+      ).settings.get(GREY_STICKIES_SETTING),
+    ).toMatchObject({ key: GREY_STICKIES_SETTING, value: 'true' })
+  })
+
+  it('loads the grey-stickies preference for a later study session', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: GREY_STICKIES_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+
+    expect(
+      screen.getByRole('button', { name: 'Show sticky colors' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('button', { name: 'Reveal answer' }),
+    ).toHaveAttribute('data-grey-stickies', 'true')
   })
 
   it('grades via keyboard once revealed', async () => {

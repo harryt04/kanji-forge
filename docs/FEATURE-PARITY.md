@@ -29,7 +29,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 1.8 | New-cards-per-session control ("red slider") | ✅ | 2026-08-06 | |
 | 1.9 | Intervals as guidelines, other priorities can reorder | ✅ | 2026-08-06 | Queue builder, SRS-SPEC §5 |
 | 1.10 | Manual color override | ✅ | 2026-08-07 | Browse list level picker persists a manual SRS assignment without changing review totals |
-| 1.11 | Grey stickies (hide color during study) | ✅ | — | |
+| 1.11 | Grey stickies (hide color during study) | ✅ | 2026-08-07 | Study toolbar toggle persists per-user and replaces level colors with a neutral border while retaining the accessible level label |
 | 1.12 | Session summary dialog | ✅ | 2026-08-06 | |
 | 1.13 | Study timer, tap to show | ✅ | 2026-08-07 | Elapsed session timer is hidden until requested and updates once per second |
 | 1.14 | Flag a sticky during study | ✅ | 2026-08-07 | Accessible flag/unflag control persists the card state locally and queues it for sync |

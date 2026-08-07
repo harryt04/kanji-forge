@@ -17,6 +17,7 @@ import { loadStarterDeck } from './deck-loader'
 import { useStudyStore } from './store'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
+export const GREY_STICKIES_SETTING = 'study.greyStickies'
 
 function formatElapsedTime(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
@@ -35,6 +36,8 @@ export function StudyScreen({
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [showTimer, setShowTimer] = useState(false)
+  const [greyStickies, setGreyStickies] = useState(false)
+  const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
   const sessionRepo = useRef<UserRepositories | null>(null)
@@ -75,6 +78,9 @@ export function StudyScreen({
       await runtime.database.ready
       const repoForSession = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
+      const greyStickiesSetting = await repoForSession.settings.get(
+        GREY_STICKIES_SETTING,
+      )
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
       await repoForSession.sessions.start({
@@ -94,6 +100,8 @@ export function StudyScreen({
         setSessionStartedAt(startedAt)
         setElapsedSeconds(0)
         setShowTimer(false)
+        setGreyStickies(greyStickiesSetting?.value === 'true')
+        setPreferenceError(null)
         setLoading(false)
       }
     })().catch((reason: unknown) => {
@@ -148,6 +156,27 @@ export function StudyScreen({
     finish()
   }, [endSession, finish])
 
+  const handleToggleGreyStickies = useCallback(async () => {
+    if (!runtime) return
+    const next = !greyStickies
+    setGreyStickies(next)
+    setPreferenceError(null)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: GREY_STICKIES_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setGreyStickies(!next)
+      setPreferenceError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the sticky color setting.',
+      )
+    }
+  }, [greyStickies, runtime])
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === ' ') {
@@ -188,6 +217,9 @@ export function StudyScreen({
   const level = card?.state?.level ?? 0
   const flagged = card?.state?.flagged ?? false
   const remaining = Math.max(0, queue.length - index)
+  const stickyColor = greyStickies
+    ? 'var(--muted-foreground)'
+    : `var(--level-${level})`
 
   return (
     <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
@@ -209,11 +241,25 @@ export function StudyScreen({
               >
                 {showTimer ? 'Hide timer' : 'Show timer'}
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-pressed={greyStickies}
+                onClick={() => void handleToggleGreyStickies()}
+              >
+                {greyStickies ? 'Show sticky colors' : 'Hide sticky colors'}
+              </Button>
             </>
           )}
           <span>{remaining} remaining</span>
         </div>
       </div>
+
+      {preferenceError && (
+        <p className="text-destructive px-4 pt-3 text-sm" role="alert">
+          {preferenceError}
+        </p>
+      )}
 
       {!finished && card && studyCard ? (
         <div
@@ -228,13 +274,14 @@ export function StudyScreen({
             aria-label={flagged ? 'Unflag card' : 'Flag card'}
             onClick={handleToggleFlag}
             className="border-l-4"
-            style={{ borderLeftColor: `var(--level-${level})` }}
+            style={{ borderLeftColor: stickyColor }}
           >
             {flagged ? 'Flagged' : 'Flag'}
           </Button>
           <div
             className={`bg-card w-full max-w-sm rounded-[var(--radius)] border-4 p-10 text-center shadow-[var(--shadow-card)] transition-colors motion-reduce:transition-none`}
-            style={{ borderColor: `var(--level-${level})` }}
+            style={{ borderColor: stickyColor }}
+            data-grey-stickies={greyStickies}
             onClick={() => !revealed && reveal()}
             role="button"
             tabIndex={0}

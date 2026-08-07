@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 26 (173 test cases: 173 passing) |
-| Component test files | 5 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx` — 36 cases, included above) |
+| Unit/integration test files | 26 (175 test cases: 175 passing) |
+| Component test files | 5 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx` — 38 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.33%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -84,12 +84,13 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
-- **`study-screen.test.tsx`** (11, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
+- **`study-screen.test.tsx`** (13, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
   the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
   the previous card and re-disables itself, session-summary totals match store state, and the
-  tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
+  tap-to-show elapsed timer updates while visible, persisted grey-stickies preference hides study
+  colors and reloads in a later session, and study-session persistence/closure on finish.
 
 ### `src/features/home` — 12 cases
 
