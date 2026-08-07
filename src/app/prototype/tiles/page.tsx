@@ -14,7 +14,7 @@ import AccessibilityTileList from '@/prototype/tile-wall/accessibility-tile-list
  * With pinch/wheel zoom, dirty-rect panning, glyph atlas pre-rendering,
  * and accessibility fallbacks (keyboard nav, reduced-motion detection).
  *
- * See mvp-docs/ARCHITECTURE.md §5 for the full spec.
+ * See docs/ARCHITECTURE.md §5 for the full spec.
  */
 
 interface Tile {

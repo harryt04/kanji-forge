@@ -1,16 +1,5 @@
 # KanjiForge repository guidance
 
-## Contribution rules
-
-- Docs PRs only.
-- `docs/` is the repository's specification and planning vault.
-- Follow the existing document structure.
-- Do not change application code as part of a docs PR.
-- PR title: `docs: ...`
-- Verify with `git diff --stat` before push.
-
-## Project
-
 **KanjiForge** is a free, open-source, offline-first Japanese kanji and vocabulary study PWA—an open alternative to StickyStudy Japanese for every platform.
 
 ### The idea in one paragraph

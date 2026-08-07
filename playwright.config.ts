@@ -22,7 +22,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // `pnpm dev` runs the `predev` pack-copy step (sql-wasm + packs-dev fixtures) first.
+    command: 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
   },

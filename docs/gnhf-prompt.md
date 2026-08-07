@@ -4,11 +4,14 @@ Then, please see /Users/harry/Documents/git/kanji-forge/docs/FEATURE-PARITY.md a
 
 For your feature, please: 
 
-1. Create a plan to implement the feature in the spirit of what you understand StickyStudy Japanese study app to have. If you can't create such a plan, find an easier feature for to implement instead. 
-1. Validate that it works as you expected by running the app and logging in with the test account credentials you can find at .env.local 
-1. Create testing coverage for it as needed or possible.
-1. Update AGENTS.md or other instructions files as needed if your changes warrant it. 
-1. Run `npm run prettify` to format your changes
-1. Confirm npm run ci passes
-1. Commit and push your changes directly to master.
-1. Mark the feature that you created as implemented in then 
+1. Create a plan to implement the feature in the spirit of what you understand StickyStudy Japanese study app to have. If you can't create such a plan, or the feature you picked to work on is blocked by another feature that hasn't been built yet, find another feature to work on instead. 
+2. Implement your plan and then validate that it works as you expected by running the app and logging in with the test account credentials you can find at .env.local 
+3. Create testing coverage for it as needed or possible.
+  - Update this file if needed: /Users/harry/Documents/git/kanji-forge/docs/TESTING-COVERAGE.md
+4. Update AGENTS.md or other instructions files as needed if your changes warrant it. 
+5. Run `npm run prettify` to format your changes
+6. Confirm npm run ci passes
+  - Fix any issues and repeat this steps 5 and 6 until you've fixes all issues. 
+7. Commit and push your changes directly to master.
+8. Mark the feature that you created as implemented in then 
+9. Stop iterating onto the next gnhf loop if you marked off the last item for implementation, and the feature-parity worksheet is complete. Otherwise, move on to the next iteration. This session is complete! ^_^

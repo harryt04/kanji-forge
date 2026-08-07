@@ -12,7 +12,7 @@
     "repro": {
       "id": "repro",
       "file": "repro-input.json",
-      "sha256": "0d8f5013d42ab610cddfe265c0d94b965d8d8025a266afea477af2e20163e011",
+      "sha256": "9f8f8ab04f275b036100d4e9aa0b43a2208b8664e07c777353c07e29201a5995",
       "license": "Fixture License",
       "licenseFile": "LICENSE.txt",
       "licenseHash": "91f4ad5c989ee1609c268c54fd7e7ca311a782efd3211dd80b7a7edb0e1c183d"

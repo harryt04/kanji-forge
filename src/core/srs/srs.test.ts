@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import {
+  NOW as now,
+  srsCard as card,
+  srsConfig as cfg,
+  srsReview as review,
+  srsState as state,
+} from '../../../test/factories'
 import { applyGrade } from './grade'
 import { goalTarget, progress, projectedCompletion } from './goal'
 import {
@@ -9,61 +16,7 @@ import {
 } from './queue'
 import { replay } from './replay'
 import { DAY_MS, intervalDays, nextDue } from './schedule'
-import {
-  DEFAULT_SRS_CONFIG,
-  emptyCardState,
-  isCardLevel,
-  type CardState,
-  type Review,
-} from './types'
-
-const now = 1_700_000_000_000
-const cfg = { ...DEFAULT_SRS_CONFIG, fuzzPercent: 0 }
-function state(level = 0, stickyId = 'a'): CardState {
-  return {
-    ...emptyCardState('deck', stickyId, 'device'),
-    level: level as CardState['level'],
-    dueAt: level === 0 ? null : now,
-    lastReviewedAt: null,
-  }
-}
-function card(
-  stickyId: string,
-  level = 0,
-  dueAt: number | null = null,
-  order = 0,
-  characters?: string[],
-): QueueCard {
-  return {
-    deckId: 'deck',
-    stickyId,
-    state: { ...state(level, stickyId), dueAt },
-    order,
-    characters,
-  }
-}
-function review(
-  id: string,
-  grade: Review['grade'],
-  at: number,
-  levelAfter: CardState['level'],
-  source: Review['source'] = 'study',
-): Review {
-  return {
-    id,
-    deckId: 'deck',
-    stickyId: 'a',
-    at,
-    grade,
-    levelBefore: 0,
-    levelAfter,
-    intervalBefore: 0,
-    elapsedDays: 0,
-    responseMs: 1,
-    source,
-    deviceId: 'device',
-  }
-}
+import { DEFAULT_SRS_CONFIG, isCardLevel } from './types'
 
 describe('SRS-SPEC §10', () => {
   it('1: advances four good answers and schedules each arriving level', () => {
