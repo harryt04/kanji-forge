@@ -75,6 +75,7 @@
     "dist",
     "e2e",
     "playwright.config.ts",
-    "scripts"
+    "scripts",
+    "apps"
   ]
 }

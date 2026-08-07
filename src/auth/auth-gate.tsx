@@ -24,7 +24,11 @@ export function AuthGate({ children }: { children: React.ReactNode }): React.Rea
   async function handleSignOut(): Promise<void> {
     clearUserRuntime();
     setUser(null);
-    await signOut();
+    try {
+      await signOut();
+    } catch {
+      // Offline: the server session will simply expire; the local cache is already cleared.
+    }
   }
 
   if (user === undefined) return <main className="min-h-screen" aria-busy="true" />;

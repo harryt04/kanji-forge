@@ -55,3 +55,4 @@ packs/*.manifest.json
 !packs-dev/
 !packs-dev/**
 
+public/packs-dev
