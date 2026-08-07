@@ -38,6 +38,15 @@ function formatDay(date: Date): string {
   })
 }
 
+function formatDetailDay(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 function buildActivityDays(
   stats: readonly DailyStat[],
   now = Date.now(),
@@ -69,6 +78,7 @@ function buildActivityDays(
 export function HistoryScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [data, setData] = useState<HistoryData | null>(null)
+  const [selectedDay, setSelectedDay] = useState<ActivityDay | null>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -117,20 +127,22 @@ export function HistoryScreen(): React.ReactElement {
           >
             <div className="border-border flex h-52 items-end gap-1 border-b border-l px-1 pb-0">
               {data.days.map((day) => (
-                <div
+                <button
                   key={day.day}
                   data-testid="history-bar"
                   data-day={day.day}
-                  className="bg-primary min-w-0 flex-1 rounded-t-sm transition-[height] motion-reduce:transition-none"
+                  type="button"
+                  className="bg-primary focus-visible:ring-ring min-w-0 flex-1 rounded-t-sm transition-[height] hover:opacity-80 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none motion-reduce:transition-none"
                   style={{
                     height:
                       day.reviews === 0
                         ? '0%'
                         : `${Math.max(4, (day.reviews / maxReviews) * 100)}%`,
                   }}
-                  role="img"
+                  aria-pressed={selectedDay?.day === day.day}
                   aria-label={`${formatDay(day.date)}: ${day.reviews} ${day.reviews === 1 ? 'review' : 'reviews'}, ${day.correct} correct, ${day.again} again`}
                   title={`${formatDay(day.date)}: ${day.reviews} reviews`}
+                  onClick={() => setSelectedDay(day)}
                 />
               ))}
             </div>
@@ -139,6 +151,35 @@ export function HistoryScreen(): React.ReactElement {
               <span>{formatDay(data.days[data.days.length - 1]!.date)}</span>
             </div>
           </div>
+          {selectedDay ? (
+            <section
+              className="border-border mt-6 rounded-md border p-4"
+              aria-live="polite"
+              data-testid="history-day-detail"
+            >
+              <h3 className="font-semibold">
+                {formatDetailDay(selectedDay.date)}
+              </h3>
+              <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">Reviews</dt>
+                  <dd className="text-lg font-semibold">
+                    {selectedDay.reviews}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Correct</dt>
+                  <dd className="text-lg font-semibold">
+                    {selectedDay.correct}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Again</dt>
+                  <dd className="text-lg font-semibold">{selectedDay.again}</dd>
+                </div>
+              </dl>
+            </section>
+          ) : null}
           <dl className="border-border mt-6 grid grid-cols-2 gap-4 border-t pt-4 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-muted-foreground">Reviews</dt>

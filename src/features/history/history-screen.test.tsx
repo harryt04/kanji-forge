@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
@@ -105,10 +111,17 @@ describe('HistoryScreen', () => {
       '2',
     )
     expect(screen.getByText('Again').nextElementSibling).toHaveTextContent('1')
-    expect(
-      screen.getByRole('img', {
-        name: /2 reviews, 1 correct, 1 again/,
-      }),
-    ).toBeInTheDocument()
+    const selectedBar = screen.getByRole('button', {
+      name: /2 reviews, 1 correct, 1 again/,
+    })
+    expect(selectedBar).toBeInTheDocument()
+
+    fireEvent.click(selectedBar)
+    const detail = screen.getByTestId('history-day-detail')
+    const values = detail.querySelectorAll('dd')
+    expect(values[0]).toHaveTextContent('2')
+    expect(values[1]).toHaveTextContent('1')
+    expect(values[2]).toHaveTextContent('1')
+    expect(selectedBar).toHaveAttribute('aria-pressed', 'true')
   })
 })

@@ -143,7 +143,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 7.5 | Overall progress as color | ✅ | 2026-08-07 | Home progress uses the level-weighted belt-rank ramp with an accessible level/name label |
 | 7.6 | Last time studied / total time studied | ✅ | 2026-08-07 | Home shows the latest completed-card time and total duration of completed local study sessions |
 | 7.7 | Rolling bar chart of study history | ✅ | 2026-08-07 | History shows a 30-day local daily-activity chart with review/correct/again totals |
-| 7.8 | Tap a bar for that day's detail | ✅ | — | |
+| 7.8 | Tap a bar for that day's detail | ✅ | 2026-08-07 | History bars are keyboard/touch selectable and show that day's review, correct, and again breakdown |
 | — | On-pace / ahead / behind status | ➕ ✅ | 2026-08-06 | |
 | — | Projected completion date vs. goal | ➕ ✅ | 2026-08-07 | Home projects completion from correct answers per active day over the trailing 14 days and explains >20% divergence from the goal date |
 | — | Level distribution stacked bar | ➕ ✅ | 2026-08-07 | Home shows all five belt-rank levels, including untouched cards as level 0, with an accessible stacked bar and count legend |

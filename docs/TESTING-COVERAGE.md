@@ -103,7 +103,7 @@ the goal date.
 
 **`history-screen.test.tsx`** (Testing Library) — sign-in-required state, empty 30-day chart for a
 new learner, and recorded daily activity plotted with review/correct/again totals and an accessible
-per-day label.
+per-day label; selecting a bar reveals its daily breakdown and pressed state.
 
 ### `src/auth` — 13 cases across 3 files
 
