@@ -16,6 +16,7 @@ import {
   suggestedGoalDate,
 } from './goal'
 import { retentionByLevel } from './retention'
+import { identifyLeeches } from './leeches'
 import {
   buildQueue,
   interleaveQueue,
@@ -319,6 +320,21 @@ describe('SRS properties and edge cases', () => {
     expect(forecast[2]?.reviews).toBe(1)
     expect(forecast[29]?.reviews).toBe(1)
     expect(forecast.reduce((total, day) => total + day.reviews, 0)).toBe(3)
+    expect(reviewForecast(forecastNow, [], 0)).toEqual([])
+  })
+  it('identifies cards with six or more lapses and orders the worst first', () => {
+    expect(
+      identifyLeeches([
+        { ...state(1, 'z'), lapses: 6 },
+        { ...state(4, 'b'), lapses: 8 },
+        { ...state(4, 'a'), lapses: 8 },
+        { ...state(3, 'ignored'), lapses: 5 },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ stickyId: 'a', level: 4, lapses: 8 }),
+      expect.objectContaining({ stickyId: 'b', level: 4, lapses: 8 }),
+      expect.objectContaining({ stickyId: 'z', level: 1, lapses: 6 }),
+    ])
   })
   it('exercises deterministic interleaving and all replay red-count paths', () => {
     const allPrimed = interleaveQueue(

@@ -317,6 +317,45 @@ describe('HomeScreen', () => {
     expect(screen.getAllByText('No reviews')).toHaveLength(4)
   })
 
+  it('surfaces cards with six or more lapses as leeches', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    const state = (contentRef: string, lapses: number, level: 1 | 2) => ({
+      deckId: 'dev-kanji' as const,
+      contentRef,
+      level,
+      dueAt: now,
+      lastReviewedAt: now,
+      correctStreak: 0,
+      totalReviews: lapses + 1,
+      totalCorrect: 1,
+      lapses,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: now,
+      updatedBy: 'device',
+    })
+    await repo.cardStates.upsert(state('kanji:日', 6, 1))
+    await repo.cardStates.upsert(state('kanji:一', 8, 2))
+    await repo.cardStates.upsert(state('kanji:国', 5, 2))
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('leeches')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('日')).toBeInTheDocument()
+    expect(screen.getByText('一')).toBeInTheDocument()
+    expect(screen.getByText('6 lapses')).toBeInTheDocument()
+    expect(screen.getByText('8 lapses')).toBeInTheDocument()
+    expect(screen.queryByText('国')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/Cards missed six or more times/),
+    ).toBeInTheDocument()
+  })
+
   it('shows the 30-day scheduled review forecast', async () => {
     const runtime = bootstrapUserRuntime(`home-${userId}`)
     await runtime.database.ready

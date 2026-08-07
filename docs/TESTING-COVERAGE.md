@@ -98,8 +98,9 @@ with no goal set and its accessible belt-rank label, progress bar reflects a rea
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
 the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action,
-and retention by starting level excludes manual adjustments and flags low retention, and the
-30-day scheduled review forecast buckets overdue and future due cards.
+and retention by starting level excludes manual adjustments and flags low retention, leech
+identification surfaces cards at six or more lapses while ignoring cards below the threshold, and
+the 30-day scheduled review forecast buckets overdue and future due cards.
 
 ### `src/features/history` — 3 cases
 

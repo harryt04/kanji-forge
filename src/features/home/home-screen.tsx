@@ -12,6 +12,7 @@ import {
   suggestedGoalDate,
 } from '@/core/srs/goal'
 import { retentionByLevel, type RetentionLevel } from '@/core/srs/retention'
+import { identifyLeeches, type Leech } from '@/core/srs/leeches'
 import { emptyCardState } from '@/core/srs/types'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
@@ -63,6 +64,8 @@ interface HomeData {
   readonly goal: ReturnType<typeof goalTarget> | null
   readonly projectedCompletionAt: number | null
   readonly retention: readonly RetentionLevel[]
+  readonly leeches: readonly Leech[]
+  readonly content: ReadonlyMap<string, { readonly literal: string }>
   readonly forecast: ReturnType<typeof reviewForecast>
 }
 
@@ -146,6 +149,7 @@ export function HomeScreen(): React.ReactElement {
     const goalDate = goalSetting ? Number(goalSetting.value) : null
     const recentReviews = await repo.reviews.list(STARTER_DECK_ID)
     const retention = retentionByLevel(recentReviews)
+    const leeches = identifyLeeches(coreStates)
     const now = Date.now()
     const cutoff = now - 14 * DAY_MS
     const recent = recentReviews.filter((review) => review.at >= cutoff)
@@ -179,6 +183,8 @@ export function HomeScreen(): React.ReactElement {
       goal,
       projectedCompletionAt,
       retention,
+      leeches,
+      content: loaded.content,
       forecast,
     })
   }
@@ -398,6 +404,48 @@ export function HomeScreen(): React.ReactElement {
             <p className="text-muted-foreground text-xs">
               Study more cards to see where your intervals are working best.
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="leeches">
+        <CardHeader>
+          <CardTitle className="text-base">Leeches</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Cards missed six or more times. Give these extra attention or review
+            your intervals.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {data.leeches.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No leeches yet. Keep studying to find cards that need extra
+              attention.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {data.leeches.map((leech) => {
+                const card = data.content.get(leech.stickyId)
+                return (
+                  <li
+                    key={leech.stickyId}
+                    className="border-border flex items-center justify-between gap-3 rounded-md border p-2"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="text-xl" lang="ja">
+                        {card?.literal ?? leech.stickyId}
+                      </span>
+                      <span className="text-muted-foreground truncate">
+                        Level {leech.level}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-medium">
+                      {leech.lapses} lapses
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </CardContent>
       </Card>
