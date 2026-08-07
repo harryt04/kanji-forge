@@ -12,6 +12,7 @@ import {
   progress,
   progressLevel,
   projectedCompletion,
+  reviewForecast,
   suggestedGoalDate,
 } from './goal'
 import { retentionByLevel } from './retention'
@@ -302,6 +303,22 @@ describe('SRS properties and edge cases', () => {
       { level: 3, reviews: 0, retained: 0, retentionPercent: null },
       { level: 4, reviews: 0, retained: 0, retentionPercent: null },
     ])
+  })
+  it('forecasts scheduled reviews by local calendar day and carries overdue cards into today', () => {
+    const forecastNow = new Date(2026, 7, 7, 15, 30).getTime()
+    const forecast = reviewForecast(forecastNow, [
+      { ...state(1), dueAt: forecastNow - DAY_MS },
+      { ...state(2), dueAt: forecastNow + 2 * DAY_MS },
+      { ...state(3), dueAt: forecastNow + 29 * DAY_MS },
+      { ...state(4), dueAt: null },
+      { ...state(1), dueAt: forecastNow + 31 * DAY_MS },
+    ])
+
+    expect(forecast).toHaveLength(30)
+    expect(forecast[0]?.reviews).toBe(1)
+    expect(forecast[2]?.reviews).toBe(1)
+    expect(forecast[29]?.reviews).toBe(1)
+    expect(forecast.reduce((total, day) => total + day.reviews, 0)).toBe(3)
   })
   it('exercises deterministic interleaving and all replay red-count paths', () => {
     const allPrimed = interleaveQueue(

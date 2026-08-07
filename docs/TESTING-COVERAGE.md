@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 20 (130 test cases: 130 passing) |
-| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 24 cases, included above) |
+| Unit/integration test files | 20 (132 test cases: 132 passing) |
+| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 25 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **82.34%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -90,7 +90,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
 
-### `src/features/home` — 10 cases
+### `src/features/home` — 11 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
@@ -98,7 +98,8 @@ with no goal set and its accessible belt-rank label, progress bar reflects a rea
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
 the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action,
-and retention by starting level excludes manual adjustments and flags low retention.
+and retention by starting level excludes manual adjustments and flags low retention, and the
+30-day scheduled review forecast buckets overdue and future due cards.
 
 ### `src/features/history` — 3 cases
 

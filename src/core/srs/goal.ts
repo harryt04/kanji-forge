@@ -13,6 +13,58 @@ export interface GoalResult {
   warns: boolean
 }
 
+export interface ReviewForecastDay {
+  readonly date: string
+  readonly reviews: number
+}
+
+function localDateKey(timestamp: number): string {
+  const date = new Date(timestamp)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function localDateKeyAfter(start: number, offset: number): string {
+  const date = new Date(start)
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() + offset)
+  return localDateKey(date.getTime())
+}
+
+/**
+ * Counts reviews currently scheduled by the card projection over the next
+ * calendar month. Overdue cards are included in today's bucket; new cards
+ * without a due date are not counted because their session allocation is
+ * user-configured rather than scheduled.
+ */
+export function reviewForecast(
+  now: number,
+  states: readonly CardState[],
+  horizonDays = 30,
+): readonly ReviewForecastDay[] {
+  const days = Math.max(0, Math.floor(horizonDays))
+  const start = new Date(now)
+  start.setHours(0, 0, 0, 0)
+  const dates = Array.from({ length: days }, (_, offset) =>
+    localDateKeyAfter(start.getTime(), offset),
+  )
+  const counts = dates.map((date) => ({ date, reviews: 0 }))
+  const firstDate = dates[0]
+
+  if (!firstDate) return counts
+
+  for (const state of states) {
+    if (state.dueAt === null) continue
+    const dueDate = localDateKey(state.dueAt)
+    const index = dates.indexOf(dueDate)
+    if (index >= 0) counts[index]!.reviews += 1
+    else if (dueDate < firstDate) counts[0]!.reviews += 1
+  }
+
+  return counts
+}
+
 export function goalTarget(
   states: readonly CardState[],
   goalDate: number,

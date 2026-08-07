@@ -8,6 +8,7 @@ import {
   progressLevel as computeProgressLevel,
   projectedCompletion,
   goalTarget,
+  reviewForecast,
   suggestedGoalDate,
 } from '@/core/srs/goal'
 import { retentionByLevel, type RetentionLevel } from '@/core/srs/retention'
@@ -62,6 +63,7 @@ interface HomeData {
   readonly goal: ReturnType<typeof goalTarget> | null
   readonly projectedCompletionAt: number | null
   readonly retention: readonly RetentionLevel[]
+  readonly forecast: ReturnType<typeof reviewForecast>
 }
 
 function localReviewDay(timestamp: number): string {
@@ -159,6 +161,7 @@ export function HomeScreen(): React.ReactElement {
       correct14d,
       activeDays14d,
     )
+    const forecast = reviewForecast(now, coreStates)
     let goal: ReturnType<typeof goalTarget> | null = null
     if (goalDate) {
       goal = goalTarget(coreStates, goalDate, now, correct14d, recent.length, 1)
@@ -176,6 +179,7 @@ export function HomeScreen(): React.ReactElement {
       goal,
       projectedCompletionAt,
       retention,
+      forecast,
     })
   }
 
@@ -224,6 +228,24 @@ export function HomeScreen(): React.ReactElement {
 
   const deckName = data.deckName
   const progressLabel = `Level ${data.progressLevel}, ${BELT_NAMES[data.progressLevel]}`
+  const forecastTotal = data.forecast.reduce(
+    (total, day) => total + day.reviews,
+    0,
+  )
+  const forecastPeak = data.forecast.reduce(
+    (peak, day) => Math.max(peak, day.reviews),
+    0,
+  )
+  const forecastPeakDay = data.forecast.find(
+    (day) => day.reviews === forecastPeak,
+  )
+  const formatForecastDay = (date: string, index: number): string => {
+    if (index === 0) return 'Today'
+    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    })
+  }
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
@@ -377,6 +399,45 @@ export function HomeScreen(): React.ReactElement {
               Study more cards to see where your intervals are working best.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="review-forecast">
+        <CardHeader>
+          <CardTitle className="text-base">30-day review forecast</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Reviews currently scheduled by your card intervals. Overdue cards
+            count today; new cards are not scheduled until a session starts.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div
+            role="img"
+            aria-label={`30-day review forecast: ${forecastTotal} scheduled ${forecastTotal === 1 ? 'review' : 'reviews'}. Peak day has ${forecastPeak} ${forecastPeak === 1 ? 'review' : 'reviews'}.`}
+            className="bg-muted flex h-28 items-end gap-px rounded-md p-2"
+          >
+            {data.forecast.map((day, index) => (
+              <div
+                key={day.date}
+                aria-hidden="true"
+                data-date={day.date}
+                title={`${formatForecastDay(day.date, index)}: ${day.reviews} ${day.reviews === 1 ? 'review' : 'reviews'}`}
+                className="bg-primary min-w-0 flex-1 rounded-t-sm"
+                style={{
+                  height: `${day.reviews === 0 ? 3 : Math.max(8, (day.reviews / Math.max(1, forecastPeak)) * 100)}%`,
+                }}
+              />
+            ))}
+          </div>
+          <div className="text-muted-foreground flex justify-between text-xs">
+            <span>Today</span>
+            <span>30 days</span>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {forecastTotal === 0
+              ? 'No reviews are scheduled in this window.'
+              : `${forecastTotal} scheduled ${forecastTotal === 1 ? 'review' : 'reviews'} over the next 30 days. Busiest day: ${formatForecastDay(forecastPeakDay!.date, data.forecast.indexOf(forecastPeakDay!))} (${forecastPeak}).`}
+          </p>
         </CardContent>
       </Card>
 

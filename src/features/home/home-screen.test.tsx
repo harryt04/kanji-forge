@@ -317,6 +317,46 @@ describe('HomeScreen', () => {
     expect(screen.getAllByText('No reviews')).toHaveLength(4)
   })
 
+  it('shows the 30-day scheduled review forecast', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    const state = (contentRef: string, dueAt: number) => ({
+      deckId: 'dev-kanji' as const,
+      contentRef,
+      level: 1 as const,
+      dueAt,
+      lastReviewedAt: now,
+      correctStreak: 1,
+      totalReviews: 1,
+      totalCorrect: 1,
+      lapses: 0,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: now,
+      updatedBy: 'device',
+    })
+    await repo.cardStates.upsert(state('kanji:日', now - 1_000))
+    await repo.cardStates.upsert(state('kanji:一', now + 2 * 86_400_000))
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('review-forecast')).toBeInTheDocument(),
+    )
+    expect(
+      screen.getByText('2 scheduled reviews over the next 30 days.', {
+        exact: false,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', {
+        name: '30-day review forecast: 2 scheduled reviews. Peak day has 1 review.',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('setting a goal date shows ahead/behind pace status', async () => {
     bootstrapUserRuntime(`home-${userId}`)
     render(<HomeScreen />)
