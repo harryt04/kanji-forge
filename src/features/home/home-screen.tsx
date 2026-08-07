@@ -10,6 +10,7 @@ import {
   goalTarget,
   suggestedGoalDate,
 } from '@/core/srs/goal'
+import { retentionByLevel, type RetentionLevel } from '@/core/srs/retention'
 import { emptyCardState } from '@/core/srs/types'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
@@ -60,6 +61,7 @@ interface HomeData {
   readonly goalDate: number | null
   readonly goal: ReturnType<typeof goalTarget> | null
   readonly projectedCompletionAt: number | null
+  readonly retention: readonly RetentionLevel[]
 }
 
 function localReviewDay(timestamp: number): string {
@@ -141,6 +143,7 @@ export function HomeScreen(): React.ReactElement {
     const goalSetting = await repo.settings.get(`goal:${STARTER_DECK_ID}`)
     const goalDate = goalSetting ? Number(goalSetting.value) : null
     const recentReviews = await repo.reviews.list(STARTER_DECK_ID)
+    const retention = retentionByLevel(recentReviews)
     const now = Date.now()
     const cutoff = now - 14 * DAY_MS
     const recent = recentReviews.filter((review) => review.at >= cutoff)
@@ -172,6 +175,7 @@ export function HomeScreen(): React.ReactElement {
       goalDate,
       goal,
       projectedCompletionAt,
+      retention,
     })
   }
 
@@ -316,6 +320,63 @@ export function HomeScreen(): React.ReactElement {
           <Button variant="outline" size="lg" asChild className="w-full">
             <Link href="/history">View study history</Link>
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="retention-by-level">
+        <CardHeader>
+          <CardTitle className="text-base">Retention by level</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Correct answers divided by study reviews that started at each level.
+            Manual adjustments are excluded.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-muted-foreground border-border border-b text-left">
+                  <th className="pb-2 font-medium">Level</th>
+                  <th className="pb-2 text-right font-medium">Retention</th>
+                  <th className="pb-2 text-right font-medium">Reviews</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.retention.map((row) => (
+                  <tr
+                    key={row.level}
+                    className="border-border border-b last:border-0"
+                  >
+                    <th className="py-2 text-left font-medium" scope="row">
+                      Level {row.level}
+                    </th>
+                    <td className="py-2 text-right">
+                      {row.retentionPercent === null
+                        ? 'No reviews'
+                        : `${row.retentionPercent}%`}
+                    </td>
+                    <td className="py-2 text-right">
+                      {row.reviews === 0
+                        ? '—'
+                        : `${row.retained}/${row.reviews} correct`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {data.retention.some(
+            (row) => row.retentionPercent !== null && row.retentionPercent < 80,
+          ) ? (
+            <p className="text-muted-foreground text-xs">
+              Retention below 80% can indicate that a level&apos;s interval is
+              too long.
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Study more cards to see where your intervals are working best.
+            </p>
+          )}
         </CardContent>
       </Card>
 

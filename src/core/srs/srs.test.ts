@@ -14,6 +14,7 @@ import {
   projectedCompletion,
   suggestedGoalDate,
 } from './goal'
+import { retentionByLevel } from './retention'
 import {
   buildQueue,
   interleaveQueue,
@@ -283,6 +284,24 @@ describe('SRS properties and edge cases', () => {
         1,
       ).warns,
     ).toBe(true)
+  })
+
+  it('summarizes study retention by starting level and ignores non-answer history', () => {
+    expect(
+      retentionByLevel([
+        { levelBefore: 0, grade: 'good', source: 'study' },
+        { levelBefore: 0, grade: 'again', source: 'study' },
+        { levelBefore: 1, grade: 'easy', source: 'study' },
+        { levelBefore: 1, grade: 'again', source: 'manual' },
+        { levelBefore: 2, grade: 'again', source: 'study' },
+      ]),
+    ).toEqual([
+      { level: 0, reviews: 2, retained: 1, retentionPercent: 50 },
+      { level: 1, reviews: 1, retained: 1, retentionPercent: 100 },
+      { level: 2, reviews: 1, retained: 0, retentionPercent: 0 },
+      { level: 3, reviews: 0, retained: 0, retentionPercent: null },
+      { level: 4, reviews: 0, retained: 0, retentionPercent: null },
+    ])
   })
   it('exercises deterministic interleaving and all replay red-count paths', () => {
     const allPrimed = interleaveQueue(

@@ -260,6 +260,63 @@ describe('HomeScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows retention by starting level and calls out low retention', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    const reviews = [
+      { id: 'retention-good', levelBefore: 0 as const, grade: 'good' as const },
+      {
+        id: 'retention-again',
+        levelBefore: 0 as const,
+        grade: 'again' as const,
+      },
+    ]
+    for (const review of reviews) {
+      await repo.reviews.append({
+        id: review.id,
+        deckId: 'dev-kanji',
+        contentRef: 'kanji:日',
+        at: now,
+        grade: review.grade,
+        levelBefore: review.levelBefore,
+        levelAfter: review.levelBefore,
+        intervalBefore: 0,
+        elapsedDays: 0,
+        responseMs: 100,
+        source: 'study',
+        deviceId: 'device',
+      })
+    }
+    await repo.reviews.append({
+      id: 'retention-manual',
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      at: now,
+      grade: 'again',
+      levelBefore: 1,
+      levelAfter: 1,
+      intervalBefore: 0,
+      elapsedDays: 0,
+      responseMs: 0,
+      source: 'manual',
+      deviceId: 'device',
+    })
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('retention-by-level')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('50%')).toBeInTheDocument()
+    expect(screen.getByText('1/2 correct')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Retention below 80% can indicate/),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('No reviews')).toHaveLength(4)
+  })
+
   it('setting a goal date shows ahead/behind pace status', async () => {
     bootstrapUserRuntime(`home-${userId}`)
     render(<HomeScreen />)

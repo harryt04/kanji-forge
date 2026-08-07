@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 20 (128 test cases: 128 passing) |
-| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 23 cases, included above) |
+| Unit/integration test files | 20 (130 test cases: 130 passing) |
+| Component test files | 3 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx` — 24 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **81.18%** |
+| Overall statement coverage | **82.34%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,9 +27,9 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.2 / 85.7 / 100 / 93.2 · packs 97.3 / 75 / 100 / 97.3 · repo 98.1 / 90.5 / 97.1 / 98.1 | ✅ comfortable margin |
-| `src/features/**` | 70% | history 100 / 100 / 100 / 100 · home 97.6 / 88.5 / 100 / 97.6 · study 97.9 / 83.9 / 80 / 97.9 | ✅ comfortable margin |
-| Global floor | 60% | 81.18 / 88.01 / 89.13 / 81.18 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.2 / 86 / 100 / 93.2 · packs 97.3 / 75 / 100 / 97.3 · repo 98.1 / 90.5 / 97.1 / 98.1 | ✅ comfortable margin |
+| `src/features/**` | 70% | history 100 / 100 / 100 / 100 · home 98.7 / 91.5 / 93.3 / 98.7 · study 97.9 / 83.9 / 80 / 97.9 | ✅ comfortable margin |
+| Global floor | 60% | 82.34 / 88.79 / 89.11 / 82.34 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -47,11 +47,11 @@ any directory gate above):
 
 ## Test inventory
 
-### `src/core/srs` — 20 cases, 100% coverage
+### `src/core/srs` — 21 cases, 100% coverage
 
 `srs.test.ts` — the 15 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
-idempotency, level-domain invariants, schedule/queue/goal boundary helpers) plus a fuzz-bounds case
-and the progress-to-belt-rank mapping.
+idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a fuzz-bounds case,
+the progress-to-belt-rank mapping, and retention-by-level aggregation.
 Locked at 100% by the CI gate; this directory should never regress.
 
 ### `src/data` — 34 cases across 4 files
@@ -90,14 +90,15 @@ Locked at 100% by the CI gate; this directory should never regress.
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, and study-session persistence/closure on finish.
 
-### `src/features/home` — 9 cases
+### `src/features/home` — 10 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
 (via `recordGrade()` against a real local DB), level-distribution bar and counts include untouched
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
-the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action.
+the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action,
+and retention by starting level excludes manual adjustments and flags low retention.
 
 ### `src/features/history` — 3 cases
 
