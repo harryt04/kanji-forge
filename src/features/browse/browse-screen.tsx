@@ -7,6 +7,11 @@ import type { CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
 import { loadStarterDeck, type LoadedDeck } from '@/features/study/deck-loader'
+import {
+  DEFAULT_BROWSE_FILTERS,
+  filterBrowseCards,
+  type BrowseFilters,
+} from './browse-filter'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -80,6 +85,7 @@ export function BrowseScreen({
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<BrowseSort>('deck-order')
+  const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_BROWSE_FILTERS)
 
   useEffect(() => {
     if (!runtime) return
@@ -102,14 +108,32 @@ export function BrowseScreen({
   }, [runtime, deckDefinitionId])
 
   const cards = useMemo(() => (deck ? toBrowseCards(deck) : []), [deck])
-  const filteredCards = useMemo(
-    () => searchBrowseCards(cards, query),
-    [cards, query],
-  )
+  const filteredCards = useMemo(() => {
+    const searched = searchBrowseCards(cards, query)
+    return filterBrowseCards(searched, filters)
+  }, [cards, filters, query])
   const sortedCards = useMemo(
     () => sortBrowseCards(filteredCards, sort),
     [filteredCards, sort],
   )
+  const hasFilters =
+    filters.level !== null ||
+    filters.flagged ||
+    filters.minStrokeCount !== null ||
+    filters.maxStrokeCount !== null ||
+    filters.jlptLegacy !== null
+  const hasSearchOrFilters = Boolean(query.trim()) || hasFilters
+
+  function setNumericFilter(
+    key: 'minStrokeCount' | 'maxStrokeCount',
+    value: string,
+  ): void {
+    const parsed = value === '' ? null : Number(value)
+    setFilters((current) => ({
+      ...current,
+      [key]: Number.isFinite(parsed) ? parsed : null,
+    }))
+  }
 
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to browse.</p>
@@ -129,7 +153,7 @@ export function BrowseScreen({
           <h1 className="font-display mt-1 text-3xl font-bold">Browse</h1>
           <p className="text-muted-foreground mt-2">
             {deck.name} ·{' '}
-            {query.trim()
+            {hasSearchOrFilters
               ? `${filteredCards.length} of ${cards.length} cards`
               : `${cards.length} cards`}
           </p>
@@ -182,6 +206,140 @@ export function BrowseScreen({
         </span>
       </label>
 
+      <section
+        className="border-border grid gap-4 rounded-lg border p-4"
+        aria-labelledby="browse-filters-heading"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <h2 id="browse-filters-heading" className="font-semibold">
+              Filter cards
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Filters combine with search. Leave a field empty to include all
+              values.
+            </p>
+          </div>
+          {hasFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilters(DEFAULT_BROWSE_FILTERS)}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2" htmlFor="browse-level-filter">
+            <span className="text-sm font-semibold">Level</span>
+            <select
+              id="browse-level-filter"
+              value={filters.level ?? 'all'}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  level:
+                    event.target.value === 'all'
+                      ? null
+                      : (Number(event.target.value) as BrowseFilters['level']),
+                }))
+              }
+              aria-label="Filter by level"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="all">All levels</option>
+              {LEVEL_NAMES.map((name, level) => (
+                <option key={name} value={level}>
+                  {level} · {name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex min-h-10 items-center gap-3 self-end pb-2">
+            <input
+              type="checkbox"
+              checked={filters.flagged}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  flagged: event.target.checked,
+                }))
+              }
+              aria-label="Show flagged only"
+              className="accent-primary h-4 w-4"
+            />
+            <span className="text-sm font-semibold">Show flagged only</span>
+          </label>
+
+          <label className="grid gap-2" htmlFor="browse-min-strokes">
+            <span className="text-sm font-semibold">Minimum strokes</span>
+            <input
+              id="browse-min-strokes"
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={filters.minStrokeCount ?? ''}
+              onChange={(event) =>
+                setNumericFilter('minStrokeCount', event.target.value)
+              }
+              aria-label="Minimum stroke count"
+              placeholder="Any"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            />
+          </label>
+
+          <label className="grid gap-2" htmlFor="browse-max-strokes">
+            <span className="text-sm font-semibold">Maximum strokes</span>
+            <input
+              id="browse-max-strokes"
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={filters.maxStrokeCount ?? ''}
+              onChange={(event) =>
+                setNumericFilter('maxStrokeCount', event.target.value)
+              }
+              aria-label="Maximum stroke count"
+              placeholder="Any"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            />
+          </label>
+
+          <label
+            className="grid gap-2 sm:max-w-sm"
+            htmlFor="browse-jlpt-filter"
+          >
+            <span className="text-sm font-semibold">JLPT level</span>
+            <select
+              id="browse-jlpt-filter"
+              value={filters.jlptLegacy ?? 'all'}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  jlptLegacy:
+                    event.target.value === 'all'
+                      ? null
+                      : Number(event.target.value),
+                }))
+              }
+              aria-label="Filter by JLPT level"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="all">All JLPT levels</option>
+              <option value="5">N5</option>
+              <option value="4">N4</option>
+              <option value="3">N3</option>
+              <option value="2">N2</option>
+              <option value="1">N1</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
       {cards.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-8 text-center">
@@ -191,7 +349,11 @@ export function BrowseScreen({
       ) : filteredCards.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-8 text-center">
-            No cards match “{query}”.
+            {hasSearchOrFilters
+              ? query.trim() && !hasFilters
+                ? `No cards match “${query}”.`
+                : 'No cards match the current search and filters.'
+              : 'No cards match the current filters.'}
           </CardContent>
         </Card>
       ) : (

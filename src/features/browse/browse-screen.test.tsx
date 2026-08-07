@@ -168,4 +168,53 @@ describe('BrowseScreen', () => {
       within(cards[positionOf('kanji:一')]).getByText('Level 1 · Seen'),
     ).toBeInTheDocument()
   })
+
+  it('filters the rendered deck by level and flagged state', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    for (const [contentRef, level, flagged] of [
+      ['kanji:日', 3, true],
+      ['kanji:一', 1, false],
+    ] as const) {
+      await repo.cardStates.upsert({
+        deckId: 'dev-kanji',
+        contentRef,
+        level,
+        dueAt: now,
+        lastReviewedAt: now,
+        correctStreak: level,
+        totalReviews: level,
+        totalCorrect: level,
+        lapses: 0,
+        flagged,
+        manualOverride: false,
+        updatedAt: now,
+        updatedBy: 'browse-filter-test',
+      })
+    }
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Filter by level' }),
+      {
+        target: { value: '3' },
+      },
+    )
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
+    expect(screen.getByText(/1 of 200 cards/)).toBeInTheDocument()
+    expect(screen.getByText('Flagged')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Show flagged only' }))
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
+    expect(
+      screen.getByRole('article', { name: /日, Level 3, Known, flagged/ }),
+    ).toBeInTheDocument()
+  })
 })

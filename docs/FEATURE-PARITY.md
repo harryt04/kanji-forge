@@ -66,7 +66,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.5 | List view | ✅ | 2026-08-07 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; virtualization remains a follow-up for very large packs |
 | 3.6 | Inline color editing in list view | ✅ | — | |
 | 3.7 | Sorting | ✅ | 2026-08-07 | Browse list sorts offline by deck order, level, stroke count, frequency, JLPT, school grade, review count, last review, or kana; ties retain deck order and missing metadata sorts last |
-| 3.8 | Filtering | ✅ | — | Expanded set |
+| 3.8 | Filtering | ✅ | 2026-08-07 | Browse filters offline by level/color, flagged state, inclusive stroke-count range, and JLPT level; filters combine with text search and can be cleared together |
 | 3.9 | Searching within a deck | ✅ | 2026-08-07 | Offline search matches kanji, kana readings, and English meanings; multiple terms are ANDed |
 | 3.10 | Sticky count badge on the Browse icon | ✅ | — | Tab badge |
 | 3.11 | Set current deck's browse settings as the default for all decks | ✅ | — | |
