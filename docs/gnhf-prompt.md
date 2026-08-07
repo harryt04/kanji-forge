@@ -12,6 +12,6 @@ For your feature, please:
 5. Run `npm run prettify` to format your changes
 6. Confirm npm run ci passes
   - Fix any issues and repeat this steps 5 and 6 until you've fixes all issues. 
-7. Commit and push your changes directly to master.
+7. Commit and push, merge your changes directly to master. This app doesn't exist in production yet. We can break master without worry.
 8. Mark the feature that you created as implemented in then 
 9. Stop iterating onto the next gnhf loop if you marked off the last item for implementation, and the feature-parity worksheet is complete. Otherwise, move on to the next iteration. This session is complete! ^_^
