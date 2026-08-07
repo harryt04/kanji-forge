@@ -1,5 +1,5 @@
 import { DAY_MS } from './schedule'
-import type { CardState } from './types'
+import type { CardLevel, CardState } from './types'
 
 export interface GoalResult {
   remainingSteps: number
@@ -54,4 +54,10 @@ export function progress(
 ): number {
   if (cardCount <= 0) return 0
   return states.reduce((sum, state) => sum + state.level, 0) / (4 * cardCount)
+}
+
+/** Maps the level-weighted deck progress ratio to its current belt-rank color. */
+export function progressLevel(value: number): CardLevel {
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return Math.min(4, Math.floor(value * 4)) as CardLevel
 }

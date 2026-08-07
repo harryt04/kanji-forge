@@ -140,7 +140,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 7.2 | Days-to-goal display | ✅ | 2026-08-06 | |
 | 7.3 | Remaining correct answers required today | ✅ | 2026-08-06 | SRS-SPEC §6 |
 | 7.4 | Overall progress percent | ✅ | 2026-08-06 | Level-weighted — SRS-SPEC §7 |
-| 7.5 | Overall progress as color | ✅ | — | |
+| 7.5 | Overall progress as color | ✅ | 2026-08-07 | Home progress uses the level-weighted belt-rank ramp with an accessible level/name label |
 | 7.6 | Last time studied / total time studied | ✅ | 2026-08-06 | |
 | 7.7 | Rolling bar chart of study history | ✅ | — | |
 | 7.8 | Tap a bar for that day's detail | ✅ | — | |

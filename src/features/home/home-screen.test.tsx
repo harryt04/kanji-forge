@@ -62,6 +62,11 @@ describe('HomeScreen', () => {
       expect(screen.getByText('Development Kanji')).toBeInTheDocument(),
     )
     expect(screen.getByText('0%')).toBeInTheDocument()
+    expect(
+      screen.getByRole('progressbar', {
+        name: 'Deck progress: 0%. Level 0, white (Shiro)',
+      }),
+    ).toHaveAttribute('data-level', '0')
     expect(screen.getByText('Not studied yet')).toBeInTheDocument()
     expect(screen.getByText('No goal date set yet.')).toBeInTheDocument()
   })

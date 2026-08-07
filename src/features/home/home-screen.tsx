@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { progress as computeProgress, goalTarget } from '@/core/srs/goal'
+import {
+  progress as computeProgress,
+  progressLevel as computeProgressLevel,
+  goalTarget,
+} from '@/core/srs/goal'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
@@ -11,11 +15,19 @@ import { loadStarterDeck } from '@/features/study/deck-loader'
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
+const BELT_NAMES = [
+  'white (Shiro)',
+  'yellow (Ki)',
+  'green (Midori)',
+  'blue (Ao)',
+  'black (Kuro)',
+] as const
 
 interface HomeData {
   readonly deckName: string
   readonly cardCount: number
   readonly progressPercent: number
+  readonly progressLevel: 0 | 1 | 2 | 3 | 4
   readonly lastStudiedAt: number | null
   readonly goalDate: number | null
   readonly goal: ReturnType<typeof goalTarget> | null
@@ -51,6 +63,7 @@ export function HomeScreen(): React.ReactElement {
     const progressPercent = Math.round(
       computeProgress(loaded.cards.length, coreStates) * 100,
     )
+    const progressLevel = computeProgressLevel(progressPercent / 100)
 
     const goalSetting = await repo.settings.get(`goal:${STARTER_DECK_ID}`)
     const goalDate = goalSetting ? Number(goalSetting.value) : null
@@ -70,6 +83,7 @@ export function HomeScreen(): React.ReactElement {
       deckName: loaded.name,
       cardCount: loaded.cards.length,
       progressPercent,
+      progressLevel,
       lastStudiedAt,
       goalDate,
       goal,
@@ -108,6 +122,7 @@ export function HomeScreen(): React.ReactElement {
     )
 
   const deckName = data.deckName
+  const progressLabel = `Level ${data.progressLevel}, ${BELT_NAMES[data.progressLevel]}`
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
@@ -121,9 +136,18 @@ export function HomeScreen(): React.ReactElement {
               <span>Progress</span>
               <span>{data.progressPercent}%</span>
             </div>
-            <div className="bg-muted mt-1.5 h-2 w-full overflow-hidden rounded-full">
+            <div
+              role="progressbar"
+              aria-label={`Deck progress: ${data.progressPercent}%. ${progressLabel}`}
+              aria-valuenow={data.progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              data-level={data.progressLevel}
+              className="bg-muted mt-1.5 h-2 w-full overflow-hidden rounded-full"
+            >
               <div
-                className="h-full rounded-full bg-[var(--level-3)] transition-all motion-reduce:transition-none"
+                className={`level-swatch sticky-shape l${data.progressLevel} h-full rounded-full transition-all motion-reduce:transition-none`}
+                data-level={data.progressLevel}
                 style={{ width: `${data.progressPercent}%` }}
               />
             </div>

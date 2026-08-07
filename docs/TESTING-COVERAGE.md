@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 19 (116 test cases: 116 passing) |
+| Unit/integration test files | 19 (117 test cases: 117 passing) |
 | Component test files | 2 (`study-screen.test.tsx`, `home-screen.test.tsx` — 15 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — both skip cleanly without a running auth backend |
 | Overall statement coverage | **77.58%** |
@@ -47,10 +47,11 @@ any directory gate above):
 
 ## Test inventory
 
-### `src/core/srs` — 18 cases, 100% coverage
+### `src/core/srs` — 19 cases, 100% coverage
 
-`srs.test.ts` — the 14 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
-idempotency, level-domain invariants, schedule/queue/goal boundary helpers) plus a fuzz-bounds case.
+`srs.test.ts` — the 15 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
+idempotency, level-domain invariants, schedule/queue/goal boundary helpers) plus a fuzz-bounds case
+and the progress-to-belt-rank mapping.
 Locked at 100% by the CI gate; this directory should never regress.
 
 ### `src/data` — 31 cases across 4 files
@@ -92,8 +93,9 @@ Locked at 100% by the CI gate; this directory should never regress.
 ### `src/features/home` — 5 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
-with no goal set, progress bar reflects a real recorded grade (via `recordGrade()` against a real
-local DB), setting a goal date drives the on-pace/behind-pace readout.
+with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
+(via `recordGrade()` against a real local DB), setting a goal date drives the on-pace/behind-pace
+readout.
 
 ### `src/auth` — 13 cases across 3 files
 

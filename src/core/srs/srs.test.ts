@@ -7,7 +7,12 @@ import {
   srsState as state,
 } from '../../../test/factories'
 import { applyGrade } from './grade'
-import { goalTarget, progress, projectedCompletion } from './goal'
+import {
+  goalTarget,
+  progress,
+  progressLevel,
+  projectedCompletion,
+} from './goal'
 import {
   buildQueue,
   interleaveQueue,
@@ -182,6 +187,16 @@ describe('SRS-SPEC §10', () => {
         Array.from({ length: 100 }, (_, index) => state(2, String(index))),
       ),
     ).toBe(0.5))
+  it('15: maps progress to the matching belt-rank level', () => {
+    expect(progressLevel(Number.NaN)).toBe(0)
+    expect(progressLevel(0)).toBe(0)
+    expect(progressLevel(0.249)).toBe(0)
+    expect(progressLevel(0.25)).toBe(1)
+    expect(progressLevel(0.5)).toBe(2)
+    expect(progressLevel(0.75)).toBe(3)
+    expect(progressLevel(1)).toBe(4)
+    expect(progressLevel(2)).toBe(4)
+  })
 })
 
 describe('SRS properties and edge cases', () => {
