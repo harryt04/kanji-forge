@@ -11,7 +11,7 @@ For your feature, please:
 4. Update AGENTS.md or other instructions files as needed if your changes warrant it. 
 5. Run `npm run prettify` to format your changes
 6. Confirm npm run ci passes
-  - Fix any issues and repeat this steps 5 and 6 until you've fixes all issues. 
+  - Fix any issues and repeat this steps 5 and 6 until you've fixed all issues introduced by your implementation in this session. 
 7. Commit and push, merge your changes directly to master. This app doesn't exist in production yet. We can break master without worry.
-8. Mark the feature that you created as implemented in then 
-9. Stop iterating onto the next gnhf loop if you marked off the last item for implementation, and the feature-parity worksheet is complete. Otherwise, move on to the next iteration. This session is complete! ^_^
+8. Mark the feature that you created as implemented 
+9. This session is complete! ^_^
