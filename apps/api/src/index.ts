@@ -9,8 +9,20 @@ function originAllowed(origin: string | undefined): boolean {
   return origin === undefined || origin === env.CORS_ORIGIN;
 }
 
-function json(response: ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+function corsHeaders(origin: string | undefined): Record<string, string> {
+  if (origin === undefined) return {};
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-credentials': 'true',
+    vary: 'Origin',
+  };
+}
+
+function json(response: ServerResponse, status: number, body: unknown, origin?: string): void {
+  response.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    ...corsHeaders(origin),
+  });
   response.end(JSON.stringify(body));
 }
 
@@ -26,8 +38,8 @@ async function toRequest(request: IncomingMessage): Promise<Request> {
   });
 }
 
-async function sendFetchResponse(response: ServerResponse, result: Response): Promise<void> {
-  const headers = Object.fromEntries(result.headers.entries());
+async function sendFetchResponse(response: ServerResponse, result: Response, origin: string | undefined): Promise<void> {
+  const headers = { ...Object.fromEntries(result.headers.entries()), ...corsHeaders(origin) };
   response.writeHead(result.status, headers);
   response.end(Buffer.from(await result.arrayBuffer()));
 }
@@ -39,35 +51,33 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'OPTIONS') {
     response.writeHead(204, {
-      'access-control-allow-origin': env.CORS_ORIGIN,
-      'access-control-allow-credentials': 'true',
+      ...corsHeaders(origin),
       'access-control-allow-headers': 'authorization, content-type',
       'access-control-allow-methods': 'GET, POST, OPTIONS',
-      vary: 'Origin',
     });
     return response.end();
   }
 
-  if (url.pathname === '/healthz' && request.method === 'GET') return json(response, 200, { ok: true });
+  if (url.pathname === '/healthz' && request.method === 'GET') return json(response, 200, { ok: true }, origin);
 
   try {
     const fetchRequest = await toRequest(request);
-    if (url.pathname.startsWith('/api/auth/')) return sendFetchResponse(response, await auth.handler(fetchRequest));
+    if (url.pathname.startsWith('/api/auth/')) return sendFetchResponse(response, await auth.handler(fetchRequest), origin);
 
     if (url.pathname === '/api/mutations' && request.method === 'POST') {
       const session = await auth.api.getSession({ headers: fetchRequest.headers });
-      if (!session) return json(response, 401, { error: 'unauthenticated' });
+      if (!session) return json(response, 401, { error: 'unauthenticated' }, origin);
 
       // T1.0 deliberately does not apply mutations yet. T1.4 will validate each
       // mutation and stamp session.user.id rather than accepting user_id from the body.
-      return json(response, 501, { error: 'mutation_ingest_not_implemented' });
+      return json(response, 501, { error: 'mutation_ingest_not_implemented' }, origin);
     }
   } catch (error) {
     console.error('API request failed', error);
-    return json(response, 500, { error: 'internal_error' });
+    return json(response, 500, { error: 'internal_error' }, origin);
   }
 
-  return json(response, 404, { error: 'not_found' });
+  return json(response, 404, { error: 'not_found' }, origin);
 });
 
 server.listen(env.API_PORT, env.API_HOST, () => {
