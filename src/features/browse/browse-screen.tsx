@@ -20,6 +20,13 @@ import { sortBrowseCards, type BrowseSort } from './browse-sort'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
+export const BROWSE_VIEW_SETTING = 'browse.view'
+
+type BrowseView = 'list' | 'tiles'
+
+function isBrowseView(value: string | undefined): value is BrowseView {
+  return value === 'list' || value === 'tiles'
+}
 
 interface BrowseCard {
   readonly contentRef: string
@@ -90,8 +97,10 @@ export function BrowseScreen({
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<BrowseSort>('deck-order')
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_BROWSE_FILTERS)
+  const [view, setView] = useState<BrowseView>('list')
   const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
+  const [viewError, setViewError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -101,7 +110,11 @@ export function BrowseScreen({
     void (async () => {
       await runtime.database.ready
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
+      const savedView = await createUserRepositories(
+        runtime.database,
+      ).settings.get(BROWSE_VIEW_SETTING)
       if (active) setDeck(loaded)
+      if (active && isBrowseView(savedView?.value)) setView(savedView.value)
     })().catch((reason: unknown) => {
       if (active)
         setError(
@@ -228,6 +241,27 @@ export function BrowseScreen({
     }
   }
 
+  async function chooseView(next: BrowseView): Promise<void> {
+    if (!runtime || next === view) return
+    const previous = view
+    setView(next)
+    setViewError(null)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: BROWSE_VIEW_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setView(previous)
+      setViewError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save Browse view.',
+      )
+    }
+  }
+
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to browse.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
@@ -255,6 +289,47 @@ export function BrowseScreen({
           <Link href="/study">Study this deck</Link>
         </Button>
       </header>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">View</h2>
+          <p className="text-muted-foreground text-sm">
+            Tiles make the filtered deck visible at a glance.
+          </p>
+        </div>
+        <div
+          className="border-border inline-flex rounded-md border p-1"
+          role="group"
+          aria-label="Browse view"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={view === 'list' ? 'secondary' : 'ghost'}
+            aria-pressed={view === 'list'}
+            aria-label="Show list view"
+            onClick={() => void chooseView('list')}
+          >
+            List
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === 'tiles' ? 'secondary' : 'ghost'}
+            aria-pressed={view === 'tiles'}
+            aria-label="Show tile view"
+            onClick={() => void chooseView('tiles')}
+          >
+            Tiles
+          </Button>
+        </div>
+      </div>
+
+      {viewError && (
+        <p className="text-destructive" role="alert">
+          {viewError}
+        </p>
+      )}
 
       {editError && (
         <p className="text-destructive" role="alert">
@@ -455,6 +530,41 @@ export function BrowseScreen({
               : 'No cards match the current filters.'}
           </CardContent>
         </Card>
+      ) : view === 'tiles' ? (
+        <div
+          className="grid grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))] gap-2"
+          data-testid="browse-tile-wall"
+          role="grid"
+          aria-label={`${deck.name} tile wall`}
+        >
+          {sortedCards.map((card) => {
+            const level = card.state?.level ?? 0
+            const flagged = card.state?.flagged ?? false
+            return (
+              <div
+                key={card.contentRef}
+                className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border text-2xl shadow-sm`}
+                data-level={level}
+                data-content-ref={card.contentRef}
+                data-testid="browse-tile"
+                role="gridcell"
+                aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
+              >
+                <span className="font-jp-display" lang="ja">
+                  {card.literal}
+                </span>
+                {flagged && (
+                  <span
+                    className="text-primary absolute right-1 bottom-0 text-xs"
+                    aria-hidden="true"
+                  >
+                    ⚑
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
       ) : (
         <ul
           className="grid gap-3"

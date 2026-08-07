@@ -11,7 +11,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
-import { BrowseScreen } from './browse-screen'
+import { BROWSE_VIEW_SETTING, BrowseScreen } from './browse-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -64,6 +64,41 @@ describe('BrowseScreen', () => {
       screen.getByText('day; sun; Japan; counter for days'),
     ).toBeInTheDocument()
     expect(screen.getAllByTestId('browse-card')).toHaveLength(200)
+  })
+
+  it('switches to a compact tile wall and persists the selected view', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.settings.set({
+      key: BROWSE_VIEW_SETTING,
+      value: 'tiles',
+      updatedAt: Date.now(),
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    expect(screen.getAllByTestId('browse-tile')).toHaveLength(200)
+    expect(
+      screen.getByRole('gridcell', { name: '日, Level 0, New' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Show tile view' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Show list view' }),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+    expect(await repo.settings.get(BROWSE_VIEW_SETTING)).toMatchObject({
+      value: 'list',
+    })
   })
 
   it('shows each card level and flag state from the local database', async () => {

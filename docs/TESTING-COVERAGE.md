@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 28 (182 test cases: 182 passing) |
-| Component test files | 6 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `settings-screen.test.tsx` — 41 cases, included above) |
+| Unit/integration test files | 28 (183 test cases: 183 passing) |
+| Component test files | 6 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `settings-screen.test.tsx` — 42 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.33%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -112,10 +112,11 @@ heatmap for a new learner, recorded daily activity plotted with review/correct/a
 intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
 breakdown and pressed state.
 
-### `src/features/browse` — 20 cases
+### `src/features/browse` — 21 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
- loading into a 200-card accessible list, rendering persisted local level and flag state, filtering
+loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
+wall, rendering persisted local level and flag state, filtering
  by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
  sorting by local level with stable deck-order ties, and manually assigning a card level while
  preserving review totals and omitting the manual adjustment from daily review statistics.

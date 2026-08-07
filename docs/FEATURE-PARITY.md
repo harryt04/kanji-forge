@@ -59,7 +59,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 3.1 | Tile view — zoom out to see all stickies | ✅ | Phase 0 | Prototype only; ARCHITECTURE §5 |
+| 3.1 | Tile view — zoom out to see all stickies | ✅ | 2026-08-07 | Browse now has a persisted compact tile wall for the filtered/sorted deck; tiles encode level and flag state accessibly. The canvas performance prototype remains available for the future 2,500-tile gate. |
 | 3.2 | Configurable tile content | ✅ | — | |
 | 3.3 | Zoom ratio setting | ✅ | — | |
 | 3.4 | Tap tile for detail | ✅ | — | |

@@ -83,7 +83,7 @@ this snapshot:
 | Atomic local grade transaction | "not yet called by a study screen" | Now called on every grade via `useStudyStore.grade()` → `repo.recordGrade()` | `8475b74` |
 
 All other rows in `MVP-STATUS.md` — outbox stub, Electric stub, mutation-API 501, pack-manager stub,
-Browse tile/inline-edit follow-ups, Detail/Settings/Writing placeholders, and PWA stub — remain accurate as of this
+Browse inline-edit follow-up, Detail/Settings/Writing placeholders, and PWA stub — remain accurate as of this
 snapshot and are restated in the "Stubs and explicit seams" table above for a single source of truth.
 
 ---
@@ -101,6 +101,6 @@ Consistent with the code above, not aspirational:
   keyboard/swipe/button, undo the last grade, and see a session summary.
 - Have every grade persisted locally (SQLite-WASM/OPFS) atomically, surviving a reload.
 
-What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), Browse tile
-overview and inline color editing, Detail, Settings, backup/export, and offline
+What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), Browse
+inline color editing, Detail, Settings, backup/export, and offline
 installability (no service worker registered yet).
