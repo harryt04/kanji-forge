@@ -21,6 +21,7 @@ import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
 import {
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
+  SRS_MODE_SETTING,
   STUDY_TWO_TAP_SETTING,
 } from './study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from './audio'
@@ -222,6 +223,19 @@ describe('StudyScreen', () => {
     expect(question).toHaveAttribute('data-study-question', 'meaning')
     expect(question).toHaveTextContent('country')
     expect(question).not.toHaveTextContent('日')
+  })
+
+  it('starts the session with the saved adaptive scheduler mode', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: SRS_MODE_SETTING,
+      value: 'adaptive',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+
+    expect(useStudyStore.getState().schedulerMode).toBe('adaptive')
   })
 
   it('renders only the saved answer fields after reveal', async () => {

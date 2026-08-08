@@ -26,6 +26,7 @@ import { SettingsScreen } from './settings-screen'
 import {
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
+  SRS_MODE_SETTING,
   STUDY_TWO_TAP_SETTING,
 } from '@/features/study/study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
@@ -276,6 +277,25 @@ describe('SettingsScreen', () => {
           STUDY_TWO_TAP_SETTING,
         ),
       ).toMatchObject({ value: 'true' }),
+    )
+  })
+
+  it('persists the adaptive scheduler preference offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Scheduler' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Adaptive intervals/ }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          SRS_MODE_SETTING,
+        ),
+      ).toMatchObject({ value: 'adaptive' }),
     )
   })
 

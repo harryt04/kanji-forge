@@ -22,6 +22,9 @@ import {
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
   STUDY_TWO_TAP_SETTING,
+  DEFAULT_SRS_MODE,
+  isSrsMode,
+  SRS_MODE_SETTING,
   type StudyAnswer,
   type StudyQuestion,
 } from './study-style'
@@ -115,12 +118,14 @@ export function StudyScreen({
         studyAnswerSetting,
         twoTapSetting,
         autoPlayAudioSetting,
+        srsModeSetting,
       ] = await Promise.all([
         repoForSession.settings.get(GREY_STICKIES_SETTING),
         repoForSession.settings.get(STUDY_QUESTION_SETTING),
         repoForSession.settings.get(STUDY_ANSWER_SETTING),
         repoForSession.settings.get(STUDY_TWO_TAP_SETTING),
         repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repoForSession.settings.get(SRS_MODE_SETTING),
       ])
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
@@ -137,7 +142,11 @@ export function StudyScreen({
       sessionId.current = startedSessionId
       sessionRepo.current = repoForSession
       if (!cancelled) {
-        start(loaded)
+        const savedSrsMode = srsModeSetting?.value ?? ''
+        const nextSrsMode = isSrsMode(savedSrsMode)
+          ? savedSrsMode
+          : DEFAULT_SRS_MODE
+        start(loaded, nextSrsMode)
         setSessionStartedAt(startedAt)
         setElapsedSeconds(0)
         setShowTimer(false)

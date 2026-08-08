@@ -43,6 +43,11 @@ import {
   STUDY_QUESTION_OPTIONS,
   STUDY_QUESTION_SETTING,
   STUDY_TWO_TAP_SETTING,
+  isSrsMode,
+  SRS_MODE_OPTIONS,
+  SRS_MODE_SETTING,
+  DEFAULT_SRS_MODE,
+  type SrsMode,
   type StudyAnswer,
   type StudyQuestion,
 } from '@/features/study/study-style'
@@ -186,6 +191,7 @@ export function SettingsScreen(): React.ReactElement {
     parseStudyAnswer(undefined),
   )
   const [twoTapStudy, setTwoTapStudy] = useState(false)
+  const [srsMode, setSrsMode] = useState<SrsMode>(DEFAULT_SRS_MODE)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [audioPacks, setAudioPacks] = useState<readonly AudioPackManifest[]>([])
   const [audioPackBusy, setAudioPackBusy] = useState(false)
@@ -277,6 +283,7 @@ export function SettingsScreen(): React.ReactElement {
         savedQuestion,
         savedAnswer,
         savedTwoTap,
+        savedSrsMode,
         savedAutoPlayAudio,
         savedStrokeAnimation,
         savedSaveBehavior,
@@ -296,6 +303,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_QUESTION_SETTING),
         repositories.settings.get(STUDY_ANSWER_SETTING),
         repositories.settings.get(STUDY_TWO_TAP_SETTING),
+        repositories.settings.get(SRS_MODE_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
@@ -326,6 +334,8 @@ export function SettingsScreen(): React.ReactElement {
         setStudyQuestion(savedQuestion.value as StudyQuestion)
       setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
       setTwoTapStudy(savedTwoTap?.value === 'true')
+      if (savedSrsMode && isSrsMode(savedSrsMode.value))
+        setSrsMode(savedSrsMode.value)
       setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeAnimation?.value),
@@ -667,6 +677,30 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the two-tap study setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseSrsMode(next: SrsMode): Promise<void> {
+    if (!runtime || next === srsMode || saving) return
+    const previous = srsMode
+    setSrsMode(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: SRS_MODE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setSrsMode(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the scheduler setting.',
       )
     } finally {
       setSaving(false)
@@ -1945,6 +1979,38 @@ export function SettingsScreen(): React.ReactElement {
             your local deck shelf.
           </p>
         )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Scheduler</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Adaptive intervals use your review history for due dates while keeping
+          the visible five-level belt-rank progression unchanged.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="Scheduler"
+        >
+          {SRS_MODE_OPTIONS.map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={srsMode === value ? 'secondary' : 'outline'}
+              aria-checked={srsMode === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseSrsMode(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Study question</h2>

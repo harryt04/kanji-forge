@@ -39,7 +39,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Interval fuzz to prevent pile-ups | ➕ ✅ | 2026-08-06 | |
 | — | Append-only review log | ➕ ✅ | 2026-08-06 | Enables everything in §7 |
 | — | Retention-by-level diagnostic | ➕ 🔷 | 2026-08-07 | Home reports study-answer retention for each starting level and flags levels below 80% as possible interval problems |
-| — | Optional FSRS scheduler mode | ➕ 🔶 | — | Shares the same log |
+| — | Optional FSRS scheduler mode | ➕ ✅ | 2026-08-08 | Adaptive interval mode keeps the visible five-level belt-rank progression while shaping due dates from review accuracy and lapses; it shares the append-only review log and can be switched back without rewriting history |
 
 ## 2. Study style configuration
 

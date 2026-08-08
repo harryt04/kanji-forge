@@ -1,5 +1,5 @@
 import { seededRandom } from './schedule'
-import type { CardState, SrsConfig } from './types'
+import type { CardState, SchedulerMode, SrsConfig } from './types'
 
 export interface QueueCard {
   deckId: string
@@ -16,6 +16,7 @@ export interface QueueOptions {
   config: SrsConfig
   dailyGoal?: number
   dayOfYear: number
+  schedulerMode?: SchedulerMode
 }
 
 function levelOf(card: QueueCard): number {
@@ -44,9 +45,16 @@ export function buildQueue(
   options: QueueOptions,
 ): QueueCard[] {
   const { now, config } = options
+  const adaptive = options.schedulerMode === 'adaptive'
   const due = cards
     .filter(
-      (card) => levelOf(card) >= 1 && levelOf(card) <= 3 && dueOf(card) <= now,
+      (card) =>
+        ((adaptive &&
+          card.state !== undefined &&
+          (card.state.totalReviews > 0 || levelOf(card) >= 1) &&
+          levelOf(card) <= 3) ||
+          (!adaptive && levelOf(card) >= 1 && levelOf(card) <= 3)) &&
+        dueOf(card) <= now,
     )
     .sort(
       (left, right) =>
