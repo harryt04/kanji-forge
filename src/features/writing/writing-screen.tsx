@@ -12,6 +12,7 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { matchStroke } from '@/core/stroke/match'
+import { flattenSvgPath } from '@/core/stroke/resample'
 import {
   isWritingValidationEnabled,
   WRITING_VALIDATION_SETTING,
@@ -160,8 +161,10 @@ export function WritingScreen(): React.ReactElement {
         setFailedAttempts(nextFailures)
         setFeedback(
           nextFailures >= 3
-            ? 'Try tracing the highlighted stroke from its start.'
-            : 'That stroke was not close enough. Try again from the highlighted start.',
+            ? 'Hint: trace the animated stroke from its start.'
+            : nextFailures >= 2
+              ? 'Hint: start at the highlighted dot, then follow the stroke.'
+              : 'That stroke was not close enough. Try again from the highlighted start.',
         )
       }
     }
@@ -404,12 +407,34 @@ export function WritingScreen(): React.ReactElement {
             {validationEnabled &&
               paths?.[capturedStrokes.length] &&
               failedAttempts > 0 && (
-                <path
-                  d={paths[capturedStrokes.length]}
-                  fill="var(--accent)"
-                  opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
-                  aria-hidden="true"
-                />
+                <>
+                  <path
+                    d={paths[capturedStrokes.length]}
+                    fill="var(--accent)"
+                    opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
+                    className={
+                      failedAttempts >= 3 ? 'writing-hint-animate' : undefined
+                    }
+                    data-testid="writing-hint-stroke"
+                    aria-hidden="true"
+                  />
+                  {failedAttempts >= 2 &&
+                    (() => {
+                      const start = flattenSvgPath(
+                        paths[capturedStrokes.length]!,
+                      )[0]
+                      return start ? (
+                        <circle
+                          cx={start.x}
+                          cy={start.y}
+                          r="3"
+                          fill="var(--accent)"
+                          data-testid="writing-hint-start"
+                          aria-hidden="true"
+                        />
+                      ) : null
+                    })()}
+                </>
               )}
             {capturedStrokes.map((stroke, index) => (
               <polyline

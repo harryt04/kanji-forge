@@ -123,6 +123,46 @@ describe('WritingScreen', () => {
     )
   })
 
+  it('escalates writing hints after repeated rejected strokes', async () => {
+    bootstrapUserRuntime('writing-hints-user')
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({
+      bottom: 100,
+      height: 100,
+      left: 0,
+      right: 100,
+      top: 0,
+      width: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    })
+    const rejectStroke = (pointerId: number): void => {
+      fireEvent.pointerDown(surface, { pointerId, clientX: 0, clientY: 0 })
+      fireEvent.pointerMove(surface, {
+        pointerId,
+        clientX: 100,
+        clientY: 100,
+      })
+      fireEvent.pointerUp(surface, { pointerId, clientX: 100, clientY: 100 })
+    }
+
+    rejectStroke(1)
+    expect(screen.queryByTestId('writing-hint-start')).not.toBeInTheDocument()
+    rejectStroke(2)
+    expect(screen.getByTestId('writing-hint-start')).toBeInTheDocument()
+    expect(screen.getByText(/start at the highlighted dot/)).toBeInTheDocument()
+    rejectStroke(3)
+    expect(screen.getByTestId('writing-hint-stroke')).toHaveClass(
+      'writing-hint-animate',
+    )
+    expect(screen.getByText(/animated stroke/)).toBeInTheDocument()
+  })
+
   it('runs a standalone writing drill for a chosen number of repetitions', async () => {
     bootstrapUserRuntime('writing-drill-user')
     const user = userEvent.setup()

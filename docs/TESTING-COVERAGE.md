@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 44 (311 test cases: 311 passing) |
+| Unit/integration test files | 44 (312 test cases: 312 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 97 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.86%** |
@@ -158,9 +158,9 @@ promotion, and pinned-search toggling.
 
 **`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level/school grade/JLPT/frequency/name readings, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
 
-### `src/features/writing` — 4 cases
+### `src/features/writing` — 5 cases
 
-**`writing-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline guide loading, pointer-stroke capture, undo, clear actions, offline persistence of the correct-strokes toggle, and a bounded standalone drill with repetition progress and completion. **`src/core/stroke/match.test.ts`** covers arc-length resampling, forward/reverse stroke order, curve similarity, and wrong-shape rejection.
+**`writing-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline guide loading, pointer-stroke capture, undo, clear actions, offline persistence of the correct-strokes toggle, escalating start-dot and animated-stroke hints after rejected attempts, and a bounded standalone drill with repetition progress and completion. **`src/core/stroke/match.test.ts`** covers arc-length resampling, forward/reverse stroke order, curve similarity, and wrong-shape rejection.
 
 ### `src/features/navigation` — 2 cases
 
