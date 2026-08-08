@@ -200,7 +200,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/share` — 14 cases
 
-**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
+**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations. Together with the analyzed-word case in `detail-screen.test.tsx`, this verifies the complete tap-word → detail → save-to-deck flow.
 It also covers validating a legacy content-only deck URL, previewing the shared deck name, importing its matched cards, and importing a mixed version-2 deck containing a dictionary-word card.
 The Settings component coverage also selects and shares a locally owned custom deck, confirming the generated payload uses that deck's name and content.
 
