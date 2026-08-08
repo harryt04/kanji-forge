@@ -891,6 +891,52 @@ describe('SettingsScreen', () => {
     expect(writeText.mock.calls[0]?.[0]).not.toContain('totalReviews')
   })
 
+  it('shares a locally owned custom deck instead of always using the starter deck', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    await repositories.decks.upsert({
+      id: 'custom-share',
+      name: 'Travel set',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repositories.deckMembership.save({
+      deckId: 'custom-share',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: /Deck to share/u }),
+      'custom-share',
+    )
+    await user.click(screen.getByRole('button', { name: 'Copy share link' }))
+
+    expect(
+      await screen.findByText(
+        /Copied a share link for “Travel set”\. It contains card content only/u,
+      ),
+    ).toBeInTheDocument()
+    const sharedUrl = String(writeText.mock.calls[0]?.[0])
+    const payload = new URL(sharedUrl).searchParams.get('deck')
+    expect(payload).not.toBeNull()
+    expect(JSON.parse(payload!)).toMatchObject({
+      name: 'Travel set',
+      kanji: ['日'],
+    })
+  })
+
   it('previews and then imports matched kanji while reporting existing and unknown input', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!
@@ -990,8 +1036,8 @@ describe('SettingsScreen', () => {
     await screen.findByRole('heading', { name: 'Backup & restore' })
     await waitFor(() =>
       expect(
-        screen.getByRole('option', { name: 'Travel' }),
-      ).toBeInTheDocument(),
+        screen.getByLabelText('Append imported cards to'),
+      ).toHaveTextContent('Travel'),
     )
     await user.selectOptions(
       screen.getByLabelText('Append imported cards to'),

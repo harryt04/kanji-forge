@@ -11,7 +11,7 @@ import {
   parseContentRef,
 } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
-import { loadStarterDeck } from '@/features/study/deck-loader'
+import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
   installAudioPack,
@@ -329,6 +329,7 @@ export function SettingsScreen(): React.ReactElement {
   const [deckExportMessage, setDeckExportMessage] = useState<string | null>(
     null,
   )
+  const [shareDeckId, setShareDeckId] = useState(STARTER_DECK_ID)
   const [deckImportText, setDeckImportText] = useState('')
   const [importDeckId, setImportDeckId] = useState('saved')
   const [deckImportBusy, setDeckImportBusy] = useState(false)
@@ -429,6 +430,7 @@ export function SettingsScreen(): React.ReactElement {
         setSaveBehavior(savedSaveBehavior.value)
       setRssFeeds(parseRssFeeds(savedRssFeeds?.value))
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
+      setShareDeckId(STARTER_DECK_ID)
       setSavedDeckExists(savedUserDeck !== undefined)
       const nextCustomDecks = existingDecks.filter(
         (deck) => deck.kind === 'custom',
@@ -1293,7 +1295,7 @@ export function SettingsScreen(): React.ReactElement {
       await runtime.database.ready
       if (!navigator.clipboard?.writeText)
         throw new Error('Clipboard access is unavailable in this browser.')
-      const deck = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      const deck = await loadDeck(runtime.database, shareDeckId)
       const link = createDeckShareUrl(window.location.origin, deck)
       if (link.length > 8_000)
         throw new Error(
@@ -1319,7 +1321,7 @@ export function SettingsScreen(): React.ReactElement {
     setError(null)
     try {
       await runtime.database.ready
-      const deck = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      const deck = await loadDeck(runtime.database, shareDeckId)
       const blob = new Blob([formatDeckShareFile(deck)], {
         type: 'application/json',
       })
@@ -2936,6 +2938,36 @@ export function SettingsScreen(): React.ReactElement {
             meanings for pasting into another app or spreadsheet, or download
             the deck with its content and study progress.
           </p>
+          <label
+            className="mt-3 grid max-w-sm gap-2 text-sm font-medium"
+            htmlFor="share-deck"
+          >
+            Deck to share
+            <select
+              id="share-deck"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+              value={shareDeckId}
+              onChange={(event) => setShareDeckId(event.target.value)}
+              disabled={deckExportBusy}
+            >
+              {deckSources
+                .filter(
+                  (source) =>
+                    source.id === STARTER_DECK_ID ||
+                    source.id === 'saved' ||
+                    customDecks.some((deck) => deck.id === source.id),
+                )
+                .map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.name}
+                  </option>
+                ))}
+            </select>
+            <span className="text-muted-foreground font-normal">
+              Shared links and files contain dictionary-backed card content
+              only, never private study progress.
+            </span>
+          </label>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               type="button"

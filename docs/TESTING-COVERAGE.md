@@ -196,6 +196,7 @@ promotion, and pinned-search toggling.
 
 **`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
 It also covers validating a content-only deck URL, previewing the shared deck name, and importing its matched cards.
+The Settings component coverage also selects and shares a locally owned custom deck, confirming the generated payload uses that deck's name and content.
 
 **`analyzer-settings.test.ts`** covers persisted furigana, rōmaji, and inline/on-tap gloss
 preferences, malformed-value defaults, and reading romanization. **`src/core/text/inflect.test.ts`**
