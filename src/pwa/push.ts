@@ -3,7 +3,11 @@
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? ''
 
 export type BackgroundPushStatus =
-  'unsupported' | 'not-configured' | 'permission-denied' | 'subscribed'
+  | 'unsupported'
+  | 'not-configured'
+  | 'permission-denied'
+  | 'subscribed'
+  | 'not-subscribed'
 
 interface PushConfig {
   readonly enabled: boolean
@@ -73,6 +77,21 @@ export async function enableBackgroundPush(): Promise<BackgroundPushStatus> {
   if (!response.ok)
     throw new Error('Could not save the background reminder subscription.')
   return 'subscribed'
+}
+
+/** Reports the current device's background-push state without changing it. */
+export async function getBackgroundPushStatus(): Promise<BackgroundPushStatus> {
+  if (!isSupported()) return 'unsupported'
+  if (Notification.permission !== 'granted') return 'permission-denied'
+  try {
+    const config = await readPushConfig()
+    if (!config?.enabled || !config.publicKey) return 'not-configured'
+    const registration = await navigator.serviceWorker.ready
+    const subscription = await registration.pushManager.getSubscription()
+    return subscription ? 'subscribed' : 'not-subscribed'
+  } catch {
+    return 'not-configured'
+  }
 }
 
 export async function disableBackgroundPush(): Promise<void> {

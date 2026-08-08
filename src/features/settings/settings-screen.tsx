@@ -36,6 +36,7 @@ import {
   DEFAULT_DAILY_REMINDER_TIME,
   disableBackgroundPush,
   enableBackgroundPush,
+  getBackgroundPushStatus,
   isDailyReminderTime,
   isAppBadgePreference,
   requestDailyReminderPermission,
@@ -420,6 +421,8 @@ export function SettingsScreen(): React.ReactElement {
           ? 'unsupported'
           : Notification.permission,
       )
+      if (savedReminderEnabled?.value === 'true')
+        setBackgroundPushStatus(await getBackgroundPushStatus())
       setStoragePersistenceStatus(await getStoragePersistenceStatus())
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
@@ -2584,8 +2587,9 @@ export function SettingsScreen(): React.ReactElement {
         <h2 className="text-lg font-semibold">Study reminder</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Ask this browser to remind you once a day when cards are due. The
-          offline fallback runs while KanjiForge is open; background Web Push
-          delivery needs a push server and is not enabled yet.
+          offline fallback runs while KanjiForge is open. When the server is
+          configured, enabling the reminder also registers this device for
+          background Web Push delivery.
         </p>
         <div className="mt-5 flex flex-wrap items-end gap-4">
           <label
@@ -2635,7 +2639,9 @@ export function SettingsScreen(): React.ReactElement {
                 ? 'This browser cannot receive background Web Push; the open-app fallback remains active.'
                 : backgroundPushStatus === 'permission-denied'
                   ? 'Allow browser notifications before enabling background Web Push.'
-                  : 'When configured, enabling this reminder also registers this device for background Web Push.'}
+                  : backgroundPushStatus === 'not-subscribed'
+                    ? 'This device is not registered for background Web Push; the open-app fallback remains active.'
+                    : 'When configured, enabling this reminder also registers this device for background Web Push.'}
         </p>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
