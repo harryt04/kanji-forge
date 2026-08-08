@@ -94,7 +94,7 @@ import {
   formatDeckAsJson,
   formatDeckAsText,
 } from './deck-export'
-import { createDeckShareUrl } from './deck-share'
+import { createDeckShareUrl, formatDeckShareFile } from './deck-share'
 import {
   guessKanjiColumn,
   parseCsvImport,
@@ -1249,6 +1249,40 @@ export function SettingsScreen(): React.ReactElement {
       await navigator.clipboard.writeText(link)
       setDeckExportMessage(
         `Copied a share link for “${deck.name}”. It contains card content only, not study progress.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not share deck.',
+      )
+    } finally {
+      setDeckExportBusy(false)
+    }
+  }
+
+  async function downloadDeckShareFile(): Promise<void> {
+    if (!runtime || deckExportBusy) return
+    setDeckExportBusy(true)
+    setDeckExportMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const deck = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      const blob = new Blob([formatDeckShareFile(deck)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${
+        deck.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/giu, '-')
+          .replace(/^-|-$/gu, '') || 'kanjiforge-deck'
+      }.kanjiforge-share.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      setDeckExportMessage(
+        `Downloaded a content-only share file for “${deck.name}”. It does not include study progress.`,
       )
     } catch (reason: unknown) {
       setError(
@@ -2831,6 +2865,14 @@ export function SettingsScreen(): React.ReactElement {
             >
               Copy share link
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deckExportBusy}
+              onClick={() => void downloadDeckShareFile()}
+            >
+              Download share file
+            </Button>
           </div>
           {deckExportMessage && (
             <p className="text-muted-foreground mt-4 text-sm" role="status">
@@ -3013,9 +3055,9 @@ export function SettingsScreen(): React.ReactElement {
             <div className="border-border mt-5 border-t pt-5">
               <h4 className="font-medium">Import from JSON</h4>
               <p className="text-muted-foreground mt-1 text-sm">
-                Choose or paste a versioned KanjiForge JSON deck export. Its
-                content is previewed and added to Saved without replacing
-                existing progress.
+                Choose or paste a versioned KanjiForge deck export or
+                content-only share file. Its content is previewed and added to
+                Saved without replacing existing progress.
               </p>
               <input
                 className="mt-3 block text-sm"

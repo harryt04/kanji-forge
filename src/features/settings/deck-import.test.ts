@@ -96,6 +96,19 @@ describe('parseJsonKanjiImport', () => {
     ).toEqual(['日', '本'])
   })
 
+  it('extracts kanji from a content-only deck share file', () => {
+    expect(
+      parseJsonKanjiImport(
+        JSON.stringify({
+          format: 'kanjiforge-deck-share',
+          version: 1,
+          name: 'Travel kanji',
+          kanji: ['日', '本', '日'],
+        }),
+      ),
+    ).toEqual(['日', '本'])
+  })
+
   it('rejects malformed and unsupported deck JSON', () => {
     expect(() => parseJsonKanjiImport('{')).toThrow('not valid JSON')
     expect(() => parseJsonKanjiImport('{}')).toThrow('must be a KanjiForge')

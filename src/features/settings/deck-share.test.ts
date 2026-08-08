@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LoadedDeck } from '@/features/study/deck-loader'
 import {
   createDeckShareUrl,
+  formatDeckShareFile,
   formatDeckSharePayload,
   parseDeckSharePayload,
 } from './deck-share'
@@ -62,6 +63,17 @@ describe('deck sharing', () => {
     const url = createDeckShareUrl('https://study.example', deck())
     expect(url.startsWith('https://study.example/analyze?deck=')).toBe(true)
     expect(url).not.toContain('totalReviews')
+  })
+
+  it('creates a readable content-only share file without study progress', () => {
+    expect(JSON.parse(formatDeckShareFile(deck()))).toEqual({
+      format: 'kanjiforge-deck-share',
+      version: 1,
+      name: 'Travel kanji',
+      kanji: ['日', '本'],
+    })
+    expect(formatDeckShareFile(deck())).toContain('\n  "kanji"')
+    expect(formatDeckShareFile(deck())).not.toContain('totalReviews')
   })
 
   it('rejects unsupported or empty share payloads', () => {

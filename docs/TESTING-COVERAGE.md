@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 61 (424 test cases: 424 passing) |
+| Unit/integration test files | 61 (426 test cases: 426 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 131 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.71%** |
+| Overall statement coverage | **86.51%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -182,7 +182,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/settings` — 72 cases
 
-**`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, non-kanji, and multi-character word input, versioned KanjiForge JSON deck import validation, best-effort Anki `.apkg` SQLite note extraction and malformed-archive rejection, plus non-mutating matched/already-in-target/not-found preview classification. The Settings component test also verifies exact offline dictionary-word enrichment and word content-reference persistence alongside kanji imports.
+**`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, non-kanji, and multi-character word input, versioned KanjiForge JSON deck and content-only share-file import validation, best-effort Anki `.apkg` SQLite note extraction and malformed-archive rejection, plus non-mutating matched/already-in-target/not-found preview classification. The Settings component test also verifies exact offline dictionary-word enrichment and word content-reference persistence alongside kanji imports.
 
 **`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields including the writing pad, two-tap study mode, adaptive scheduler mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, validated RSS link-out sources with offline persistence and removal, the one-click attributed Japanese Wikinews preset, renaming and restoring the starter deck name with an outbox mutation, creating a custom deck with an outbox mutation, assigning offline folders to decks, deleting the Saved deck after confirmation while preserving the built-in deck, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched and unknown input from text, CSV, JSON, and Anki package imports, appending imported cards to an existing custom deck without touching Saved, transferring studied starter-deck progress to matching Saved cards while preserving Saved flags, backup restore, and the stale-backup warning with its recovery action. **`rss-feeds.test.ts`** covers URL safety, label derivation, malformed-data cleanup, de-duplication, list limits, add/remove behavior, and the attributed Japanese Wikinews preset. **`deck-folders.test.ts`** covers folder-label normalization and deterministic grouping. **`deck-progress.test.ts`** covers shared-card selection, SRS-field copying, destination-flag preservation, and idempotent no-op planning. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
 
@@ -199,7 +199,7 @@ It also covers validating a content-only deck URL, previewing the shared deck na
 preferences, malformed-value defaults, and reading romanization. The share-screen suite verifies
 that these preferences load offline and that tap-to-reveal glosses remain hidden until requested.
 
-**`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL payloads, omission of SRS progress, and malformed/empty payload rejection.
+**`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL and readable share-file payloads, omission of SRS progress, and malformed/empty payload rejection.
 
 **`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 

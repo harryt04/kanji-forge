@@ -1,3 +1,5 @@
+import { parseDeckSharePayload } from './deck-share'
+
 /** A parsed CSV table used by the Settings import mapping UI. */
 export interface CsvImportTable {
   readonly headers: readonly string[]
@@ -150,7 +152,12 @@ export function parseJsonKanjiImport(input: string): readonly string[] {
     throw new Error('JSON import is not valid JSON.')
   }
 
-  if (!isRecord(value) || value.format !== 'kanjiforge-deck-export') {
+  if (!isRecord(value)) {
+    throw new Error('JSON import must be a KanjiForge deck export.')
+  }
+  if (value.format === 'kanjiforge-deck-share')
+    return parseDeckSharePayload(input).kanji
+  if (value.format !== 'kanjiforge-deck-export') {
     throw new Error('JSON import must be a KanjiForge deck export.')
   }
   if (value.version !== 1 || !Array.isArray(value.cards)) {

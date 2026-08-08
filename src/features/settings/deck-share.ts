@@ -28,6 +28,11 @@ export function formatDeckSharePayload(deck: LoadedDeck): string {
   } satisfies DeckSharePayload)
 }
 
+/** Creates a readable content-only JSON file for sharing outside a URL. */
+export function formatDeckShareFile(deck: LoadedDeck): string {
+  return JSON.stringify(JSON.parse(formatDeckSharePayload(deck)), null, 2)
+}
+
 /** Makes a shareable link without including private SRS progress or user data. */
 export function createDeckShareUrl(origin: string, deck: LoadedDeck): string {
   const url = new URL('/analyze', origin)
