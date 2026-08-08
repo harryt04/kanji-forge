@@ -400,9 +400,11 @@ This matches Electric’s documented pattern of “read-path sync + your existin
 - **better-auth** on Postgres (Drizzle adapter). Sign-in required; no anonymous routes that create study data.
 - Write API verifies session/JWT and **forces `user_id` from the token** (never trust body `user_id`).
 - Electric shapes are filtered so a client only receives **that user’s** rows.
-- Until the Electric auth proxy is deployed, the API exposes an authenticated `/api/sync` snapshot
-  with the same four projections. The client applies it using the same review-union and metadata-LWW
-  merge contract, so local-first behavior does not depend on Electric availability.
+- The API exposes an authenticated `/api/electric/shape` proxy for the four sync projections. It
+  validates the better-auth session, allow-lists the table, replaces any client `where` clause with
+  a parameterized `user_id = $1` predicate, and keeps the Electric secret server-side. The
+  authenticated `/api/sync` snapshot remains the client's transport-compatible fallback while the
+  direct Electric client integration is phased in.
 - **The exact write-path and shape-authorization contract is `TRD.md §15` (Sync Contract).** The
   shape-auth mechanism (preferred: an auth proxy that server-enforces `where user_id = <token uid>`)
   is to be confirmed by a Phase 1 spike against the real Electric image before Phase 4 — see §15.4.
@@ -443,7 +445,7 @@ NEXT_PUBLIC_API_URL=https://api.example.com
 NEXT_PUBLIC_ELECTRIC_URL=https://electric.example.com
 ```
 
-Pin exact Electric image/version and shape definitions in repo (`deploy/` or Coolify docs) when implemented.
+The repo pins the Electric image/version and shape proxy contract in `deploy/` and `apps/api/src/electric.ts`.
 
 ### 10.6 Backup remains mandatory
 

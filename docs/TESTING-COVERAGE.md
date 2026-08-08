@@ -220,14 +220,16 @@ that these preferences load offline and that tap-to-reveal glosses remain hidden
 **`device-id.test.ts`** (new) — stability across calls, localStorage persistence, reuse of an
 existing id, safe `'server'` placeholder without `window`, generation via `crypto.randomUUID()`.
 
-### `apps/api` — 7 cases across 4 files
+### `apps/api` — 10 cases across 5 files
 
 `mutations.test.ts` covers complete review and metadata mutation validation, removal of
 body-supplied user identity, review/mutation id matching, supported-type handling, and the
 batch-size limit. `env.test.ts` and `schema.contract.test.ts` continue to cover backend
 configuration and the server projection schema. `sync.test.ts` covers the authenticated snapshot
-projection against a contract-shaped database double; database integration coverage remains
-deferred until the local Postgres stack is available in CI.
+projection against a contract-shaped database double. `electric.test.ts` covers the authenticated
+shape URL's table allow-list, parameterized tenant filter, cursor forwarding, and request-header
+boundary; database integration coverage remains deferred until the local Postgres stack is
+available in CI.
 
 ### `scripts/build-packs`
 

@@ -12,7 +12,7 @@ make the Next client a server: `apps/api` is an independent Node/TypeScript serv
 4. Register through better-auth (after the stack starts):
    `curl -i -X POST http://localhost:3001/api/auth/sign-up/email -H 'content-type: application/json' -d '{"name":"Local User","email":"local@example.test","password":"a-long-local-password"}'`.
 5. Verify the pinned Electric service has a reachable trivial shape once an application table has
-   rows: `source deploy/.env && curl -i "http://localhost:3000/v1/shape?table=reviews&offset=-1&secret=${ELECTRIC_SECRET}"`.
+   rows: `source deploy/.env && curl -i "http://localhost:3010/v1/shape?table=reviews&offset=-1&secret=${ELECTRIC_SECRET}"`.
    The secret is only for this local operator check; never send it to a browser.
 
 The compose ports bind to loopback only. For Coolify, attach API and Electric to its TLS-enabled
@@ -31,4 +31,5 @@ must remain private until the T1.5 shape-auth proxy spike enforces `user_id` fil
 - `POST /api/mutations` authenticates a better-auth session and applies the supported write contract.
   `GET /api/sync` returns only that session user's reviews and metadata projections for the local
   client read-sync fallback. Direct Electric shapes remain private until the shape-auth proxy
-  spike enforces `user_id` filtering.
+  route (`GET /api/electric/shape`) is used; it enforces an allow-listed `user_id` filter and keeps
+  the Electric secret server-side.

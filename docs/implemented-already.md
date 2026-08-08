@@ -67,7 +67,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 
 | Area | Files | Target milestone |
 |---|---|---|
-| Electric sync | `src/data/sync/index.ts` | The authenticated read path is implemented through the API snapshot fallback and local merge contract. Direct Electric client initialization and shape-auth proxying remain a deployment follow-up. | T4.0 |
+| Electric sync | `src/data/sync/index.ts`, `apps/api/src/electric.ts` | The authenticated read path uses the API snapshot fallback and local merge contract; the self-hosted API now also provides an authenticated, allow-listed Electric shape proxy with a server-injected `user_id` predicate and streaming response forwarding. Direct Electric client initialization remains a follow-up. | T4.0 |
 | Mutation write API | `apps/api/src/index.ts` (`POST /api/mutations`) | Authenticated route validates and applies supported review/deck/settings/membership mutations with idempotency and LWW metadata semantics. | T1.4 |
 | Text processing | `src/core/text/{detect,furigana,romaji}.ts` | Each exports a single `*_STUB` constant. | `furigana.ts` → T1.1; `detect.ts`/`romaji.ts` → T3.0 (dictionary search) |
 | Import/enrichment | `src/core/import/{parse,enrich}.ts` | Legacy text/enrichment seams still export `*_STUB`; Anki `.apkg` parsing now lives in `src/core/import/apkg.ts` and is covered by `deck-import.test.ts`. | T8.0 (v2, remaining word enrichment deferred) |

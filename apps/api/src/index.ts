@@ -5,6 +5,11 @@ import {
 } from 'node:http'
 import { createAuth } from './auth.js'
 import { createDatabase } from './db/client.js'
+import {
+  electricRequestHeaders,
+  ElectricShapeRequestError,
+  prepareElectricShapeUrl,
+} from './electric.js'
 import { readEnv } from './env.js'
 import {
   MutationValidationError,
@@ -66,7 +71,22 @@ async function sendFetchResponse(
     ...corsHeaders(origin),
   }
   response.writeHead(result.status, headers)
-  response.end(Buffer.from(await result.arrayBuffer()))
+  if (!result.body) {
+    response.end()
+    return
+  }
+
+  const reader = result.body.getReader()
+  try {
+    while (true) {
+      const chunk = await reader.read()
+      if (chunk.done) break
+      response.write(Buffer.from(chunk.value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  response.end()
 }
 
 const server = createServer(async (request, response) => {
@@ -137,9 +157,43 @@ const server = createServer(async (request, response) => {
         return json(response, 401, { error: 'unauthenticated' }, origin)
       return json(
         response,
+        200,
         await readSyncSnapshot(database, session.user.id),
         origin,
       )
+    }
+
+    if (url.pathname === '/api/electric/shape' && request.method === 'GET') {
+      const session = await auth.api.getSession({
+        headers: fetchRequest.headers,
+      })
+      if (!session)
+        return json(response, 401, { error: 'unauthenticated' }, origin)
+      if (!env.ELECTRIC_URL || !env.ELECTRIC_SECRET)
+        return json(
+          response,
+          503,
+          { error: 'electric_proxy_not_configured' },
+          origin,
+        )
+
+      try {
+        const upstreamUrl = prepareElectricShapeUrl(
+          fetchRequest.url,
+          env.ELECTRIC_URL,
+          env.ELECTRIC_SECRET,
+          session.user.id,
+        )
+        const upstream = await fetch(upstreamUrl, {
+          method: 'GET',
+          headers: electricRequestHeaders(fetchRequest),
+        })
+        return sendFetchResponse(response, upstream, origin)
+      } catch (error) {
+        if (error instanceof ElectricShapeRequestError)
+          return json(response, 400, { error: error.message }, origin)
+        throw error
+      }
     }
   } catch (error) {
     console.error('API request failed', error)

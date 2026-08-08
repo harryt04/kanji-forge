@@ -11,6 +11,8 @@ export type ApiEnv = {
   API_HOST: string
   API_PORT: number
   CORS_ORIGIN: string
+  ELECTRIC_URL: string | null
+  ELECTRIC_SECRET: string | null
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
@@ -34,5 +36,7 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     API_HOST: source.API_HOST ?? '0.0.0.0',
     API_PORT: port,
     CORS_ORIGIN: source.CORS_ORIGIN ?? source.BETTER_AUTH_URL!,
+    ELECTRIC_URL: source.ELECTRIC_URL ?? null,
+    ELECTRIC_SECRET: source.ELECTRIC_SECRET ?? null,
   }
 }

@@ -12,6 +12,8 @@ describe('readEnv', () => {
     expect(readEnv(validEnv)).toMatchObject({
       API_HOST: '0.0.0.0',
       API_PORT: 3001,
+      ELECTRIC_URL: null,
+      ELECTRIC_SECRET: null,
     })
   })
 
