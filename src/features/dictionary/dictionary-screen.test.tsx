@@ -52,6 +52,12 @@ describe('DictionaryScreen', () => {
 
     expect(await screen.findByText('お金')).toBeInTheDocument()
     expect(screen.getByText('money')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'View details for お金' }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/detail\?contentRef=word%3A\d+$/u),
+    )
   })
 
   it('searches the visible form with wildcards', async () => {
@@ -87,6 +93,9 @@ describe('DictionaryScreen', () => {
     expect(firstDetails.getByText('JLPT')).toBeInTheDocument()
     expect(firstDetails.getByText('Frequency rank')).toBeInTheDocument()
     expect(firstDetails.getByText('Classical radical')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('link', { name: 'View details for 日' }).length,
+    ).toBeGreaterThan(0)
   })
 
   it('searches kanji by classical radical number', async () => {

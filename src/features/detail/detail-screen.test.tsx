@@ -169,6 +169,9 @@ describe('DetailScreen', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/love of one's country/)).toBeInTheDocument()
     expect(
+      screen.getAllByRole('link', { name: /View details for/ }).length,
+    ).toBeGreaterThan(1)
+    expect(
       screen.getByRole('heading', { name: 'Similar-looking kanji' }),
     ).toBeInTheDocument()
     expect(

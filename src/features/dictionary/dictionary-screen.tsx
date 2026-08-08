@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type OutboxMutation } from '@/data/repo'
 import {
@@ -27,6 +28,10 @@ function contentRefForResult(result: DictionaryResult): string {
   return result.type === 'kanji'
     ? `kanji:${result.record.literal}`
     : `${result.type}:${result.record.id}`
+}
+
+function detailHrefForResult(result: DictionaryResult): string {
+  return `/detail?contentRef=${encodeURIComponent(contentRefForResult(result))}`
 }
 
 function submitLabel(result: DictionaryResult): string {
@@ -394,10 +399,17 @@ export function DictionaryScreen(): React.ReactElement {
           >
             <CardContent className="grid gap-2 pt-6">
               <div className="flex items-baseline justify-between gap-4">
-                <h2 className="font-jp-ui text-3xl" lang="ja">
-                  {result.type === 'kanji'
-                    ? result.record.literal
-                    : result.record.forms[0]}
+                <h2>
+                  <Link
+                    className="font-jp-ui text-primary rounded-sm text-3xl underline underline-offset-4 focus-visible:ring-2"
+                    href={detailHrefForResult(result)}
+                    lang="ja"
+                    aria-label={`View details for ${result.type === 'kanji' ? result.record.literal : (result.record.forms[0] ?? result.record.readings[0])}`}
+                  >
+                    {result.type === 'kanji'
+                      ? result.record.literal
+                      : (result.record.forms[0] ?? result.record.readings[0])}
+                  </Link>
                 </h2>
                 <span className="text-muted-foreground text-xs uppercase">
                   {submitLabel(result)}

@@ -895,9 +895,14 @@ export function DetailScreen(): React.ReactElement {
                 key={word.id}
                 className="border-border bg-card rounded-md border p-3"
               >
-                <p className="font-jp-ui text-lg" lang="ja">
+                <Link
+                  className="font-jp-ui text-primary text-lg underline underline-offset-4"
+                  href={`/detail?contentRef=${encodeURIComponent(`word:${word.id}`)}`}
+                  lang="ja"
+                  aria-label={`View details for ${word.forms[0] ?? word.readings[0]}`}
+                >
                   {word.forms.join('、') || word.readings.join('、')}
-                </p>
+                </Link>
                 <p
                   className="font-jp-ui text-muted-foreground text-sm"
                   lang="ja"
