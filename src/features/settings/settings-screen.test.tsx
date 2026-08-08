@@ -9,7 +9,11 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { APP_BADGE_SETTING } from '@/pwa'
 import { THEME_SETTING } from './theme'
-import { BACKUP_FORMAT, BACKUP_VERSION } from './backup'
+import {
+  BACKUP_FORMAT,
+  BACKUP_LAST_EXPORTED_SETTING,
+  BACKUP_VERSION,
+} from './backup'
 import { SettingsScreen } from './settings-screen'
 
 describe('SettingsScreen', () => {
@@ -116,5 +120,28 @@ describe('SettingsScreen', () => {
     await expect(
       createUserRepositories(runtime.database).settings.get(THEME_SETTING),
     ).resolves.toMatchObject({ value: 'dark' })
+  })
+
+  it('shows a backup reminder when the last backup is more than 30 days old', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: BACKUP_LAST_EXPORTED_SETTING,
+      value: String(Date.now() - 31 * 24 * 60 * 60 * 1000),
+      updatedAt: Date.now(),
+    })
+    await expect(
+      createUserRepositories(runtime.database).settings.get(
+        BACKUP_LAST_EXPORTED_SETTING,
+      ),
+    ).resolves.toBeDefined()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByText('Your last backup is more than 30 days old.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Back up now' }),
+    ).toBeInTheDocument()
   })
 })

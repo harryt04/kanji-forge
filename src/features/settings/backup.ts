@@ -8,6 +8,19 @@ import type {
 
 export const BACKUP_FORMAT = 'kanjiforge-backup'
 export const BACKUP_VERSION = 1
+export const BACKUP_LAST_EXPORTED_SETTING = 'backup:last-exported-at'
+export const BACKUP_REMINDER_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000
+
+export type BackupReminder = 'missing' | 'stale' | null
+
+export function getBackupReminder(
+  lastBackupAt: number | undefined,
+  now = Date.now(),
+): BackupReminder {
+  if (lastBackupAt === undefined || !Number.isFinite(lastBackupAt))
+    return 'missing'
+  return now - lastBackupAt >= BACKUP_REMINDER_INTERVAL_MS ? 'stale' : null
+}
 
 export interface KanjiForgeBackup {
   readonly format: typeof BACKUP_FORMAT

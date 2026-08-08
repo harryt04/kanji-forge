@@ -207,7 +207,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Manual full backup file | ➕ ✅ | 2026-08-07 | Settings provides a local JSON download and same-account non-destructive restore; includes decks, settings, Saved membership, and complete review history |
 | — | Auto-backup to a chosen folder (File System Access) | ➕ 🔷 | — | Desktop (T2+) |
 | — | Optional self-hostable sync server | ➕ 🔷 | — | ARCHITECTURE §10 (T4.0) |
-| — | Backup nag when none taken in 30 days | ➕ ✅ | — | |
+| — | Backup nag when none taken in 30 days | ➕ ✅ | 2026-08-07 | Settings records successful backup downloads and shows a persistent warning when no backup exists or the last one is more than 30 days old |
 
 ## 12. Platform & settings
 

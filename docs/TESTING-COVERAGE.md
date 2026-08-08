@@ -148,9 +148,9 @@ promotion, and pinned-search toggling.
 
 ### `src/features/settings` — 9 cases
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, and offline persistence of the app-icon badge preference.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the app-icon badge preference, backup restore, and the stale-backup warning with its recovery action.
 
-**`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata, and non-destructive restore with review-log replay. The Settings component test covers restoring a same-account JSON file through the file picker.
+**`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 
 ### `src/pwa` — 4 cases
 

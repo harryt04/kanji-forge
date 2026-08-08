@@ -11,7 +11,13 @@ import {
   type AppBadgePreference,
 } from '@/pwa'
 import { Button } from '@/ui/button'
-import { createBackup, parseBackup } from './backup'
+import {
+  BACKUP_LAST_EXPORTED_SETTING,
+  createBackup,
+  getBackupReminder,
+  parseBackup,
+  type BackupReminder,
+} from './backup'
 import {
   applyTheme,
   isThemePreference,
@@ -81,6 +87,7 @@ export function SettingsScreen(): React.ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
+  const [backupReminder, setBackupReminder] = useState<BackupReminder>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -89,17 +96,21 @@ export function SettingsScreen(): React.ReactElement {
     setSystemDark(getSystemPreference())
     void (async () => {
       await runtime.database.ready
-      const saved = await createUserRepositories(runtime.database).settings.get(
-        THEME_SETTING,
-      )
-      const savedBadge = await createUserRepositories(
-        runtime.database,
-      ).settings.get(APP_BADGE_SETTING)
+      const repositories = createUserRepositories(runtime.database)
+      const [saved, savedBadge, savedBackup] = await Promise.all([
+        repositories.settings.get(THEME_SETTING),
+        repositories.settings.get(APP_BADGE_SETTING),
+        repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
+      ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
+      const lastBackupAt = savedBackup?.value
+        ? Number(savedBackup.value)
+        : undefined
+      setBackupReminder(getBackupReminder(lastBackupAt))
       setLoading(false)
     })().catch((reason: unknown) => {
       if (!cancelled) {
@@ -188,6 +199,12 @@ export function SettingsScreen(): React.ReactElement {
       anchor.download = `kanjiforge-backup-${new Date(backup.exportedAt).toISOString().slice(0, 10)}.json`
       anchor.click()
       URL.revokeObjectURL(url)
+      await createUserRepositories(runtime.database).settings.set({
+        key: BACKUP_LAST_EXPORTED_SETTING,
+        value: String(backup.exportedAt),
+        updatedAt: Date.now(),
+      })
+      setBackupReminder(null)
       setBackupMessage('Backup downloaded.')
     } catch (reason: unknown) {
       setError(
@@ -314,6 +331,31 @@ export function SettingsScreen(): React.ReactElement {
           Keep an open JSON copy of your decks, settings, and complete review
           history. Restoring merges data and never removes newer local records.
         </p>
+        {backupReminder && (
+          <div
+            className="border-destructive/40 bg-destructive/10 mt-4 rounded-md border p-4"
+            role="alert"
+          >
+            <p className="font-medium">
+              {backupReminder === 'missing'
+                ? 'You have not backed up your study data yet.'
+                : 'Your last backup is more than 30 days old.'}
+            </p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Keep a copy of your progress in case this device clears local
+              storage.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={backupBusy}
+              onClick={() => void exportBackup()}
+            >
+              Back up now
+            </Button>
+          </div>
+        )}
         <div className="mt-5 flex flex-wrap gap-3">
           <Button
             type="button"

@@ -3,7 +3,9 @@ import { openLocalUserDatabase, type LocalUserDatabase } from '@/data/db'
 import { createUserRepositories } from '@/data/repo'
 import { repoReview } from '../../../test/factories'
 import {
+  BACKUP_REMINDER_INTERVAL_MS,
   BACKUP_FORMAT,
+  getBackupReminder,
   BACKUP_VERSION,
   createBackup,
   parseBackup,
@@ -23,6 +25,16 @@ async function freshRepo(userId: string) {
 }
 
 describe('KanjiForge backups', () => {
+  it('reminds users who have never backed up or are past the 30-day window', () => {
+    expect(getBackupReminder(undefined, 100)).toBe('missing')
+    expect(getBackupReminder(100, 100 + BACKUP_REMINDER_INTERVAL_MS - 1)).toBe(
+      null,
+    )
+    expect(getBackupReminder(100, 100 + BACKUP_REMINDER_INTERVAL_MS)).toBe(
+      'stale',
+    )
+  })
+
   it('exports the complete review log and user-owned metadata', async () => {
     const { repositories } = await freshRepo('backup-export-user')
     const review = repoReview()
