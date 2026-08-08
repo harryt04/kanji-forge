@@ -13,7 +13,10 @@ import {
   removeAudioPack,
 } from './audio-pack'
 
-function archive(id = `test-pack-${crypto.randomUUID()}`): Uint8Array {
+function archive(
+  id = `test-pack-${crypto.randomUUID()}`,
+  audioByte = 1,
+): Uint8Array {
   const manifest = {
     id,
     name: 'Community voice',
@@ -24,7 +27,7 @@ function archive(id = `test-pack-${crypto.randomUUID()}`): Uint8Array {
   }
   return zipSync({
     'manifest.json': new TextEncoder().encode(JSON.stringify(manifest)),
-    'audio/hi.mp3': new Uint8Array([1, 2, 3]),
+    'audio/hi.mp3': new Uint8Array([audioByte, 2, 3]),
   })
 }
 
@@ -99,6 +102,21 @@ describe('community audio packs', () => {
     expect((await listAudioPacks()).some((pack) => pack.id === id)).toBe(false)
     installed.splice(installed.indexOf(id), 1)
     expect(await getAudioPackFile('日', 'ひ')).toBeNull()
+  })
+
+  it('prioritizes the selected pack when recordings overlap', async () => {
+    const firstId = `first-pack-${crypto.randomUUID()}`
+    const preferredId = `preferred-pack-${crypto.randomUUID()}`
+    installed.push(firstId, preferredId)
+    await installAudioPack(archive(firstId, 1))
+    await installAudioPack(archive(preferredId, 9))
+
+    await expect(
+      getAudioPackRecording('日', 'ひ', preferredId),
+    ).resolves.toMatchObject({
+      manifest: { id: preferredId },
+      bytes: new Uint8Array([9, 2, 3]),
+    })
   })
 
   it('downloads and installs a pack from an HTTP(S) URL without credentials', async () => {

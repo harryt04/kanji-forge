@@ -3,8 +3,29 @@ import {
   getAudioPackRecording,
   type InstalledAudioRecording,
 } from './audio-pack'
+import { getActiveUserRuntime } from '@/auth/runtime'
+import { createUserRepositories } from '@/data/repo'
 
 export const STUDY_AUTO_PLAY_AUDIO_SETTING = 'study.autoPlayAudio'
+export const AUDIO_PACK_PREFERENCE_SETTING = 'study.audioPack'
+export const AUDIO_PACK_PREFERENCE_AUTO = 'auto'
+
+/** Reads the user's preferred recording pack, falling back to any match. */
+export async function getPreferredAudioPackId(): Promise<string | undefined> {
+  const runtime = getActiveUserRuntime()
+  if (!runtime) return undefined
+  try {
+    await runtime.database.ready
+    const saved = await createUserRepositories(runtime.database).settings.get(
+      AUDIO_PACK_PREFERENCE_SETTING,
+    )
+    if (!saved?.value || saved.value === AUDIO_PACK_PREFERENCE_AUTO)
+      return undefined
+    return saved.value
+  } catch {
+    return undefined
+  }
+}
 
 /** StickyStudy's audio preference applies to word cards, not kanji-only decks. */
 export function supportsStudyCardAudio(
@@ -28,7 +49,13 @@ export async function hasInstalledJapaneseAudioFor(
   reading: string,
 ): Promise<boolean> {
   try {
-    return (await getAudioPackRecording(writing, reading)) !== null
+    return (
+      (await getAudioPackRecording(
+        writing,
+        reading,
+        await getPreferredAudioPackId(),
+      )) !== null
+    )
   } catch {
     return false
   }
@@ -52,8 +79,13 @@ export async function findInstalledJapaneseAudioMatch(
   readonly recording: InstalledAudioRecording
 } | null> {
   const candidates = [...new Set([...readings, writing].filter(Boolean))]
+  const preferredPackId = await getPreferredAudioPackId()
   for (const reading of candidates) {
-    const recording = await getAudioPackRecording(writing, reading)
+    const recording = await getAudioPackRecording(
+      writing,
+      reading,
+      preferredPackId,
+    )
     if (recording) return { reading, recording }
   }
   return null
@@ -75,7 +107,11 @@ export async function playJapaneseAudio(
   writing: string,
   reading: string,
 ): Promise<'pack' | 'synthesized' | 'unsupported'> {
-  const packFile = await getAudioPackFile(writing, reading)
+  const packFile = await getAudioPackFile(
+    writing,
+    reading,
+    await getPreferredAudioPackId(),
+  )
   if (
     packFile &&
     typeof window !== 'undefined' &&

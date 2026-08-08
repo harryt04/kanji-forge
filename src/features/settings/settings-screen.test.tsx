@@ -30,14 +30,17 @@ import {
   SRS_MODE_SETTING,
   STUDY_TWO_TAP_SETTING,
 } from '@/features/study/study-style'
-import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
+import {
+  AUDIO_PACK_PREFERENCE_SETTING,
+  STUDY_AUTO_PLAY_AUDIO_SETTING,
+} from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { deckFolderSettingKey } from './deck-folders'
 import { JAPANESE_WIKINEWS_FEED, RSS_FEEDS_SETTING } from './rss-feeds'
 import { removeNamesPack } from './names-pack'
 import { removeWordsPack } from './words-pack'
-import { removeAudioPack } from '@/features/study/audio-pack'
+import { installAudioPack, removeAudioPack } from '@/features/study/audio-pack'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -517,6 +520,43 @@ describe('SettingsScreen', () => {
       (await screen.findByRole('list', { name: 'Installed audio packs' }))
         .textContent,
     ).toContain('Remote community voice')
+  })
+
+  it('persists the preferred community audio pack offline', async () => {
+    const firstId = `settings-first-audio-${crypto.randomUUID()}`
+    const preferredId = `settings-preferred-audio-${crypto.randomUUID()}`
+    installedAudioPacks.push(firstId, preferredId)
+    const createPack = (id: string, name: string) =>
+      zipSync({
+        'manifest.json': new TextEncoder().encode(
+          JSON.stringify({
+            id,
+            name,
+            version: '1.0.0',
+            license: 'CC BY 4.0',
+            attribution: 'A Japanese speaker',
+            files: { '日|ひ': `audio/${id}.mp3` },
+          }),
+        ),
+        [`audio/${id}.mp3`]: new Uint8Array([1, 2, 3]),
+      })
+    await installAudioPack(createPack(firstId, 'First voice'))
+    await installAudioPack(createPack(preferredId, 'Preferred voice'))
+
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+    await screen.findByRole('heading', { name: 'Preferred recording pack' })
+    await user.click(
+      screen.getByRole('radio', { name: /Preferred voice 1\.0\.0/ }),
+    )
+
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(AUDIO_PACK_PREFERENCE_SETTING),
+      ).toMatchObject({ value: preferredId }),
+    )
   })
 
   it('persists two-tap study mode offline', async () => {

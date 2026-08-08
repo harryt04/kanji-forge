@@ -13,7 +13,11 @@ import {
 } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
-import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
+import {
+  AUDIO_PACK_PREFERENCE_AUTO,
+  AUDIO_PACK_PREFERENCE_SETTING,
+  STUDY_AUTO_PLAY_AUDIO_SETTING,
+} from '@/features/study/audio'
 import {
   countAudioPackRecordings,
   fetchAudioPack,
@@ -320,6 +324,9 @@ export function SettingsScreen(): React.ReactElement {
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [srsMode, setSrsMode] = useState<SrsMode>(DEFAULT_SRS_MODE)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [audioPackPreference, setAudioPackPreference] = useState(
+    AUDIO_PACK_PREFERENCE_AUTO,
+  )
   const [audioPacks, setAudioPacks] = useState<readonly AudioPackManifest[]>([])
   const [audioPackBusy, setAudioPackBusy] = useState(false)
   const [audioPackUrl, setAudioPackUrl] = useState('')
@@ -429,6 +436,7 @@ export function SettingsScreen(): React.ReactElement {
         savedTwoTap,
         savedSrsMode,
         savedAutoPlayAudio,
+        savedAudioPackPreference,
         savedStrokeAnimation,
         savedSaveBehavior,
         savedRssFeeds,
@@ -450,6 +458,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_TWO_TAP_SETTING),
         repositories.settings.get(SRS_MODE_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repositories.settings.get(AUDIO_PACK_PREFERENCE_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
         repositories.settings.get(RSS_FEEDS_SETTING),
@@ -486,6 +495,9 @@ export function SettingsScreen(): React.ReactElement {
       if (savedSrsMode && isSrsMode(savedSrsMode.value))
         setSrsMode(savedSrsMode.value)
       setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
+      setAudioPackPreference(
+        savedAudioPackPreference?.value || AUDIO_PACK_PREFERENCE_AUTO,
+      )
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeAnimation?.value),
       )
@@ -963,6 +975,30 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the audio setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseAudioPackPreference(next: string): Promise<void> {
+    if (!runtime || next === audioPackPreference || saving) return
+    const previous = audioPackPreference
+    setAudioPackPreference(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: AUDIO_PACK_PREFERENCE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setAudioPackPreference(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the audio pack preference.',
       )
     } finally {
       setSaving(false)
@@ -2674,36 +2710,6 @@ export function SettingsScreen(): React.ReactElement {
             event.target.value = ''
           }}
         />
-        <label
-          className="mt-4 block text-sm font-medium"
-          htmlFor="audio-pack-url"
-        >
-          Or install from a URL
-        </label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <input
-            id="audio-pack-url"
-            type="url"
-            value={audioPackUrl}
-            onChange={(event) => setAudioPackUrl(event.target.value)}
-            placeholder="https://example.org/japanese-audio.zip"
-            autoComplete="url"
-            disabled={audioPackBusy}
-            className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={audioPackBusy || !audioPackUrl.trim()}
-            onClick={() => void handleAudioPackUrl()}
-          >
-            Install URL
-          </Button>
-        </div>
-        <p className="text-muted-foreground mt-2 text-xs">
-          The host must allow browser downloads (CORS). Only HTTP(S) URLs are
-          accepted; credentials are not sent.
-        </p>
         {namesPack ? (
           <div className="border-border mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
             <span>
@@ -2806,6 +2812,99 @@ export function SettingsScreen(): React.ReactElement {
             event.target.value = ''
           }}
         />
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="audio-pack-url"
+        >
+          Or install from a URL
+        </label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <input
+            id="audio-pack-url"
+            type="url"
+            value={audioPackUrl}
+            onChange={(event) => setAudioPackUrl(event.target.value)}
+            placeholder="https://example.org/japanese-audio.zip"
+            autoComplete="url"
+            disabled={audioPackBusy}
+            className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={audioPackBusy || !audioPackUrl.trim()}
+            onClick={() => void handleAudioPackUrl()}
+          >
+            Install URL
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          The host must allow browser downloads (CORS). Only HTTP(S) URLs are
+          accepted; credentials are not sent.
+        </p>
+        {audioPacks.length > 0 ? (
+          <>
+            <h3 className="mt-5 font-medium">Preferred recording pack</h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Automatic uses the first matching recording. Choose a pack when
+              multiple installed voices cover the same word.
+            </p>
+            <div
+              className="mt-3 grid gap-2"
+              role="radiogroup"
+              aria-label="Preferred recording pack"
+            >
+              <Button
+                type="button"
+                variant={
+                  audioPackPreference === AUDIO_PACK_PREFERENCE_AUTO
+                    ? 'secondary'
+                    : 'outline'
+                }
+                role="radio"
+                aria-checked={
+                  audioPackPreference === AUDIO_PACK_PREFERENCE_AUTO
+                }
+                disabled={saving || audioPackBusy}
+                className="h-auto justify-start px-4 py-3 text-left"
+                onClick={() =>
+                  void chooseAudioPackPreference(AUDIO_PACK_PREFERENCE_AUTO)
+                }
+              >
+                <span>
+                  <span className="block font-semibold">Automatic</span>
+                  <span className="text-muted-foreground block text-sm font-normal">
+                    Use any installed matching recording.
+                  </span>
+                </span>
+              </Button>
+              {audioPacks.map((pack) => (
+                <Button
+                  key={pack.id}
+                  type="button"
+                  variant={
+                    audioPackPreference === pack.id ? 'secondary' : 'outline'
+                  }
+                  role="radio"
+                  aria-checked={audioPackPreference === pack.id}
+                  disabled={saving || audioPackBusy}
+                  className="h-auto justify-start px-4 py-3 text-left"
+                  onClick={() => void chooseAudioPackPreference(pack.id)}
+                >
+                  <span>
+                    <span className="block font-semibold">
+                      {pack.name} {pack.version}
+                    </span>
+                    <span className="text-muted-foreground block text-sm font-normal">
+                      {countAudioPackRecordings(pack)} recordings ·{' '}
+                      {pack.license}
+                    </span>
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : null}
         {audioPacks.length > 0 ? (
           <ul className="mt-4 grid gap-2" aria-label="Installed audio packs">
             {audioPacks.map((pack) => (

@@ -254,8 +254,13 @@ export async function removeAudioPack(id: string): Promise<void> {
 export async function getAudioPackFile(
   writing: string,
   reading: string,
+  preferredPackId?: string,
 ): Promise<Blob | null> {
-  const recording = await getAudioPackRecording(writing, reading)
+  const recording = await getAudioPackRecording(
+    writing,
+    reading,
+    preferredPackId,
+  )
   if (recording) {
     const copy = new ArrayBuffer(recording.bytes.byteLength)
     new Uint8Array(copy).set(recording.bytes)
@@ -268,10 +273,19 @@ export async function getAudioPackFile(
 export async function getAudioPackRecording(
   writing: string,
   reading: string,
+  preferredPackId?: string,
 ): Promise<InstalledAudioRecording | null> {
   const key = `${writing}|${reading}`
   await listAudioPacks()
-  for (const pack of memoryPacks.values()) {
+  const packs = [...memoryPacks.values()]
+  if (preferredPackId) {
+    packs.sort((left, right) => {
+      if (left.manifest.id === preferredPackId) return -1
+      if (right.manifest.id === preferredPackId) return 1
+      return 0
+    })
+  }
+  for (const pack of packs) {
     const bytes = pack.files[key]
     const path = pack.manifest.files[key]
     if (bytes && path) return { manifest: pack.manifest, path, bytes }
