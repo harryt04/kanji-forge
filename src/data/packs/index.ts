@@ -3,6 +3,9 @@
  * pack handle is cached process-wide once opened. */
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js'
 import { romajiToHiragana } from '@/core/text/romaji'
+import { analyzeText, type TextAnalysisToken } from '@/core/text/analyzer'
+
+export type { TextAnalysisToken } from '@/core/text/analyzer'
 
 export interface DeckDefinition {
   readonly id: string
@@ -70,16 +73,6 @@ export interface SentenceRecord {
   readonly englishAuthor: string
   readonly furigana: readonly SentenceToken[]
   readonly readabilityScore: number
-}
-
-export interface TextAnalysisToken {
-  readonly text: string
-  readonly reading: string | null
-  readonly meanings: readonly string[]
-  readonly type: 'word' | 'kanji' | 'unknown'
-  readonly contentRef?: string
-  /** True when the token contains a kanji outside the legacy N5 set. */
-  readonly hasNonN5Kanji?: boolean
 }
 
 export type DictionaryResult =
@@ -713,78 +706,11 @@ export async function analyzeJapaneseText(
   text: string,
   maxTokens = 500,
 ): Promise<readonly TextAnalysisToken[]> {
-  const normalizedText = text.normalize('NFC')
-  if (!normalizedText.trim() || maxTokens <= 0) return []
-
   const [words, kanji] = await Promise.all([
     loadDictionaryWords(),
     loadDictionaryKanji(),
   ])
-  const wordForms = words.flatMap((word) =>
-    word.forms.map((form) => ({ form, word })),
-  )
-  const kanjiByLiteral = new Map(
-    kanji.map((record) => [record.literal, record]),
-  )
-  const characters = [...normalizedText]
-  const tokens: TextAnalysisToken[] = []
-
-  for (let index = 0; index < characters.length && tokens.length < maxTokens;) {
-    const matches = wordForms.filter(({ form }) => {
-      const formCharacters = [...form]
-      return (
-        formCharacters.length > 1 &&
-        characters.slice(index, index + formCharacters.length).join('') === form
-      )
-    })
-    const match = matches.sort(
-      (left, right) =>
-        [...right.form].length - [...left.form].length ||
-        right.word.commonScore - left.word.commonScore ||
-        left.word.id - right.word.id,
-    )[0]
-
-    if (match) {
-      const hasNonN5Kanji = [...match.form].some((literal) => {
-        const record = kanjiByLiteral.get(literal)
-        return record !== undefined && record.jlptLegacy !== 5
-      })
-      tokens.push({
-        text: match.form,
-        reading: match.word.readings[0] ?? null,
-        meanings: match.word.meanings.slice(0, 3),
-        type: 'word',
-        contentRef: `word:${match.word.id}`,
-        ...(hasNonN5Kanji ? { hasNonN5Kanji: true } : {}),
-      })
-      index += [...match.form].length
-      continue
-    }
-
-    const character = characters[index] ?? ''
-    const kanjiRecord = kanji.find((record) => record.literal === character)
-    if (kanjiRecord) {
-      tokens.push({
-        text: character,
-        reading:
-          kanjiRecord.onReadings[0] ?? kanjiRecord.kunReadings[0] ?? null,
-        meanings: kanjiRecord.meanings.slice(0, 3),
-        type: 'kanji',
-        contentRef: `kanji:${character}`,
-        ...(kanjiRecord.jlptLegacy !== 5 ? { hasNonN5Kanji: true } : {}),
-      })
-    } else {
-      tokens.push({
-        text: character,
-        reading: null,
-        meanings: [],
-        type: 'unknown',
-      })
-    }
-    index += 1
-  }
-
-  return tokens
+  return analyzeText(text, words, kanji, maxTokens)
 }
 
 function matchScore(

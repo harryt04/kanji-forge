@@ -235,6 +235,9 @@ deferred until the local Postgres stack is available in CI.
 (5), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
 [Known issues](#known-issues).
 
+`src/core/text/analyzer.test.ts` (3) covers the offline analyzer's indexed written-form and kana
+reading matches, longest-word preference, unknown-text preservation, and token-limit behavior.
+
 ---
 
 ## E2E (Playwright)
