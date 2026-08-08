@@ -418,6 +418,11 @@ export function SettingsScreen(): React.ReactElement {
       return
     }
 
+    await persistDeckName(nextName)
+  }
+
+  async function persistDeckName(nextName: string): Promise<void> {
+    if (!runtime || saving) return
     const repositories = createUserRepositories(runtime.database)
     setError(null)
     setDeckMessage(null)
@@ -454,6 +459,12 @@ export function SettingsScreen(): React.ReactElement {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function restoreDeckName(): Promise<void> {
+    if (!runtime || saving || deckName === DEFAULT_STARTER_DECK_NAME) return
+    setDeckName(DEFAULT_STARTER_DECK_NAME)
+    await persistDeckName(DEFAULT_STARTER_DECK_NAME)
   }
 
   async function exportBackup(): Promise<void> {
@@ -834,6 +845,15 @@ export function SettingsScreen(): React.ReactElement {
             {saving ? 'Saving…' : 'Save deck name'}
           </Button>
         </form>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3"
+          disabled={saving || deckName.trim() === DEFAULT_STARTER_DECK_NAME}
+          onClick={() => void restoreDeckName()}
+        >
+          Restore original deck name
+        </Button>
         {deckMessage && (
           <p className="text-muted-foreground mt-4 text-sm" role="status">
             {deckMessage}
