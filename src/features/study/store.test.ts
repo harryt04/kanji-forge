@@ -86,6 +86,17 @@ describe('useStudyStore.toggleFlag', () => {
 })
 
 describe('useStudyStore.grade', () => {
+  it('uses adaptive due dates without changing the visible level progression', async () => {
+    useStudyStore.getState().start(loadedDeck(1), 'adaptive')
+    const now = Date.now()
+    const repo = fakeRepo()
+    await useStudyStore.getState().grade(repo, 'good')
+
+    const call = vi.mocked(repo.recordGrade).mock.calls[0]![0]
+    expect(call.nextState.level).toBe(1)
+    expect(call.nextState.dueAt).toBeGreaterThan(now)
+  })
+
   it('persists the grade via repo.recordGrade with the current card', async () => {
     useStudyStore.getState().start(loadedDeck(2))
     const repo = fakeRepo()

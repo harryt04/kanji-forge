@@ -182,6 +182,25 @@
   }
 }
 
+@keyframes writing-hint-pulse {
+  from {
+    opacity: 0.16;
+  }
+  to {
+    opacity: 0.42;
+  }
+}
+
+.writing-hint-animate {
+  animation: writing-hint-pulse 900ms ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writing-hint-animate {
+    animation: none;
+  }
+}
+
 /* Shape encoding — the always-on fold overlay. Apply `.sticky-shape` plus one
  * of `.l0`..`.l4` to any sticky-shaped element (tile-wall cells, deck chips,
  * study-card level strip). Reads by luminance contrast alone, independent of

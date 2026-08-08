@@ -32,9 +32,10 @@ export default defineConfig({
   webServer: {
     // The offline/PWA specs need a real service worker, which `@serwist/next` only emits
     // for `next build` (it's disabled in `next dev` to avoid a rebuild loop — see
-    // next.config.js). Build the static export and serve it, rather than running the dev
-    // server, so the service worker is actually present for these specs to exercise.
-    command: 'pnpm build && pnpm exec serve out -l 3000',
+    // next.config.js). Run a production build rather than the dev server, so the service
+    // worker is actually present for these specs to exercise. `pnpm start` also runs the
+    // migrations, which the auth specs need when a database is configured.
+    command: 'pnpm build && pnpm start',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

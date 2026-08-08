@@ -65,3 +65,6 @@ packs/*.manifest.json
 !packs-dev/**
 
 public/packs-dev
+/public/packs/tokenizer
+
+tsconfig.tsbuildinfo

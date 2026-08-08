@@ -2,11 +2,13 @@ import { create } from 'zustand'
 import { applyGrade } from '@/core/srs/grade'
 import { buildQueue, requeueAfterAgain, type QueueCard } from '@/core/srs/queue'
 import { nextDue } from '@/core/srs/schedule'
+import { adaptiveDueAt } from '@/core/srs/adaptive'
 import {
   DEFAULT_SRS_CONFIG,
   emptyCardState,
   type Grade,
 } from '@/core/srs/types'
+import type { SrsMode } from './study-style'
 import type { UserRepositories } from '@/data/repo'
 import { getDeviceId } from '@/lib/device-id'
 import { toCoreState, toRepoState } from './adapters'
@@ -38,8 +40,9 @@ interface StudyState {
   revealed: boolean
   finished: boolean
   summary: SessionSummary
+  schedulerMode: SrsMode
   lastGrade: UndoEntry | null
-  start(loaded: LoadedDeck): void
+  start(loaded: LoadedDeck, schedulerMode?: SrsMode): void
   reveal(): void
   toggleFlag(repo: UserRepositories): Promise<void>
   grade(repo: UserRepositories, grade: Grade): Promise<void>
@@ -64,9 +67,10 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   revealed: false,
   finished: false,
   summary: emptySummary,
+  schedulerMode: 'sticky',
   lastGrade: null,
 
-  start(loaded) {
+  start(loaded, schedulerMode = 'sticky') {
     const now = Date.now()
     const queueCards: QueueCard[] = loaded.cards.map((card, order) => ({
       deckId: card.deckId,
@@ -80,6 +84,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       config: DEFAULT_SRS_CONFIG,
       dayOfYear: Math.floor(now / 86_400_000),
       dailyGoal: DEFAULT_SRS_CONFIG.newPerSession,
+      schedulerMode,
     })
     set({
       deckId: loaded.deckId,
@@ -90,6 +95,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       revealed: false,
       finished: queue.length === 0,
       summary: emptySummary,
+      schedulerMode,
       lastGrade: null,
     })
   },
@@ -161,7 +167,10 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       at: now,
       deviceId,
     })
-    after.dueAt = nextDue(after.level, DEFAULT_SRS_CONFIG, now)
+    after.dueAt =
+      state.schedulerMode === 'adaptive'
+        ? adaptiveDueAt(after, grade, now)
+        : nextDue(after.level, DEFAULT_SRS_CONFIG, now)
 
     const reviewId = crypto.randomUUID()
     await repo.recordGrade({

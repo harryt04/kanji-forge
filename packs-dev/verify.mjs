@@ -79,7 +79,7 @@ try {
   if (
     decks.schemaVersion !== 1 ||
     decks.license !== 'CC BY-SA 4.0' ||
-    decks.decks?.length !== 2
+    decks.decks?.length !== 8
   )
     fail('deck catalog is invalid')
   const kanjiSet = new Set(

@@ -19,8 +19,11 @@ export function bootstrapUserRuntime(userId: string): UserRuntime {
   activeRuntime?.stop()
 
   const database = openLocalUserDatabase(userId)
-  const subscription: ShapeSubscription = startShapeSubscription(userId)
-  const flusher: OutboxFlusher = startOutboxFlusher(userId)
+  const subscription: ShapeSubscription = startShapeSubscription(
+    userId,
+    database,
+  )
+  const flusher: OutboxFlusher = startOutboxFlusher(userId, database)
   let stopped = false
 
   const runtime: UserRuntime = {

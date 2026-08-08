@@ -1,4 +1,6 @@
 import type { LocalUserDatabase, SqlRow, SqlValue } from '@/data/db'
+import { replay } from '@/core/srs/replay'
+import { DEFAULT_SRS_CONFIG } from '@/core/srs/types'
 
 export type CardLevel = 0 | 1 | 2 | 3 | 4
 export type Grade = 'again' | 'good' | 'easy'
@@ -7,12 +9,12 @@ export type ReviewSource = 'study' | 'manual' | 'import' | 'transfer'
 export interface Deck {
   id: string
   name: string
-  kind: 'saved' | 'derived'
+  kind: 'saved' | 'custom' | 'derived'
   definitionId: string | null
   updatedAt: number
 }
 export interface DeckMembership {
-  deckId: 'saved'
+  deckId: string
   contentRef: string
   sortOrder: number
   addedAt: number
@@ -58,6 +60,14 @@ export interface Setting {
   value: string
   updatedAt: number
 }
+export interface StickyAnnotation {
+  deckId: string
+  contentRef: string
+  note: string
+  tags: readonly string[]
+  updatedAt: number
+  updatedBy: string
+}
 export interface DailyStat {
   day: string
   reviews: number
@@ -73,6 +83,8 @@ export interface OutboxMutation {
     | 'deck.upsert'
     | 'settings.upsert'
     | 'deckMembership.upsert'
+    | 'deck.delete'
+    | 'annotation.upsert'
   payload: string
   createdAt: number
   attempts: number
@@ -100,11 +112,12 @@ export interface UserRepositories {
   }
   readonly deckMembership: {
     save(membership: DeckMembership): Promise<void>
-    remove(contentRef: string): Promise<void>
-    list(): Promise<readonly DeckMembership[]>
+    remove(contentRef: string, deckId?: string): Promise<void>
+    list(deckId?: string): Promise<readonly DeckMembership[]>
   }
   readonly cardStates: {
     get(deckId: string, contentRef: string): Promise<CardState | undefined>
+    list(deckId: string): Promise<readonly CardState[]>
     count(deckId?: string): Promise<number>
     upsert(state: CardState): Promise<void>
   }
@@ -120,6 +133,18 @@ export interface UserRepositories {
   readonly settings: {
     set(setting: Setting): Promise<void>
     get(key: string): Promise<Setting | undefined>
+    list(): Promise<readonly Setting[]>
+  }
+  readonly annotations: {
+    get(
+      deckId: string,
+      contentRef: string,
+    ): Promise<StickyAnnotation | undefined>
+    list(): Promise<readonly StickyAnnotation[]>
+    upsert(
+      annotation: StickyAnnotation,
+      mutation: OutboxMutation,
+    ): Promise<void>
   }
   readonly dailyStats: {
     get(day: string): Promise<DailyStat | undefined>
@@ -141,6 +166,56 @@ export interface UserRepositories {
   recordCardState(input: {
     state: CardState
     mutation: OutboxMutation
+  }): Promise<void>
+  /** Persists several manual card-state changes and their sync mutations atomically. */
+  recordCardStates(
+    inputs: readonly { state: CardState; mutation: OutboxMutation }[],
+  ): Promise<void>
+  /** Clears one deck's local study statistics and reprojects its touched cards to New atomically. */
+  resetStatistics(input: {
+    deckId: string
+    states: readonly { state: CardState; mutation: OutboxMutation }[]
+  }): Promise<void>
+  /** Persists deck metadata and its sync mutation atomically. */
+  recordDeck(input: { deck: Deck; mutation: OutboxMutation }): Promise<void>
+  /** Deletes one user-owned deck and all of its local study data atomically. */
+  deleteDeck(input: { deckId: string; mutation: OutboxMutation }): Promise<void>
+  /** Persists a manual level assignment without counting it as a study review. */
+  recordManualOverride(input: {
+    review: Review
+    nextState: CardState
+    mutation: OutboxMutation
+  }): Promise<void>
+  /** Persists several manual level assignments without counting them as study reviews. */
+  recordManualOverrides(
+    inputs: readonly {
+      review: Review
+      nextState: CardState
+      mutation: OutboxMutation
+    }[],
+  ): Promise<void>
+  /** Persists a user-owned deck membership and its sync mutation atomically. */
+  recordDeckMembership(input: {
+    deck: Deck
+    membership: DeckMembership
+    mutation: OutboxMutation
+  }): Promise<void>
+  /** Persists several user-owned deck memberships and their sync mutations atomically. */
+  recordDeckMemberships(input: {
+    deck: Deck
+    deckMutation: OutboxMutation
+    memberships: readonly {
+      membership: DeckMembership
+      mutation: OutboxMutation
+    }[]
+  }): Promise<void>
+  /** Merges a KanjiForge backup without deleting newer local data. */
+  restoreBackup(input: {
+    decks: readonly Deck[]
+    settings: readonly Setting[]
+    deckMembership: readonly DeckMembership[]
+    reviews: readonly Review[]
+    annotations?: readonly StickyAnnotation[]
   }): Promise<void>
 }
 
@@ -193,6 +268,17 @@ function cardState(row: SqlRow): CardState {
   }
 }
 
+function annotationTags(row: SqlRow): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(text(row, 'tags_json'))
+    return Array.isArray(parsed)
+      ? parsed.filter((tag): tag is string => typeof tag === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
 /** Creates repositories bound to precisely one T1.1-authenticated local database. */
 export function createUserRepositories(
   database: LocalUserDatabase,
@@ -215,6 +301,8 @@ export function createUserRepositories(
   ]
   const putState =
     'INSERT INTO card_states(deck_id, content_ref, level, due_at, last_reviewed_at, correct_streak, total_reviews, total_correct, lapses, flagged, manual_override, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET level=excluded.level, due_at=excluded.due_at, last_reviewed_at=excluded.last_reviewed_at, correct_streak=excluded.correct_streak, total_reviews=excluded.total_reviews, total_correct=excluded.total_correct, lapses=excluded.lapses, flagged=excluded.flagged, manual_override=excluded.manual_override, updated_at=excluded.updated_at, updated_by=excluded.updated_by'
+  const putOutbox =
+    'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)'
   const reviewParams = (review: Review): readonly SqlValue[] => [
     review.id,
     userId,
@@ -232,21 +320,57 @@ export function createUserRepositories(
   ]
   const putReview =
     'INSERT INTO reviews(id, user_id, deck_id, content_ref, at, grade, level_before, level_after, interval_before, elapsed_days, response_ms, source, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  const putDeck =
+    'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at'
+  const putMembership =
+    'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, updated_at=excluded.updated_at'
+  const putAnnotation =
+    'INSERT INTO sticky_annotations(user_id, deck_id, content_ref, note, tags_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET note=excluded.note, tags_json=excluded.tags_json, updated_at=excluded.updated_at, updated_by=excluded.updated_by'
+  const persistManualOverrides = async (
+    inputs: readonly {
+      review: Review
+      nextState: CardState
+      mutation: OutboxMutation
+    }[],
+  ): Promise<void> => {
+    for (const { review, mutation } of inputs) {
+      if (review.id !== mutation.id)
+        throw new Error(
+          'A manual override mutation id must equal its review id.',
+        )
+      if (review.source !== 'manual')
+        throw new Error('Manual override reviews must use the manual source.')
+    }
+    await database.transaction(
+      inputs.flatMap(({ review, nextState, mutation }) => [
+        { sql: putReview, parameters: reviewParams(review) },
+        { sql: putState, parameters: stateParams(nextState) },
+        {
+          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ]),
+    )
+  }
 
   return {
     decks: {
       async upsert(deck) {
-        await database.write(
-          'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at',
-          [
-            deck.id,
-            userId,
-            deck.name,
-            deck.kind,
-            deck.definitionId,
-            deck.updatedAt,
-          ],
-        )
+        await database.write(putDeck, [
+          deck.id,
+          userId,
+          deck.name,
+          deck.kind,
+          deck.definitionId,
+          deck.updatedAt,
+        ])
       },
       async get(id) {
         const row = (
@@ -288,7 +412,7 @@ export function createUserRepositories(
         const deck = await this.get(deckId)
         if (!deck) throw new Error(`Unknown deck ${deckId}.`)
         const refs =
-          deck.kind === 'saved'
+          deck.kind !== 'derived'
             ? (
                 await database.read(
                   'SELECT content_ref FROM deck_membership WHERE user_id = ? AND deck_id = ? ORDER BY sort_order',
@@ -315,32 +439,30 @@ export function createUserRepositories(
     },
     deckMembership: {
       async save(membership) {
+        await database.write(putMembership, [
+          userId,
+          membership.deckId,
+          membership.contentRef,
+          membership.sortOrder,
+          membership.addedAt,
+          membership.updatedAt,
+        ])
+      },
+      async remove(contentRef, deckId = 'saved') {
         await database.write(
-          'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, updated_at=excluded.updated_at',
-          [
-            userId,
-            membership.deckId,
-            membership.contentRef,
-            membership.sortOrder,
-            membership.addedAt,
-            membership.updatedAt,
-          ],
+          'DELETE FROM deck_membership WHERE user_id = ? AND deck_id = ? AND content_ref = ?',
+          [userId, deckId, contentRef],
         )
       },
-      async remove(contentRef) {
-        await database.write(
-          "DELETE FROM deck_membership WHERE user_id = ? AND deck_id = 'saved' AND content_ref = ?",
-          [userId, contentRef],
-        )
-      },
-      async list() {
+      async list(deckId) {
+        const filterDeckId = arguments.length === 0 ? 'saved' : deckId
         return (
           await database.read(
-            "SELECT deck_id, content_ref, sort_order, added_at, updated_at FROM deck_membership WHERE user_id = ? AND deck_id = 'saved' ORDER BY sort_order",
-            [userId],
+            'SELECT deck_id, content_ref, sort_order, added_at, updated_at FROM deck_membership WHERE user_id = ? AND (? IS NULL OR deck_id = ?) ORDER BY deck_id, sort_order',
+            [userId, filterDeckId ?? null, filterDeckId ?? null],
           )
         ).map((row) => ({
-          deckId: 'saved' as const,
+          deckId: text(row, 'deck_id'),
           contentRef: text(row, 'content_ref'),
           sortOrder: numberValue(row, 'sort_order'),
           addedAt: numberValue(row, 'added_at'),
@@ -357,6 +479,13 @@ export function createUserRepositories(
           )
         )[0]
         return row ? cardState(row) : undefined
+      },
+      async list(deckId) {
+        const rows = await database.read(
+          'SELECT * FROM card_states WHERE deck_id = ? ORDER BY content_ref',
+          [deckId],
+        )
+        return rows.map(cardState)
       },
       async count(deckId) {
         const rows = await database.read(
@@ -456,6 +585,78 @@ export function createUserRepositories(
             }
           : undefined
       },
+      async list() {
+        return (
+          await database.read(
+            'SELECT key, value, updated_at FROM settings WHERE user_id = ? ORDER BY key',
+            [userId],
+          )
+        ).map((row) => ({
+          key: text(row, 'key'),
+          value: text(row, 'value'),
+          updatedAt: numberValue(row, 'updated_at'),
+        }))
+      },
+    },
+    annotations: {
+      async get(deckId, contentRef) {
+        const row = (
+          await database.read(
+            'SELECT deck_id, content_ref, note, tags_json, updated_at, updated_by FROM sticky_annotations WHERE user_id = ? AND deck_id = ? AND content_ref = ?',
+            [userId, deckId, contentRef],
+          )
+        )[0]
+        if (!row) return undefined
+        return {
+          deckId: text(row, 'deck_id'),
+          contentRef: text(row, 'content_ref'),
+          note: text(row, 'note'),
+          tags: annotationTags(row),
+          updatedAt: numberValue(row, 'updated_at'),
+          updatedBy: text(row, 'updated_by'),
+        }
+      },
+      async list() {
+        const rows = await database.read(
+          'SELECT deck_id, content_ref, note, tags_json, updated_at, updated_by FROM sticky_annotations WHERE user_id = ? ORDER BY deck_id, content_ref',
+          [userId],
+        )
+        return rows.map((row) => ({
+          deckId: text(row, 'deck_id'),
+          contentRef: text(row, 'content_ref'),
+          note: text(row, 'note'),
+          tags: annotationTags(row),
+          updatedAt: numberValue(row, 'updated_at'),
+          updatedBy: text(row, 'updated_by'),
+        }))
+      },
+      async upsert(annotation, mutation) {
+        await database.transaction([
+          {
+            sql: putAnnotation,
+            parameters: [
+              userId,
+              annotation.deckId,
+              annotation.contentRef,
+              annotation.note,
+              JSON.stringify(annotation.tags),
+              annotation.updatedAt,
+              annotation.updatedBy,
+            ],
+          },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ])
+      },
     },
     dailyStats: {
       async get(day) {
@@ -547,8 +748,173 @@ export function createUserRepositories(
       ])
     },
     async recordCardState({ state, mutation }) {
+      await this.recordCardStates([{ state, mutation }])
+    },
+    async recordCardStates(inputs) {
+      if (inputs.length === 0) return
+      await database.transaction(
+        inputs.flatMap(({ state, mutation }) => [
+          { sql: putState, parameters: stateParams(state) },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ]),
+      )
+    },
+    async resetStatistics({ deckId, states }) {
       await database.transaction([
-        { sql: putState, parameters: stateParams(state) },
+        {
+          sql: 'DELETE FROM reviews WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM outbox WHERE user_id = ? AND mut_type = ? AND payload LIKE ?',
+          parameters: [userId, 'review.append', `%\"deckId\":\"${deckId}\"%`],
+        },
+        {
+          sql: 'DELETE FROM sessions WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          // daily_stats is currently the local aggregate for the app's active study deck.
+          sql: 'DELETE FROM daily_stats WHERE user_id = ?',
+          parameters: [userId],
+        },
+        ...states.flatMap(({ state, mutation }) => [
+          { sql: putState, parameters: stateParams(state) },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ]),
+      ])
+    },
+    async recordDeck({ deck, mutation }) {
+      await database.transaction([
+        {
+          sql: putDeck,
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ],
+        },
+        {
+          sql: putOutbox,
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
+    },
+    async deleteDeck({ deckId, mutation }) {
+      if (deckId === 'dev-kanji')
+        throw new Error('The built-in starter deck cannot be deleted.')
+      if (mutation.mutType !== 'deck.delete')
+        throw new Error('Deck deletion must use the deck.delete mutation.')
+      await database.transaction([
+        {
+          sql: 'DELETE FROM outbox WHERE user_id = ? AND payload LIKE ?',
+          parameters: [userId, `%\"deckId\":\"${deckId}\"%`],
+        },
+        {
+          sql: 'DELETE FROM deck_membership WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM card_states WHERE deck_id = ?',
+          parameters: [deckId],
+        },
+        {
+          sql: 'DELETE FROM reviews WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM sessions WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM sticky_annotations WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM settings WHERE user_id = ? AND key = ?',
+          parameters: [userId, `deck-folder:${deckId}`],
+        },
+        {
+          sql: 'DELETE FROM decks WHERE user_id = ? AND id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: putOutbox,
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
+    },
+    async recordManualOverride(input) {
+      await persistManualOverrides([input])
+    },
+    async recordManualOverrides(inputs) {
+      await persistManualOverrides(inputs)
+    },
+    async recordDeckMembership({ deck, membership, mutation }) {
+      if (deck.kind === 'derived')
+        throw new Error('Derived decks cannot receive custom memberships.')
+      if (membership.deckId !== deck.id)
+        throw new Error('Deck memberships must belong to their deck.')
+      await database.transaction([
+        {
+          sql: putDeck,
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ],
+        },
+        {
+          sql: putMembership,
+          parameters: [
+            userId,
+            membership.deckId,
+            membership.contentRef,
+            membership.sortOrder,
+            membership.addedAt,
+            membership.updatedAt,
+          ],
+        },
         {
           sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
           parameters: [
@@ -561,6 +927,144 @@ export function createUserRepositories(
           ],
         },
       ])
+    },
+    async recordDeckMemberships({ deck, deckMutation, memberships }) {
+      if (deck.kind === 'derived')
+        throw new Error('Derived decks cannot receive custom memberships.')
+      if (deckMutation.mutType !== 'deck.upsert')
+        throw new Error('Custom deck creation must use a deck.upsert mutation.')
+      for (const { membership, mutation } of memberships) {
+        if (membership.deckId !== deck.id)
+          throw new Error('Deck memberships must belong to their deck.')
+        if (mutation.mutType !== 'deckMembership.upsert')
+          throw new Error(
+            'Deck membership mutations must use deckMembership.upsert.',
+          )
+      }
+      await database.transaction([
+        {
+          sql: putDeck,
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ],
+        },
+        {
+          sql: putOutbox,
+          parameters: [
+            deckMutation.id,
+            userId,
+            deckMutation.mutType,
+            deckMutation.payload,
+            deckMutation.createdAt,
+            deckMutation.attempts,
+          ],
+        },
+        ...memberships.flatMap(({ membership, mutation }) => [
+          {
+            sql: putMembership,
+            parameters: [
+              userId,
+              membership.deckId,
+              membership.contentRef,
+              membership.sortOrder,
+              membership.addedAt,
+              membership.updatedAt,
+            ],
+          },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ]),
+      ])
+    },
+    async restoreBackup({
+      decks,
+      settings,
+      deckMembership,
+      reviews,
+      annotations = [],
+    }) {
+      const existingReviews = await this.reviews.list()
+      const mergedReviews = new Map<string, Review>()
+      for (const review of existingReviews) mergedReviews.set(review.id, review)
+      for (const review of reviews) mergedReviews.set(review.id, review)
+      const projectedStates = replay(
+        [...mergedReviews.values()].map((review) => ({
+          ...review,
+          stickyId: review.contentRef,
+        })),
+        { config: DEFAULT_SRS_CONFIG },
+      )
+      const statements = [
+        ...decks.map((deck) => ({
+          sql: 'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at WHERE excluded.updated_at >= decks.updated_at',
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ] as readonly SqlValue[],
+        })),
+        ...settings.map((setting) => ({
+          sql: 'INSERT INTO settings(user_id, key, value, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at WHERE excluded.updated_at >= settings.updated_at',
+          parameters: [
+            userId,
+            setting.key,
+            setting.value,
+            setting.updatedAt,
+          ] as readonly SqlValue[],
+        })),
+        ...deckMembership.map((membership) => ({
+          sql: 'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, added_at=excluded.added_at, updated_at=excluded.updated_at WHERE excluded.updated_at >= deck_membership.updated_at',
+          parameters: [
+            userId,
+            membership.deckId,
+            membership.contentRef,
+            membership.sortOrder,
+            membership.addedAt,
+            membership.updatedAt,
+          ] as readonly SqlValue[],
+        })),
+        ...reviews.map((review) => ({
+          sql: putReview.replace('INSERT INTO', 'INSERT OR IGNORE INTO'),
+          parameters: reviewParams(review),
+        })),
+        ...annotations.map((annotation) => ({
+          sql: `${putAnnotation} WHERE excluded.updated_at >= sticky_annotations.updated_at`,
+          parameters: [
+            userId,
+            annotation.deckId,
+            annotation.contentRef,
+            annotation.note,
+            JSON.stringify(annotation.tags),
+            annotation.updatedAt,
+            annotation.updatedBy,
+          ] as readonly SqlValue[],
+        })),
+        ...[...projectedStates.values()].map((state) => ({
+          sql: putState,
+          parameters: stateParams({
+            ...state,
+            contentRef: state.stickyId,
+          }),
+        })),
+      ]
+      await database.transaction(statements)
     },
   }
 }

@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,8 +17,16 @@ import {
   getActiveUserRuntime,
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import { findDictionaryEntry } from '@/data/packs'
 import { useStudyStore } from './store'
-import { StudyScreen } from './study-screen'
+import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
+import {
+  STUDY_ANSWER_SETTING,
+  STUDY_QUESTION_SETTING,
+  SRS_MODE_SETTING,
+  STUDY_TWO_TAP_SETTING,
+} from './study-style'
+import { STUDY_AUTO_PLAY_AUDIO_SETTING } from './audio'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -37,6 +46,7 @@ function fixtureFetch(): typeof fetch {
 }
 
 let userId = 0
+const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fixtureFetch())
@@ -45,6 +55,11 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  if (originalStorage) {
+    Object.defineProperty(navigator, 'storage', originalStorage)
+  } else {
+    Reflect.deleteProperty(navigator, 'storage')
+  }
   vi.useRealTimers()
   cleanup()
   clearUserRuntime()
@@ -70,6 +85,50 @@ describe('StudyScreen', () => {
     const revealButton = screen.getByRole('button', { name: 'Reveal (Space)' })
     await userEvent.click(revealButton)
     expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+  })
+
+  it('plays the synthesized voice from the study toolbar', async () => {
+    const speak = vi.fn()
+    const cancel = vi.fn()
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      constructor(readonly text: string) {}
+    }
+    vi.stubGlobal('speechSynthesis', { speak, cancel })
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Play synthesized voice' }),
+    )
+    expect(speak).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.any(String), lang: 'ja-JP' }),
+    )
+  })
+
+  it('auto-plays after reveal when the preference is enabled', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_AUTO_PLAY_AUDIO_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+    const speak = vi.fn()
+    const cancel = vi.fn()
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      constructor(readonly text: string) {}
+    }
+    vi.stubGlobal('speechSynthesis', { speak, cancel })
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+    expect(speak).toHaveBeenCalledOnce()
   })
 
   it('flags and unflags the current card from the study screen', async () => {
@@ -110,6 +169,241 @@ describe('StudyScreen', () => {
 
     act(() => vi.advanceTimersByTime(61_000))
     expect(screen.getByText('Time 1:01')).toBeInTheDocument()
+  })
+
+  it('persists the grey-stickies preference and hides study colors', async () => {
+    await renderReady()
+    const sticky = screen.getByRole('button', { name: 'Reveal answer' })
+    const toggle = screen.getByRole('button', { name: 'Hide sticky colors' })
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(toggle)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Show sticky colors' }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    )
+    expect(sticky).toHaveAttribute('data-grey-stickies', 'true')
+    expect(sticky).toHaveStyle({ borderColor: 'var(--muted-foreground)' })
+    expect(
+      await createUserRepositories(
+        getActiveUserRuntime()!.database,
+      ).settings.get(GREY_STICKIES_SETTING),
+    ).toMatchObject({ key: GREY_STICKIES_SETTING, value: 'true' })
+  })
+
+  it('loads the grey-stickies preference for a later study session', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: GREY_STICKIES_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+
+    expect(
+      screen.getByRole('button', { name: 'Show sticky colors' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('button', { name: 'Reveal answer' }),
+    ).toHaveAttribute('data-grey-stickies', 'true')
+  })
+
+  it('uses the saved meaning as the question before reveal', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_QUESTION_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+
+    const question = screen.getByTestId('study-question')
+    expect(question).toHaveAttribute('data-study-question', 'meaning')
+    expect(question).toHaveTextContent('country')
+    expect(question).not.toHaveTextContent('日')
+  })
+
+  it('starts the session with the saved adaptive scheduler mode', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: SRS_MODE_SETTING,
+      value: 'adaptive',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+
+    expect(useStudyStore.getState().schedulerMode).toBe('adaptive')
+  })
+
+  it('renders only the saved answer fields after reveal', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    const answer = screen.getByTestId('study-answer')
+    expect(answer).toHaveTextContent('country')
+    expect(answer).not.toHaveTextContent('音:')
+    expect(answer).not.toHaveTextContent('訓:')
+    expect(answer).not.toHaveTextContent('日')
+  })
+
+  it('hides related example readings and meanings until tapped', async () => {
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    const related = await screen.findByTestId('study-related')
+    const disclose = within(related).getAllByRole('button', {
+      name: /Show reading and meaning for/,
+    })[0]
+    if (!disclose) throw new Error('related example disclosure missing')
+    expect(
+      within(related).queryByTestId('study-related-details'),
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(disclose)
+
+    expect(
+      within(related).getByTestId('study-related-details'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders the opt-in writing pad on the answer side', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'writing',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Writing answer' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('application', { name: /Writing answer canvas/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Clear writing' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps word-only cards studyable while ignoring the writing answer', async () => {
+    const entry = await findDictionaryEntry('お金')
+    if (!entry || entry.type !== 'word') throw new Error('word fixture missing')
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+    const deck = {
+      id: 'word-study-deck',
+      name: 'Word study',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: 1,
+    }
+    await repo.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: `word:${entry.record.id}`,
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'word-study-membership',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({
+          deckId: deck.id,
+          contentRef: `word:${entry.record.id}`,
+        }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+    await repo.settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'writing',
+      updatedAt: Date.now(),
+    })
+
+    render(<StudyScreen deckDefinitionId={deck.id} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('study-question')).toHaveTextContent('お金'),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    expect(screen.getByTestId('study-answer')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Writing answer' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('reveals readings first and all card details on the second tap', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_QUESTION_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_TWO_TAP_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+    expect(screen.getByTestId('study-question')).toHaveAttribute(
+      'data-study-question',
+      'kanji',
+    )
+    expect(screen.getByTestId('study-question')).not.toHaveTextContent(
+      'country',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Show readings (Space)' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show readings (Space)' }),
+    )
+    expect(screen.getByTestId('study-two-tap-readings')).toHaveTextContent(
+      '音:',
+    )
+    expect(
+      screen.queryByRole('button', { name: /I know/ }),
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show everything (Space)' }),
+    )
+    expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+    expect(screen.getByTestId('study-answer')).toHaveTextContent('country')
+    expect(screen.getByTestId('study-answer')).toHaveTextContent('国')
   })
 
   it('grades via keyboard once revealed', async () => {
@@ -204,5 +498,31 @@ describe('StudyScreen', () => {
         (await repo.sessions.list('dev-kanji'))[0]?.endedAt,
       ).not.toBeNull(),
     )
+  })
+
+  it('requests durable storage after the first non-empty session finishes', async () => {
+    const persist = vi.fn().mockResolvedValue(true)
+    const persisted = vi.fn().mockResolvedValue(false)
+    Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: { persist, persisted },
+    })
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /I know/ }))
+    await waitFor(() =>
+      expect(useStudyStore.getState().summary.seen).toBeGreaterThan(0),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Finish' }))
+
+    await waitFor(() => expect(persist).toHaveBeenCalledOnce())
+    await expect(
+      repo.settings.get('pwa.storagePersistenceRequested'),
+    ).resolves.toMatchObject({ value: 'true' })
   })
 })

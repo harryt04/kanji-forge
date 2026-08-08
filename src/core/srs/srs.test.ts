@@ -288,19 +288,35 @@ describe('SRS properties and edge cases', () => {
     ).toBe(true)
   })
 
-  it('summarizes study retention by starting level and ignores non-answer history', () => {
+  it('summarizes due study retention by starting level and ignores non-answer history', () => {
     expect(
       retentionByLevel([
-        { levelBefore: 0, grade: 'good', source: 'study' },
-        { levelBefore: 0, grade: 'again', source: 'study' },
-        { levelBefore: 1, grade: 'easy', source: 'study' },
-        { levelBefore: 1, grade: 'again', source: 'manual' },
-        { levelBefore: 2, grade: 'again', source: 'study' },
+        { levelBefore: 0, grade: 'good', source: 'study', elapsedDays: 0 },
+        { levelBefore: 0, grade: 'again', source: 'study', elapsedDays: 0 },
+        { levelBefore: 1, grade: 'easy', source: 'study', elapsedDays: 3 },
+        { levelBefore: 1, grade: 'again', source: 'manual', elapsedDays: 3 },
+        { levelBefore: 2, grade: 'again', source: 'study', elapsedDays: 1 },
       ]),
     ).toEqual([
       { level: 0, reviews: 2, retained: 1, retentionPercent: 50 },
       { level: 1, reviews: 1, retained: 1, retentionPercent: 100 },
-      { level: 2, reviews: 1, retained: 0, retentionPercent: 0 },
+      { level: 2, reviews: 0, retained: 0, retentionPercent: null },
+      { level: 3, reviews: 0, retained: 0, retentionPercent: null },
+      { level: 4, reviews: 0, retained: 0, retentionPercent: null },
+    ])
+  })
+  it('excludes reviews before 80% of a stage interval but includes them at the threshold', () => {
+    expect(
+      retentionByLevel([
+        { levelBefore: 1, grade: 'again', source: 'study', elapsedDays: 2 },
+        { levelBefore: 1, grade: 'good', source: 'study', elapsedDays: 3 },
+        { levelBefore: 2, grade: 'easy', source: 'study', elapsedDays: 7.1 },
+        { levelBefore: 2, grade: 'good', source: 'study', elapsedDays: 8 },
+      ]),
+    ).toEqual([
+      { level: 0, reviews: 0, retained: 0, retentionPercent: null },
+      { level: 1, reviews: 1, retained: 1, retentionPercent: 100 },
+      { level: 2, reviews: 1, retained: 1, retentionPercent: 100 },
       { level: 3, reviews: 0, retained: 0, retentionPercent: null },
       { level: 4, reviews: 0, retained: 0, retentionPercent: null },
     ])

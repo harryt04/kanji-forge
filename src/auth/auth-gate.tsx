@@ -10,6 +10,9 @@ import {
   type AuthUser,
 } from '@/auth/client'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import { AppNavigation } from '@/features/navigation/app-navigation'
+import { AutoBackupController, ThemeController } from '@/features/settings'
+import { AppBadgeController, DailyReminderController } from '@/pwa'
 import { Button } from '@/ui/button'
 
 export function AuthGate({
@@ -55,14 +58,33 @@ export function AuthGate({
 
   return (
     <>
-      <header className="border-border flex min-h-14 items-center justify-between border-b px-4 sm:px-6">
-        <Link className="font-display text-xl font-bold" href="/">
-          KanjiForge
-        </Link>
-        <Button variant="ghost" size="sm" onClick={() => void handleSignOut()}>
-          Sign out
-        </Button>
+      <header className="border-border flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link className="font-display shrink-0 text-xl font-bold" href="/">
+            KanjiForge
+          </Link>
+          <AppNavigation userId={user.id} />
+        </div>
+        <nav className="flex items-center gap-1" aria-label="Account">
+          <Link
+            className="text-muted-foreground hover:text-foreground rounded-md px-3 py-2 text-sm"
+            href="/settings"
+          >
+            Settings
+          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleSignOut()}
+          >
+            Sign out
+          </Button>
+        </nav>
       </header>
+      <ThemeController userId={user.id} />
+      <AutoBackupController userId={user.id} />
+      <AppBadgeController userId={user.id} />
+      <DailyReminderController userId={user.id} />
       {children}
     </>
   )

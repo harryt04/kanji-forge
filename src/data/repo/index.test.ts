@@ -4,7 +4,7 @@ import {
   repoCardState as state,
   repoReview as review,
 } from '../../../test/factories'
-import { createUserRepositories, type Deck } from '.'
+import { createUserRepositories, type Deck, type OutboxMutation } from '.'
 
 const databases: LocalUserDatabase[] = []
 afterEach(() => {
@@ -59,6 +59,51 @@ describe('derived deck state projection', () => {
         (card) => card.state !== undefined,
       ),
     ).toHaveLength(1)
+  })
+
+  it('lists card states and persists a batch with matching outbox mutations', async () => {
+    const repos = await freshRepo()
+    const first = state({ deckId: 'jlpt-n5', contentRef: 'kanji:未' })
+    const second = state({
+      deckId: 'jlpt-n5',
+      contentRef: 'kanji:日',
+      level: 2,
+    })
+    await repos.cardStates.upsert(first)
+    await repos.cardStates.upsert(second)
+
+    const resetFirst = { ...first, level: 0 as const, dueAt: null }
+    const resetSecond = { ...second, level: 0 as const, dueAt: null }
+    await repos.recordCardStates([
+      {
+        state: resetFirst,
+        mutation: {
+          id: 'reset-first',
+          mutType: 'cardState.upsert',
+          payload: '{}',
+          createdAt: 1,
+          attempts: 0,
+        },
+      },
+      {
+        state: resetSecond,
+        mutation: {
+          id: 'reset-second',
+          mutType: 'cardState.upsert',
+          payload: '{}',
+          createdAt: 1,
+          attempts: 0,
+        },
+      },
+    ])
+
+    expect(await repos.cardStates.list('jlpt-n5')).toEqual([
+      resetSecond,
+      resetFirst,
+    ])
+    expect(
+      (await repos.outbox.pending()).map((mutation) => mutation.id),
+    ).toEqual(['reset-first', 'reset-second'])
   })
 })
 
@@ -119,6 +164,226 @@ describe('recordGrade atomicity', () => {
 })
 
 describe('recordCardState atomicity', () => {
+  it('resets one deck statistics atomically while preserving flags', async () => {
+    const repos = await freshRepo()
+    const firstReview = review({ deckId: 'dev-kanji', contentRef: 'kanji:日' })
+    const studiedState = state({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      totalReviews: 4,
+      totalCorrect: 3,
+      lapses: 1,
+      flagged: true,
+    })
+    await repos.recordGrade({
+      review: firstReview,
+      nextState: studiedState,
+      day: '2023-11-14',
+      mutation: {
+        id: firstReview.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(firstReview),
+        createdAt: firstReview.at,
+        attempts: 0,
+      },
+    })
+    await repos.sessions.start({
+      id: 'session-to-reset',
+      deckId: 'dev-kanji',
+      startedAt: 1,
+      endedAt: 2,
+    })
+
+    const resetState = {
+      ...studiedState,
+      level: 0 as const,
+      dueAt: null,
+      lastReviewedAt: null,
+      correctStreak: 0,
+      totalReviews: 0,
+      totalCorrect: 0,
+      lapses: 0,
+      manualOverride: false,
+      updatedAt: 10,
+      updatedBy: 'device-reset',
+    }
+    await repos.resetStatistics({
+      deckId: 'dev-kanji',
+      states: [
+        {
+          state: resetState,
+          mutation: {
+            id: 'statistics-reset-1',
+            mutType: 'cardState.upsert',
+            payload: JSON.stringify({ source: 'reset-statistics' }),
+            createdAt: 10,
+            attempts: 0,
+          },
+        },
+      ],
+    })
+
+    await expect(repos.reviews.list('dev-kanji')).resolves.toEqual([])
+    await expect(repos.dailyStats.list()).resolves.toEqual([])
+    await expect(repos.sessions.list('dev-kanji')).resolves.toEqual([])
+    await expect(
+      repos.cardStates.get('dev-kanji', 'kanji:日'),
+    ).resolves.toMatchObject({
+      level: 0,
+      dueAt: null,
+      lastReviewedAt: null,
+      totalReviews: 0,
+      totalCorrect: 0,
+      lapses: 0,
+      flagged: true,
+    })
+    await expect(repos.outbox.pending()).resolves.toEqual([
+      expect.objectContaining({ id: 'statistics-reset-1' }),
+    ])
+  })
+
+  it('persists deck metadata together with its outbox mutation', async () => {
+    const repos = await freshRepo()
+    const deck = {
+      id: 'dev-kanji',
+      name: 'N5 commute deck',
+      kind: 'derived' as const,
+      definitionId: 'dev-kanji',
+      updatedAt: 12,
+    }
+    await repos.recordDeck({
+      deck,
+      mutation: {
+        id: 'deck-rename-1',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 12,
+        attempts: 0,
+      },
+    })
+
+    await expect(repos.decks.get('dev-kanji')).resolves.toEqual(deck)
+    await expect(repos.outbox.pending()).resolves.toMatchObject([
+      { id: 'deck-rename-1', mutType: 'deck.upsert' },
+    ])
+  })
+
+  it('deletes a user deck and its study data atomically', async () => {
+    const repos = await freshRepo()
+    const deckId = 'saved'
+    const now = 20
+    const savedDeck: Deck = {
+      id: deckId,
+      name: 'Saved',
+      kind: 'saved',
+      definitionId: null,
+      updatedAt: now,
+    }
+    await repos.recordDeckMembership({
+      deck: savedDeck,
+      membership: {
+        deckId: 'saved',
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: now,
+        updatedAt: now,
+      },
+      mutation: {
+        id: 'saved-membership-1',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({ deckId, contentRef: 'kanji:日' }),
+        createdAt: now,
+        attempts: 0,
+      },
+    })
+    const savedReview = review({
+      id: 'saved-review-1',
+      deckId,
+      contentRef: 'kanji:日',
+    })
+    await repos.recordGrade({
+      review: savedReview,
+      nextState: state({ deckId, contentRef: 'kanji:日', level: 2 }),
+      day: '2023-11-14',
+      mutation: {
+        id: savedReview.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(savedReview),
+        createdAt: now,
+        attempts: 0,
+      },
+    })
+    await repos.sessions.start({
+      id: 'saved-session-1',
+      deckId,
+      startedAt: 1,
+      endedAt: 2,
+    })
+    await repos.settings.set({
+      key: 'deck-folder:saved',
+      value: 'Personal',
+      updatedAt: now,
+    })
+    await repos.annotations.upsert(
+      {
+        deckId,
+        contentRef: 'kanji:日',
+        note: 'keep practicing',
+        tags: ['review'],
+        updatedAt: now,
+        updatedBy: 'device-1',
+      },
+      {
+        id: 'saved-annotation-1',
+        mutType: 'annotation.upsert',
+        payload: JSON.stringify({ deckId, contentRef: 'kanji:日' }),
+        createdAt: now,
+        attempts: 0,
+      },
+    )
+
+    await repos.deleteDeck({
+      deckId,
+      mutation: {
+        id: 'saved-delete-1',
+        mutType: 'deck.delete',
+        payload: JSON.stringify({ deckId }),
+        createdAt: now + 1,
+        attempts: 0,
+      },
+    })
+
+    await expect(repos.decks.get(deckId)).resolves.toBeUndefined()
+    await expect(repos.deckMembership.list()).resolves.toEqual([])
+    await expect(repos.cardStates.list(deckId)).resolves.toEqual([])
+    await expect(repos.reviews.list(deckId)).resolves.toEqual([])
+    await expect(repos.sessions.list(deckId)).resolves.toEqual([])
+    await expect(repos.annotations.list()).resolves.toEqual([])
+    await expect(
+      repos.settings.get('deck-folder:saved'),
+    ).resolves.toBeUndefined()
+    await expect(repos.outbox.pending()).resolves.toEqual([
+      expect.objectContaining({ id: 'saved-delete-1', mutType: 'deck.delete' }),
+    ])
+  })
+
+  it('refuses to delete the built-in starter deck', async () => {
+    const repos = await freshRepo()
+    await expect(
+      repos.deleteDeck({
+        deckId: 'dev-kanji',
+        mutation: {
+          id: 'starter-delete-1',
+          mutType: 'deck.delete',
+          payload: JSON.stringify({ deckId: 'dev-kanji' }),
+          createdAt: 1,
+          attempts: 0,
+        },
+      }),
+    ).rejects.toThrow('built-in starter deck cannot be deleted')
+  })
+
   it('persists a manual flag change together with its outbox mutation', async () => {
     const repos = await freshRepo()
     const nextState = state({ flagged: true })
@@ -139,6 +404,147 @@ describe('recordCardState atomicity', () => {
     expect(await repos.outbox.pending()).toMatchObject([
       { id: 'flag-mutation-1', mutType: 'cardState.upsert' },
     ])
+  })
+
+  it('persists a manual level override without a daily review stat', async () => {
+    const repos = await freshRepo()
+    const before = state({ level: 1, totalReviews: 4, totalCorrect: 3 })
+    const nextState = state({
+      ...before,
+      level: 4,
+      manualOverride: true,
+      updatedAt: before.updatedAt + 1,
+    })
+    const manualReview = review({
+      id: 'manual-level-1',
+      source: 'manual',
+      levelBefore: 1,
+      levelAfter: 4,
+      grade: 'good',
+    })
+
+    await repos.recordManualOverride({
+      review: manualReview,
+      nextState,
+      mutation: {
+        id: manualReview.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(manualReview),
+        createdAt: manualReview.at,
+        attempts: 0,
+      },
+    })
+
+    expect(
+      await repos.cardStates.get(nextState.deckId, nextState.contentRef),
+    ).toEqual(nextState)
+    expect(await repos.reviews.list()).toHaveLength(1)
+    expect(await repos.dailyStats.list()).toEqual([])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: manualReview.id, mutType: 'review.append' },
+    ])
+  })
+
+  it('persists several manual level overrides atomically', async () => {
+    const repos = await freshRepo()
+    const firstReview = review({
+      id: 'manual-batch-1',
+      contentRef: 'kanji:未',
+      source: 'manual',
+      levelBefore: 1,
+      levelAfter: 3,
+    })
+    const secondReview = review({
+      id: 'manual-batch-2',
+      contentRef: 'kanji:日',
+      source: 'manual',
+      levelBefore: 0,
+      levelAfter: 4,
+    })
+    await repos.recordManualOverrides([
+      {
+        review: firstReview,
+        nextState: state({
+          contentRef: firstReview.contentRef,
+          level: 3,
+          manualOverride: true,
+        }),
+        mutation: {
+          id: firstReview.id,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: firstReview.at,
+          attempts: 0,
+        },
+      },
+      {
+        review: secondReview,
+        nextState: state({
+          contentRef: secondReview.contentRef,
+          level: 4,
+          manualOverride: true,
+        }),
+        mutation: {
+          id: secondReview.id,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: secondReview.at,
+          attempts: 0,
+        },
+      },
+    ])
+
+    expect(await repos.reviews.list()).toHaveLength(2)
+    expect(await repos.cardStates.get('jlpt-n5', 'kanji:未')).toMatchObject({
+      level: 3,
+      manualOverride: true,
+    })
+    expect(await repos.cardStates.get('jlpt-n5', 'kanji:日')).toMatchObject({
+      level: 4,
+      manualOverride: true,
+    })
+    expect(await repos.dailyStats.list()).toEqual([])
+    expect(await repos.outbox.pending()).toHaveLength(2)
+  })
+
+  it('rejects a manual override with a mismatched mutation id', async () => {
+    const repos = await freshRepo()
+    const manualReview = review({ id: 'manual-level-2', source: 'manual' })
+
+    await expect(
+      repos.recordManualOverride({
+        review: manualReview,
+        nextState: state(),
+        mutation: {
+          id: 'different-id',
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: manualReview.at,
+          attempts: 0,
+        },
+      }),
+    ).rejects.toThrow('must equal its review id')
+    expect(await repos.reviews.list()).toEqual([])
+  })
+
+  it('rejects a non-manual review passed to the manual override path', async () => {
+    const repos = await freshRepo()
+    const studyReview = review({ id: 'manual-level-3', source: 'study' })
+
+    await expect(
+      repos.recordManualOverride({
+        review: studyReview,
+        nextState: state(),
+        mutation: {
+          id: studyReview.id,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: studyReview.at,
+          attempts: 0,
+        },
+      }),
+    ).rejects.toThrow('manual source')
+    expect(await repos.reviews.list()).toEqual([])
   })
 })
 
@@ -301,6 +707,36 @@ describe('settings round-trip', () => {
   })
 })
 
+describe('sticky annotations', () => {
+  it('round-trips notes and tags with an atomic sync mutation', async () => {
+    const repos = await freshRepo()
+    const annotation = {
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      note: 'Remember the sun radical.',
+      tags: ['review', 'radical'],
+      updatedAt: 42,
+      updatedBy: 'device-1',
+    } as const
+
+    await repos.annotations.upsert(annotation, {
+      id: 'annotation-1',
+      mutType: 'annotation.upsert',
+      payload: JSON.stringify(annotation),
+      createdAt: 42,
+      attempts: 0,
+    })
+
+    expect(await repos.annotations.get('dev-kanji', 'kanji:日')).toEqual(
+      annotation,
+    )
+    expect(await repos.annotations.list()).toEqual([annotation])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'annotation-1', mutType: 'annotation.upsert' },
+    ])
+  })
+})
+
 describe('deckMembership', () => {
   it('saves, lists in sort order, and removes a saved-deck card', async () => {
     const repos = await freshRepo()
@@ -327,6 +763,211 @@ describe('deckMembership', () => {
     expect(
       (await repos.deckMembership.list()).map((m) => m.contentRef),
     ).toEqual(['kanji:二'])
+  })
+
+  it('atomically creates the Saved deck, membership, and sync mutation', async () => {
+    const repos = await freshRepo()
+    await repos.recordDeckMembership({
+      deck: {
+        id: 'saved',
+        name: 'Saved',
+        kind: 'saved',
+        definitionId: null,
+        updatedAt: 10,
+      },
+      membership: {
+        deckId: 'saved',
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: 10,
+        updatedAt: 10,
+      },
+      mutation: {
+        id: 'saved-mutation-1',
+        mutType: 'deckMembership.upsert',
+        payload: '{"contentRef":"kanji:日"}',
+        createdAt: 10,
+        attempts: 0,
+      },
+    })
+
+    expect(await repos.decks.get('saved')).toMatchObject({ name: 'Saved' })
+    expect(await repos.deckMembership.list()).toMatchObject([
+      { contentRef: 'kanji:日' },
+    ])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'saved-mutation-1', mutType: 'deckMembership.upsert' },
+    ])
+  })
+
+  it('supports memberships in a user-created custom deck', async () => {
+    const repos = await freshRepo()
+    const deck: Deck = {
+      id: 'custom-travel',
+      name: 'Travel kanji',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: 10,
+    }
+    await repos.recordDeck({
+      deck,
+      mutation: {
+        id: 'custom-deck-1',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 10,
+        attempts: 0,
+      },
+    })
+    await repos.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: 'kanji:旅',
+        sortOrder: 0,
+        addedAt: 11,
+        updatedAt: 11,
+      },
+      mutation: {
+        id: 'custom-membership-1',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({ deckId: deck.id, contentRef: 'kanji:旅' }),
+        createdAt: 11,
+        attempts: 0,
+      },
+    })
+
+    expect(await repos.decks.get(deck.id)).toEqual(deck)
+    expect(await repos.deckMembership.list(deck.id)).toMatchObject([
+      { deckId: deck.id, contentRef: 'kanji:旅' },
+    ])
+    expect(
+      await repos.decks.listCards(deck.id, { contentRefsFor: () => [] }),
+    ).toMatchObject([{ deckId: deck.id, contentRef: 'kanji:旅' }])
+  })
+
+  it('atomically creates a custom deck with several memberships', async () => {
+    const repos = await freshRepo()
+    const deck: Deck = {
+      id: 'custom-combined',
+      name: 'Combined kanji',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: 10,
+    }
+    await repos.recordDeckMemberships({
+      deck,
+      deckMutation: {
+        id: 'combined-deck',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 10,
+        attempts: 0,
+      },
+      memberships: ['kanji:日', 'kanji:一'].map((contentRef, sortOrder) => ({
+        membership: {
+          deckId: deck.id,
+          contentRef,
+          sortOrder,
+          addedAt: 10,
+          updatedAt: 10,
+        },
+        mutation: {
+          id: `combined-membership-${sortOrder}`,
+          mutType: 'deckMembership.upsert' as const,
+          payload: JSON.stringify({ deckId: deck.id, contentRef }),
+          createdAt: 10,
+          attempts: 0,
+        },
+      })),
+    })
+
+    expect(await repos.decks.get(deck.id)).toEqual(deck)
+    expect(await repos.deckMembership.list(deck.id)).toMatchObject([
+      { contentRef: 'kanji:日', sortOrder: 0 },
+      { contentRef: 'kanji:一', sortOrder: 1 },
+    ])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'combined-deck', mutType: 'deck.upsert' },
+      { id: 'combined-membership-0', mutType: 'deckMembership.upsert' },
+      { id: 'combined-membership-1', mutType: 'deckMembership.upsert' },
+    ])
+  })
+
+  it('rejects invalid bulk custom-deck metadata and memberships', async () => {
+    const repos = await freshRepo()
+    const deck: Deck = {
+      id: 'custom-invalid',
+      name: 'Invalid deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: 10,
+    }
+    const deckMutation = {
+      id: 'invalid-deck-mutation',
+      mutType: 'deck.upsert' as const,
+      payload: '{}',
+      createdAt: 10,
+      attempts: 0,
+    }
+    const membership = {
+      deckId: deck.id,
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: 10,
+      updatedAt: 10,
+    }
+    const mutation = {
+      id: 'invalid-membership-mutation',
+      mutType: 'deckMembership.upsert' as const,
+      payload: '{}',
+      createdAt: 10,
+      attempts: 0,
+    }
+
+    await expect(
+      repos.recordDeckMemberships({
+        deck: { ...deck, kind: 'derived' },
+        deckMutation,
+        memberships: [],
+      }),
+    ).rejects.toThrow('Derived decks cannot receive custom memberships.')
+    await expect(
+      repos.recordDeckMemberships({
+        deck,
+        deckMutation: {
+          ...deckMutation,
+          mutType: 'deck.delete' as OutboxMutation['mutType'],
+        },
+        memberships: [],
+      }),
+    ).rejects.toThrow('Custom deck creation must use a deck.upsert mutation.')
+    await expect(
+      repos.recordDeckMemberships({
+        deck,
+        deckMutation,
+        memberships: [
+          { membership: { ...membership, deckId: 'other' }, mutation },
+        ],
+      }),
+    ).rejects.toThrow('Deck memberships must belong to their deck.')
+    await expect(
+      repos.recordDeckMemberships({
+        deck,
+        deckMutation,
+        memberships: [
+          {
+            membership,
+            mutation: {
+              ...mutation,
+              mutType: 'deck.upsert' as OutboxMutation['mutType'],
+            },
+          },
+        ],
+      }),
+    ).rejects.toThrow(
+      'Deck membership mutations must use deckMembership.upsert.',
+    )
   })
 })
 

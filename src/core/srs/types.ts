@@ -2,6 +2,7 @@
 export type CardLevel = 0 | 1 | 2 | 3 | 4
 export type Grade = 'again' | 'good' | 'easy'
 export type ReviewSource = 'study' | 'manual' | 'import' | 'transfer'
+export type SchedulerMode = 'sticky' | 'adaptive'
 
 export interface CardState {
   deckId: string

@@ -95,6 +95,26 @@ describe('auth client', () => {
     expect(window.localStorage.getItem(CACHE_KEY)).toBeNull()
   })
 
+  it('falls back to a cached session when the response body is not JSON', async () => {
+    window.localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ id: 'cached-user', email: 'cached@example.test' }),
+    )
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response('<!DOCTYPE html><html></html>', { status: 200 }),
+      ),
+    )
+    const { getSession } = await importClient()
+
+    await expect(getSession()).resolves.toEqual({
+      id: 'cached-user',
+      email: 'cached@example.test',
+    })
+  })
+
   it('signOut clears the cached session and calls the sign-out endpoint', async () => {
     window.localStorage.setItem(
       CACHE_KEY,

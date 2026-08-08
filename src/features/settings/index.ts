@@ -1,7 +1,4 @@
-/**
- * Settings feature — preferences, data management, pack manager.
- *
- * TODO(T4.0): Implement settings screens and persistence.
- */
-
-export const SETTINGS_STUB = true
+export { SettingsScreen } from './settings-screen'
+export { ThemeController } from './theme-controller'
+export { AutoBackupController } from './auto-backup'
+export * from './theme'

@@ -15,7 +15,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'json-summary'],
       reportOnFailure: true,
-      include: ['src/**/*.{ts,tsx}', 'apps/api/src/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/prototype/**',
         'src/types/**',
@@ -24,8 +24,6 @@ export default defineConfig({
         'src/core/text/**',
         'src/core/stroke/**',
         'src/core/import/**',
-        'src/data/sync/**',
-        'src/data/outbox/**',
         'src/features/browse/index.ts',
         'src/features/detail/index.ts',
         'src/features/dictionary/index.ts',

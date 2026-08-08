@@ -3,6 +3,7 @@
   "maxBytes": {
     "kanji": 6291456,
     "words-core": 8388608,
+    "names": 33554432,
     "sentences": 16777216,
     "strokes-v1": 12582912,
     "similar": 1048576,

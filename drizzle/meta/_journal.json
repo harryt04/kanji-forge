@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785098046424,
+      "tag": "0000_young_wraith",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785098046425,
+      "tag": "0001_sync_mutation_shape",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785098046426,
+      "tag": "0002_sticky_annotations",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785098046427,
+      "tag": "0003_push_subscriptions",
+      "breakpoints": true
+    }
+  ]
+}

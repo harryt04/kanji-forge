@@ -17,8 +17,12 @@ import { emptyCardState } from '@/core/srs/types'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
-import { loadStarterDeck } from '@/features/study/deck-loader'
+import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
 import { toCoreState } from '@/features/study/adapters'
+import {
+  groupDecksByFolder,
+  normalizeDeckFolder,
+} from '@/features/settings/deck-folders'
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
@@ -30,6 +34,16 @@ const BELT_NAMES = [
   'black (Kuro)',
 ] as const
 type LevelCounts = readonly [number, number, number, number, number]
+
+interface DeckShelfItem {
+  readonly id: string
+  readonly name: string
+  readonly cardCount: number
+  readonly progressPercent: number
+  readonly progressLevel: 0 | 1 | 2 | 3 | 4
+  readonly lastStudiedAt: number | null
+  readonly folder: string
+}
 
 function countCardsByLevel(
   cards: readonly { state: CardState | undefined }[],
@@ -67,6 +81,7 @@ interface HomeData {
   readonly leeches: readonly Leech[]
   readonly content: ReadonlyMap<string, { readonly literal: string }>
   readonly forecast: ReturnType<typeof reviewForecast>
+  readonly customDecks: readonly DeckShelfItem[]
 }
 
 function localReviewDay(timestamp: number): string {
@@ -112,6 +127,58 @@ export function HomeScreen(): React.ReactElement {
     await runtime.database.ready
     const repo = createUserRepositories(runtime.database)
     const loaded = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+    const settings = await repo.settings.list()
+    const customDecks = await Promise.all(
+      (await repo.decks.list())
+        .filter((candidate) => candidate.kind === 'custom')
+        .map(async (candidate): Promise<DeckShelfItem> => {
+          const customDeck = await loadDeck(runtime.database, candidate.id)
+          const states = customDeck.cards.map(({ contentRef, state }) =>
+            state
+              ? toCoreState(state)
+              : emptyCardState(candidate.id, contentRef, runtime.userId),
+          )
+          const sessions = await repo.sessions.list(candidate.id)
+          const lastReviewedAt = customDeck.cards.reduce<number | null>(
+            (latest, card) =>
+              card.state?.lastReviewedAt &&
+              (latest === null || card.state.lastReviewedAt > latest)
+                ? card.state.lastReviewedAt
+                : latest,
+            null,
+          )
+          const lastSessionAt = sessions.reduce<number | null>(
+            (latest, session) =>
+              session.endedAt !== null &&
+              (latest === null || session.endedAt > latest)
+                ? session.endedAt
+                : latest,
+            null,
+          )
+          return {
+            id: candidate.id,
+            name: candidate.name,
+            cardCount: customDeck.cards.length,
+            progressPercent: Math.round(
+              computeProgress(customDeck.cards.length, states) * 100,
+            ),
+            progressLevel: computeProgressLevel(
+              computeProgress(customDeck.cards.length, states),
+            ),
+            lastStudiedAt:
+              lastReviewedAt === null
+                ? lastSessionAt
+                : lastSessionAt === null
+                  ? lastReviewedAt
+                  : Math.max(lastReviewedAt, lastSessionAt),
+            folder: normalizeDeckFolder(
+              settings.find(
+                (setting) => setting.key === `deck-folder:${candidate.id}`,
+              )?.value,
+            ),
+          }
+        }),
+    )
 
     const states: CardState[] = loaded.cards
       .map((card) => card.state)
@@ -186,6 +253,7 @@ export function HomeScreen(): React.ReactElement {
       leeches,
       content: loaded.content,
       forecast,
+      customDecks,
     })
   }
 
@@ -233,6 +301,10 @@ export function HomeScreen(): React.ReactElement {
     )
 
   const deckName = data.deckName
+  const customDeckGroups = groupDecksByFolder(
+    data.customDecks,
+    Object.fromEntries(data.customDecks.map((deck) => [deck.id, deck.folder])),
+  )
   const progressLabel = `Level ${data.progressLevel}, ${BELT_NAMES[data.progressLevel]}`
   const forecastTotal = data.forecast.reduce(
     (total, day) => total + day.reviews,
@@ -350,6 +422,75 @@ export function HomeScreen(): React.ReactElement {
           </Button>
         </CardContent>
       </Card>
+
+      {data.customDecks.length > 0 && (
+        <Card data-testid="custom-deck-shelf">
+          <CardHeader>
+            <CardTitle className="text-base">Your decks</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Study or browse any custom deck offline. Each deck keeps its own
+              SRS progress.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {customDeckGroups.map((group) => (
+              <section
+                key={group.name}
+                aria-labelledby={`custom-deck-folder-${group.name}`}
+              >
+                <h3
+                  id={`custom-deck-folder-${group.name}`}
+                  className="text-muted-foreground mb-2 text-sm font-semibold"
+                >
+                  {group.name}
+                </h3>
+                <div className="space-y-3">
+                  {group.decks.map((deck) => (
+                    <div
+                      key={deck.id}
+                      className="border-border rounded-md border p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="truncate font-medium">{deck.name}</h4>
+                          <p className="text-muted-foreground text-sm">
+                            {deck.progressPercent}% · {deck.cardCount}{' '}
+                            {deck.cardCount === 1 ? 'card' : 'cards'}
+                            {deck.lastStudiedAt
+                              ? ` · Last studied ${new Date(deck.lastStudiedAt).toLocaleString()}`
+                              : ' · Not studied yet'}
+                          </p>
+                        </div>
+                        <span
+                          className="level-swatch sticky-shape h-8 w-8 shrink-0"
+                          data-level={deck.progressLevel}
+                          aria-label={`Deck color: level ${deck.progressLevel}`}
+                        />
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <Button size="sm" asChild>
+                          <Link
+                            href={`/study?deckId=${encodeURIComponent(deck.id)}`}
+                          >
+                            Study
+                          </Link>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link
+                            href={`/browse?deckId=${encodeURIComponent(deck.id)}`}
+                          >
+                            Browse
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card data-testid="retention-by-level">
         <CardHeader>

@@ -45,6 +45,11 @@ const manifest = JSON.parse(
     string,
     { pinned: string; sha256: string; licenseHash: string }
   >
+  kankenSource: {
+    source: string
+    pinned: string
+    license: string
+  }
 }
 const coverage = JSON.parse(
   fs.readFileSync(path.join(deckDir, 'jlpt-coverage.json'), 'utf8'),
@@ -62,10 +67,19 @@ const coverage = JSON.parse(
       }
     >
   >
+  kanken: Record<
+    string,
+    {
+      sourceCount: number
+      resolvedCount: number
+      deferredUnresolvedCount: number
+      deferredUnresolvedLiterals: string[]
+    }
+  >
 }
 describe('generated deck definitions', () => {
   it('ships the complete catalog with resolved references', () => {
-    expect(decks).toHaveLength(25)
+    expect(decks).toHaveLength(37)
     const kdb = new Database(path.join(root, 'packs/kanji-v1.sqlite'), {
       readonly: true,
     })
@@ -106,6 +120,32 @@ describe('generated deck definitions', () => {
     for (const deck of decks.filter((deck) => deck.id.startsWith('jlpt-')))
       expect(deck.description).toContain('community estimate - not official')
   })
+  it('ships every Kanji Kentei level with attributable coverage', () => {
+    const ids = [
+      '10',
+      '9',
+      '8',
+      '7',
+      '6',
+      '5',
+      '4',
+      '3',
+      'pre-2',
+      '2',
+      'pre-1',
+      '1',
+    ]
+    for (const id of ids) {
+      const deck = decks.find((candidate) => candidate.id === `kanken-${id}`)
+      expect(deck?.contentRefs.length, id).toBeGreaterThan(0)
+      expect(deck?.description).toContain('日本漢字能力検定級別漢字表')
+    }
+    expect(coverage.kanken['pre-1']).toMatchObject({
+      sourceCount: 1036,
+      resolvedCount: 1034,
+      deferredUnresolvedCount: 2,
+    })
+  })
   it('records a complete, attributable catalog and validated input provenance', () => {
     expect(manifest).toMatchObject({
       version: 'v1',
@@ -120,7 +160,7 @@ describe('generated deck definitions', () => {
     })
     expect(manifest.coverageReport.sha256).toMatch(/^[a-f0-9]{64}$/)
     expect(manifest.coverageReport.sizeBytes).toBeGreaterThan(0)
-    expect(manifest.decks).toHaveLength(25)
+    expect(manifest.decks).toHaveLength(37)
     expect(Object.keys(manifest.backingPacks).sort()).toEqual([
       'kanji',
       'wordsCore',
@@ -132,6 +172,11 @@ describe('generated deck definitions', () => {
     }
     expect(manifest.jlptSources.kanji.pinned).toMatch(/^[a-f0-9]{40}$/)
     expect(manifest.jlptSources.vocabulary.pinned).toBe('2025.08.01.0')
+    expect(manifest.kankenSource).toMatchObject({
+      source: 'kanji npm package',
+      pinned: '0.9.1',
+      license: 'CC BY 4.0',
+    })
     for (const source of Object.values(manifest.jlptSources)) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/)
       expect(source.licenseHash).toMatch(/^[a-f0-9]{64}$/)

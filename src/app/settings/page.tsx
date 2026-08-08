@@ -1,10 +1,6 @@
 import React from 'react'
+import { SettingsScreen } from '@/features/settings'
 
 export default function SettingsPage(): React.ReactElement {
-  return (
-    <main>
-      <h1>Settings</h1>
-      <p>TODO(T4.0): Implement settings and configuration</p>
-    </main>
-  )
+  return <SettingsScreen />
 }

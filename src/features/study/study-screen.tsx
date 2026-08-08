@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
+import { getExampleWords, type WordRecord } from '@/data/packs'
 import { createUserRepositories, type UserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import {
@@ -13,10 +14,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/ui/dialog'
-import { loadStarterDeck } from './deck-loader'
+import { loadDeck } from './deck-loader'
+import {
+  DEFAULT_STUDY_ANSWER,
+  isStudyQuestion,
+  parseStudyAnswer,
+  parseStudyTwoTap,
+  STUDY_ANSWER_SETTING,
+  STUDY_QUESTION_SETTING,
+  STUDY_TWO_TAP_SETTING,
+  DEFAULT_SRS_MODE,
+  isSrsMode,
+  SRS_MODE_SETTING,
+  type StudyAnswer,
+  type StudyQuestion,
+} from './study-style'
+import {
+  playJapaneseAudio,
+  supportsJapaneseSpeech,
+  STUDY_AUTO_PLAY_AUDIO_SETTING,
+} from './audio'
 import { useStudyStore } from './store'
+import { StudyWritingAnswer } from './study-writing-answer'
+import { requestStoragePersistenceAfterSession } from '@/pwa'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
+export const GREY_STICKIES_SETTING = 'study.greyStickies'
 
 function formatElapsedTime(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
@@ -35,9 +58,29 @@ export function StudyScreen({
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [showTimer, setShowTimer] = useState(false)
+  const [greyStickies, setGreyStickies] = useState(false)
+  const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
+  const [studyAnswer, setStudyAnswer] =
+    useState<readonly StudyAnswer[]>(DEFAULT_STUDY_ANSWER)
+  const [twoTapStudy, setTwoTapStudy] = useState(false)
+  const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
+  const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [relatedWords, setRelatedWords] = useState<readonly WordRecord[]>([])
+  const [relatedWordsLoading, setRelatedWordsLoading] = useState(false)
+  const [shownRelatedWordIds, setShownRelatedWordIds] = useState<
+    ReadonlySet<number>
+  >(new Set())
+  const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
   const sessionRepo = useRef<UserRepositories | null>(null)
+  const [selectedDeckId, setSelectedDeckId] = useState(deckDefinitionId)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const requested = new URL(window.location.href).searchParams.get('deckId')
+    setSelectedDeckId(requested || deckDefinitionId)
+  }, [deckDefinitionId])
 
   const {
     deckName,
@@ -74,7 +117,22 @@ export function StudyScreen({
     ;(async () => {
       await runtime.database.ready
       const repoForSession = createUserRepositories(runtime.database)
-      const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
+      const loaded = await loadDeck(runtime.database, selectedDeckId)
+      const [
+        greyStickiesSetting,
+        studyQuestionSetting,
+        studyAnswerSetting,
+        twoTapSetting,
+        autoPlayAudioSetting,
+        srsModeSetting,
+      ] = await Promise.all([
+        repoForSession.settings.get(GREY_STICKIES_SETTING),
+        repoForSession.settings.get(STUDY_QUESTION_SETTING),
+        repoForSession.settings.get(STUDY_ANSWER_SETTING),
+        repoForSession.settings.get(STUDY_TWO_TAP_SETTING),
+        repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repoForSession.settings.get(SRS_MODE_SETTING),
+      ])
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
       await repoForSession.sessions.start({
@@ -90,10 +148,24 @@ export function StudyScreen({
       sessionId.current = startedSessionId
       sessionRepo.current = repoForSession
       if (!cancelled) {
-        start(loaded)
+        const savedSrsMode = srsModeSetting?.value ?? ''
+        const nextSrsMode = isSrsMode(savedSrsMode)
+          ? savedSrsMode
+          : DEFAULT_SRS_MODE
+        start(loaded, nextSrsMode)
         setSessionStartedAt(startedAt)
         setElapsedSeconds(0)
         setShowTimer(false)
+        setGreyStickies(greyStickiesSetting?.value === 'true')
+        const savedQuestion = studyQuestionSetting?.value ?? ''
+        setStudyQuestion(
+          isStudyQuestion(savedQuestion) ? savedQuestion : 'kanji',
+        )
+        setStudyAnswer(parseStudyAnswer(studyAnswerSetting?.value))
+        setTwoTapStudy(parseStudyTwoTap(twoTapSetting?.value))
+        setTwoTapStage(0)
+        setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
+        setPreferenceError(null)
         setLoading(false)
       }
     })().catch((reason: unknown) => {
@@ -108,11 +180,24 @@ export function StudyScreen({
       cancelled = true
       endSession()
     }
-  }, [runtime, deckDefinitionId, endSession, start])
+  }, [runtime, endSession, selectedDeckId, start])
 
   useEffect(() => {
     if (finished) endSession()
   }, [endSession, finished])
+
+  useEffect(() => {
+    if (!runtime || !finished || summary.seen === 0) return
+    void runtime.database.ready
+      .then(() =>
+        requestStoragePersistenceAfterSession(
+          createUserRepositories(runtime.database),
+        ),
+      )
+      .catch(() => {
+        // Storage protection is best effort and must never interrupt a finished session.
+      })
+  }, [finished, runtime, summary.seen])
 
   useEffect(() => {
     if (sessionStartedAt === null || !showTimer || finished) return
@@ -131,10 +216,65 @@ export function StudyScreen({
   const studyCard = card ? content.get(card.stickyId) : undefined
   const repo = runtime ? createUserRepositories(runtime.database) : null
 
+  useEffect(() => {
+    let cancelled = false
+    setRelatedWords([])
+    setShownRelatedWordIds(new Set())
+
+    if (!revealed || !studyCard || studyCard.contentType !== 'kanji') {
+      setRelatedWordsLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setRelatedWordsLoading(true)
+    void getExampleWords(studyCard.literal, 3)
+      .then((words) => {
+        if (cancelled) return
+        setRelatedWords(words)
+        setRelatedWordsLoading(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setRelatedWords([])
+        setRelatedWordsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [revealed, studyCard])
+
+  const speakCurrentCard = useCallback(() => {
+    if (!studyCard) return
+    const reading = studyCard.readings[0] ?? studyCard.literal
+    void playJapaneseAudio(studyCard.literal, reading)
+  }, [studyCard])
+
+  const handleReveal = useCallback(() => {
+    if (twoTapStudy && !revealed) {
+      if (twoTapStage === 0) {
+        setTwoTapStage(1)
+        return
+      }
+      setTwoTapStage(2)
+    }
+    reveal()
+    if (autoPlayAudio) speakCurrentCard()
+  }, [
+    autoPlayAudio,
+    reveal,
+    revealed,
+    speakCurrentCard,
+    twoTapStage,
+    twoTapStudy,
+  ])
+
   const handleGrade = useCallback(
     (value: 'again' | 'good' | 'easy') => {
       if (!repo || !revealed) return
-      void grade(repo, value)
+      void grade(repo, value).then(() => setTwoTapStage(0))
     },
     [repo, revealed, grade],
   )
@@ -148,11 +288,32 @@ export function StudyScreen({
     finish()
   }, [endSession, finish])
 
+  const handleToggleGreyStickies = useCallback(async () => {
+    if (!runtime) return
+    const next = !greyStickies
+    setGreyStickies(next)
+    setPreferenceError(null)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: GREY_STICKIES_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setGreyStickies(!next)
+      setPreferenceError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the sticky color setting.',
+      )
+    }
+  }, [greyStickies, runtime])
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === ' ') {
         event.preventDefault()
-        if (!revealed) reveal()
+        if (!revealed) handleReveal()
         return
       }
       if (!revealed) return
@@ -162,7 +323,7 @@ export function StudyScreen({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [revealed, reveal, handleGrade])
+  }, [revealed, handleGrade, handleReveal])
 
   function onTouchStart(event: React.TouchEvent): void {
     touchStartX.current = event.touches[0]?.clientX ?? null
@@ -188,6 +349,27 @@ export function StudyScreen({
   const level = card?.state?.level ?? 0
   const flagged = card?.state?.flagged ?? false
   const remaining = Math.max(0, queue.length - index)
+  const reading = studyCard?.readings[0]
+  const questionText = twoTapStudy
+    ? (studyCard?.literal ?? '')
+    : studyQuestion === 'reading'
+      ? (reading ?? studyCard?.literal ?? '')
+      : studyQuestion === 'meaning'
+        ? (studyCard?.meanings[0] ?? studyCard?.literal ?? '')
+        : (studyCard?.literal ?? '')
+  const questionIsJapanese = twoTapStudy || studyQuestion !== 'meaning'
+  const canSpeak = supportsJapaneseSpeech()
+  const stickyColor = greyStickies
+    ? 'var(--muted-foreground)'
+    : `var(--level-${level})`
+  const answerShows = (field: StudyAnswer): boolean =>
+    twoTapStudy || studyAnswer.includes(field)
+  const showingTwoTapReadings = twoTapStudy && !revealed && twoTapStage === 1
+  const revealLabel = twoTapStudy
+    ? showingTwoTapReadings
+      ? 'Show everything (Space)'
+      : 'Show readings (Space)'
+    : 'Reveal (Space)'
 
   return (
     <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
@@ -209,11 +391,38 @@ export function StudyScreen({
               >
                 {showTimer ? 'Hide timer' : 'Show timer'}
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-pressed={greyStickies}
+                onClick={() => void handleToggleGreyStickies()}
+              >
+                {greyStickies ? 'Show sticky colors' : 'Hide sticky colors'}
+              </Button>
+              {canSpeak && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Play synthesized voice"
+                    onClick={speakCurrentCard}
+                  >
+                    Speak
+                  </Button>
+                  <span className="text-xs">Synthesized voice</span>
+                </>
+              )}
             </>
           )}
           <span>{remaining} remaining</span>
         </div>
       </div>
+
+      {preferenceError && (
+        <p className="text-destructive px-4 pt-3 text-sm" role="alert">
+          {preferenceError}
+        </p>
+      )}
 
       {!finished && card && studyCard ? (
         <div
@@ -228,34 +437,172 @@ export function StudyScreen({
             aria-label={flagged ? 'Unflag card' : 'Flag card'}
             onClick={handleToggleFlag}
             className="border-l-4"
-            style={{ borderLeftColor: `var(--level-${level})` }}
+            style={{ borderLeftColor: stickyColor }}
           >
             {flagged ? 'Flagged' : 'Flag'}
           </Button>
           <div
             className={`bg-card w-full max-w-sm rounded-[var(--radius)] border-4 p-10 text-center shadow-[var(--shadow-card)] transition-colors motion-reduce:transition-none`}
-            style={{ borderColor: `var(--level-${level})` }}
-            onClick={() => !revealed && reveal()}
+            style={{ borderColor: stickyColor }}
+            data-grey-stickies={greyStickies}
+            onClick={() => !revealed && handleReveal()}
             role="button"
             tabIndex={0}
-            aria-label={revealed ? undefined : 'Reveal answer'}
+            aria-label={
+              revealed
+                ? undefined
+                : twoTapStudy
+                  ? revealLabel.replace(' (Space)', '')
+                  : 'Reveal answer'
+            }
           >
-            <p className="font-jp-display text-8xl">{studyCard.literal}</p>
+            <p
+              className={
+                questionIsJapanese
+                  ? 'font-jp-display text-8xl'
+                  : 'text-3xl font-semibold'
+              }
+              data-testid="study-question"
+              data-study-question={twoTapStudy ? 'kanji' : studyQuestion}
+              lang={questionIsJapanese ? 'ja' : undefined}
+            >
+              {questionText}
+            </p>
+            {showingTwoTapReadings && (
+              <div
+                className="mt-6 space-y-2 text-left"
+                data-testid="study-two-tap-readings"
+              >
+                {studyCard.contentType === 'word' ? (
+                  studyCard.readings.length > 0 && (
+                    <p className="font-jp-ui text-lg">
+                      読み: {studyCard.readings.join('、')}
+                    </p>
+                  )
+                ) : (
+                  <>
+                    {studyCard.onReadings.length > 0 && (
+                      <p className="font-jp-ui text-lg">
+                        音: {studyCard.onReadings.join('、')}
+                      </p>
+                    )}
+                    {studyCard.kunReadings.length > 0 && (
+                      <p className="font-jp-ui text-lg">
+                        訓: {studyCard.kunReadings.join('、')}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             {revealed && (
-              <div className="mt-6 space-y-2 text-left">
-                {studyCard.onReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
-                    音: {studyCard.onReadings.join('、')}
+              <div
+                className="mt-6 space-y-2 text-left"
+                data-testid="study-answer"
+              >
+                {answerShows('kanji') && (
+                  <p className="font-jp-display text-5xl" lang="ja">
+                    {studyCard.literal}
                   </p>
                 )}
-                {studyCard.kunReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
-                    訓: {studyCard.kunReadings.join('、')}
+                {answerShows('reading') && studyCard.contentType === 'word' ? (
+                  studyCard.readings.length > 0 && (
+                    <p className="font-jp-ui text-lg">
+                      読み: {studyCard.readings.join('、')}
+                    </p>
+                  )
+                ) : (
+                  <>
+                    {answerShows('reading') &&
+                      studyCard.onReadings.length > 0 && (
+                        <p className="font-jp-ui text-lg">
+                          音: {studyCard.onReadings.join('、')}
+                        </p>
+                      )}
+                    {answerShows('reading') &&
+                      studyCard.kunReadings.length > 0 && (
+                        <p className="font-jp-ui text-lg">
+                          訓: {studyCard.kunReadings.join('、')}
+                        </p>
+                      )}
+                  </>
+                )}
+                {answerShows('meaning') && (
+                  <p className="text-muted-foreground">
+                    {studyCard.meanings.join(', ')}
                   </p>
                 )}
-                <p className="text-muted-foreground">
-                  {studyCard.meanings.join(', ')}
-                </p>
+                {studyCard.contentType === 'kanji' && (
+                  <section
+                    className="border-border mt-5 border-t pt-4"
+                    aria-labelledby="study-related-heading"
+                    data-testid="study-related"
+                  >
+                    <h3
+                      id="study-related-heading"
+                      className="text-muted-foreground text-sm font-semibold"
+                    >
+                      Related
+                    </h3>
+                    {relatedWordsLoading ? (
+                      <p className="text-muted-foreground mt-2 text-sm">
+                        Loading examples…
+                      </p>
+                    ) : relatedWords.length > 0 ? (
+                      <ul className="mt-2 space-y-2">
+                        {relatedWords.map((word) => {
+                          const shown = shownRelatedWordIds.has(word.id)
+                          const form = word.forms[0] ?? ''
+                          return (
+                            <li
+                              key={word.id}
+                              className="bg-muted/40 rounded-md px-3 py-2"
+                              data-testid={`study-related-word-${word.id}`}
+                            >
+                              <p className="font-jp-ui" lang="ja">
+                                {form}
+                              </p>
+                              {shown ? (
+                                <p
+                                  className="text-muted-foreground mt-1 text-sm"
+                                  data-testid="study-related-details"
+                                >
+                                  {word.readings.join('、')}
+                                  {word.readings.length > 0 &&
+                                  word.meanings.length > 0
+                                    ? ' — '
+                                    : ''}
+                                  {word.meanings.join(', ')}
+                                </p>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="mt-1 h-auto px-0 text-sm"
+                                  aria-expanded={false}
+                                  onClick={() =>
+                                    setShownRelatedWordIds((current) => {
+                                      const next = new Set(current)
+                                      next.add(word.id)
+                                      return next
+                                    })
+                                  }
+                                >
+                                  Show reading and meaning for {form}
+                                </Button>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground mt-2 text-sm">
+                        No related examples are available.
+                      </p>
+                    )}
+                  </section>
+                )}
               </div>
             )}
             <p className="text-muted-foreground mt-4 text-xs">
@@ -263,9 +610,15 @@ export function StudyScreen({
             </p>
           </div>
 
+          {revealed &&
+            answerShows('writing') &&
+            studyCard.contentType === 'kanji' && (
+              <StudyWritingAnswer literal={studyCard.literal} />
+            )}
+
           {!revealed ? (
-            <Button size="lg" onClick={() => reveal()}>
-              Reveal (Space)
+            <Button size="lg" onClick={handleReveal}>
+              {revealLabel}
             </Button>
           ) : (
             <div className="grid w-full max-w-sm grid-cols-3 gap-3">

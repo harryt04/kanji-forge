@@ -14,4 +14,20 @@ if (!existsSync(source)) {
 
 mkdirSync(destination, { recursive: true })
 cpSync(source, destination, { recursive: true })
+cpSync(
+  path.join(root, 'packs', 'similar.json'),
+  path.join(destination, 'similar.json'),
+)
+cpSync(path.join(root, 'packs', 'strokes'), path.join(destination, 'strokes'), {
+  recursive: true,
+})
+// Proper names are an optional pack. Keep the default fixture usable when it
+// has not been generated, but mirror it automatically for local pack testing.
+const optionalNames = path.join(root, 'packs', 'names-v1.sqlite')
+if (existsSync(optionalNames)) {
+  cpSync(optionalNames, path.join(destination, 'names-v1.sqlite'))
+  const manifest = path.join(root, 'packs', 'names-v1.manifest.json')
+  if (existsSync(manifest))
+    cpSync(manifest, path.join(destination, path.basename(manifest)))
+}
 console.info('Mirrored packs-dev/ into public/packs-dev/')
