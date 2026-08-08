@@ -14,6 +14,7 @@ import {
   readSharedDeckPayload,
   readSharedTextPayload,
 } from './share-screen'
+import { ANALYZER_DISPLAY_SETTING } from './analyzer-settings'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -181,6 +182,42 @@ describe('ShareTargetScreen', () => {
     expect(
       await screen.findByText('Added 1 word to Saved.'),
     ).toBeInTheDocument()
+  })
+
+  it('persists analyzer display options and reveals glosses on tap', async () => {
+    const runtime = getActiveUserRuntime()!
+    await runtime.database.ready
+    await createUserRepositories(runtime.database).settings.set({
+      key: ANALYZER_DISPLAY_SETTING,
+      value: JSON.stringify({ furigana: 'off', romaji: true, gloss: 'tap' }),
+      updatedAt: Date.now(),
+    })
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Furigana display')).toHaveValue('off')
+      expect(
+        screen.getByRole('checkbox', { name: /show rōmaji/i }),
+      ).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByLabelText('English gloss display')).toHaveValue('tap')
+    })
+    fireEvent.change(screen.getByLabelText('Japanese text'), {
+      target: { value: 'お金を' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze text' }))
+
+    expect(
+      await screen.findByLabelText('Text analysis results'),
+    ).toHaveTextContent('okane')
+    expect(
+      screen.getByRole('button', { name: 'Show gloss' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Text analysis results'),
+    ).not.toHaveTextContent('money')
+    fireEvent.click(screen.getByRole('button', { name: 'Show gloss' }))
+    expect(await screen.findByText('money')).toBeInTheDocument()
   })
 
   it('imports matched shared kanji to Saved atomically with sync mutations', async () => {

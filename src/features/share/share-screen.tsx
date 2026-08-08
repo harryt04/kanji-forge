@@ -19,6 +19,16 @@ import {
   parseDeckSharePayload,
   type DeckSharePayload,
 } from '@/features/settings/deck-share'
+import {
+  ANALYZER_DISPLAY_SETTING,
+  DEFAULT_ANALYZER_DISPLAY_SETTINGS,
+  FURIGANA_MODES,
+  GLOSS_MODES,
+  parseAnalyzerDisplaySettings,
+  readingToRomaji,
+  serializeAnalyzerDisplaySettings,
+  type AnalyzerDisplaySettings,
+} from './analyzer-settings'
 
 export interface SharedTextPayload {
   readonly text: string
@@ -75,6 +85,11 @@ export function ShareTargetScreen(): React.ReactElement {
   const [analysis, setAnalysis] = useState<readonly TextAnalysisToken[] | null>(
     null,
   )
+  const [displaySettings, setDisplaySettings] =
+    useState<AnalyzerDisplaySettings>(DEFAULT_ANALYZER_DISPLAY_SETTINGS)
+  const [expandedGlosses, setExpandedGlosses] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  )
   const [savedContentRefs, setSavedContentRefs] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
@@ -110,11 +125,15 @@ export function ShareTargetScreen(): React.ReactElement {
       try {
         await runtime.database.ready
         const repositories = createUserRepositories(runtime.database)
-        const [records, existing] = await Promise.all([
+        const [records, existing, savedDisplaySettings] = await Promise.all([
           getKanjiByLiterals(literals),
           repositories.deckMembership.list(),
+          repositories.settings.get(ANALYZER_DISPLAY_SETTING),
         ])
         if (!active) return
+        setDisplaySettings(
+          parseAnalyzerDisplaySettings(savedDisplaySettings?.value),
+        )
         setSavedContentRefs(
           new Set(
             existing
@@ -150,6 +169,7 @@ export function ShareTargetScreen(): React.ReactElement {
     setAnalyzing(true)
     setError(null)
     try {
+      setExpandedGlosses(new Set())
       setAnalysis(await analyzeJapaneseText(draftText))
     } catch (reason: unknown) {
       setError(
@@ -158,6 +178,37 @@ export function ShareTargetScreen(): React.ReactElement {
     } finally {
       setAnalyzing(false)
     }
+  }
+
+  async function updateDisplaySettings(
+    update: Partial<AnalyzerDisplaySettings>,
+  ): Promise<void> {
+    if (!runtime) return
+    const next = { ...displaySettings, ...update }
+    setDisplaySettings(next)
+    try {
+      await runtime.database.ready
+      await createUserRepositories(runtime.database).settings.set({
+        key: ANALYZER_DISPLAY_SETTING,
+        value: serializeAnalyzerDisplaySettings(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save analyzer display settings.',
+      )
+    }
+  }
+
+  function toggleGloss(index: number): void {
+    setExpandedGlosses((current) => {
+      const next = new Set(current)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
   }
 
   async function importMatchedKanji(): Promise<void> {
@@ -368,6 +419,65 @@ export function ShareTargetScreen(): React.ReactElement {
           placeholder="日本語の文章を貼り付けてください"
           className="border-input bg-background rounded-md border p-3 text-base"
         />
+        <fieldset className="grid gap-3 rounded-md border p-3">
+          <legend className="px-1 text-sm font-medium">Display options</legend>
+          <label
+            className="grid max-w-sm gap-1 text-sm"
+            htmlFor="furigana-mode"
+          >
+            Furigana
+            <select
+              id="furigana-mode"
+              aria-label="Furigana display"
+              className="border-input bg-background h-10 rounded-md border px-2"
+              value={displaySettings.furigana}
+              onChange={(event) =>
+                void updateDisplaySettings({
+                  furigana: event.target
+                    .value as (typeof FURIGANA_MODES)[number],
+                })
+              }
+            >
+              <option value="all">Above every reading</option>
+              <option value="non-n5">Only above non-N5 kanji</option>
+              <option value="off">Hidden</option>
+            </select>
+          </label>
+          <Button
+            type="button"
+            variant={displaySettings.romaji ? 'secondary' : 'outline'}
+            aria-checked={displaySettings.romaji}
+            role="checkbox"
+            className="h-auto min-h-11 justify-start px-3 py-2 text-left"
+            onClick={() =>
+              void updateDisplaySettings({ romaji: !displaySettings.romaji })
+            }
+          >
+            <span>
+              <span className="block font-medium">Show rōmaji</span>
+              <span className="text-muted-foreground block text-sm font-normal">
+                Show a Latin reading beneath each analyzed token.
+              </span>
+            </span>
+          </Button>
+          <label className="grid max-w-sm gap-1 text-sm" htmlFor="gloss-mode">
+            English glosses
+            <select
+              id="gloss-mode"
+              aria-label="English gloss display"
+              className="border-input bg-background h-10 rounded-md border px-2"
+              value={displaySettings.gloss}
+              onChange={(event) =>
+                void updateDisplaySettings({
+                  gloss: event.target.value as (typeof GLOSS_MODES)[number],
+                })
+              }
+            >
+              <option value="inline">Show inline</option>
+              <option value="tap">Show on tap</option>
+            </select>
+          </label>
+        </fieldset>
         <Button
           className="w-fit"
           disabled={analyzing || !draftText.trim()}
@@ -391,31 +501,72 @@ export function ShareTargetScreen(): React.ReactElement {
                     key={`${token.text}-${index}`}
                     className="bg-muted/40 rounded-md p-2"
                   >
-                    {token.contentRef ? (
-                      <a
-                        className="text-primary rounded-sm underline underline-offset-4 focus-visible:ring-2"
-                        href={`/detail?contentRef=${encodeURIComponent(token.contentRef)}`}
-                        aria-label={`View details for ${token.text}`}
-                      >
+                    <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      {token.contentRef ? (
+                        <a
+                          className="text-primary rounded-sm underline underline-offset-4 focus-visible:ring-2"
+                          href={`/detail?contentRef=${encodeURIComponent(token.contentRef)}`}
+                          aria-label={`View details for ${token.text}`}
+                        >
+                          <ruby className="font-jp-ui text-xl" lang="ja">
+                            {token.text}
+                            {displaySettings.furigana === 'all' ||
+                            (displaySettings.furigana === 'non-n5' &&
+                              token.hasNonN5Kanji)
+                              ? token.reading && (
+                                  <rt className="text-sm">{token.reading}</rt>
+                                )
+                              : null}
+                          </ruby>
+                        </a>
+                      ) : (
                         <ruby className="font-jp-ui text-xl" lang="ja">
                           {token.text}
-                          {token.reading && (
-                            <rt className="text-sm">{token.reading}</rt>
-                          )}
+                          {displaySettings.furigana === 'all' ||
+                          (displaySettings.furigana === 'non-n5' &&
+                            token.hasNonN5Kanji)
+                            ? token.reading && (
+                                <rt className="text-sm">{token.reading}</rt>
+                              )
+                            : null}
                         </ruby>
-                      </a>
-                    ) : (
-                      <ruby className="font-jp-ui text-xl" lang="ja">
-                        {token.text}
-                        {token.reading && (
-                          <rt className="text-sm">{token.reading}</rt>
-                        )}
-                      </ruby>
-                    )}
-                    <span className="text-muted-foreground ml-3 text-sm">
-                      {token.type === 'unknown'
-                        ? 'Not in the installed dictionary'
-                        : token.meanings.join('; ') || 'No English meaning'}
+                      )}
+                      {displaySettings.romaji && token.reading && (
+                        <span className="text-muted-foreground text-sm italic">
+                          {readingToRomaji(token.reading)}
+                        </span>
+                      )}
+                      {token.type === 'unknown' ? (
+                        <span className="text-muted-foreground text-sm">
+                          Not in the installed dictionary
+                        </span>
+                      ) : displaySettings.gloss === 'inline' ? (
+                        <span className="text-muted-foreground text-sm">
+                          {token.meanings.join('; ') || 'No English meaning'}
+                        </span>
+                      ) : token.meanings.length > 0 ? (
+                        <>
+                          <button
+                            type="button"
+                            className="text-primary text-sm underline underline-offset-4"
+                            aria-expanded={expandedGlosses.has(index)}
+                            onClick={() => toggleGloss(index)}
+                          >
+                            {expandedGlosses.has(index)
+                              ? 'Hide gloss'
+                              : 'Show gloss'}
+                          </button>
+                          {expandedGlosses.has(index) && (
+                            <span className="text-muted-foreground text-sm">
+                              {token.meanings.join('; ')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">
+                          No English meaning
+                        </span>
+                      )}
                     </span>
                   </li>
                 ))}

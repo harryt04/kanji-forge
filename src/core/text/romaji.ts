@@ -166,6 +166,56 @@ const ROMAJI_TO_HIRAGANA: ReadonlyMap<string, string> = new Map([
   ['xtu', 'っ'],
 ])
 
+const HIRAGANA_TO_ROMAJI: ReadonlyMap<string, string> = new Map([
+  ...[...ROMAJI_TO_HIRAGANA.entries()]
+    .filter(
+      ([romaji, hiragana]) => !romaji.startsWith('x') && hiragana.length === 1,
+    )
+    .reverse()
+    .map(([romaji, hiragana]) => [hiragana, romaji] as const),
+  ['きゃ', 'kya'],
+  ['きゅ', 'kyu'],
+  ['きょ', 'kyo'],
+  ['ぎゃ', 'gya'],
+  ['ぎゅ', 'gyu'],
+  ['ぎょ', 'gyo'],
+  ['しゃ', 'sha'],
+  ['しゅ', 'shu'],
+  ['しょ', 'sho'],
+  ['じゃ', 'ja'],
+  ['じゅ', 'ju'],
+  ['じょ', 'jo'],
+  ['ちゃ', 'cha'],
+  ['ちゅ', 'chu'],
+  ['ちょ', 'cho'],
+  ['にゃ', 'nya'],
+  ['にゅ', 'nyu'],
+  ['にょ', 'nyo'],
+  ['ひゃ', 'hya'],
+  ['ひゅ', 'hyu'],
+  ['ひょ', 'hyo'],
+  ['びゃ', 'bya'],
+  ['びゅ', 'byu'],
+  ['びょ', 'byo'],
+  ['ぴゃ', 'pya'],
+  ['ぴゅ', 'pyu'],
+  ['ぴょ', 'pyo'],
+  ['みゃ', 'mya'],
+  ['みゅ', 'myu'],
+  ['みょ', 'myo'],
+  ['りゃ', 'rya'],
+  ['りゅ', 'ryu'],
+  ['りょ', 'ryo'],
+  ['ふぁ', 'fa'],
+  ['ふぃ', 'fi'],
+  ['ふぇ', 'fe'],
+  ['ふぉ', 'fo'],
+  ['ゔぁ', 'va'],
+  ['ゔぃ', 'vi'],
+  ['ゔぇ', 've'],
+  ['ゔぉ', 'vo'],
+])
+
 const ROMAJI_KEYS = [...ROMAJI_TO_HIRAGANA.keys()].sort(
   (left, right) => right.length - left.length,
 )
@@ -261,5 +311,35 @@ export function romajiToHiragana(value: string): string {
     position += 1
   }
 
+  return result
+}
+
+/** Converts hiragana readings to a compact Hepburn representation. */
+export function hiraganaToRomaji(value: string): string {
+  const input = value.normalize('NFC')
+  let result = ''
+  let position = 0
+  while (position < input.length) {
+    if (input[position] === 'っ') {
+      const next = input.slice(position + 1, position + 3)
+      const nextRomaji =
+        HIRAGANA_TO_ROMAJI.get(next) ??
+        HIRAGANA_TO_ROMAJI.get(input[position + 1] ?? '')
+      if (nextRomaji) result += nextRomaji[0]
+      position += 1
+      continue
+    }
+    const digraph = input.slice(position, position + 2)
+    const digraphRomaji = HIRAGANA_TO_ROMAJI.get(digraph)
+    if (digraphRomaji) {
+      result += digraphRomaji
+      position += 2
+      continue
+    }
+    const syllable = HIRAGANA_TO_ROMAJI.get(input[position] ?? '')
+    if (syllable) result += syllable
+    else result += input[position] ?? ''
+    position += 1
+  }
   return result
 }

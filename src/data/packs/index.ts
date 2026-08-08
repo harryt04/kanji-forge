@@ -68,6 +68,8 @@ export interface TextAnalysisToken {
   readonly meanings: readonly string[]
   readonly type: 'word' | 'kanji' | 'unknown'
   readonly contentRef?: string
+  /** True when the token contains a kanji outside the legacy N5 set. */
+  readonly hasNonN5Kanji?: boolean
 }
 
 export type DictionaryResult =
@@ -589,6 +591,9 @@ export async function analyzeJapaneseText(
   const wordForms = words.flatMap((word) =>
     word.forms.map((form) => ({ form, word })),
   )
+  const kanjiByLiteral = new Map(
+    kanji.map((record) => [record.literal, record]),
+  )
   const characters = [...normalizedText]
   const tokens: TextAnalysisToken[] = []
 
@@ -608,12 +613,17 @@ export async function analyzeJapaneseText(
     )[0]
 
     if (match) {
+      const hasNonN5Kanji = [...match.form].some((literal) => {
+        const record = kanjiByLiteral.get(literal)
+        return record !== undefined && record.jlptLegacy !== 5
+      })
       tokens.push({
         text: match.form,
         reading: match.word.readings[0] ?? null,
         meanings: match.word.meanings.slice(0, 3),
         type: 'word',
         contentRef: `word:${match.word.id}`,
+        ...(hasNonN5Kanji ? { hasNonN5Kanji: true } : {}),
       })
       index += [...match.form].length
       continue
@@ -629,6 +639,7 @@ export async function analyzeJapaneseText(
         meanings: kanjiRecord.meanings.slice(0, 3),
         type: 'kanji',
         contentRef: `kanji:${character}`,
+        ...(kanjiRecord.jlptLegacy !== 5 ? { hasNonN5Kanji: true } : {}),
       })
     } else {
       tokens.push({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { romajiToHiragana } from './romaji'
+import { hiraganaToRomaji, romajiToHiragana } from './romaji'
 
 describe('romajiToHiragana', () => {
   it.each([
@@ -28,5 +28,16 @@ describe('romajiToHiragana', () => {
   it('preserves kana, punctuation, spaces, and unknown letters', () => {
     expect(romajiToHiragana('日本 go!')).toBe('日本 ご!')
     expect(romajiToHiragana('x')).toBe('x')
+  })
+})
+
+describe('hiraganaToRomaji', () => {
+  it.each([
+    ['こんにちは', 'konnichiha'],
+    ['りょこう', 'ryokou'],
+    ['がっこう', 'gakkou'],
+    ['しんじゅく', 'shinjuku'],
+  ])('converts %s', (input, expected) => {
+    expect(hiraganaToRomaji(input)).toBe(expected)
   })
 })
