@@ -128,4 +128,22 @@ describe('analyzeText', () => {
       }),
     ])
   })
+
+  it('resolves progressive and progressive-negative forms', () => {
+    expect(analyzeText('読んでいます。食べていなかった', words, kanji)).toEqual(
+      [
+        expect.objectContaining({
+          text: '読んでいます',
+          contentRef: 'word:5',
+          reading: 'よんでいます',
+        }),
+        expect.objectContaining({ text: '。', type: 'unknown' }),
+        expect.objectContaining({
+          text: '食べていなかった',
+          contentRef: 'word:4',
+          reading: 'たべていなかった',
+        }),
+      ],
+    )
+  })
 })

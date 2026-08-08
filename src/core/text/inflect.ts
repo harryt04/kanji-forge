@@ -139,6 +139,17 @@ const ADJECTIVE_RULES: readonly InflectionRule[] = [
   { textSuffix: 'ければ', readingSuffix: 'ければ' },
 ]
 
+const PROGRESSIVE_SUFFIXES: readonly InflectionRule[] = [
+  { textSuffix: 'いる', readingSuffix: 'いる' },
+  { textSuffix: 'います', readingSuffix: 'います' },
+  { textSuffix: 'いました', readingSuffix: 'いました' },
+  { textSuffix: 'いない', readingSuffix: 'いない' },
+  { textSuffix: 'いません', readingSuffix: 'いません' },
+  { textSuffix: 'いませんでした', readingSuffix: 'いませんでした' },
+  { textSuffix: 'いなかった', readingSuffix: 'いなかった' },
+  { textSuffix: 'いた', readingSuffix: 'いた' },
+]
+
 // The common godan-る exceptions are kept small and explicit so ordinary
 // ichidan verbs such as 食べる do not generate impossible forms such as 食べりました.
 const GODAN_RU_EXCEPTIONS = new Set([
@@ -174,6 +185,23 @@ function addRules(
   }
 }
 
+function addProgressiveRules(
+  result: InflectedSurface[],
+  form: string,
+  reading: string,
+  textTeSuffix: string,
+  readingTeSuffix: string,
+): void {
+  const formTe = form.slice(0, -1) + textTeSuffix
+  const readingTe = reading.slice(0, -1) + readingTeSuffix
+  for (const suffix of PROGRESSIVE_SUFFIXES) {
+    result.push({
+      text: formTe + suffix.textSuffix,
+      reading: readingTe + suffix.readingSuffix,
+    })
+  }
+}
+
 /**
  * Generates a deliberately small set of common dictionary-form inflections.
  * This is not a morphological tokenizer: it only improves offline analysis
@@ -191,13 +219,28 @@ export function inflectedSurfaces(
 
   if (lastForm === 'る' && lastReading === 'る') {
     addRules(result, form, reading, ICHIDAN_RULES)
+    addProgressiveRules(result, form, reading, 'て', 'て')
     if (GODAN_RU_EXCEPTIONS.has(form)) {
       const godanRules = GODAN_RULES['る']
-      if (godanRules) addRules(result, form, reading, godanRules)
+      if (godanRules) {
+        addRules(result, form, reading, godanRules)
+        addProgressiveRules(result, form, reading, 'って', 'って')
+      }
     }
   } else if (lastForm in GODAN_RULES) {
     const godanRules = GODAN_RULES[lastForm]
     if (godanRules) addRules(result, form, reading, godanRules)
+    const teSuffix =
+      lastForm === 'う' || lastForm === 'つ'
+        ? 'って'
+        : lastForm === 'く'
+          ? 'いて'
+          : lastForm === 'ぐ'
+            ? 'いで'
+            : lastForm === 'す'
+              ? 'して'
+              : 'んで'
+    addProgressiveRules(result, form, reading, teSuffix, teSuffix)
   } else if (lastForm === 'い' && lastReading === 'い') {
     addRules(result, form, reading, ADJECTIVE_RULES)
   }

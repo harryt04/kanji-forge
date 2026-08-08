@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 61 (423 test cases: 423 passing) |
+| Unit/integration test files | 61 (424 test cases: 424 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 131 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.71%** |
@@ -239,13 +239,13 @@ available in CI.
 (5), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
 [Known issues](#known-issues).
 
-`src/core/text/analyzer.test.ts` (5) covers the offline analyzer's indexed written-form and kana
+`src/core/text/analyzer.test.ts` (6) covers the offline analyzer's indexed written-form and kana
 reading matches, longest-word preference, unknown-text preservation, token limits, and common
 inflected surfaces resolving to dictionary lemmas with surface readings, including negative,
-conditional, and volitional forms. `inflect.test.ts` (3) covers ichidan, godan, and i-adjective
-surface generation, including the expanded polite-negative, past-negative, conditional, and
-volitional forms. A full IPADIC/UniDic morphological tokenizer remains a separate optional-pack
-follow-up.
+conditional, volitional, and progressive forms. `inflect.test.ts` (4) covers ichidan, godan, and
+i-adjective surface generation, including the expanded polite-negative, past-negative, conditional,
+volitional, and progressive auxiliary forms including polite negatives. A full IPADIC/UniDic morphological tokenizer remains
+a separate optional-pack follow-up.
 
 ---
 

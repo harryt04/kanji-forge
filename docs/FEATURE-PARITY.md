@@ -176,7 +176,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 9.1 | Paste Japanese text → readings, furigana, English | ⚠️ Partial | 2026-08-08 | Authenticated `/analyze` provides offline dictionary segmentation over written forms, kana readings, and common verb/adjective inflections—including polite-negative, past-negative, conditional, and volitional forms—with surface readings, plus grouped visible unknown-text fallback; a full morphological tokenizer pack remains the accuracy upgrade for grammatical segmentation |
+| 9.1 | Paste Japanese text → readings, furigana, English | ⚠️ Partial | 2026-08-08 | Authenticated `/analyze` provides offline dictionary segmentation over written forms, kana readings, and common verb/adjective inflections—including polite-negative, past-negative, conditional, volitional, and progressive auxiliary forms (including polite negative)—with surface readings, plus grouped visible unknown-text fallback; a full morphological tokenizer pack remains the accuracy upgrade for grammatical segmentation |
 | 9.2 | Many display options for the analyzed output | 🔷 | 2026-08-08 | Analyzer preferences persist offline for furigana all/non-N5/off, optional rōmaji, and inline or tap-to-reveal English glosses |
 | 9.3 | Tap any word → detail → save to deck | 🔷 | 2026-08-08 | Analyzer word tokens open an authenticated offline word detail route with readings, meanings, parts of speech, and Saved/custom-deck membership actions; grammatical tokenization remains a future accuracy upgrade |
 | 9.4 | Live Japanese news feed, updated daily | ❌ as built | — | NHK Easy content is copyrighted |

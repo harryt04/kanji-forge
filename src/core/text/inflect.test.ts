@@ -7,6 +7,8 @@ describe('inflectedSurfaces', () => {
       expect.arrayContaining([
         { text: '食べました', reading: 'たべました' },
         { text: '食べて', reading: 'たべて' },
+        { text: '食べています', reading: 'たべています' },
+        { text: '食べていなかった', reading: 'たべていなかった' },
       ]),
     )
   })
@@ -20,6 +22,9 @@ describe('inflectedSurfaces', () => {
         { text: '読まなかった', reading: 'よまなかった' },
         { text: '読めば', reading: 'よめば' },
         { text: '読もう', reading: 'よもう' },
+        { text: '読んでいる', reading: 'よんでいる' },
+        { text: '読んでいました', reading: 'よんでいました' },
+        { text: '読んでいませんでした', reading: 'よんでいませんでした' },
       ]),
     )
   })
