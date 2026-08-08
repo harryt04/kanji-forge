@@ -130,6 +130,7 @@ import {
   type ImportPreviewItem,
   type CsvImportTable,
 } from './deck-import'
+import { deduplicateImportEntries } from '@/core/import/enrich'
 import {
   deckFolderSettingKey,
   groupDecksByFolder,
@@ -1558,7 +1559,6 @@ export function SettingsScreen(): React.ReactElement {
     values: readonly string[],
   ): Promise<readonly ImportEntry[]> {
     const entries: ImportEntry[] = []
-    const seen = new Set<string>()
 
     async function add(value: string): Promise<void> {
       const match = await findDictionaryEntry(value)
@@ -1572,9 +1572,6 @@ export function SettingsScreen(): React.ReactElement {
             kind: match.type,
           }
         : { label: value, contentRef: null, kind: 'unknown' }
-      const key = entry.contentRef ?? `unknown:${entry.label}`
-      if (seen.has(key)) return
-      seen.add(key)
       entries.push(entry)
     }
 
@@ -1593,7 +1590,7 @@ export function SettingsScreen(): React.ReactElement {
         await add(value)
       }
     }
-    return entries
+    return deduplicateImportEntries(entries)
   }
 
   async function previewImportValues(
