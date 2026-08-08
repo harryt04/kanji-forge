@@ -863,6 +863,33 @@ describe('SettingsScreen', () => {
     ).resolves.toMatchObject([{ mutType: 'deckMembership.upsert' }])
   })
 
+  it('previews and imports an exact dictionary word without splitting it into kanji', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.type(screen.getByLabelText('Kanji to import'), 'お金')
+    await user.click(screen.getByRole('button', { name: 'Preview import' }))
+
+    expect(await screen.findByLabelText('Import preview')).toHaveTextContent(
+      'お金 matched — will be added',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Import matched kanji' }),
+    )
+
+    expect(
+      await screen.findByText('Added 1 card to Saved.'),
+    ).toBeInTheDocument()
+    await expect(
+      createUserRepositories(
+        getActiveUserRuntime()!.database,
+      ).deckMembership.list('saved'),
+    ).resolves.toMatchObject([
+      { contentRef: expect.stringMatching(/^word:\d+$/u) },
+    ])
+  })
+
   it('appends imported kanji to an existing custom deck instead of Saved', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!

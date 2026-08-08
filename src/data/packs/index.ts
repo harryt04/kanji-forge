@@ -568,6 +568,32 @@ export async function getWordById(id: number): Promise<WordRecord | null> {
   return words.find((word) => word.id === id) ?? null
 }
 
+/** Finds one exact kanji or dictionary-word entry for offline import. */
+export async function findDictionaryEntry(
+  query: string,
+): Promise<DictionaryResult | null> {
+  const trimmed = query.trim().normalize('NFC')
+  if (!trimmed) return null
+
+  const kanji = await loadDictionaryKanji()
+  if ([...trimmed].length === 1) {
+    const kanjiRecord = kanji.find((record) => record.literal === trimmed)
+    if (kanjiRecord) return { type: 'kanji', record: kanjiRecord }
+  }
+
+  const normalized = normalizeQuery(trimmed)
+  const words = await loadDictionaryWords()
+  const word = words.find(
+    (record) =>
+      record.forms.some((form) => normalizeQuery(form) === normalized) ||
+      record.readings.some(
+        (reading) => normalizeQuery(reading) === normalized,
+      ) ||
+      record.meanings.some((meaning) => lower(meaning) === lower(trimmed)),
+  )
+  return word ? { type: 'word', record: word } : null
+}
+
 /**
  * Performs a small, fully offline text analysis pass over the installed packs.
  *

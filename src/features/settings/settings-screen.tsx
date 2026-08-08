@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState, type Deck } from '@/data/repo'
-import { getKanjiByLiterals, loadDeckDefinitions } from '@/data/packs'
+import { findDictionaryEntry, loadDeckDefinitions } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
@@ -87,12 +87,14 @@ import { createDeckShareUrl } from './deck-share'
 import {
   guessKanjiColumn,
   parseCsvImport,
-  parseCsvKanjiColumn,
+  parseImportColumn,
+  parseImportValues,
   parseJsonKanjiImport,
-  parseKanjiImportText,
-  previewKanjiImport,
+  previewImport,
+  isKanjiLiteral,
+  type ImportEntry,
+  type ImportPreviewItem,
   type CsvImportTable,
-  type KanjiImportPreviewItem,
 } from './deck-import'
 import {
   deckFolderSettingKey,
@@ -243,7 +245,7 @@ export function SettingsScreen(): React.ReactElement {
     null,
   )
   const [deckImportPreview, setDeckImportPreview] = useState<
-    readonly KanjiImportPreviewItem[] | null
+    readonly ImportPreviewItem[] | null
   >(null)
   const [csvImportText, setCsvImportText] = useState('')
   const [csvImportTable, setCsvImportTable] = useState<CsvImportTable | null>(
@@ -1172,12 +1174,54 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
-  async function previewKanjiLiterals(
-    literals: readonly string[],
+  async function resolveImportValues(
+    values: readonly string[],
+  ): Promise<readonly ImportEntry[]> {
+    const entries: ImportEntry[] = []
+    const seen = new Set<string>()
+
+    async function add(value: string): Promise<void> {
+      const match = await findDictionaryEntry(value)
+      const entry: ImportEntry = match
+        ? {
+            label: value,
+            contentRef:
+              match.type === 'kanji'
+                ? `kanji:${match.record.literal}`
+                : `word:${match.record.id}`,
+            kind: match.type,
+          }
+        : { label: value, contentRef: null, kind: 'unknown' }
+      const key = entry.contentRef ?? `unknown:${entry.label}`
+      if (seen.has(key)) return
+      seen.add(key)
+      entries.push(entry)
+    }
+
+    for (const value of values) {
+      const direct = await findDictionaryEntry(value)
+      if (direct || [...value].length <= 1) {
+        await add(value)
+        continue
+      }
+      // A compact kanji list such as 日本 still works when it is not also a
+      // dictionary word; exact words take precedence for one-per-line input.
+      const characters = [...value]
+      if (characters.every((character) => isKanjiLiteral(character))) {
+        for (const character of characters) await add(character)
+      } else {
+        await add(value)
+      }
+    }
+    return entries
+  }
+
+  async function previewImportValues(
+    values: readonly string[],
     emptyMessage: string,
   ): Promise<void> {
     if (!runtime || deckImportBusy) return
-    if (literals.length === 0) {
+    if (values.length === 0) {
       setDeckImportMessage(emptyMessage)
       return
     }
@@ -1188,12 +1232,11 @@ export function SettingsScreen(): React.ReactElement {
     try {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const records = await getKanjiByLiterals(literals)
       const existing = await repositories.deckMembership.list(importDeckId)
+      const entries = await resolveImportValues(values)
       setDeckImportPreview(
-        previewKanjiImport(
-          literals,
-          records,
+        previewImport(
+          entries,
           new Set(existing.map((membership) => membership.contentRef)),
         ),
       )
@@ -1210,9 +1253,9 @@ export function SettingsScreen(): React.ReactElement {
   }
 
   async function previewKanjiList(): Promise<void> {
-    await previewKanjiLiterals(
-      parseKanjiImportText(deckImportText),
-      'Paste one or more kanji to import.',
+    await previewImportValues(
+      parseImportValues(deckImportText),
+      'Paste one or more kanji or dictionary words to import.',
     )
   }
 
@@ -1227,7 +1270,9 @@ export function SettingsScreen(): React.ReactElement {
       }
       setCsvImportTable(table)
       setCsvKanjiColumn(guessKanjiColumn(table.headers))
-      setDeckImportMessage('Choose the kanji column, then preview the import.')
+      setDeckImportMessage(
+        'Choose the kanji or word column, then preview the import.',
+      )
     } catch (reason: unknown) {
       setCsvImportTable(null)
       setDeckImportMessage(
@@ -1238,15 +1283,15 @@ export function SettingsScreen(): React.ReactElement {
 
   async function previewCsvList(): Promise<void> {
     if (!csvImportTable) return
-    await previewKanjiLiterals(
-      parseCsvKanjiColumn(csvImportTable, csvKanjiColumn),
-      'The selected CSV column contains no kanji to import.',
+    await previewImportValues(
+      parseImportColumn(csvImportTable, csvKanjiColumn),
+      'The selected CSV column contains no kanji or words to import.',
     )
   }
 
   async function previewJsonList(): Promise<void> {
     try {
-      await previewKanjiLiterals(
+      await previewImportValues(
         parseJsonKanjiImport(jsonImportText),
         'Paste a KanjiForge JSON deck export to import.',
       )
@@ -1270,7 +1315,7 @@ export function SettingsScreen(): React.ReactElement {
         )
         return
       }
-      await previewKanjiLiterals(
+      await previewImportValues(
         deck.kanji,
         'The Anki package contains no kanji in its note fields.',
       )
@@ -1286,13 +1331,13 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
-  async function importKanjiList(): Promise<void> {
+  async function importMatchedCards(): Promise<void> {
     if (!runtime || deckImportBusy || !deckImportPreview) return
     const matched = deckImportPreview.filter(
       (item) => item.status === 'matched',
     )
     if (matched.length === 0) {
-      setDeckImportMessage('There are no new matched kanji to add.')
+      setDeckImportMessage('There are no new matched cards to add.')
       return
     }
 
@@ -1302,9 +1347,6 @@ export function SettingsScreen(): React.ReactElement {
     try {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const records = await getKanjiByLiterals(
-        deckImportPreview.map((item) => item.literal),
-      )
       const existing = await repositories.deckMembership.list(importDeckId)
       const existingRefs = new Set(
         existing.map((membership) => membership.contentRef),
@@ -1327,9 +1369,8 @@ export function SettingsScreen(): React.ReactElement {
       let sortOrder = existing.length
       let imported = 0
 
-      for (const { literal } of matched) {
-        const contentRef = `kanji:${literal}`
-        if (!records.has(literal) || existingRefs.has(contentRef)) continue
+      for (const { contentRef } of matched) {
+        if (!contentRef || existingRefs.has(contentRef)) continue
         const membership = {
           deckId: targetDeck.id,
           contentRef,
@@ -1362,12 +1403,15 @@ export function SettingsScreen(): React.ReactElement {
       setDeckImportText('')
       setDeckImportPreview(null)
       if (targetDeck.id === 'saved') setSavedDeckExists(true)
+      const importedLabel = matched.every((item) => item.kind === 'kanji')
+        ? 'kanji'
+        : 'card'
       setDeckImportMessage(
-        `Added ${imported} kanji to ${targetDeck.name}.${alreadyInTarget > 0 ? ` ${alreadyInTarget} already in ${targetDeck.name}.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${imported} ${importedLabel}${imported === 1 ? '' : 's'} to ${targetDeck.name}.${alreadyInTarget > 0 ? ` ${alreadyInTarget} already in ${targetDeck.name}.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
-        reason instanceof Error ? reason.message : 'Could not import kanji.',
+        reason instanceof Error ? reason.message : 'Could not import cards.',
       )
     } finally {
       setDeckImportBusy(false)
@@ -2616,11 +2660,11 @@ export function SettingsScreen(): React.ReactElement {
           )}
         </div>
         <div className="border-border mt-5 border-t pt-5">
-          <h3 className="font-semibold">Import kanji</h3>
+          <h3 className="font-semibold">Import kanji and words</h3>
           <p className="text-muted-foreground mt-1 text-sm">
-            Paste one kanji per line, a compact kanji list, or the first column
-            from a KanjiForge text export. Matched kanji are enriched from the
-            installed offline dictionary and appended to the selected deck.
+            Paste one kanji or dictionary word per line, a compact kanji list,
+            or the first column from a KanjiForge text export. Exact dictionary
+            matches are enriched offline and appended to the selected deck.
           </p>
           <label
             className="mt-3 grid max-w-sm gap-2 text-sm font-medium"
@@ -2655,7 +2699,7 @@ export function SettingsScreen(): React.ReactElement {
               setDeckImportPreview(null)
               setDeckImportMessage(null)
             }}
-            placeholder={'日\n本\n語'}
+            placeholder={'日\nお金\n日本語'}
             disabled={deckImportBusy}
           />
           <Button
@@ -2664,7 +2708,7 @@ export function SettingsScreen(): React.ReactElement {
             disabled={
               deckImportBusy ||
               deckImportPreview !== null ||
-              parseKanjiImportText(deckImportText).length === 0
+              parseImportValues(deckImportText).length === 0
             }
             onClick={() => void previewKanjiList()}
           >
@@ -2678,9 +2722,9 @@ export function SettingsScreen(): React.ReactElement {
               <p className="font-medium">Import preview</p>
               <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
                 {deckImportPreview.map((item) => (
-                  <li key={item.literal}>
+                  <li key={`${item.label}-${item.contentRef ?? 'unknown'}`}>
                     <span className="font-jp-ui text-foreground">
-                      {item.literal}
+                      {item.label}
                     </span>{' '}
                     {item.status === 'matched'
                       ? 'matched — will be added'
@@ -2697,7 +2741,7 @@ export function SettingsScreen(): React.ReactElement {
                   deckImportBusy ||
                   !deckImportPreview.some((item) => item.status === 'matched')
                 }
-                onClick={() => void importKanjiList()}
+                onClick={() => void importMatchedCards()}
               >
                 {deckImportBusy ? 'Importing…' : 'Import matched kanji'}
               </Button>

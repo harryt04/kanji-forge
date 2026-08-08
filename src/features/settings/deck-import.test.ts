@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { parseAnkiApkg } from '@/core/import/apkg'
 import {
   guessKanjiColumn,
+  parseImportColumn,
+  parseImportValues,
   isKanjiLiteral,
   parseJsonKanjiImport,
   parseCsvImport,
@@ -61,6 +63,19 @@ describe('parseKanjiImportText', () => {
 
   it('ignores whitespace, punctuation, and non-kanji fields', () => {
     expect(parseKanjiImportText('  日  \nかな\nEnglish\n、')).toEqual(['日'])
+  })
+
+  it('preserves one-per-line dictionary words for offline enrichment', () => {
+    expect(parseImportValues('日\nお金\n日本語\nお金')).toEqual([
+      '日',
+      'お金',
+      '日本語',
+    ])
+  })
+
+  it('reads words from a selected CSV column without splitting them', () => {
+    const table = parseCsvImport('term,note\nお金,money\n日本語,Japanese')
+    expect(parseImportColumn(table, 0)).toEqual(['お金', '日本語'])
   })
 })
 

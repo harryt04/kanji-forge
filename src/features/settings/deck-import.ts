@@ -113,6 +113,31 @@ export function parseKanjiImportText(input: string): readonly string[] {
 }
 
 /**
+ * Parses one import value per line while preserving multi-character words.
+ * Compact kanji lists continue to use parseKanjiImportText; this parser is
+ * used by the richer importer so dictionary-backed Japanese words can be
+ * resolved before falling back to individual kanji.
+ */
+export function parseImportValues(input: string): readonly string[] {
+  const values = input
+    .split(/\r?\n/u)
+    .map((line) => line.trim().split('\t', 1)[0]?.trim() ?? '')
+    .filter((line) => line.length > 0 && !line.startsWith('#'))
+
+  return [...new Set(values)]
+}
+
+/** Reads the selected CSV column as one import value per data row. */
+export function parseImportColumn(
+  table: CsvImportTable,
+  columnIndex: number,
+): readonly string[] {
+  return parseImportValues(
+    table.rows.map((row) => row[columnIndex] ?? '').join('\n'),
+  )
+}
+
+/**
  * Parses a versioned KanjiForge JSON deck export into dictionary-backed
  * literals. Card progress is intentionally ignored; imports add content to
  * Saved and do not overwrite local SRS state.
@@ -162,6 +187,32 @@ export type KanjiImportPreviewStatus =
 export interface KanjiImportPreviewItem {
   readonly literal: string
   readonly status: KanjiImportPreviewStatus
+}
+
+export interface ImportEntry {
+  readonly label: string
+  readonly contentRef: string | null
+  readonly kind: 'kanji' | 'word' | 'unknown'
+}
+
+export interface ImportPreviewItem extends ImportEntry {
+  readonly status: KanjiImportPreviewStatus
+}
+
+/** Classifies resolved dictionary entries and unresolved values uniformly. */
+export function previewImport(
+  entries: readonly ImportEntry[],
+  existingContentRefs: ReadonlySet<string>,
+): readonly ImportPreviewItem[] {
+  return entries.map((entry) => ({
+    ...entry,
+    status:
+      entry.contentRef === null
+        ? 'not-found'
+        : existingContentRefs.has(entry.contentRef)
+          ? 'already-in-target'
+          : 'matched',
+  }))
 }
 
 /** Classifies a parsed import without changing local deck membership. */

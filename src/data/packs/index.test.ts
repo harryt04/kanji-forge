@@ -458,4 +458,23 @@ describe('data/packs', () => {
       await expect(analyzeJapaneseText('日本', 0)).resolves.toEqual([])
     })
   })
+
+  it('finds exact kanji and word entries for offline imports', async () => {
+    const { findDictionaryEntry } = await freshPacks()
+
+    await expect(findDictionaryEntry('日')).resolves.toMatchObject({
+      type: 'kanji',
+      record: { literal: '日' },
+    })
+    await expect(findDictionaryEntry('お金')).resolves.toMatchObject({
+      type: 'word',
+      record: {
+        forms: expect.arrayContaining(['お金']),
+        readings: expect.arrayContaining(['おかね']),
+      },
+    })
+    await expect(
+      findDictionaryEntry('not-a-dictionary-entry'),
+    ).resolves.toBeNull()
+  })
 })
