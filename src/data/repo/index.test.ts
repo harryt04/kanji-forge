@@ -4,7 +4,7 @@ import {
   repoCardState as state,
   repoReview as review,
 } from '../../../test/factories'
-import { createUserRepositories, type Deck } from '.'
+import { createUserRepositories, type Deck, type OutboxMutation } from '.'
 
 const databases: LocalUserDatabase[] = []
 afterEach(() => {
@@ -844,6 +844,130 @@ describe('deckMembership', () => {
     expect(
       await repos.decks.listCards(deck.id, { contentRefsFor: () => [] }),
     ).toMatchObject([{ deckId: deck.id, contentRef: 'kanji:旅' }])
+  })
+
+  it('atomically creates a custom deck with several memberships', async () => {
+    const repos = await freshRepo()
+    const deck: Deck = {
+      id: 'custom-combined',
+      name: 'Combined kanji',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: 10,
+    }
+    await repos.recordDeckMemberships({
+      deck,
+      deckMutation: {
+        id: 'combined-deck',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 10,
+        attempts: 0,
+      },
+      memberships: ['kanji:日', 'kanji:一'].map((contentRef, sortOrder) => ({
+        membership: {
+          deckId: deck.id,
+          contentRef,
+          sortOrder,
+          addedAt: 10,
+          updatedAt: 10,
+        },
+        mutation: {
+          id: `combined-membership-${sortOrder}`,
+          mutType: 'deckMembership.upsert' as const,
+          payload: JSON.stringify({ deckId: deck.id, contentRef }),
+          createdAt: 10,
+          attempts: 0,
+        },
+      })),
+    })
+
+    expect(await repos.decks.get(deck.id)).toEqual(deck)
+    expect(await repos.deckMembership.list(deck.id)).toMatchObject([
+      { contentRef: 'kanji:日', sortOrder: 0 },
+      { contentRef: 'kanji:一', sortOrder: 1 },
+    ])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'combined-deck', mutType: 'deck.upsert' },
+      { id: 'combined-membership-0', mutType: 'deckMembership.upsert' },
+      { id: 'combined-membership-1', mutType: 'deckMembership.upsert' },
+    ])
+  })
+
+  it('rejects invalid bulk custom-deck metadata and memberships', async () => {
+    const repos = await freshRepo()
+    const deck: Deck = {
+      id: 'custom-invalid',
+      name: 'Invalid deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: 10,
+    }
+    const deckMutation = {
+      id: 'invalid-deck-mutation',
+      mutType: 'deck.upsert' as const,
+      payload: '{}',
+      createdAt: 10,
+      attempts: 0,
+    }
+    const membership = {
+      deckId: deck.id,
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: 10,
+      updatedAt: 10,
+    }
+    const mutation = {
+      id: 'invalid-membership-mutation',
+      mutType: 'deckMembership.upsert' as const,
+      payload: '{}',
+      createdAt: 10,
+      attempts: 0,
+    }
+
+    await expect(
+      repos.recordDeckMemberships({
+        deck: { ...deck, kind: 'derived' },
+        deckMutation,
+        memberships: [],
+      }),
+    ).rejects.toThrow('Derived decks cannot receive custom memberships.')
+    await expect(
+      repos.recordDeckMemberships({
+        deck,
+        deckMutation: {
+          ...deckMutation,
+          mutType: 'deck.delete' as OutboxMutation['mutType'],
+        },
+        memberships: [],
+      }),
+    ).rejects.toThrow('Custom deck creation must use a deck.upsert mutation.')
+    await expect(
+      repos.recordDeckMemberships({
+        deck,
+        deckMutation,
+        memberships: [
+          { membership: { ...membership, deckId: 'other' }, mutation },
+        ],
+      }),
+    ).rejects.toThrow('Deck memberships must belong to their deck.')
+    await expect(
+      repos.recordDeckMemberships({
+        deck,
+        deckMutation,
+        memberships: [
+          {
+            membership,
+            mutation: {
+              ...mutation,
+              mutType: 'deck.upsert' as OutboxMutation['mutType'],
+            },
+          },
+        ],
+      }),
+    ).rejects.toThrow(
+      'Deck membership mutations must use deckMembership.upsert.',
+    )
   })
 })
 

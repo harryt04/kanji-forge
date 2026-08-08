@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 48 (332 test cases: 332 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 111 cases, included above) |
+| Unit/integration test files | 49 (340 test cases: 340 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 112 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.09%** |
+| Overall statement coverage | **87.31%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,11 +27,11 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.46 / 86.27 / 100 / 93.46 · packs 98.77 / 82.62 / 100 / 98.77 · repo 97.8 / 89.39 / 100 / 97.8 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.89 / 86 / 100 / 93.89 · packs 98.77 / 82.62 / 100 / 98.77 · repo 97.97 / 90.47 / 100 / 97.97 | ✅ comfortable margin |
 | `src/features/**` | 70% | browse 91.66 / 78.38 / 83.01 / 91.66 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · settings 82.68 / 74.15 / 83.72 / 82.68 · study 90.36 / 85.37 / 72.5 / 90.36 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
-| `src/features/settings/**` | 70% | 80.7 / 74.82 / 80.73 / 80.7 | ✅ comfortable margin |
-| Global floor | 60% | 87.05 / 81.46 / 87.02 / 87.05 | ✅ comfortable margin |
+| `src/features/settings/**` | 70% | 83.69 / 75.04 / 84.55 / 83.69 | ✅ comfortable margin |
+| Global floor | 60% | 87.31 / 81.6 / 87.23 / 87.31 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -49,7 +49,7 @@ any directory gate above):
 
 ## Test inventory
 
-### `src/core/srs` — 23 cases, 100% coverage
+### `src/core/srs` — 24 cases, 100% coverage
 
 `srs.test.ts` — the 15 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
 idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a fuzz-bounds case,
@@ -57,17 +57,17 @@ the progress-to-belt-rank mapping, retention-by-level aggregation with the 80%-o
 and leech/forecast edge cases.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 69 cases across 4 files
+### `src/data` — 71 cases across 4 files
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v3 creates all 10 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (29, up from 1) — derived-deck projection, deck-scoped state listing,
+- **`repo/index.test.ts`** (31, up from 1) — derived-deck projection, deck-scoped state listing,
   atomic multi-card reset persistence, atomic statistics reset with history/session clearing, deck metadata plus outbox persistence, atomic user-deck deletion with protected starter-deck behavior, and `recordGrade()` atomicity,
   manual level override atomicity and validation, atomic manual card-state flag persistence,
-  and custom-deck membership projection
+  and custom-deck membership projection, atomic bulk custom-deck composition with deck metadata and membership outbox mutations
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
@@ -168,13 +168,15 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 60 cases
+### `src/features/settings` — 64 cases
 
 **`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, and non-kanji input, versioned KanjiForge JSON deck import validation, plus non-mutating matched/already-saved/not-found preview classification.
 
 **`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields including the writing pad, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, creating a custom deck with an outbox mutation, assigning offline folders to decks, deleting the Saved deck after confirmation while preserving the built-in deck, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched kanji while identifying existing and unknown input, mapping a CSV column into the same preview flow, loading a versioned JSON deck export into that preview flow, transferring studied starter-deck progress to matching Saved cards while preserving Saved flags, backup restore, and the stale-backup warning with its recovery action. **`deck-folders.test.ts`** covers folder-label normalization and deterministic grouping. **`deck-progress.test.ts`** covers shared-card selection, SRS-field copying, destination-flag preservation, and idempotent no-op planning. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
+
+**`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
 ### `src/features/share` — 5 cases
 

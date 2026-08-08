@@ -437,6 +437,48 @@ describe('SettingsScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('combines selected decks into a custom deck with a first-N limit', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Create a deck' })
+    await user.type(
+      screen.getByRole('textbox', { name: 'New deck name' }),
+      'Commute kanji',
+    )
+    await user.click(
+      screen.getByRole('checkbox', { name: /Development Kanji/ }),
+    )
+    await user.type(
+      screen.getByRole('spinbutton', { name: /First N cards/ }),
+      '3',
+    )
+    await user.click(screen.getByRole('button', { name: 'Create deck' }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () => {
+      const deck = (
+        await createUserRepositories(runtime.database).decks.list()
+      ).find((candidate) => candidate.name === 'Commute kanji')
+      expect(deck).toMatchObject({ kind: 'custom' })
+      expect(
+        await createUserRepositories(runtime.database).deckMembership.list(
+          deck!.id,
+        ),
+      ).toHaveLength(3)
+    })
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending()).filter(
+        (mutation) => mutation.mutType === 'deckMembership.upsert',
+      ),
+    ).toHaveLength(3)
+    expect(
+      await screen.findByText(
+        'Created “Commute kanji” with 3 cards from 1 deck.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('restores the built-in starter deck name offline', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!

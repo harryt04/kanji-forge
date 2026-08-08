@@ -200,6 +200,15 @@ export interface UserRepositories {
     membership: DeckMembership
     mutation: OutboxMutation
   }): Promise<void>
+  /** Persists several user-owned deck memberships and their sync mutations atomically. */
+  recordDeckMemberships(input: {
+    deck: Deck
+    deckMutation: OutboxMutation
+    memberships: readonly {
+      membership: DeckMembership
+      mutation: OutboxMutation
+    }[]
+  }): Promise<void>
   /** Merges a KanjiForge backup without deleting newer local data. */
   restoreBackup(input: {
     decks: readonly Deck[]
@@ -917,6 +926,68 @@ export function createUserRepositories(
             mutation.attempts,
           ],
         },
+      ])
+    },
+    async recordDeckMemberships({ deck, deckMutation, memberships }) {
+      if (deck.kind === 'derived')
+        throw new Error('Derived decks cannot receive custom memberships.')
+      if (deckMutation.mutType !== 'deck.upsert')
+        throw new Error('Custom deck creation must use a deck.upsert mutation.')
+      for (const { membership, mutation } of memberships) {
+        if (membership.deckId !== deck.id)
+          throw new Error('Deck memberships must belong to their deck.')
+        if (mutation.mutType !== 'deckMembership.upsert')
+          throw new Error(
+            'Deck membership mutations must use deckMembership.upsert.',
+          )
+      }
+      await database.transaction([
+        {
+          sql: putDeck,
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ],
+        },
+        {
+          sql: putOutbox,
+          parameters: [
+            deckMutation.id,
+            userId,
+            deckMutation.mutType,
+            deckMutation.payload,
+            deckMutation.createdAt,
+            deckMutation.attempts,
+          ],
+        },
+        ...memberships.flatMap(({ membership, mutation }) => [
+          {
+            sql: putMembership,
+            parameters: [
+              userId,
+              membership.deckId,
+              membership.contentRef,
+              membership.sortOrder,
+              membership.addedAt,
+              membership.updatedAt,
+            ],
+          },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ]),
       ])
     },
     async restoreBackup({

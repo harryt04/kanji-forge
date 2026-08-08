@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState, type Deck } from '@/data/repo'
-import { getKanjiByLiterals } from '@/data/packs'
+import { getKanjiByLiterals, loadDeckDefinitions } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
@@ -93,6 +93,13 @@ import {
   normalizeDeckFolder,
 } from './deck-folders'
 import { planProgressTransfer } from './deck-progress'
+import { combineDeckContent } from './deck-combine'
+
+interface DeckSourceOption {
+  readonly id: string
+  readonly name: string
+  readonly contentRefs: readonly string[]
+}
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -167,6 +174,13 @@ export function SettingsScreen(): React.ReactElement {
   const [savedDeckExists, setSavedDeckExists] = useState(false)
   const [customDecks, setCustomDecks] = useState<readonly Deck[]>([])
   const [newDeckName, setNewDeckName] = useState('')
+  const [deckSources, setDeckSources] = useState<readonly DeckSourceOption[]>(
+    [],
+  )
+  const [selectedDeckSourceIds, setSelectedDeckSourceIds] = useState<
+    readonly string[]
+  >([])
+  const [firstNInput, setFirstNInput] = useState('')
   const [deckFolders, setDeckFolders] = useState<Record<string, string>>({})
   const [deckFolderDrafts, setDeckFolderDrafts] = useState<
     Record<string, string>
@@ -292,7 +306,37 @@ export function SettingsScreen(): React.ReactElement {
         setSaveBehavior(savedSaveBehavior.value)
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
       setSavedDeckExists(savedUserDeck !== undefined)
-      setCustomDecks(existingDecks.filter((deck) => deck.kind === 'custom'))
+      const nextCustomDecks = existingDecks.filter(
+        (deck) => deck.kind === 'custom',
+      )
+      setCustomDecks(nextCustomDecks)
+      const definitions = await loadDeckDefinitions()
+      const membershipSources = await Promise.all(
+        [savedUserDeck, ...nextCustomDecks]
+          .filter((deck): deck is Deck => deck !== undefined)
+          .map(async (deck) => ({
+            deck,
+            memberships: await repositories.deckMembership.list(deck.id),
+          })),
+      )
+      const builtInSources: DeckSourceOption[] = definitions
+        .filter((definition) => definition.contentType === 'kanji')
+        .map((definition) => ({
+          id: definition.id,
+          name:
+            definition.id === STARTER_DECK_ID
+              ? (savedDeck?.name ?? definition.name)
+              : definition.name,
+          contentRefs: definition.contentRefs,
+        }))
+      const userSources: DeckSourceOption[] = membershipSources.map(
+        ({ deck, memberships }) => ({
+          id: deck.id,
+          name: deck.name,
+          contentRefs: memberships.map((membership) => membership.contentRef),
+        }),
+      )
+      setDeckSources([...builtInSources, ...userSources])
       const loadedDeckFolders: Record<string, string> = {
         [STARTER_DECK_ID]: normalizeDeckFolder(savedFolder?.value),
         saved: normalizeDeckFolder(savedSavedFolder?.value),
@@ -743,6 +787,21 @@ export function SettingsScreen(): React.ReactElement {
     setSaving(true)
     try {
       const now = Date.now()
+      const firstN = firstNInput.trim() ? Number(firstNInput) : undefined
+      if (firstN !== undefined && (!Number.isInteger(firstN) || firstN < 1)) {
+        setError('The first-card limit must be a positive whole number.')
+        return
+      }
+      const selectedSources = deckSources.filter((source) =>
+        selectedDeckSourceIds.includes(source.id),
+      )
+      const contentRefs = combineDeckContent(
+        selectedSources.map(({ id, contentRefs: refs }) => ({
+          deckId: id,
+          contentRefs: refs,
+        })),
+        firstN,
+      )
       const deck: Deck = {
         id: `custom-${crypto.randomUUID()}`,
         name,
@@ -750,21 +809,62 @@ export function SettingsScreen(): React.ReactElement {
         definitionId: null,
         updatedAt: now,
       }
-      await createUserRepositories(runtime.database).recordDeck({
-        deck,
+      const repositories = createUserRepositories(runtime.database)
+      const deckMutation = {
+        id: crypto.randomUUID(),
+        mutType: 'deck.upsert' as const,
+        payload: JSON.stringify(deck),
+        createdAt: now,
+        attempts: 0,
+      }
+      const memberships = contentRefs.map((contentRef, sortOrder) => ({
+        membership: {
+          deckId: deck.id,
+          contentRef,
+          sortOrder,
+          addedAt: now,
+          updatedAt: now,
+        },
         mutation: {
           id: crypto.randomUUID(),
-          mutType: 'deck.upsert',
-          payload: JSON.stringify(deck),
+          mutType: 'deckMembership.upsert' as const,
+          payload: JSON.stringify({
+            deckId: deck.id,
+            contentRef,
+            sortOrder,
+            sourceDeckIds: selectedSources.map((source) => source.id),
+          }),
           createdAt: now,
           attempts: 0,
         },
-      })
+      }))
+      if (memberships.length > 0) {
+        await repositories.recordDeckMemberships({
+          deck,
+          deckMutation,
+          memberships,
+        })
+      } else {
+        await repositories.recordDeck({
+          deck,
+          mutation: deckMutation,
+        })
+      }
       setCustomDecks((current) => [...current, deck])
+      setDeckSources((current) => [
+        ...current,
+        { id: deck.id, name: deck.name, contentRefs },
+      ])
       setDeckFolders((current) => ({ ...current, [deck.id]: '' }))
       setDeckFolderDrafts((current) => ({ ...current, [deck.id]: '' }))
       setNewDeckName('')
-      setDeckMessage(`Created “${name}”. Add cards to it from the deck tools.`)
+      setFirstNInput('')
+      setSelectedDeckSourceIds([])
+      setDeckMessage(
+        contentRefs.length > 0
+          ? `Created “${name}” with ${contentRefs.length} ${contentRefs.length === 1 ? 'card' : 'cards'} from ${selectedSources.length} ${selectedSources.length === 1 ? 'deck' : 'decks'}.`
+          : `Created “${name}” as an empty deck. Add cards to it from the deck tools.`,
+      )
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not create the deck.',
@@ -772,6 +872,14 @@ export function SettingsScreen(): React.ReactElement {
     } finally {
       setSaving(false)
     }
+  }
+
+  function toggleDeckSource(deckId: string): void {
+    setSelectedDeckSourceIds((current) =>
+      current.includes(deckId)
+        ? current.filter((id) => id !== deckId)
+        : [...current, deckId],
+    )
   }
 
   async function saveDeckFolder(deckId: string, value: string): Promise<void> {
@@ -1470,8 +1578,9 @@ export function SettingsScreen(): React.ReactElement {
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Create a deck</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Create an empty, user-owned deck for cards you want to collect and
-          study together. It is saved locally and queued for sync immediately.
+          Create a user-owned deck, optionally combining cards from existing
+          decks. Duplicate cards are kept once in source order, and the result
+          is saved locally and queued for sync immediately.
         </p>
         <form
           className="mt-5 flex flex-wrap items-end gap-3"
@@ -1496,6 +1605,56 @@ export function SettingsScreen(): React.ReactElement {
             {saving ? 'Creating…' : 'Create deck'}
           </Button>
         </form>
+        <fieldset className="mt-5 space-y-3">
+          <legend className="text-sm font-medium">Include cards from</legend>
+          <p className="text-muted-foreground text-sm">
+            Select one or more decks to combine. Leave every deck unchecked to
+            create an empty deck.
+          </p>
+          <div className="grid gap-2">
+            {deckSources.map((source) => (
+              <label
+                key={source.id}
+                className="border-border bg-background flex min-h-11 items-center gap-3 rounded-md border px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedDeckSourceIds.includes(source.id)}
+                  onChange={() => toggleDeckSource(source.id)}
+                  disabled={saving}
+                />
+                <span>
+                  <span className="font-medium">{source.name}</span>
+                  <span className="text-muted-foreground ml-2">
+                    {source.contentRefs.length}{' '}
+                    {source.contentRefs.length === 1 ? 'card' : 'cards'}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <label
+          className="mt-5 grid max-w-xs gap-2 text-sm font-medium"
+          htmlFor="new-deck-first-n"
+        >
+          First N cards (optional)
+          <input
+            id="new-deck-first-n"
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+            value={firstNInput}
+            onChange={(event) => setFirstNInput(event.target.value)}
+            disabled={saving}
+            placeholder="All cards"
+          />
+          <span className="text-muted-foreground font-normal">
+            Applied after duplicates are removed from the combined deck.
+          </span>
+        </label>
         {customDecks.length > 0 && (
           <p className="text-muted-foreground mt-4 text-sm">
             {customDecks.length} custom{' '}
