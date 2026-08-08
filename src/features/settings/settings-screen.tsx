@@ -237,6 +237,7 @@ export function SettingsScreen(): React.ReactElement {
     null,
   )
   const [deckImportText, setDeckImportText] = useState('')
+  const [importDeckId, setImportDeckId] = useState('saved')
   const [deckImportBusy, setDeckImportBusy] = useState(false)
   const [deckImportMessage, setDeckImportMessage] = useState<string | null>(
     null,
@@ -1188,7 +1189,7 @@ export function SettingsScreen(): React.ReactElement {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const records = await getKanjiByLiterals(literals)
-      const existing = await repositories.deckMembership.list()
+      const existing = await repositories.deckMembership.list(importDeckId)
       setDeckImportPreview(
         previewKanjiImport(
           literals,
@@ -1304,10 +1305,24 @@ export function SettingsScreen(): React.ReactElement {
       const records = await getKanjiByLiterals(
         deckImportPreview.map((item) => item.literal),
       )
-      const existing = await repositories.deckMembership.list()
+      const existing = await repositories.deckMembership.list(importDeckId)
       const existingRefs = new Set(
         existing.map((membership) => membership.contentRef),
       )
+      const existingTarget = await repositories.decks.get(importDeckId)
+      if (!existingTarget && importDeckId !== 'saved') {
+        throw new Error('The selected import deck no longer exists.')
+      }
+      const targetDeck: Deck = existingTarget ?? {
+        id: 'saved',
+        name: 'Saved',
+        kind: 'saved',
+        definitionId: null,
+        updatedAt: Date.now(),
+      }
+      if (targetDeck.kind === 'derived') {
+        throw new Error('Built-in decks cannot receive imported cards.')
+      }
       const now = Date.now()
       let sortOrder = existing.length
       let imported = 0
@@ -1316,20 +1331,14 @@ export function SettingsScreen(): React.ReactElement {
         const contentRef = `kanji:${literal}`
         if (!records.has(literal) || existingRefs.has(contentRef)) continue
         const membership = {
-          deckId: 'saved' as const,
+          deckId: targetDeck.id,
           contentRef,
           sortOrder,
           addedAt: now,
           updatedAt: now,
         }
         await repositories.recordDeckMembership({
-          deck: {
-            id: 'saved',
-            name: 'Saved',
-            kind: 'saved',
-            definitionId: null,
-            updatedAt: now,
-          },
+          deck: { ...targetDeck, updatedAt: now },
           membership,
           mutation: {
             id: crypto.randomUUID(),
@@ -1344,16 +1353,17 @@ export function SettingsScreen(): React.ReactElement {
         imported += 1
       }
 
-      const alreadySaved = deckImportPreview.filter(
-        (item) => item.status === 'already-saved',
+      const alreadyInTarget = deckImportPreview.filter(
+        (item) => item.status === 'already-in-target',
       ).length
       const unknown = deckImportPreview.filter(
         (item) => item.status === 'not-found',
       ).length
       setDeckImportText('')
       setDeckImportPreview(null)
+      if (targetDeck.id === 'saved') setSavedDeckExists(true)
       setDeckImportMessage(
-        `Added ${imported} kanji to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${imported} kanji to ${targetDeck.name}.${alreadyInTarget > 0 ? ` ${alreadyInTarget} already in ${targetDeck.name}.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
@@ -2610,8 +2620,32 @@ export function SettingsScreen(): React.ReactElement {
           <p className="text-muted-foreground mt-1 text-sm">
             Paste one kanji per line, a compact kanji list, or the first column
             from a KanjiForge text export. Matched kanji are enriched from the
-            installed offline dictionary and added to your Saved deck.
+            installed offline dictionary and appended to the selected deck.
           </p>
+          <label
+            className="mt-3 grid max-w-sm gap-2 text-sm font-medium"
+            htmlFor="import-destination"
+          >
+            Append imported cards to
+            <select
+              id="import-destination"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+              value={importDeckId}
+              onChange={(event) => {
+                setImportDeckId(event.target.value)
+                setDeckImportPreview(null)
+                setDeckImportMessage(null)
+              }}
+              disabled={deckImportBusy}
+            >
+              <option value="saved">Saved</option>
+              {customDecks.map((deck) => (
+                <option key={deck.id} value={deck.id}>
+                  {deck.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <textarea
             aria-label="Kanji to import"
             className="border-input bg-background focus-visible:ring-ring font-jp-ui mt-3 min-h-28 w-full rounded-md border p-3 outline-none focus-visible:ring-2"
@@ -2650,8 +2684,8 @@ export function SettingsScreen(): React.ReactElement {
                     </span>{' '}
                     {item.status === 'matched'
                       ? 'matched — will be added'
-                      : item.status === 'already-saved'
-                        ? 'already in Saved'
+                      : item.status === 'already-in-target'
+                        ? 'already in the selected deck'
                         : 'not found in the installed dictionary'}
                   </li>
                 ))}

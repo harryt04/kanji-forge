@@ -835,7 +835,7 @@ describe('SettingsScreen', () => {
       '日 matched — will be added',
     )
     expect(screen.getByLabelText('Import preview')).toHaveTextContent(
-      '本 already in Saved',
+      '本 already in the selected deck',
     )
     expect(screen.getByLabelText('Import preview')).toHaveTextContent(
       '𠮷 not found in the installed dictionary',
@@ -861,6 +861,58 @@ describe('SettingsScreen', () => {
     await expect(
       createUserRepositories(runtime.database).outbox.pending(),
     ).resolves.toMatchObject([{ mutType: 'deckMembership.upsert' }])
+  })
+
+  it('appends imported kanji to an existing custom deck instead of Saved', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    const now = Date.now()
+    await repositories.decks.upsert({
+      id: 'custom-travel',
+      name: 'Travel',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: now,
+    })
+    await repositories.deckMembership.save({
+      deckId: 'custom-travel',
+      contentRef: 'kanji:本',
+      sortOrder: 0,
+      addedAt: now,
+      updatedAt: now,
+    })
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('option', { name: 'Travel' }),
+      ).toBeInTheDocument(),
+    )
+    await user.selectOptions(
+      screen.getByLabelText('Append imported cards to'),
+      'custom-travel',
+    )
+    await user.type(screen.getByLabelText('Kanji to import'), '日\n本')
+    await user.click(screen.getByRole('button', { name: 'Preview import' }))
+    expect(await screen.findByLabelText('Import preview')).toHaveTextContent(
+      '本 already in the selected deck',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Import matched kanji' }),
+    )
+
+    expect(
+      await screen.findByText('Added 1 kanji to Travel. 1 already in Travel.'),
+    ).toBeInTheDocument()
+    await expect(
+      repositories.deckMembership.list('custom-travel'),
+    ).resolves.toMatchObject([
+      { deckId: 'custom-travel', contentRef: 'kanji:本' },
+      { deckId: 'custom-travel', contentRef: 'kanji:日' },
+    ])
+    await expect(repositories.deckMembership.list('saved')).resolves.toEqual([])
   })
 
   it('maps a CSV kanji column into the existing offline import preview', async () => {

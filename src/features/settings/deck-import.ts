@@ -156,7 +156,8 @@ export function isKanjiLiteral(value: string): boolean {
   )
 }
 
-export type KanjiImportPreviewStatus = 'matched' | 'already-saved' | 'not-found'
+export type KanjiImportPreviewStatus =
+  'matched' | 'already-in-target' | 'not-found'
 
 export interface KanjiImportPreviewItem {
   readonly literal: string
@@ -174,7 +175,7 @@ export function previewKanjiImport(
     const status: KanjiImportPreviewStatus = !records.has(literal)
       ? 'not-found'
       : existingContentRefs.has(contentRef)
-        ? 'already-saved'
+        ? 'already-in-target'
         : 'matched'
     return { literal, status }
   })

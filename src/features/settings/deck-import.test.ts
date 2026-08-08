@@ -117,7 +117,7 @@ describe('previewKanjiImport', () => {
       ),
     ).toEqual([
       { literal: '日', status: 'matched' },
-      { literal: '本', status: 'already-saved' },
+      { literal: '本', status: 'already-in-target' },
       { literal: '𠮷', status: 'not-found' },
     ])
   })

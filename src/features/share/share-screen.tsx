@@ -300,7 +300,7 @@ export function ShareTargetScreen(): React.ReactElement {
       }
 
       const alreadySaved = preview.filter(
-        (item) => item.status === 'already-saved',
+        (item) => item.status === 'already-in-target',
       ).length
       const unknown = preview.filter(
         (item) => item.status === 'not-found',
@@ -308,7 +308,7 @@ export function ShareTargetScreen(): React.ReactElement {
       setPreview(
         preview.map((item) =>
           item.status === 'matched'
-            ? { ...item, status: 'already-saved' }
+            ? { ...item, status: 'already-in-target' }
             : item,
         ),
       )
@@ -662,7 +662,7 @@ export function ShareTargetScreen(): React.ReactElement {
                 <span className="text-muted-foreground text-sm">
                   {item.status === 'matched'
                     ? 'matched'
-                    : item.status === 'already-saved'
+                    : item.status === 'already-in-target'
                       ? 'already in Saved'
                       : 'not found'}
                 </span>
