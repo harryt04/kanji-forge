@@ -97,7 +97,10 @@ describe('BrowseScreen', () => {
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       screen.getByRole('gridcell', { name: '日, Level 0, New' }).closest('a'),
-    ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E6%97%A5')
+    ).toHaveAttribute(
+      'href',
+      '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
+    )
 
     await fireEvent.click(
       screen.getByRole('button', { name: 'Show list view' }),
@@ -108,6 +111,28 @@ describe('BrowseScreen', () => {
     expect(await repo.settings.get(BROWSE_VIEW_SETTING)).toMatchObject({
       value: 'list',
     })
+  })
+
+  it('keeps Browse visible beside the selected offline detail on large screens', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
+    )
+    bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-detail-pane')).toBeInTheDocument(),
+    )
+    expect(screen.getByTestId('browse-card-list')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByTestId('kanji-detail')).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '← Back to Browse' }),
+    ).toHaveAttribute('href', '/browse')
   })
 
   it('persists configurable tile content and renders the selected field', async () => {

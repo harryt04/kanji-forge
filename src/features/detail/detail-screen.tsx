@@ -242,7 +242,11 @@ function WordDetailView({
   )
 }
 
-export function DetailScreen(): React.ReactElement {
+export function DetailScreen({
+  embedded = false,
+}: {
+  readonly embedded?: boolean
+} = {}): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
   const [contentRef, setContentRef] = useState<string | null>(
@@ -511,7 +515,8 @@ export function DetailScreen(): React.ReactElement {
   }
 
   function navigateTo(nextContentRef: string): void {
-    const nextUrl = `/detail?contentRef=${encodeURIComponent(nextContentRef)}`
+    const basePath = embedded ? '/browse' : '/detail'
+    const nextUrl = `${basePath}?contentRef=${encodeURIComponent(nextContentRef)}`
     window.history.pushState({}, '', nextUrl)
     setContentRef(nextContentRef)
   }
@@ -621,7 +626,7 @@ export function DetailScreen(): React.ReactElement {
 
   return (
     <main
-      className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6"
+      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
       onTouchStart={(event) =>
         setTouchStartX(event.touches[0]?.clientX ?? null)
       }
