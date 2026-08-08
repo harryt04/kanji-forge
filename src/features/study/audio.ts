@@ -1,4 +1,4 @@
-import { getAudioPackFile } from './audio-pack'
+import { getAudioPackFile, listAudioPacks } from './audio-pack'
 
 export const STUDY_AUTO_PLAY_AUDIO_SETTING = 'study.autoPlayAudio'
 
@@ -16,6 +16,15 @@ export function supportsJapaneseSpeech(): boolean {
     typeof window.speechSynthesis?.speak === 'function' &&
     typeof window.SpeechSynthesisUtterance === 'function'
   )
+}
+
+/** Returns whether an offline community recording is available to play. */
+export async function hasInstalledJapaneseAudio(): Promise<boolean> {
+  try {
+    return (await listAudioPacks()).length > 0
+  } catch {
+    return false
+  }
 }
 
 /** Speaks Japanese text using the device voice, if the browser supports it. */

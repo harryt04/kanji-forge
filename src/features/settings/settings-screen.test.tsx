@@ -304,7 +304,7 @@ describe('SettingsScreen', () => {
       await screen.findByRole('heading', { name: 'Study audio' }),
     ).toBeInTheDocument()
     await user.click(
-      screen.getByRole('checkbox', { name: /Auto-play synthesized voice/ }),
+      screen.getByRole('checkbox', { name: /Auto-play Japanese audio/ }),
     )
 
     const runtime = getActiveUserRuntime()!

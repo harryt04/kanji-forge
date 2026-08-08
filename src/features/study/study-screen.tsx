@@ -31,6 +31,7 @@ import {
 } from './study-style'
 import {
   playJapaneseAudio,
+  hasInstalledJapaneseAudio,
   supportsStudyCardAudio,
   supportsJapaneseSpeech,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
@@ -66,6 +67,7 @@ export function StudyScreen({
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [hasAudioPack, setHasAudioPack] = useState(false)
   const [relatedWords, setRelatedWords] = useState<readonly WordRecord[]>([])
   const [relatedWordsLoading, setRelatedWordsLoading] = useState(false)
   const [shownRelatedWordIds, setShownRelatedWordIds] = useState<
@@ -125,6 +127,7 @@ export function StudyScreen({
         studyAnswerSetting,
         twoTapSetting,
         autoPlayAudioSetting,
+        audioPackInstalled,
         srsModeSetting,
       ] = await Promise.all([
         repoForSession.settings.get(GREY_STICKIES_SETTING),
@@ -132,6 +135,7 @@ export function StudyScreen({
         repoForSession.settings.get(STUDY_ANSWER_SETTING),
         repoForSession.settings.get(STUDY_TWO_TAP_SETTING),
         repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        hasInstalledJapaneseAudio(),
         repoForSession.settings.get(SRS_MODE_SETTING),
       ])
       const startedAt = Date.now()
@@ -166,6 +170,7 @@ export function StudyScreen({
         setTwoTapStudy(parseStudyTwoTap(twoTapSetting?.value))
         setTwoTapStage(0)
         setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
+        setHasAudioPack(audioPackInstalled)
         setPreferenceError(null)
         setLoading(false)
       }
@@ -360,7 +365,8 @@ export function StudyScreen({
         : (studyCard?.literal ?? '')
   const questionIsJapanese = twoTapStudy || studyQuestion !== 'meaning'
   const canSpeak =
-    supportsStudyCardAudio(studyCard?.contentType) && supportsJapaneseSpeech()
+    supportsStudyCardAudio(studyCard?.contentType) &&
+    (supportsJapaneseSpeech() || hasAudioPack)
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`
@@ -406,12 +412,12 @@ export function StudyScreen({
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label="Play synthesized voice"
+                    aria-label="Play Japanese audio"
                     onClick={speakCurrentCard}
                   >
                     Speak
                   </Button>
-                  <span className="text-xs">Synthesized voice</span>
+                  <span className="text-xs">Japanese audio</span>
                 </>
               )}
             </>

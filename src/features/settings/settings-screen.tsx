@@ -2343,7 +2343,7 @@ export function SettingsScreen(): React.ReactElement {
         >
           <span>
             <span className="block font-semibold">
-              Auto-play synthesized voice
+              Auto-play Japanese audio
             </span>
             <span className="text-muted-foreground block text-sm font-normal">
               Speak the first Japanese reading when the answer is revealed.

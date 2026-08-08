@@ -27,6 +27,8 @@ import {
   STUDY_TWO_TAP_SETTING,
 } from './study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from './audio'
+import { installAudioPack, removeAudioPack } from './audio-pack'
+import { zipSync } from 'fflate'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -100,7 +102,7 @@ describe('StudyScreen', () => {
 
     await renderReady()
     expect(
-      screen.queryByRole('button', { name: 'Play synthesized voice' }),
+      screen.queryByRole('button', { name: 'Play Japanese audio' }),
     ).not.toBeInTheDocument()
 
     await userEvent.click(
@@ -373,6 +375,95 @@ describe('StudyScreen', () => {
       screen.queryByRole('heading', { name: 'Writing answer' }),
     ).not.toBeInTheDocument()
     await waitFor(() => expect(speak).toHaveBeenCalledOnce())
+  })
+
+  it('exposes installed community audio when speech synthesis is unavailable', async () => {
+    const entry = await findDictionaryEntry('お金')
+    if (!entry || entry.type !== 'word') throw new Error('word fixture missing')
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+    const deck = {
+      id: 'community-audio-study-deck',
+      name: 'Community audio study',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: 1,
+    }
+    await repo.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: `word:${entry.record.id}`,
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'community-audio-study-membership',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({
+          deckId: deck.id,
+          contentRef: `word:${entry.record.id}`,
+        }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+    const packId = `study-audio-${crypto.randomUUID()}`
+    const pack = zipSync({
+      'manifest.json': new TextEncoder().encode(
+        JSON.stringify({
+          id: packId,
+          name: 'Study voice',
+          version: '1.0.0',
+          license: 'CC BY 4.0',
+          attribution: 'A Japanese speaker',
+          files: { 'お金|おかね': 'audio/okane.mp3' },
+        }),
+      ),
+      'audio/okane.mp3': new Uint8Array([1, 2, 3]),
+    })
+    await installAudioPack(pack)
+    const createObjectUrl = Object.getOwnPropertyDescriptor(
+      URL,
+      'createObjectURL',
+    )
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: () => 'blob:study-audio',
+    })
+
+    try {
+      class FakeAudio {
+        static instances: FakeAudio[] = []
+        constructor(readonly src: string) {
+          FakeAudio.instances.push(this)
+        }
+        addEventListener(): void {}
+        async play(): Promise<void> {}
+      }
+      vi.stubGlobal('Audio', FakeAudio)
+
+      render(<StudyScreen deckDefinitionId={deck.id} />)
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Play Japanese audio' }),
+        ).toBeInTheDocument(),
+      )
+      expect(screen.getByText('Japanese audio')).toBeInTheDocument()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Play Japanese audio' }),
+      )
+      await waitFor(() => expect(FakeAudio.instances).toHaveLength(1))
+    } finally {
+      await removeAudioPack(packId)
+      if (createObjectUrl) {
+        Object.defineProperty(URL, 'createObjectURL', createObjectUrl)
+      } else {
+        Reflect.deleteProperty(URL, 'createObjectURL')
+      }
+    }
   })
 
   it('reveals readings first and all card details on the second tap', async () => {
