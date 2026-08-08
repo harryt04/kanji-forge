@@ -5,6 +5,7 @@ export interface AnkiImportDeck {
   readonly deckName: string | null
   readonly noteCount: number
   readonly kanji: readonly string[]
+  readonly values: readonly string[]
 }
 
 function getDeckName(database: Database): string | null {
@@ -47,6 +48,45 @@ function extractKanji(input: string): readonly string[] {
   ]
 }
 
+function isJapaneseCharacter(value: string): boolean {
+  const codePoint = value.codePointAt(0)
+  return (
+    codePoint !== undefined &&
+    ((codePoint >= 0x3040 && codePoint <= 0x30ff) ||
+      (codePoint >= 0x31f0 && codePoint <= 0x31ff) ||
+      (codePoint >= 0x3400 && codePoint <= 0x4dbf) ||
+      (codePoint >= 0x4e00 && codePoint <= 0x9fff) ||
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+      (codePoint >= 0x20000 && codePoint <= 0x2fa1f) ||
+      codePoint === 0x3005 ||
+      codePoint === 0x30a0 ||
+      codePoint === 0xff5e)
+  )
+}
+
+/**
+ * Keeps Japanese runs from Anki fields so exact dictionary words can be
+ * enriched during the normal import preview. Single kana runs are omitted;
+ * the kanji fallback still preserves individual ideographs from every field.
+ */
+function extractJapaneseValues(input: string): readonly string[] {
+  const values: string[] = []
+  let run = ''
+
+  function flush(): void {
+    if (run.length > 1 || isKanjiLiteral(run)) values.push(run)
+    run = ''
+  }
+
+  for (const character of input.replace(/<[^>]*>/gu, ' ')) {
+    if (isJapaneseCharacter(character)) run += character
+    else flush()
+  }
+  flush()
+
+  return [...new Set(values)]
+}
+
 /**
  * Reads the portable SQLite collection inside an Anki package.
  *
@@ -85,6 +125,7 @@ export async function parseAnkiApkg(
       deckName: getDeckName(database),
       noteCount: fields.length,
       kanji: extractKanji(fields.join('\n')),
+      values: extractJapaneseValues(fields.join('\n')),
     }
   } catch {
     throw new Error('Anki import has no readable notes table.')

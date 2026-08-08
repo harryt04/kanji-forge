@@ -1570,18 +1570,18 @@ export function SettingsScreen(): React.ReactElement {
     }
     try {
       const deck = await parseAnkiApkg(await ankiImportFile.arrayBuffer())
-      if (deck.kanji.length === 0) {
+      if (deck.values.length === 0 && deck.kanji.length === 0) {
         setDeckImportMessage(
-          'The Anki package contains no kanji in its note fields.',
+          'The Anki package contains no Japanese content in its note fields.',
         )
         return
       }
       await previewImportValues(
-        deck.kanji,
-        'The Anki package contains no kanji in its note fields.',
+        deck.values.length > 0 ? deck.values : deck.kanji,
+        'The Anki package contains no Japanese content in its note fields.',
       )
       setDeckImportMessage(
-        `Previewing ${deck.kanji.length} kanji from ${deck.deckName ? `“${deck.deckName}”` : 'the Anki package'}.`,
+        `Previewing ${deck.values.length || deck.kanji.length} Japanese entries from ${deck.deckName ? `“${deck.deckName}”` : 'the Anki package'}.`,
       )
     } catch (reason: unknown) {
       setDeckImportMessage(
@@ -3312,9 +3312,10 @@ export function SettingsScreen(): React.ReactElement {
             <div className="border-border mt-5 border-t pt-5">
               <h4 className="font-medium">Import from Anki</h4>
               <p className="text-muted-foreground mt-1 text-sm">
-                Choose an Anki .apkg export. Kanji found in its note fields are
-                previewed and added to Saved; tags, scheduling, and card
-                templates are intentionally not imported.
+                Choose an Anki .apkg export. Japanese words and kanji found in
+                its note fields are enriched through the offline dictionary and
+                previewed before being added to Saved; tags, scheduling, and
+                card templates are intentionally not imported.
               </p>
               <input
                 className="mt-3 block text-sm"

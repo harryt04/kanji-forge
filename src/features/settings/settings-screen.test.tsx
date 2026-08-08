@@ -1175,7 +1175,7 @@ describe('SettingsScreen', () => {
     ])
     database.run('INSERT INTO notes VALUES (?, ?)', [
       1,
-      '日本\u001fにほん\u001fJapan',
+      'お金\u001fおかね\u001fMoney',
     ])
     const archive = zipSync({ 'collection.anki2': database.export() })
     const file = new File([archive], 'n5.apkg', { type: 'application/zip' })
@@ -1195,10 +1195,12 @@ describe('SettingsScreen', () => {
     )
 
     expect(
-      await screen.findByText('Previewing 2 kanji from “N5 vocabulary”.'),
+      await screen.findByText(
+        'Previewing 2 Japanese entries from “N5 vocabulary”.',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Import preview')).toHaveTextContent(
-      '日 matched — will be added',
+      'お金 matched — will be added',
     )
   })
 

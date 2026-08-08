@@ -197,6 +197,7 @@ describe('Anki package import', () => {
       deckName: 'N5 vocabulary',
       noteCount: 2,
       kanji: ['本', '日'],
+      values: ['本', 'ほん', '日本', 'にほん'],
     })
     database.close()
   })
