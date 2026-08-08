@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 43 (308 test cases: 308 passing) |
-| Component test files | 10 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 94 cases, included above) |
+| Unit/integration test files | 44 (311 test cases: 311 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 97 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.86%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -173,6 +173,10 @@ promotion, and pinned-search toggling.
 **`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched kanji while identifying existing and unknown input, mapping a CSV column into the same preview flow, loading a versioned JSON deck export into that preview flow, backup restore, and the stale-backup warning with its recovery action. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
+
+### `src/features/share` — 3 cases
+
+**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, previewing shared Japanese text against the offline dictionary, and importing matched kanji into Saved with atomic membership and outbox mutations.
 
 **`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 
