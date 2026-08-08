@@ -80,6 +80,7 @@ import {
   guessKanjiColumn,
   parseCsvImport,
   parseCsvKanjiColumn,
+  parseJsonKanjiImport,
   parseKanjiImportText,
   previewKanjiImport,
   type CsvImportTable,
@@ -191,6 +192,7 @@ export function SettingsScreen(): React.ReactElement {
     null,
   )
   const [csvKanjiColumn, setCsvKanjiColumn] = useState(0)
+  const [jsonImportText, setJsonImportText] = useState('')
   const [notificationStatus, setNotificationStatus] = useState<
     NotificationPermission | 'unsupported' | null
   >(null)
@@ -807,6 +809,19 @@ export function SettingsScreen(): React.ReactElement {
       parseCsvKanjiColumn(csvImportTable, csvKanjiColumn),
       'The selected CSV column contains no kanji to import.',
     )
+  }
+
+  async function previewJsonList(): Promise<void> {
+    try {
+      await previewKanjiLiterals(
+        parseJsonKanjiImport(jsonImportText),
+        'Paste a KanjiForge JSON deck export to import.',
+      )
+    } catch (reason: unknown) {
+      setDeckImportMessage(
+        reason instanceof Error ? reason.message : 'Could not parse JSON.',
+      )
+    }
   }
 
   async function importKanjiList(): Promise<void> {
@@ -1852,6 +1867,50 @@ export function SettingsScreen(): React.ReactElement {
                 </Button>
               </div>
             )}
+            <div className="border-border mt-5 border-t pt-5">
+              <h4 className="font-medium">Import from JSON</h4>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Choose or paste a versioned KanjiForge JSON deck export. Its
+                content is previewed and added to Saved without replacing
+                existing progress.
+              </p>
+              <input
+                className="mt-3 block text-sm"
+                type="file"
+                accept="application/json,.json"
+                aria-label="Choose JSON deck import file"
+                disabled={deckImportBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  void file.text().then((text) => {
+                    setJsonImportText(text)
+                    setDeckImportPreview(null)
+                    setDeckImportMessage(null)
+                  })
+                }}
+              />
+              <textarea
+                aria-label="JSON deck to import"
+                className="border-input bg-background focus-visible:ring-ring mt-3 min-h-28 w-full rounded-md border p-3 font-mono text-sm outline-none focus-visible:ring-2"
+                value={jsonImportText}
+                onChange={(event) => {
+                  setJsonImportText(event.target.value)
+                  setDeckImportPreview(null)
+                  setDeckImportMessage(null)
+                }}
+                placeholder={'{"format":"kanjiforge-deck-export",…}'}
+                disabled={deckImportBusy}
+              />
+              <Button
+                type="button"
+                className="mt-3"
+                disabled={deckImportBusy || jsonImportText.trim().length === 0}
+                onClick={() => void previewJsonList()}
+              >
+                Preview JSON import
+              </Button>
+            </div>
           </div>
         </div>
       </section>

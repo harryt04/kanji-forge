@@ -660,6 +660,42 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('loads a KanjiForge JSON export into the existing offline import preview', async () => {
+    const user = userEvent.setup()
+    const json = JSON.stringify({
+      format: 'kanjiforge-deck-export',
+      version: 1,
+      deck: { id: 'dev-kanji', name: 'Development Kanji' },
+      cards: [{ kanji: '日' }, { kanji: '本' }],
+    })
+    const file = new File([json], 'kanjiforge-deck.json', {
+      type: 'application/json',
+    })
+    Object.defineProperty(file, 'text', {
+      value: async () => json,
+    })
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.upload(
+      screen.getByLabelText('Choose JSON deck import file'),
+      file,
+    )
+    await waitFor(() =>
+      expect(screen.getByLabelText('JSON deck to import')).toHaveValue(json),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Preview JSON import' }),
+    )
+
+    expect(await screen.findByLabelText('Import preview')).toHaveTextContent(
+      '日 matched — will be added',
+    )
+    expect(screen.getByLabelText('Import preview')).toHaveTextContent(
+      '本 matched — will be added',
+    )
+  })
+
   it('shows a backup reminder when the last backup is more than 30 days old', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({

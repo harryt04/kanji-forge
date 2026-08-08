@@ -112,6 +112,38 @@ export function parseKanjiImportText(input: string): readonly string[] {
   return [...new Set(values.filter(isKanjiLiteral))]
 }
 
+/**
+ * Parses a versioned KanjiForge JSON deck export into dictionary-backed
+ * literals. Card progress is intentionally ignored; imports add content to
+ * Saved and do not overwrite local SRS state.
+ */
+export function parseJsonKanjiImport(input: string): readonly string[] {
+  let value: unknown
+  try {
+    value = JSON.parse(input) as unknown
+  } catch {
+    throw new Error('JSON import is not valid JSON.')
+  }
+
+  if (!isRecord(value) || value.format !== 'kanjiforge-deck-export') {
+    throw new Error('JSON import must be a KanjiForge deck export.')
+  }
+  if (value.version !== 1 || !Array.isArray(value.cards)) {
+    throw new Error('JSON import uses an unsupported deck export version.')
+  }
+
+  const values = value.cards.flatMap((card) => {
+    if (!isRecord(card)) return []
+    const literal = card.kanji ?? card.literal
+    return typeof literal === 'string' ? [literal] : []
+  })
+  return parseKanjiImportText(values.join('\n'))
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export function isKanjiLiteral(value: string): boolean {
   if ([...value].length !== 1) return false
   const codePoint = value.codePointAt(0)

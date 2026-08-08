@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   guessKanjiColumn,
   isKanjiLiteral,
+  parseJsonKanjiImport,
   parseCsvImport,
   parseCsvKanjiColumn,
   parseKanjiImportText,
@@ -57,6 +58,38 @@ describe('parseKanjiImportText', () => {
 
   it('ignores whitespace, punctuation, and non-kanji fields', () => {
     expect(parseKanjiImportText('  日  \nかな\nEnglish\n、')).toEqual(['日'])
+  })
+})
+
+describe('parseJsonKanjiImport', () => {
+  it('extracts stable, unique kanji from the versioned deck export', () => {
+    expect(
+      parseJsonKanjiImport(
+        JSON.stringify({
+          format: 'kanjiforge-deck-export',
+          version: 1,
+          cards: [
+            { kanji: '日', level: 3 },
+            { kanji: '日本' },
+            { literal: '本' },
+          ],
+        }),
+      ),
+    ).toEqual(['日', '本'])
+  })
+
+  it('rejects malformed and unsupported deck JSON', () => {
+    expect(() => parseJsonKanjiImport('{')).toThrow('not valid JSON')
+    expect(() => parseJsonKanjiImport('{}')).toThrow('must be a KanjiForge')
+    expect(() =>
+      parseJsonKanjiImport(
+        JSON.stringify({
+          format: 'kanjiforge-deck-export',
+          version: 2,
+          cards: [],
+        }),
+      ),
+    ).toThrow('unsupported deck export version')
   })
 })
 
