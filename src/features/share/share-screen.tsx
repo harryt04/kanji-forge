@@ -39,12 +39,9 @@ import {
   recordAnalyzerText,
   serializeAnalyzerHistory,
 } from './analyzer-history'
+import type { SharedTextPayload } from './share-target'
 
-export interface SharedTextPayload {
-  readonly text: string
-  readonly title: string | null
-  readonly url: string | null
-}
+export type { SharedTextPayload } from './share-target'
 
 /** Reads the GET share-target fields without requiring a network round trip. */
 export function readSharedTextPayload(search: string): SharedTextPayload {

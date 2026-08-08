@@ -23,6 +23,7 @@ import {
 } from './share-screen'
 import { ANALYZER_DISPLAY_SETTING } from './analyzer-settings'
 import { ANALYZER_HISTORY_SETTING } from './analyzer-history'
+import { readSharedFormDataPayload } from './share-target'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -98,6 +99,20 @@ describe('ShareTargetScreen', () => {
       text: '日本',
       title: 'Study',
       url: 'https://example.com',
+    })
+  })
+
+  it('reads bounded text-share form fields from a native POST payload', () => {
+    const form = new FormData()
+    form.set('text', '  日本語  ')
+    form.set('title', '  Study article  ')
+    form.set('url', 'https://example.com/article')
+    form.append('files', new File(['ignored'], 'article.txt'))
+
+    expect(readSharedFormDataPayload(form)).toEqual({
+      text: '日本語',
+      title: 'Study article',
+      url: 'https://example.com/article',
     })
   })
 
