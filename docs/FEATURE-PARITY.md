@@ -104,7 +104,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Hint escalation after repeated failures | ➕ ✅ | 2026-08-08 | After two rejected strokes, the expected stroke gets a start dot; after three, it pulses as an animated hint, with reduced-motion support |
 | — | Leniency setting | ➕ ✅ | 2026-08-08 | Writing practice persists strict, normal, or forgiving stroke-match tolerance per user and applies it while validating strokes |
 | — | Alternate-stroke-order exceptions table | ➕ ✅ | 2026-08-08 | Writing validation accepts a curated set of interchangeable stroke indexes for common ambiguous orders while keeping all other strokes sequential |
-| — | Standalone drill mode | ➕ 🔷 | 2026-08-07 | Detail-linked offline writing practice can run a selected kanji for 1–10 repetitions without changing study progress |
+| — | Standalone drill mode | ➕ ✅ | 2026-08-08 | Authenticated primary navigation opens the offline writing route directly (defaulting to 日), and each Detail view can open a selected kanji for 1–10 repetitions without changing study progress |
 
 ## 6. Decks
 

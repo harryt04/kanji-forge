@@ -70,6 +70,7 @@ export function AppNavigation({
       </Link>
       <NavLink href="/history">History</NavLink>
       <NavLink href="/dictionary">Dictionary</NavLink>
+      <NavLink href="/writing">Writing</NavLink>
       <NavLink href="/help">Help</NavLink>
     </nav>
   )

@@ -58,6 +58,10 @@ describe('AppNavigation', () => {
       'href',
       '/history',
     )
+    expect(screen.getByRole('link', { name: 'Writing' })).toHaveAttribute(
+      'href',
+      '/writing',
+    )
     expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute(
       'href',
       '/help',
