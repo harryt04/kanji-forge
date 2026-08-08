@@ -18,7 +18,7 @@ export function ThemeController({ userId }: { userId: string }): null {
     if (!runtime || runtime.userId !== userId) return
 
     let cancelled = false
-    let preference: ThemePreference = 'light'
+    let preference: ThemePreference = 'system'
     const media =
       typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         ? window.matchMedia('(prefers-color-scheme: dark)')
