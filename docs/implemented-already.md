@@ -24,6 +24,7 @@ Code with real logic and an existing test file exercising it.
 | Auth runtime isolation | `src/auth/runtime.ts` | `bootstrapUserRuntime(userId)` opens a user-scoped local database and starts the (stub) outbox/sync lifecycle seams; `clearUserRuntime()` tears everything down on sign-out; switching accounts closes the old database before opening the new one. Every entry point rejects an empty `userId`. Covered by `runtime.test.ts` and `no-anonymous.test.ts` (parameterized: db, outbox, and sync all reject anonymous callers). |
 | Backend env + schema contract | `apps/api/src/env.ts`, `apps/api/src/db/schema.ts` | Environment validation (safe network defaults, `BETTER_AUTH_SECRET` must be ≥32 chars) and a contract test asserting the Postgres migration includes better-auth's tables plus the syncable app projections (`user`, `session`, `account`, `verification`, `reviews`, `decks`, `settings`, `deck_membership`) while excluding local-only tables. Covered by `env.test.ts` and `schema.contract.test.ts`. |
 | Content pipeline (ETL) | `scripts/build-packs/*.ts`, `scripts/build-packs/pipeline.mjs` | Fetches and pins upstream sources (KANJIDIC2, JMdict, KanjiVG, Tatoeba, JmdictFurigana) with recorded SHA-256 hashes; builds SQLite content packs for kanji, words (with FTS5 search), strokes, sentences, and a visually-similar-kanji index; builds deck definitions (JLPT, School grades, Jōyō, Top 500, Kana). `pipeline.mjs` verifies reproducibility and produces deterministic Brotli-compressed artifacts. Covered by `fetch-sources.test.ts`, `build-decks.test.ts`, `build-similar-pack.test.ts`, `pipeline.test.mjs`, and driven in CI via `pnpm packs:verify && pnpm packs:test`. |
+| Writing practice | `src/features/writing/{writing-screen,index}.ts`, `src/app/writing/page.tsx` | Authenticated `/writing` practice surface loads an offline KanjiVG guide and captures finger, stylus, or mouse strokes with Pointer Events. Captured strokes can be undone or cleared; stroke correctness validation remains deferred. Covered by `writing-screen.test.tsx`. |
 
 ---
 
@@ -69,7 +70,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 | Stroke processing | `src/core/stroke/{match,resample}.ts` | Each exports a single `*_STUB` constant. | T6.0 (writing trainer) |
 | Import/enrichment | `src/core/import/{parse,enrich}.ts` | Each exports a single `*_STUB` constant. | T8.0 (v2, deferred with custom decks) |
 | PWA registration, storage protection, and app badge | `src/pwa/index.ts`, `src/pwa/{app-badge,storage-persistence}.ts`, `src/pwa/sw.ts`, `next.config.js` | Registers the build-generated Serwist worker in the browser; the worker precaches build assets and caches visited navigations for offline reloads. Updated workers wait rather than interrupting an active study session. After the first non-empty completed study session, the app requests durable browser storage and Settings warns when the browser cannot protect local data. On supported installed browsers, a persisted per-user setting controls an app-icon badge showing due/new cards, total cards, or no badge. | T5.0 |
-| Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Detail and Settings are real authenticated offline screens; Detail includes kanji metadata, ranked similar-kanji links, ranked example words, and ranked Tatoeba example sentences with furigana breakdown from the installed packs. Writing remains a placeholder. | Phases 2–3, or Deferred for Writing per TRD |
+| Detail / Settings routes | `src/app/{detail,settings}/…`, `src/features/{detail,settings}/index.ts` | Detail and Settings are real authenticated offline screens; Detail includes kanji metadata, ranked similar-kanji links, ranked example words, and ranked Tatoeba example sentences with furigana breakdown from the installed packs. | Phases 2–3 |
 
 ---
 
@@ -86,7 +87,7 @@ this snapshot:
 | Atomic local grade transaction | "not yet called by a study screen" | Now called on every grade via `useStudyStore.grade()` → `repo.recordGrade()` | `8475b74` |
 
 All other rows in `MVP-STATUS.md` — outbox stub, Electric stub, mutation-API 501, pack-manager stub,
-Browse inline-edit follow-up, Detail/Settings/Writing placeholders — remain accurate as of this
+Browse inline-edit follow-up — remain accurate as of this
 snapshot and are restated in the "Stubs and explicit seams" table above for a single source of truth.
 
 ---
@@ -102,6 +103,8 @@ Consistent with the code above, not aspirational:
   readings, meanings, levels, flags, and metadata filters.
 - Open a kanji Detail view to see offline metadata, example words, example sentences with furigana,
   English translations, and source attribution.
+- Open Writing practice from Detail to trace a kanji over its offline guide, undo a stroke, or clear
+  the practice surface.
 - Start a study session on the `dev-kanji` starter deck, reveal cards by tap/click/Space, grade by
   keyboard/swipe/button, undo the last grade, and see a session summary.
 - Have every grade persisted locally (SQLite-WASM/OPFS) atomically, surviving a reload.
@@ -109,4 +112,4 @@ Consistent with the code above, not aspirational:
   or no badge; the count is derived from the local deck and remains offline.
 
 What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), writing
-validation/stroke playback, backup/export, and full pack management.
+validation, backup/export, and full pack management.

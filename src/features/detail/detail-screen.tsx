@@ -555,6 +555,12 @@ export function DetailScreen(): React.ReactElement {
         >
           Stroke order
         </h2>
+        <Link
+          className="text-primary mt-2 inline-block text-sm underline-offset-4 hover:underline"
+          href={`/writing?contentRef=${encodeURIComponent(contentRef)}`}
+        >
+          Practice writing {content.literal}
+        </Link>
         {showStrokeAnimation && strokes ? (
           <div className="mt-3">
             <StrokeAnimation character={content.literal} paths={strokes} />
