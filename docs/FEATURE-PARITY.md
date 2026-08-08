@@ -110,7 +110,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 6.1 | Deck chooser with progress %, color, last studied | ✅ | 2026-08-06 | |
+| 6.1 | Deck chooser with progress %, color, last studied | ✅ | 2026-08-08 | Home now lists every bundled deck with independent offline progress, belt color, last-studied metadata, and Study/Browse actions |
 | 6.2 | Rename deck | ✅ | 2026-08-07 | Settings renames the built-in starter deck offline and queues its metadata mutation for sync |
 | 6.3 | Delete deck (swipe) | ✅ | 2026-08-08 | Settings can delete any user-owned Saved or custom deck after confirmation, atomically removing its membership, progress, notes, reviews, sessions, and folder metadata; the built-in starter deck is protected |
 | 6.4 | Create new deck | ✅ | 2026-08-08 | Settings creates an empty user-owned custom deck offline and queues its metadata for sync; card population and custom-deck study surfaces follow in the deck-content slices |

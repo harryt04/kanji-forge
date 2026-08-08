@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
@@ -50,7 +56,9 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Loading…')).toBeInTheDocument()
     // Let the in-flight load settle before teardown closes the database out from under it.
     await waitFor(() =>
-      expect(screen.getByText('Development Kanji')).toBeInTheDocument(),
+      expect(
+        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+      ).toBeInTheDocument(),
     )
   })
 
@@ -59,7 +67,9 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
 
     await waitFor(() =>
-      expect(screen.getByText('Development Kanji')).toBeInTheDocument(),
+      expect(
+        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+      ).toBeInTheDocument(),
     )
     expect(screen.getByText('0%')).toBeInTheDocument()
     expect(
@@ -71,6 +81,22 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Total time studied:')).toBeInTheDocument()
     expect(screen.getByText('0s')).toBeInTheDocument()
     expect(screen.getByText('No goal date set yet.')).toBeInTheDocument()
+  })
+
+  it('offers every bundled deck with independent offline study metadata', async () => {
+    bootstrapUserRuntime(`home-${userId}`)
+    render(<HomeScreen />)
+
+    const shelf = await screen.findByTestId('builtin-deck-shelf')
+    const wordsHeading = within(shelf).getByText('Development Words')
+    expect(wordsHeading).toBeInTheDocument()
+    expect(wordsHeading.nextElementSibling).toHaveTextContent('500 cards')
+    expect(
+      within(shelf).getByRole('link', { name: 'Study Development Words' }),
+    ).toHaveAttribute('href', '/study?deckId=dev-words')
+    expect(
+      within(shelf).getByRole('link', { name: 'Browse Development Words' }),
+    ).toHaveAttribute('href', '/browse?deckId=dev-words')
   })
 
   it('keeps level distribution swatches shape-coded for color-independent reading', async () => {
@@ -195,7 +221,9 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
 
     await waitFor(() =>
-      expect(screen.getByText('Development Kanji')).toBeInTheDocument(),
+      expect(
+        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+      ).toBeInTheDocument(),
     )
     expect(screen.getByText('1m 5s')).toBeInTheDocument()
   })
@@ -288,9 +316,9 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
 
     await waitFor(() =>
-      expect(
-        screen.getByText('Last studied', { exact: false }),
-      ).toBeInTheDocument(),
+      expect(screen.getAllByText('Last studied', { exact: false }).length).toBe(
+        2,
+      ),
     )
     const progressBar = document.querySelector(
       '[style*="width"]',
@@ -513,7 +541,9 @@ describe('HomeScreen', () => {
     bootstrapUserRuntime(`home-${userId}`)
     render(<HomeScreen />)
     await waitFor(() =>
-      expect(screen.getByText('Development Kanji')).toBeInTheDocument(),
+      expect(
+        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+      ).toBeInTheDocument(),
     )
 
     const dateInput = document.querySelector(
