@@ -44,7 +44,7 @@ export async function createBackup(
     await Promise.all([
       repositories.decks.list(),
       repositories.settings.list(),
-      repositories.deckMembership.list(),
+      repositories.deckMembership.list(undefined),
       repositories.reviews.list(),
       repositories.annotations.list(),
     ])
@@ -121,7 +121,9 @@ function isDeck(value: unknown): value is Deck {
     isRecord(value) &&
     typeof value.id === 'string' &&
     typeof value.name === 'string' &&
-    (value.kind === 'saved' || value.kind === 'derived') &&
+    (value.kind === 'saved' ||
+      value.kind === 'custom' ||
+      value.kind === 'derived') &&
     (value.definitionId === null || typeof value.definitionId === 'string') &&
     isFiniteNumber(value.updatedAt)
   )
@@ -139,7 +141,7 @@ function isSetting(value: unknown): value is Setting {
 function isDeckMembership(value: unknown): value is DeckMembership {
   return (
     isRecord(value) &&
-    value.deckId === 'saved' &&
+    typeof value.deckId === 'string' &&
     typeof value.contentRef === 'string' &&
     isFiniteNumber(value.sortOrder) &&
     isFiniteNumber(value.addedAt) &&

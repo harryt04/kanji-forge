@@ -1,5 +1,5 @@
 /** SQLite-WASM schema for one authenticated user's local database. */
-export const USER_DATABASE_SCHEMA_VERSION = 2
+export const USER_DATABASE_SCHEMA_VERSION = 3
 
 export const USER_DATABASE_MIGRATIONS: readonly {
   readonly version: number
@@ -27,6 +27,20 @@ export const USER_DATABASE_MIGRATIONS: readonly {
       '-- migration 2: per-sticky notes and tags',
       "CREATE TABLE IF NOT EXISTS sticky_annotations (user_id TEXT NOT NULL, deck_id TEXT NOT NULL, content_ref TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', tags_json TEXT NOT NULL DEFAULT '[]', updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL, PRIMARY KEY (deck_id, content_ref))",
       'CREATE INDEX IF NOT EXISTS sticky_annotations_by_user ON sticky_annotations(user_id, deck_id)',
+    ],
+  },
+  {
+    version: 3,
+    sql: [
+      '-- migration 3: user-created custom decks',
+      'ALTER TABLE decks RENAME TO decks_v2',
+      "CREATE TABLE decks (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('saved', 'custom', 'derived')), definition_id TEXT, updated_at INTEGER NOT NULL)",
+      'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) SELECT id, user_id, name, kind, definition_id, updated_at FROM decks_v2',
+      'DROP TABLE decks_v2',
+      'ALTER TABLE deck_membership RENAME TO deck_membership_v2',
+      'CREATE TABLE deck_membership (user_id TEXT NOT NULL, deck_id TEXT NOT NULL, content_ref TEXT NOT NULL, sort_order INTEGER NOT NULL, added_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (deck_id, content_ref))',
+      'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) SELECT user_id, deck_id, content_ref, sort_order, added_at, updated_at FROM deck_membership_v2',
+      'DROP TABLE deck_membership_v2',
     ],
   },
 ]

@@ -154,7 +154,7 @@ Small, mutable, precious, **local-first**. The study loop reads and writes this 
 decks:        { id, user_id, name, updatedAt, ... }
 // NO `stickies` table for built-in decks in MVP — a deck's card set is DERIVED at read time
 // from (content pack + deck definition). contentRef = `kanji:未` | `word:1234567`.
-deckMembership:{ user_id, deckId, contentRef, order, addedAt, updatedAt } // ONLY the `Saved` deck (TRD §5.1.1)
+deckMembership:{ user_id, deckId, contentRef, order, addedAt, updatedAt } // Saved + user-created custom decks
 cardStates:   { user_id, deckId, contentRef, level, dueAt, flagged, ... }  // LAZY: created on first touch only
 reviews:      { id, user_id, deckId, contentRef, at, ... }  // append-only (SRS-SPEC §2.2)
 sessions:     { id, user_id, deckId, startedAt }
@@ -166,8 +166,8 @@ outbox:       { id, user_id, mutType, payload, createdAt, attempts }
 
 Notes:
 - **Stickies are derived, not stored** (TRD §5.1.1). Built-in deck membership comes from the
-  pack + deck definition; the **only** user-writable membership is the `Saved` deck via
-  `deckMembership`. User-authored free-form stickies remain v2.
+  pack + deck definition; user-writable `Saved` and custom decks use `deckMembership`.
+  Custom deck creation is a post-MVP parity slice; user-authored free-form stickies remain v2.
 - **`cardStates` are lazy** — a row exists only after the card is first graded/flagged/overridden.
   An untouched card is **implicitly level 0**. Key on `(deckId, contentRef)`; per-deck progress
   stays independent. Progress denominator = deck-definition size, not row count (SRS-SPEC §7).

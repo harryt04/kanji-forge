@@ -84,6 +84,7 @@ describe('migrateUserDatabase', () => {
     expect(rows).toEqual([
       { version: 1, applied_at: appliedAt },
       { version: 2, applied_at: appliedAt },
+      { version: 3, applied_at: appliedAt },
     ])
   })
 
@@ -94,12 +95,12 @@ describe('migrateUserDatabase', () => {
       'SELECT COUNT(*) AS n FROM schema_migrations',
     )
     statement.step()
-    expect(statement.getAsObject().n).toBe(2)
+    expect(statement.getAsObject().n).toBe(3)
     statement.free()
     expect(tableNames()).toEqual([...EXPECTED_TABLES].sort())
   })
 
   it('matches the declared schema version against the last migration', () => {
-    expect(USER_DATABASE_MIGRATIONS.at(-1)?.version).toBe(2)
+    expect(USER_DATABASE_MIGRATIONS.at(-1)?.version).toBe(3)
   })
 })

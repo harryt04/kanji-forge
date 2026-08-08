@@ -404,6 +404,39 @@ describe('SettingsScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('creates an empty custom deck offline and queues its metadata mutation', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    const name = await screen.findByRole('textbox', { name: 'New deck name' })
+    await user.type(name, 'Travel kanji')
+    await user.click(screen.getByRole('button', { name: 'Create deck' }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () => {
+      const decks = await createUserRepositories(runtime.database).decks.list()
+      expect(decks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'Travel kanji',
+            kind: 'custom',
+            definitionId: null,
+          }),
+        ]),
+      )
+    })
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending()).some(
+        (mutation) =>
+          mutation.mutType === 'deck.upsert' &&
+          mutation.payload.includes('Travel kanji'),
+      ),
+    ).toBe(true)
+    expect(
+      await screen.findByText(/Created “Travel kanji”/),
+    ).toBeInTheDocument()
+  })
+
   it('restores the built-in starter deck name offline', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!

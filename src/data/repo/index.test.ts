@@ -799,6 +799,52 @@ describe('deckMembership', () => {
       { id: 'saved-mutation-1', mutType: 'deckMembership.upsert' },
     ])
   })
+
+  it('supports memberships in a user-created custom deck', async () => {
+    const repos = await freshRepo()
+    const deck: Deck = {
+      id: 'custom-travel',
+      name: 'Travel kanji',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: 10,
+    }
+    await repos.recordDeck({
+      deck,
+      mutation: {
+        id: 'custom-deck-1',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 10,
+        attempts: 0,
+      },
+    })
+    await repos.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: 'kanji:旅',
+        sortOrder: 0,
+        addedAt: 11,
+        updatedAt: 11,
+      },
+      mutation: {
+        id: 'custom-membership-1',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({ deckId: deck.id, contentRef: 'kanji:旅' }),
+        createdAt: 11,
+        attempts: 0,
+      },
+    })
+
+    expect(await repos.decks.get(deck.id)).toEqual(deck)
+    expect(await repos.deckMembership.list(deck.id)).toMatchObject([
+      { deckId: deck.id, contentRef: 'kanji:旅' },
+    ])
+    expect(
+      await repos.decks.listCards(deck.id, { contentRefsFor: () => [] }),
+    ).toMatchObject([{ deckId: deck.id, contentRef: 'kanji:旅' }])
+  })
 })
 
 describe('decks', () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { createUserRepositories, type CardState } from '@/data/repo'
+import { createUserRepositories, type CardState, type Deck } from '@/data/repo'
 import { getKanjiByLiterals } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadStarterDeck } from '@/features/study/deck-loader'
@@ -165,6 +165,8 @@ export function SettingsScreen(): React.ReactElement {
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [deckName, setDeckName] = useState(DEFAULT_STARTER_DECK_NAME)
   const [savedDeckExists, setSavedDeckExists] = useState(false)
+  const [customDecks, setCustomDecks] = useState<readonly Deck[]>([])
+  const [newDeckName, setNewDeckName] = useState('')
   const [deckFolders, setDeckFolders] = useState<Record<string, string>>({})
   const [deckFolderDrafts, setDeckFolderDrafts] = useState<
     Record<string, string>
@@ -243,6 +245,8 @@ export function SettingsScreen(): React.ReactElement {
         savedUserDeck,
         savedFolder,
         savedSavedFolder,
+        existingDecks,
+        allSettings,
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
@@ -259,6 +263,8 @@ export function SettingsScreen(): React.ReactElement {
         repositories.decks.get('saved'),
         repositories.settings.get(deckFolderSettingKey(STARTER_DECK_ID)),
         repositories.settings.get(deckFolderSettingKey('saved')),
+        repositories.decks.list(),
+        repositories.settings.list(),
       ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
@@ -286,9 +292,17 @@ export function SettingsScreen(): React.ReactElement {
         setSaveBehavior(savedSaveBehavior.value)
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
       setSavedDeckExists(savedUserDeck !== undefined)
-      const loadedDeckFolders = {
+      setCustomDecks(existingDecks.filter((deck) => deck.kind === 'custom'))
+      const loadedDeckFolders: Record<string, string> = {
         [STARTER_DECK_ID]: normalizeDeckFolder(savedFolder?.value),
         saved: normalizeDeckFolder(savedSavedFolder?.value),
+      }
+      for (const deck of existingDecks) {
+        loadedDeckFolders[deck.id] = normalizeDeckFolder(
+          allSettings.find(
+            (setting) => setting.key === deckFolderSettingKey(deck.id),
+          )?.value,
+        )
       }
       setDeckFolders(loadedDeckFolders)
       setDeckFolderDrafts(loadedDeckFolders)
@@ -697,6 +711,63 @@ export function SettingsScreen(): React.ReactElement {
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not rename deck.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function createCustomDeck(
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault()
+    if (!runtime || saving) return
+    const name = newDeckName.trim()
+    if (!name) {
+      setError('New deck name cannot be empty.')
+      return
+    }
+    if (
+      customDecks.some(
+        (deck) =>
+          deck.name.localeCompare(name, undefined, { sensitivity: 'base' }) ===
+          0,
+      )
+    ) {
+      setError('A custom deck with that name already exists.')
+      return
+    }
+
+    setError(null)
+    setDeckMessage(null)
+    setSaving(true)
+    try {
+      const now = Date.now()
+      const deck: Deck = {
+        id: `custom-${crypto.randomUUID()}`,
+        name,
+        kind: 'custom',
+        definitionId: null,
+        updatedAt: now,
+      }
+      await createUserRepositories(runtime.database).recordDeck({
+        deck,
+        mutation: {
+          id: crypto.randomUUID(),
+          mutType: 'deck.upsert',
+          payload: JSON.stringify(deck),
+          createdAt: now,
+          attempts: 0,
+        },
+      })
+      setCustomDecks((current) => [...current, deck])
+      setDeckFolders((current) => ({ ...current, [deck.id]: '' }))
+      setDeckFolderDrafts((current) => ({ ...current, [deck.id]: '' }))
+      setNewDeckName('')
+      setDeckMessage(`Created “${name}”. Add cards to it from the deck tools.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not create the deck.',
       )
     } finally {
       setSaving(false)
@@ -1397,6 +1468,43 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Create a deck</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Create an empty, user-owned deck for cards you want to collect and
+          study together. It is saved locally and queued for sync immediately.
+        </p>
+        <form
+          className="mt-5 flex flex-wrap items-end gap-3"
+          onSubmit={(event) => void createCustomDeck(event)}
+        >
+          <label
+            className="grid min-w-60 flex-1 gap-2 text-sm font-medium"
+            htmlFor="new-deck-name"
+          >
+            New deck name
+            <input
+              id="new-deck-name"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+              value={newDeckName}
+              onChange={(event) => setNewDeckName(event.target.value)}
+              maxLength={80}
+              disabled={saving}
+              placeholder="Travel kanji"
+            />
+          </label>
+          <Button type="submit" disabled={saving || !newDeckName.trim()}>
+            {saving ? 'Creating…' : 'Create deck'}
+          </Button>
+        </form>
+        {customDecks.length > 0 && (
+          <p className="text-muted-foreground mt-4 text-sm">
+            {customDecks.length} custom{' '}
+            {customDecks.length === 1 ? 'deck is' : 'decks are'} available in
+            your local deck shelf.
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Study question</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Choose what you recall before revealing the answer. This setting is
@@ -1762,6 +1870,7 @@ export function SettingsScreen(): React.ReactElement {
                 definitionId: null,
                 updatedAt: 0,
               },
+              ...customDecks,
             ],
             deckFolders,
           ).map((group) => (

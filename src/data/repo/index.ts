@@ -9,12 +9,12 @@ export type ReviewSource = 'study' | 'manual' | 'import' | 'transfer'
 export interface Deck {
   id: string
   name: string
-  kind: 'saved' | 'derived'
+  kind: 'saved' | 'custom' | 'derived'
   definitionId: string | null
   updatedAt: number
 }
 export interface DeckMembership {
-  deckId: 'saved'
+  deckId: string
   contentRef: string
   sortOrder: number
   addedAt: number
@@ -112,8 +112,8 @@ export interface UserRepositories {
   }
   readonly deckMembership: {
     save(membership: DeckMembership): Promise<void>
-    remove(contentRef: string): Promise<void>
-    list(): Promise<readonly DeckMembership[]>
+    remove(contentRef: string, deckId?: string): Promise<void>
+    list(deckId?: string): Promise<readonly DeckMembership[]>
   }
   readonly cardStates: {
     get(deckId: string, contentRef: string): Promise<CardState | undefined>
@@ -194,7 +194,7 @@ export interface UserRepositories {
       mutation: OutboxMutation
     }[],
   ): Promise<void>
-  /** Persists the MVP Saved deck, membership, and sync mutation atomically. */
+  /** Persists a user-owned deck membership and its sync mutation atomically. */
   recordDeckMembership(input: {
     deck: Deck
     membership: DeckMembership
@@ -403,7 +403,7 @@ export function createUserRepositories(
         const deck = await this.get(deckId)
         if (!deck) throw new Error(`Unknown deck ${deckId}.`)
         const refs =
-          deck.kind === 'saved'
+          deck.kind !== 'derived'
             ? (
                 await database.read(
                   'SELECT content_ref FROM deck_membership WHERE user_id = ? AND deck_id = ? ORDER BY sort_order',
@@ -439,20 +439,21 @@ export function createUserRepositories(
           membership.updatedAt,
         ])
       },
-      async remove(contentRef) {
+      async remove(contentRef, deckId = 'saved') {
         await database.write(
-          "DELETE FROM deck_membership WHERE user_id = ? AND deck_id = 'saved' AND content_ref = ?",
-          [userId, contentRef],
+          'DELETE FROM deck_membership WHERE user_id = ? AND deck_id = ? AND content_ref = ?',
+          [userId, deckId, contentRef],
         )
       },
-      async list() {
+      async list(deckId) {
+        const filterDeckId = arguments.length === 0 ? 'saved' : deckId
         return (
           await database.read(
-            "SELECT deck_id, content_ref, sort_order, added_at, updated_at FROM deck_membership WHERE user_id = ? AND deck_id = 'saved' ORDER BY sort_order",
-            [userId],
+            'SELECT deck_id, content_ref, sort_order, added_at, updated_at FROM deck_membership WHERE user_id = ? AND (? IS NULL OR deck_id = ?) ORDER BY deck_id, sort_order',
+            [userId, filterDeckId ?? null, filterDeckId ?? null],
           )
         ).map((row) => ({
-          deckId: 'saved' as const,
+          deckId: text(row, 'deck_id'),
           contentRef: text(row, 'content_ref'),
           sortOrder: numberValue(row, 'sort_order'),
           addedAt: numberValue(row, 'added_at'),
@@ -878,10 +879,10 @@ export function createUserRepositories(
       await persistManualOverrides(inputs)
     },
     async recordDeckMembership({ deck, membership, mutation }) {
-      if (deck.id !== 'saved' || deck.kind !== 'saved')
-        throw new Error('Only the Saved deck can receive MVP memberships.')
-      if (membership.deckId !== 'saved')
-        throw new Error('MVP memberships must belong to the Saved deck.')
+      if (deck.kind === 'derived')
+        throw new Error('Derived decks cannot receive custom memberships.')
+      if (membership.deckId !== deck.id)
+        throw new Error('Deck memberships must belong to their deck.')
       await database.transaction([
         {
           sql: putDeck,

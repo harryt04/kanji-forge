@@ -11,9 +11,9 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 | | |
 |---|---|
 | Unit/integration test files | 48 (332 test cases: 332 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 110 cases, included above) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 111 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.05%** |
+| Overall statement coverage | **87.09%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -57,16 +57,17 @@ the progress-to-belt-rank mapping, retention-by-level aggregation with the 80%-o
 and leech/forecast edge cases.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 60 cases across 4 files
+### `src/data` — 69 cases across 4 files
 
-- **`db/migrations.test.ts`** (4) — fresh v0→v2 creates all 10 tables, records `applied_at`,
+- **`db/migrations.test.ts`** (4) — fresh v0→v3 creates all 10 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (28, up from 1) — derived-deck projection, deck-scoped state listing,
+- **`repo/index.test.ts`** (29, up from 1) — derived-deck projection, deck-scoped state listing,
   atomic multi-card reset persistence, atomic statistics reset with history/session clearing, deck metadata plus outbox persistence, atomic user-deck deletion with protected starter-deck behavior, and `recordGrade()` atomicity,
-  manual level override atomicity and validation, and atomic manual card-state flag persistence
+  manual level override atomicity and validation, atomic manual card-state flag persistence,
+  and custom-deck membership projection
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
@@ -167,11 +168,11 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 59 cases
+### `src/features/settings` — 60 cases
 
 **`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, and non-kanji input, versioned KanjiForge JSON deck import validation, plus non-mutating matched/already-saved/not-found preview classification.
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields including the writing pad, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, assigning offline folders to decks, deleting the Saved deck after confirmation while preserving the built-in deck, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched kanji while identifying existing and unknown input, mapping a CSV column into the same preview flow, loading a versioned JSON deck export into that preview flow, transferring studied starter-deck progress to matching Saved cards while preserving Saved flags, backup restore, and the stale-backup warning with its recovery action. **`deck-folders.test.ts`** covers folder-label normalization and deterministic grouping. **`deck-progress.test.ts`** covers shared-card selection, SRS-field copying, destination-flag preservation, and idempotent no-op planning. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields including the writing pad, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, creating a custom deck with an outbox mutation, assigning offline folders to decks, deleting the Saved deck after confirmation while preserving the built-in deck, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched kanji while identifying existing and unknown input, mapping a CSV column into the same preview flow, loading a versioned JSON deck export into that preview flow, transferring studied starter-deck progress to matching Saved cards while preserving Saved flags, backup restore, and the stale-backup warning with its recovery action. **`deck-folders.test.ts`** covers folder-label normalization and deterministic grouping. **`deck-progress.test.ts`** covers shared-card selection, SRS-field copying, destination-flag preservation, and idempotent no-op planning. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 
