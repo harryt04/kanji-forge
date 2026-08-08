@@ -172,7 +172,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 8.9 | Save any result to a deck | ✅ | 2026-08-07 | Dictionary results can be saved offline to the per-user Saved system deck and queue a membership sync mutation |
 | 8.10 | Fully offline | ✅ | 2026-08-06 | SQLite-WASM over OPFS (content pipeline) |
 | — | Search history / pinned searches | ➕ 🔷 | 2026-08-07 | Recent searches and pinned queries persist per authenticated user in the local database and work offline |
-| — | Optional full JMdict dictionary tier | ➕ 🔷 | 2026-08-08 | `npm run build:words-full` produces a reproducible all-entry JMdict SQLite pack sharing the words-core schema; it remains optional so the default install stays small |
+| — | Optional full JMdict dictionary tier | ➕ ✅ | 2026-08-08 | `npm run build:words-full` produces a reproducible all-entry JMdict SQLite pack; Settings accepts its raw SQLite or manifest-bearing ZIP form, stores it offline, and merges its less-common entries into Dictionary without duplicating words-core results |
 
 ## 9. Text analysis & news
 

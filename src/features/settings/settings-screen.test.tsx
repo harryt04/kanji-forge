@@ -35,6 +35,7 @@ import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { deckFolderSettingKey } from './deck-folders'
 import { JAPANESE_WIKINEWS_FEED, RSS_FEEDS_SETTING } from './rss-feeds'
 import { removeNamesPack } from './names-pack'
+import { removeWordsPack } from './words-pack'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -68,6 +69,7 @@ describe('SettingsScreen', () => {
 
   afterEach(async () => {
     await removeNamesPack()
+    await removeWordsPack()
     if (originalStorage) {
       Object.defineProperty(navigator, 'storage', originalStorage)
     } else {
@@ -213,6 +215,40 @@ describe('SettingsScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Remove' }))
     expect(
       await screen.findByText(/No optional names pack installed\./u),
+    ).toBeInTheDocument()
+  })
+
+  it('installs and removes the optional full dictionary offline', async () => {
+    const user = userEvent.setup()
+    const SQL = await initSqlJs()
+    const database = new SQL.Database()
+    database.run(`
+      CREATE TABLE entries (id INTEGER PRIMARY KEY, common_score INTEGER NOT NULL, data BLOB NOT NULL);
+      CREATE TABLE forms (entry_id INTEGER NOT NULL, form TEXT NOT NULL, kind TEXT NOT NULL, is_common INTEGER NOT NULL);
+      CREATE TABLE glosses_fts (entry_id INTEGER NOT NULL, gloss TEXT NOT NULL);
+    `)
+    const bytes = database.export()
+    database.close()
+    const file = new File([bytes], 'words-full-v1.sqlite', {
+      type: 'application/x-sqlite3',
+    })
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => bytes.buffer,
+    })
+
+    render(<SettingsScreen />)
+    await screen.findByRole('heading', { name: 'Optional full dictionary' })
+    await user.upload(
+      screen.getByLabelText('Install full dictionary pack'),
+      file,
+    )
+
+    expect(
+      await screen.findByText('Full JMdict dictionary v1'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(
+      await screen.findByText(/No full dictionary installed\./u),
     ).toBeInTheDocument()
   })
 

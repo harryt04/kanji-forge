@@ -25,6 +25,12 @@ import {
   removeNamesPack,
   type NamesPackManifest,
 } from './names-pack'
+import {
+  getInstalledWordsPack,
+  installWordsPack,
+  removeWordsPack,
+  type WordsPackManifest,
+} from './words-pack'
 import { invalidateContentPack } from '@/data/packs'
 import {
   APP_BADGE_PREFERENCES,
@@ -313,6 +319,8 @@ export function SettingsScreen(): React.ReactElement {
   const [audioPackBusy, setAudioPackBusy] = useState(false)
   const [namesPack, setNamesPack] = useState<NamesPackManifest | null>(null)
   const [namesPackBusy, setNamesPackBusy] = useState(false)
+  const [wordsPack, setWordsPack] = useState<WordsPackManifest | null>(null)
+  const [wordsPackBusy, setWordsPackBusy] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [rssFeeds, setRssFeeds] = useState<readonly RssFeed[]>([])
@@ -550,6 +558,12 @@ export function SettingsScreen(): React.ReactElement {
 
   useEffect(() => {
     void getInstalledNamesPackManifest().then(setNamesPack)
+  }, [])
+
+  useEffect(() => {
+    void getInstalledWordsPack().then((pack) =>
+      setWordsPack(pack?.manifest ?? null),
+    )
   }, [])
 
   useEffect(() => {
@@ -993,6 +1007,46 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setNamesPackBusy(false)
+    }
+  }
+
+  async function handleWordsPackFile(file: File | undefined): Promise<void> {
+    if (!file) return
+    setWordsPackBusy(true)
+    setError(null)
+    try {
+      const manifest = await installWordsPack(
+        new Uint8Array(await file.arrayBuffer()),
+      )
+      invalidateContentPack('words-full-v1.sqlite')
+      setWordsPack(manifest)
+      setError(`Installed ${manifest.name} ${manifest.version}.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not install full dictionary pack.',
+      )
+    } finally {
+      setWordsPackBusy(false)
+    }
+  }
+
+  async function handleRemoveWordsPack(): Promise<void> {
+    setWordsPackBusy(true)
+    setError(null)
+    try {
+      await removeWordsPack()
+      invalidateContentPack('words-full-v1.sqlite')
+      setWordsPack(null)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not remove full dictionary pack.',
+      )
+    } finally {
+      setWordsPackBusy(false)
     }
   }
 
@@ -2528,6 +2582,57 @@ export function SettingsScreen(): React.ReactElement {
         ) : (
           <p className="text-muted-foreground mt-4 text-sm">
             No optional names pack installed. Core dictionary search remains
+            available.
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Optional full dictionary</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Install the larger full-JMdict SQLite pack to search less-common
+          vocabulary offline. It extends the built-in dictionary without
+          changing study cards or progress.
+        </p>
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="words-pack-file"
+        >
+          Install full dictionary pack
+        </label>
+        <input
+          id="words-pack-file"
+          type="file"
+          accept=".sqlite,.zip,application/zip,application/x-sqlite3"
+          disabled={wordsPackBusy}
+          className="mt-2 block w-full text-sm"
+          onChange={(event) => {
+            void handleWordsPackFile(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
+        {wordsPack ? (
+          <div className="border-border mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
+            <span>
+              <span className="block font-medium">
+                {wordsPack.name} {wordsPack.version}
+              </span>
+              <span className="text-muted-foreground block">
+                {wordsPack.license} · {wordsPack.attribution}
+              </span>
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={wordsPackBusy}
+              onClick={() => void handleRemoveWordsPack()}
+            >
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <p className="text-muted-foreground mt-4 text-sm">
+            No full dictionary installed. The smaller core dictionary remains
             available.
           </p>
         )}

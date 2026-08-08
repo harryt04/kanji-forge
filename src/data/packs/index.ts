@@ -11,6 +11,7 @@ import {
 import { tokenizeJapaneseText } from '@/core/text/tokenizer'
 import { parseFuriganaTokens, type FuriganaToken } from '@/core/text/furigana'
 import { getInstalledNamesPackBytes } from '@/features/settings/names-pack'
+import { getInstalledWordsPackBytes } from '@/features/settings/words-pack'
 
 export type { TextAnalysisToken } from '@/core/text/analyzer'
 
@@ -327,6 +328,7 @@ async function getPackBytes(fileName: string): Promise<Uint8Array> {
 /** Forces a subsequent lookup to reopen a replaced optional pack. */
 export function invalidateContentPack(fileName: string): void {
   packHandles.delete(fileName)
+  if (fileName === 'words-full-v1.sqlite') dictionaryWordsPromise = undefined
 }
 
 function jsonArray(raw: unknown): readonly string[] {
@@ -521,45 +523,67 @@ export async function searchDictionaryByStrokeCount(
   return results
 }
 
-let dictionaryWordsPromise: Promise<readonly WordRecord[]> | undefined
-function loadDictionaryWords(): Promise<readonly WordRecord[]> {
-  dictionaryWordsPromise ??= openPack('words-core-v1.sqlite').then(
-    (database) => {
-      const statement = database.prepare(
-        'SELECT id, common_score, data FROM entries ORDER BY common_score DESC, id ASC',
-      )
-      const records: WordRecord[] = []
-      while (statement.step()) {
-        const row = statement.getAsObject()
-        const data = jsonBlob(row.data)
-        const kanji = Array.isArray(data.kanji) ? data.kanji : []
-        const kana = Array.isArray(data.kana) ? data.kana : []
-        const senses = Array.isArray(data.senses) ? data.senses : []
-        const forms = stringArray(kanji)
-        const readings = stringArray(kana)
-        const meanings = senses.flatMap((sense) => {
-          if (!sense || typeof sense !== 'object' || !('gloss' in sense))
-            return []
-          return stringArray(sense.gloss)
-        })
-        const partsOfSpeech = senses.flatMap((sense) => {
-          if (!sense || typeof sense !== 'object' || !('pos' in sense))
-            return []
-          return stringArray(sense.pos)
-        })
-        records.push({
-          id: Number(row.id),
-          commonScore: Number(row.common_score),
-          forms,
-          readings,
-          partsOfSpeech,
-          meanings,
-        })
+function readWordRecords(database: SqlJsDatabase): readonly WordRecord[] {
+  const statement = database.prepare(
+    'SELECT id, common_score, data FROM entries ORDER BY common_score DESC, id ASC',
+  )
+  const records: WordRecord[] = []
+  while (statement.step()) {
+    const row = statement.getAsObject()
+    const data = jsonBlob(row.data)
+    const kanji = Array.isArray(data.kanji) ? data.kanji : []
+    const kana = Array.isArray(data.kana) ? data.kana : []
+    const senses = Array.isArray(data.senses) ? data.senses : []
+    const forms = stringArray(kanji)
+    const readings = stringArray(kana)
+    const meanings = senses.flatMap((sense) => {
+      if (!sense || typeof sense !== 'object' || !('gloss' in sense)) return []
+      return stringArray(sense.gloss)
+    })
+    const partsOfSpeech = senses.flatMap((sense) => {
+      if (!sense || typeof sense !== 'object' || !('pos' in sense)) return []
+      return stringArray(sense.pos)
+    })
+    records.push({
+      id: Number(row.id),
+      commonScore: Number(row.common_score),
+      forms,
+      readings,
+      partsOfSpeech,
+      meanings,
+    })
+  }
+  statement.free()
+  return records
+}
+
+function loadOptionalFullDictionaryWords(): Promise<readonly WordRecord[]> {
+  return Promise.all([loadSqlJs(), getInstalledWordsPackBytes()]).then(
+    ([SQL, bytes]) => {
+      if (!bytes) return []
+      const database = new SQL.Database(bytes)
+      try {
+        return readWordRecords(database)
+      } finally {
+        database.close()
       }
-      statement.free()
-      return records
     },
   )
+}
+
+let dictionaryWordsPromise: Promise<readonly WordRecord[]> | undefined
+function loadDictionaryWords(): Promise<readonly WordRecord[]> {
+  dictionaryWordsPromise ??= Promise.all([
+    openPack('words-core-v1.sqlite').then(readWordRecords),
+    loadOptionalFullDictionaryWords(),
+  ]).then(([core, full]) => {
+    const records = new Map<number, WordRecord>()
+    for (const record of [...core, ...full]) records.set(record.id, record)
+    return [...records.values()].sort(
+      (left, right) =>
+        right.commonScore - left.commonScore || left.id - right.id,
+    )
+  })
   return dictionaryWordsPromise
 }
 
