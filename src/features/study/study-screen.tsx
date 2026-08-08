@@ -675,7 +675,7 @@ export function StudyScreen({
           </dl>
           <DialogFooter>
             <Button asChild>
-              <Link href="/">Back to Home</Link>
+              <Link href="/home">Back to Home</Link>
             </Button>
           </DialogFooter>
         </DialogContent>

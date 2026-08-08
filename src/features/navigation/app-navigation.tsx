@@ -48,7 +48,7 @@ export function AppNavigation({
       className="flex min-w-0 items-center gap-1 overflow-x-auto"
       aria-label="Primary"
     >
-      <NavLink href="/">Home</NavLink>
+      <NavLink href="/home">Home</NavLink>
       <NavLink href="/study">Study</NavLink>
       <Link
         className="text-muted-foreground hover:text-foreground focus-visible:ring-ring relative inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"

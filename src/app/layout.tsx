@@ -1,17 +1,77 @@
 import type { Metadata, Viewport } from 'next'
+import {
+  Fraunces,
+  JetBrains_Mono,
+  Klee_One,
+  Noto_Sans_JP,
+  Public_Sans,
+} from 'next/font/google'
 import './globals.css'
-import { AuthGate } from '@/auth/auth-gate'
 import { PwaRegistration } from '@/pwa'
+import { SITE_URL } from '@/lib/site'
+import { cn } from '@/lib/utils'
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '900'],
+  variable: '--font-display',
+  display: 'swap',
+})
+const notoSansJP = Noto_Sans_JP({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-jp-ui',
+  display: 'swap',
+})
+const publicSans = Public_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-body',
+  display: 'swap',
+})
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-mono',
+  display: 'swap',
+})
+// A flash of fallback kanji is worse than a brief blank — fallback fonts can
+// render a structurally different (simplified/Chinese-variant) glyph — so this
+// one stays `display: 'block'` per docs/BRAND-DESIGN-LANGUAGE.md §4, unlike the
+// other four families above.
+const kleeOne = Klee_One({
+  subsets: ['latin'],
+  weight: ['600'],
+  variable: '--font-jp-display',
+  display: 'block',
+})
+
+const title = 'KanjiForge — Japanese kanji study'
+const description =
+  'A free, offline-first web app for studying kanji with the StickyStudy SRS system.'
 
 export const metadata: Metadata = {
-  title: 'KanjiForge — Japanese kanji study',
-  description:
-    'A free, offline-first web app for studying kanji with the StickyStudy SRS system.',
+  metadataBase: new URL(SITE_URL),
+  title,
+  description,
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'KanjiForge',
+  },
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: 'KanjiForge',
+    title,
+    description,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
   },
 }
 
@@ -29,7 +89,16 @@ export default function RootLayout({
   children: React.ReactNode
 }): React.ReactElement {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={cn(
+        fraunces.variable,
+        notoSansJP.variable,
+        publicSans.variable,
+        jetbrainsMono.variable,
+        kleeOne.variable,
+      )}
+    >
       <head>
         <meta name="color-scheme" content="light dark" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -44,7 +113,7 @@ export default function RootLayout({
       </head>
       <body>
         <PwaRegistration />
-        <AuthGate>{children}</AuthGate>
+        {children}
       </body>
     </html>
   )
