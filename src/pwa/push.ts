@@ -108,3 +108,17 @@ export async function disableBackgroundPush(): Promise<void> {
     body: JSON.stringify({ endpoint }),
   })
 }
+
+/** Requests an immediate delivery check for the current authenticated device. */
+export async function sendTestBackgroundPush(): Promise<void> {
+  const response = await fetch(apiUrl('/api/push/test'), {
+    method: 'POST',
+    credentials: 'include',
+  })
+  if (response.ok) return
+  if (response.status === 404)
+    throw new Error('This device is not registered for background Web Push.')
+  if (response.status === 503)
+    throw new Error('Background Web Push is unavailable on this server.')
+  throw new Error('Could not send a test reminder.')
+}

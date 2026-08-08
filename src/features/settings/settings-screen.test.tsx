@@ -349,6 +349,32 @@ describe('SettingsScreen', () => {
     refreshPush.mockRestore()
   })
 
+  it('offers an immediate test for an active background push subscription', async () => {
+    const user = userEvent.setup()
+    const getStatus = vi
+      .spyOn(pwa, 'getBackgroundPushStatus')
+      .mockResolvedValue('subscribed')
+    const sendTest = vi.spyOn(pwa, 'sendTestBackgroundPush').mockResolvedValue()
+    await createUserRepositories(getActiveUserRuntime()!.database).settings.set(
+      {
+        key: DAILY_REMINDER_ENABLED_SETTING,
+        value: 'true',
+        updatedAt: Date.now(),
+      },
+    )
+
+    render(<SettingsScreen />)
+    const button = await screen.findByRole('button', {
+      name: 'Send test reminder',
+    })
+    await user.click(button)
+
+    expect(sendTest).toHaveBeenCalledOnce()
+    expect(await screen.findByText(/Test reminder sent/u)).toBeInTheDocument()
+    getStatus.mockRestore()
+    sendTest.mockRestore()
+  })
+
   it('shows iOS Home Screen guidance when storage is not protected', async () => {
     Object.defineProperty(navigator, 'userAgent', {
       configurable: true,

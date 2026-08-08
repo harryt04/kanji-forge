@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getBackgroundPushStatus } from './push'
+import { getBackgroundPushStatus, sendTestBackgroundPush } from './push'
 
 function installPushBrowser(
   subscription: PushSubscription | null = null,
@@ -78,5 +78,17 @@ describe('background push status', () => {
       vi.fn(async () => Promise.reject(new Error('offline'))),
     )
     await expect(getBackgroundPushStatus()).resolves.toBe('not-configured')
+  })
+
+  it('requests an immediate test reminder from the configured server', async () => {
+    installPushBrowser({} as PushSubscription)
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(sendTestBackgroundPush()).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith('/api/push/test', {
+      method: 'POST',
+      credentials: 'include',
+    })
   })
 })

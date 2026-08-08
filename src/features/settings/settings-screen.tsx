@@ -48,6 +48,7 @@ import {
   isAppBadgePreference,
   readInstallGuidanceEnvironment,
   requestDailyReminderPermission,
+  sendTestBackgroundPush,
   getStoragePersistenceStatus,
   requestStoragePersistence,
   shouldShowIosInstallGuidance,
@@ -394,6 +395,10 @@ export function SettingsScreen(): React.ReactElement {
   >(null)
   const [backgroundPushStatus, setBackgroundPushStatus] =
     useState<BackgroundPushStatus | null>(null)
+  const [backgroundPushTesting, setBackgroundPushTesting] = useState(false)
+  const [backgroundPushMessage, setBackgroundPushMessage] = useState<
+    string | null
+  >(null)
   const [storagePersistenceStatus, setStoragePersistenceStatus] =
     useState<StoragePersistenceStatus | null>(null)
   const [showIosInstallGuidance, setShowIosInstallGuidance] = useState(false)
@@ -789,6 +794,26 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function sendTestReminder(): Promise<void> {
+    if (backgroundPushStatus !== 'subscribed' || backgroundPushTesting) return
+    setBackgroundPushTesting(true)
+    setBackgroundPushMessage(null)
+    try {
+      await sendTestBackgroundPush()
+      setBackgroundPushMessage(
+        'Test reminder sent. It should appear even when KanjiForge is in the background.',
+      )
+    } catch (reason: unknown) {
+      setBackgroundPushMessage(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not send a test reminder.',
+      )
+    } finally {
+      setBackgroundPushTesting(false)
     }
   }
 
@@ -2922,6 +2947,28 @@ export function SettingsScreen(): React.ReactElement {
                     ? 'This device is not registered for background Web Push; the open-app fallback remains active.'
                     : 'When configured, enabling this reminder also registers this device for background Web Push.'}
         </p>
+        {backgroundPushStatus === 'subscribed' ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={backgroundPushTesting}
+              onClick={() => void sendTestReminder()}
+            >
+              {backgroundPushTesting
+                ? 'Sending test reminder…'
+                : 'Send test reminder'}
+            </Button>
+            <span className="text-muted-foreground text-sm">
+              Check delivery now instead of waiting for the scheduled time.
+            </span>
+          </div>
+        ) : null}
+        {backgroundPushMessage ? (
+          <p className="text-muted-foreground mt-3 text-sm" role="status">
+            {backgroundPushMessage}
+          </p>
+        ) : null}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Storage protection</h2>

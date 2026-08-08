@@ -36,6 +36,7 @@ export {
   disableBackgroundPush,
   enableBackgroundPush,
   getBackgroundPushStatus,
+  sendTestBackgroundPush,
   type BackgroundPushStatus,
 } from './push'
 export {

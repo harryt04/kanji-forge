@@ -419,7 +419,9 @@ This matches Electric’s documented pattern of “read-path sync + your existin
   subscription, while the optional `deploy` Compose `push-cron` service (or an operator-scheduled
   equivalent) calls `POST /api/push/reminders` once per minute to sign and send the configured
   local-time reminder with VAPID. The service worker validates the app-relative target before
-  opening Study. Set `VAPID_*` and `PUSH_CRON_SECRET` only on the backend.
+  opening Study. Settings can call the authenticated `POST /api/push/test` endpoint to send an
+  immediate delivery check to the current user's active subscriptions. Set `VAPID_*` and
+  `PUSH_CRON_SECRET` only on the backend.
 - Shared device: switching accounts must not show the previous user’s local DB (per-user local DB name/path or wipe-on-switch).
 
 ### 10.4 Conflict policy

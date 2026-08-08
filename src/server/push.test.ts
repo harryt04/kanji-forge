@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import webpush from 'web-push'
 import {
   isReminderMinute,
   isPushSubscriptionExpired,
   isValidPushSubscription,
   reminderPayload,
+  sendTestPushReminder,
+  testReminderPayload,
 } from './push'
 
 describe('background push reminders', () => {
@@ -50,5 +53,62 @@ describe('background push reminders', () => {
       url: '/study',
       tag: 'kanjiforge-daily-reminder',
     })
+  })
+
+  it('produces a distinct payload for immediate delivery checks', () => {
+    expect(testReminderPayload()).toEqual({
+      title: 'KanjiForge test reminder',
+      body: 'Background reminders are working. Tap to study your kanji cards.',
+      url: '/study?source=push-test',
+      tag: 'kanjiforge-test-reminder',
+    })
+  })
+
+  it('sends a test payload to the user subscriptions and removes expired endpoints', async () => {
+    const sent: string[] = []
+    const send = async (
+      subscription: { endpoint: string },
+      payload: string,
+    ) => {
+      if (subscription.endpoint.includes('expired')) throw { statusCode: 410 }
+      sent.push(payload)
+    }
+    const deleted: unknown[] = []
+    const database = {
+      select: () => ({
+        from: () => ({
+          where: async () => [
+            {
+              endpoint: 'https://push.example.test/subscription',
+              userId: 'user-1',
+              p256dh: 'public-key',
+              auth: 'auth-secret',
+            },
+            {
+              endpoint: 'https://push.example.test/expired',
+              userId: 'user-1',
+              p256dh: 'public-key',
+              auth: 'auth-secret',
+            },
+          ],
+        }),
+      }),
+      delete: () => ({
+        where: async (condition: unknown) => {
+          deleted.push(condition)
+        },
+      }),
+    } as never
+
+    await expect(
+      sendTestPushReminder(
+        database,
+        'user-1',
+        { ...webpush.generateVAPIDKeys(), subject: 'mailto:test@example.test' },
+        send,
+      ),
+    ).resolves.toEqual({ sent: 1, removed: 1 })
+    expect(sent).toEqual([JSON.stringify(testReminderPayload())])
+    expect(deleted).toHaveLength(1)
   })
 })

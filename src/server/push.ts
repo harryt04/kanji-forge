@@ -21,6 +21,10 @@ export interface PushReminderPayload {
   readonly tag: string
 }
 
+export interface TestPushReminderPayload extends PushReminderPayload {
+  readonly tag: 'kanjiforge-test-reminder'
+}
+
 export function isValidPushSubscription(
   value: unknown,
 ): value is PushSubscriptionInput {
@@ -50,6 +54,15 @@ export function reminderPayload(): PushReminderPayload {
     body: 'It is time to review your kanji cards.',
     url: '/study',
     tag: 'kanjiforge-daily-reminder',
+  }
+}
+
+export function testReminderPayload(): TestPushReminderPayload {
+  return {
+    title: 'KanjiForge test reminder',
+    body: 'Background reminders are working. Tap to study your kanji cards.',
+    url: '/study?source=push-test',
+    tag: 'kanjiforge-test-reminder',
   }
 }
 
@@ -235,4 +248,55 @@ export async function sendDuePushReminders(
     }
   }
   return { sent, removed, skipped }
+}
+
+/** Sends an immediate delivery check to every active subscription for one user. */
+export async function sendTestPushReminder(
+  database: ApiDatabase,
+  userId: string,
+  vapid: {
+    readonly subject: string
+    readonly publicKey: string
+    readonly privateKey: string
+  },
+  send: typeof webpush.sendNotification = webpush.sendNotification,
+): Promise<{ sent: number; removed: number }> {
+  webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey)
+  const rows = await database
+    .select({
+      endpoint: pushSubscriptions.endpoint,
+      userId: pushSubscriptions.userId,
+      p256dh: pushSubscriptions.p256dh,
+      auth: pushSubscriptions.auth,
+    })
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.userId, userId))
+
+  let sent = 0
+  let removed = 0
+  for (const row of rows) {
+    try {
+      await send(
+        {
+          endpoint: row.endpoint,
+          keys: { p256dh: row.p256dh, auth: row.auth },
+        },
+        JSON.stringify(testReminderPayload()),
+      )
+      sent += 1
+    } catch (error) {
+      const statusCode = (error as { statusCode?: number }).statusCode
+      if (statusCode !== 404 && statusCode !== 410) throw error
+      await database
+        .delete(pushSubscriptions)
+        .where(
+          and(
+            eq(pushSubscriptions.endpoint, row.endpoint),
+            eq(pushSubscriptions.userId, row.userId),
+          ),
+        )
+      removed += 1
+    }
+  }
+  return { sent, removed }
 }
