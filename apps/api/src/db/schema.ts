@@ -188,6 +188,23 @@ export const stickyAnnotations = pgTable(
   ],
 )
 
+export const pushSubscriptions = pgTable(
+  'push_subscription',
+  {
+    endpoint: text('endpoint').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    expirationTime: timestamp('expiration_time', { withTimezone: true }),
+    timezone: text('timezone').notNull().default('UTC'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+  },
+  (table) => [index('push_subscription_user_id_idx').on(table.userId)],
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),

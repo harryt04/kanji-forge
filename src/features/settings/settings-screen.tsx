@@ -34,6 +34,8 @@ import {
   DAILY_REMINDER_SETTING_CHANGED_EVENT,
   DAILY_REMINDER_TIME_SETTING,
   DEFAULT_DAILY_REMINDER_TIME,
+  disableBackgroundPush,
+  enableBackgroundPush,
   isDailyReminderTime,
   isAppBadgePreference,
   requestDailyReminderPermission,
@@ -41,6 +43,7 @@ import {
   requestStoragePersistence,
   STORAGE_PERSISTENCE_REQUESTED_SETTING,
   type AppBadgePreference,
+  type BackgroundPushStatus,
   type StoragePersistenceStatus,
 } from '@/pwa'
 import { Button } from '@/ui/button'
@@ -349,6 +352,8 @@ export function SettingsScreen(): React.ReactElement {
   const [notificationStatus, setNotificationStatus] = useState<
     NotificationPermission | 'unsupported' | null
   >(null)
+  const [backgroundPushStatus, setBackgroundPushStatus] =
+    useState<BackgroundPushStatus | null>(null)
   const [storagePersistenceStatus, setStoragePersistenceStatus] =
     useState<StoragePersistenceStatus | null>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
@@ -665,6 +670,16 @@ export function SettingsScreen(): React.ReactElement {
       }
     }
     const next = !previous
+    if (next) {
+      void enableBackgroundPush()
+        .then(setBackgroundPushStatus)
+        .catch(() => setBackgroundPushStatus('not-configured'))
+    } else {
+      setBackgroundPushStatus(null)
+      void disableBackgroundPush().catch(() => {
+        // Local reminders remain usable if the server subscription cannot be removed.
+      })
+    }
     setDailyReminderEnabled(next)
     setSaving(true)
     try {
@@ -2580,6 +2595,17 @@ export function SettingsScreen(): React.ReactElement {
               : notificationStatus === 'unsupported'
                 ? 'This browser does not provide notifications.'
                 : 'Notifications are off until you enable a reminder.'}
+        </p>
+        <p className="text-muted-foreground mt-2 text-sm" role="status">
+          {backgroundPushStatus === 'subscribed'
+            ? 'Background Web Push is enabled for this device.'
+            : backgroundPushStatus === 'not-configured'
+              ? 'Background Web Push is unavailable on this server; the open-app fallback remains active.'
+              : backgroundPushStatus === 'unsupported'
+                ? 'This browser cannot receive background Web Push; the open-app fallback remains active.'
+                : backgroundPushStatus === 'permission-denied'
+                  ? 'Allow browser notifications before enabling background Web Push.'
+                  : 'When configured, enabling this reminder also registers this device for background Web Push.'}
         </p>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">

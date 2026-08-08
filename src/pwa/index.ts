@@ -29,6 +29,11 @@ export {
   STORAGE_PERSISTENCE_REQUESTED_SETTING,
   type StoragePersistenceStatus,
 } from './storage-persistence'
+export {
+  disableBackgroundPush,
+  enableBackgroundPush,
+  type BackgroundPushStatus,
+} from './push'
 
 /** Register the build-generated Serwist worker without making startup network-dependent. */
 export function PwaRegistration(): null {

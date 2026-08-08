@@ -14,6 +14,10 @@ describe('readEnv', () => {
       API_PORT: 3001,
       ELECTRIC_URL: null,
       ELECTRIC_SECRET: null,
+      VAPID_PUBLIC_KEY: null,
+      VAPID_PRIVATE_KEY: null,
+      VAPID_SUBJECT: 'mailto:admin@example.invalid',
+      PUSH_CRON_SECRET: null,
     })
   })
 

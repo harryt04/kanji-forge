@@ -408,6 +408,10 @@ This matches Electric’s documented pattern of “read-path sync + your existin
 - **The exact write-path and shape-authorization contract is `TRD.md §15` (Sync Contract).** The
   shape-auth mechanism (preferred: an auth proxy that server-enforces `where user_id = <token uid>`)
   is to be confirmed by a Phase 1 spike against the real Electric image before Phase 4 — see §15.4.
+- Background reminders use the same authenticated API: the browser stores a user-owned Web Push
+  subscription, while an operator-scheduled `POST /api/push/reminders` call signs and sends the
+  configured local-time reminder with VAPID. The service worker validates the app-relative target
+  before opening Study. Set `VAPID_*` and `PUSH_CRON_SECRET` only on the backend.
 - Shared device: switching accounts must not show the previous user’s local DB (per-user local DB name/path or wipe-on-switch).
 
 ### 10.4 Conflict policy

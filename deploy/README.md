@@ -33,3 +33,8 @@ must remain private until the T1.5 shape-auth proxy spike enforces `user_id` fil
   client read-sync fallback. Direct Electric shapes remain private until the shape-auth proxy
   route (`GET /api/electric/shape`) is used; it enforces an allow-listed `user_id` filter and keeps
   the Electric secret server-side.
+- Background Web Push is opt-in. Generate VAPID keys with `npx web-push generate-vapid-keys`, set
+  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `PUSH_CRON_SECRET`, then run a
+  scheduler every minute with `curl -fsS -X POST http://localhost:3001/api/push/reminders -H
+  "x-kanjiforge-push-secret: $PUSH_CRON_SECRET"`. The endpoint only sends to authenticated users
+  who enabled reminders and whose configured local time matches the scheduler minute.

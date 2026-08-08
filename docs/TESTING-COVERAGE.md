@@ -207,7 +207,7 @@ that these preferences load offline and that tap-to-reveal glosses remain hidden
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL and readable share-file payloads, omission of SRS progress, and malformed/empty payload rejection.
 
-**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
+**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`apps/api/src/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 
 ### `src/pwa` — 10 cases
 

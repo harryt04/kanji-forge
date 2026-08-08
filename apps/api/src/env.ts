@@ -13,6 +13,10 @@ export type ApiEnv = {
   CORS_ORIGIN: string
   ELECTRIC_URL: string | null
   ELECTRIC_SECRET: string | null
+  VAPID_PUBLIC_KEY: string | null
+  VAPID_PRIVATE_KEY: string | null
+  VAPID_SUBJECT: string
+  PUSH_CRON_SECRET: string | null
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
@@ -38,5 +42,9 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     CORS_ORIGIN: source.CORS_ORIGIN ?? source.BETTER_AUTH_URL!,
     ELECTRIC_URL: source.ELECTRIC_URL ?? null,
     ELECTRIC_SECRET: source.ELECTRIC_SECRET ?? null,
+    VAPID_PUBLIC_KEY: source.VAPID_PUBLIC_KEY ?? null,
+    VAPID_PRIVATE_KEY: source.VAPID_PRIVATE_KEY ?? null,
+    VAPID_SUBJECT: source.VAPID_SUBJECT ?? 'mailto:admin@example.invalid',
+    PUSH_CRON_SECRET: source.PUSH_CRON_SECRET ?? null,
   }
 }

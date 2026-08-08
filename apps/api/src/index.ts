@@ -17,6 +17,12 @@ import {
   parseMutationBatch,
 } from './mutations.js'
 import { readSyncSnapshot } from './sync.js'
+import {
+  isValidPushSubscription,
+  removePushSubscription,
+  savePushSubscription,
+  sendDuePushReminders,
+} from './push.js'
 
 const env = readEnv()
 const database = createDatabase(env.DATABASE_URL)
@@ -161,6 +167,102 @@ const server = createServer(async (request, response) => {
         await readSyncSnapshot(database, session.user.id),
         origin,
       )
+    }
+
+    if (url.pathname === '/api/push/config' && request.method === 'GET') {
+      const session = await auth.api.getSession({
+        headers: fetchRequest.headers,
+      })
+      if (!session)
+        return json(response, 401, { error: 'unauthenticated' }, origin)
+      return json(
+        response,
+        200,
+        {
+          enabled: Boolean(
+            env.VAPID_PUBLIC_KEY &&
+            env.VAPID_PRIVATE_KEY &&
+            env.PUSH_CRON_SECRET,
+          ),
+          publicKey: env.VAPID_PUBLIC_KEY,
+        },
+        origin,
+      )
+    }
+
+    if (
+      url.pathname === '/api/push/subscription' &&
+      request.method === 'POST'
+    ) {
+      const session = await auth.api.getSession({
+        headers: fetchRequest.headers,
+      })
+      if (!session)
+        return json(response, 401, { error: 'unauthenticated' }, origin)
+      const body: unknown = await fetchRequest.json()
+      if (!isValidPushSubscription(body))
+        return json(
+          response,
+          400,
+          { error: 'invalid_push_subscription' },
+          origin,
+        )
+      await savePushSubscription(database, session.user.id, body)
+      return json(response, 204, null, origin)
+    }
+
+    if (
+      url.pathname === '/api/push/subscription' &&
+      request.method === 'DELETE'
+    ) {
+      const session = await auth.api.getSession({
+        headers: fetchRequest.headers,
+      })
+      if (!session)
+        return json(response, 401, { error: 'unauthenticated' }, origin)
+      const body: unknown = await fetchRequest.json()
+      if (!body || typeof body !== 'object' || Array.isArray(body))
+        return json(
+          response,
+          400,
+          { error: 'invalid_push_subscription' },
+          origin,
+        )
+      const endpoint = (body as Record<string, unknown>).endpoint
+      if (typeof endpoint !== 'string' || !endpoint.startsWith('https://'))
+        return json(
+          response,
+          400,
+          { error: 'invalid_push_subscription' },
+          origin,
+        )
+      await removePushSubscription(database, session.user.id, endpoint)
+      return json(response, 204, null, origin)
+    }
+
+    if (url.pathname === '/api/push/reminders' && request.method === 'POST') {
+      if (!env.PUSH_CRON_SECRET)
+        return json(
+          response,
+          503,
+          { error: 'push_sender_not_configured' },
+          origin,
+        )
+      if (request.headers['x-kanjiforge-push-secret'] !== env.PUSH_CRON_SECRET)
+        return json(response, 401, { error: 'unauthorized' }, origin)
+      if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY)
+        return json(
+          response,
+          503,
+          { error: 'push_sender_not_configured' },
+          origin,
+        )
+      const result = await sendDuePushReminders(database, new Date(), {
+        subject: env.VAPID_SUBJECT,
+        publicKey: env.VAPID_PUBLIC_KEY,
+        privateKey: env.VAPID_PRIVATE_KEY,
+      })
+      return json(response, 200, result, origin)
     }
 
     if (url.pathname === '/api/electric/shape' && request.method === 'GET') {
