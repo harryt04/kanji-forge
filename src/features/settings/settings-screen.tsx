@@ -87,6 +87,11 @@ import {
   type CsvImportTable,
   type KanjiImportPreviewItem,
 } from './deck-import'
+import {
+  deckFolderSettingKey,
+  groupDecksByFolder,
+  normalizeDeckFolder,
+} from './deck-folders'
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -158,6 +163,13 @@ export function SettingsScreen(): React.ReactElement {
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [deckName, setDeckName] = useState(DEFAULT_STARTER_DECK_NAME)
+  const [deckFolders, setDeckFolders] = useState<Record<string, string>>({})
+  const [deckFolderDrafts, setDeckFolderDrafts] = useState<
+    Record<string, string>
+  >({})
+  const [deckFolderMessage, setDeckFolderMessage] = useState<string | null>(
+    null,
+  )
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -222,6 +234,8 @@ export function SettingsScreen(): React.ReactElement {
         savedSaveBehavior,
         savedBackup,
         savedDeck,
+        savedFolder,
+        savedSavedFolder,
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
@@ -235,6 +249,8 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
         repositories.decks.get(STARTER_DECK_ID),
+        repositories.settings.get(deckFolderSettingKey(STARTER_DECK_ID)),
+        repositories.settings.get(deckFolderSettingKey('saved')),
       ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
@@ -261,6 +277,12 @@ export function SettingsScreen(): React.ReactElement {
       if (isSaveBehavior(savedSaveBehavior?.value))
         setSaveBehavior(savedSaveBehavior.value)
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
+      const loadedDeckFolders = {
+        [STARTER_DECK_ID]: normalizeDeckFolder(savedFolder?.value),
+        saved: normalizeDeckFolder(savedSavedFolder?.value),
+      }
+      setDeckFolders(loadedDeckFolders)
+      setDeckFolderDrafts(loadedDeckFolders)
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
         : undefined
@@ -666,6 +688,39 @@ export function SettingsScreen(): React.ReactElement {
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not rename deck.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveDeckFolder(deckId: string, value: string): Promise<void> {
+    if (!runtime || saving) return
+    const nextFolder = normalizeDeckFolder(value)
+    const previous = deckFolders[deckId] ?? ''
+    setDeckFolders((current) => ({ ...current, [deckId]: nextFolder }))
+    setDeckFolderMessage(null)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: deckFolderSettingKey(deckId),
+        value: nextFolder,
+        updatedAt: Date.now(),
+      })
+      setDeckFolders((current) => ({ ...current, [deckId]: nextFolder }))
+      setDeckFolderMessage(
+        nextFolder
+          ? `Placed deck in the “${nextFolder}” folder.`
+          : 'Removed the deck from its folder.',
+      )
+    } catch (reason: unknown) {
+      setDeckFolders((current) => ({ ...current, [deckId]: previous }))
+      setDeckFolderDrafts((current) => ({ ...current, [deckId]: previous }))
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the deck folder.',
       )
     } finally {
       setSaving(false)
@@ -1559,6 +1614,83 @@ export function SettingsScreen(): React.ReactElement {
         {deckMessage && (
           <p className="text-muted-foreground mt-4 text-sm" role="status">
             {deckMessage}
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Deck organization</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Group your decks into named folders. Folder labels are saved on this
+          device and work offline; leave a label empty to keep a deck in
+          Unfiled.
+        </p>
+        <div className="mt-5 space-y-5">
+          {groupDecksByFolder(
+            [
+              {
+                id: STARTER_DECK_ID,
+                name: deckName,
+                kind: 'derived',
+                definitionId: STARTER_DECK_ID,
+                updatedAt: 0,
+              },
+              {
+                id: 'saved',
+                name: 'Saved',
+                kind: 'saved',
+                definitionId: null,
+                updatedAt: 0,
+              },
+            ],
+            deckFolders,
+          ).map((group) => (
+            <div key={group.name}>
+              <h3 className="font-medium">{group.name}</h3>
+              <div className="mt-3 grid gap-3">
+                {group.decks.map((deck) => (
+                  <form
+                    key={deck.id}
+                    className="flex flex-wrap items-end gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void saveDeckFolder(
+                        deck.id,
+                        deckFolderDrafts[deck.id] ?? '',
+                      )
+                    }}
+                  >
+                    <label
+                      className="grid min-w-60 flex-1 gap-2 text-sm font-medium"
+                      htmlFor={`deck-folder-${deck.id}`}
+                    >
+                      {deck.name} folder
+                      <input
+                        id={`deck-folder-${deck.id}`}
+                        className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+                        value={deckFolderDrafts[deck.id] ?? ''}
+                        onChange={(event) =>
+                          setDeckFolderDrafts((current) => ({
+                            ...current,
+                            [deck.id]: event.target.value,
+                          }))
+                        }
+                        maxLength={40}
+                        disabled={saving}
+                        placeholder="Unfiled"
+                      />
+                    </label>
+                    <Button type="submit" disabled={saving}>
+                      Save folder
+                    </Button>
+                  </form>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        {deckFolderMessage && (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            {deckFolderMessage}
           </p>
         )}
       </section>

@@ -128,7 +128,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 6.17 | Restore built-in deck to original | ✅ | 2026-08-07 | Settings restores the built-in starter deck's original name offline and queues the metadata mutation for sync without changing progress |
 | 6.18 | Remove duplicates (same question + reading) | ✅ | — | |
 | 6.19 | Transfer progress between decks sharing stickies | ✅ | — | |
-| — | Deck folders / grouping | ➕ 🔷 | — | |
+| — | Deck folders / grouping | ➕ 🔷 | 2026-08-08 | Settings assigns the built-in and Saved decks to named offline folders; empty labels remain in an Unfiled group |
 | — | Deck sharing by file or URL | ➕ 🔶 | 2026-08-08 | Settings copies a content-only URL for the built-in deck; the authenticated `/analyze` route previews dictionary matches and imports them into Saved without sharing private SRS progress |
 | — | Kanji Kentei level decks | ➕ 🔶 | — | If an openly-licensed list is found |
 

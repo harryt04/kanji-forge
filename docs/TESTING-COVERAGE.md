@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 46 (321 test cases: 321 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 98 cases, included above) |
+| Unit/integration test files | 47 (324 test cases: 324 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 99 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.21%** |
+| Overall statement coverage | **87.32%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -28,7 +28,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
 | `src/data/**` | 85% | db 93.46 / 86 / 100 / 93.46 · packs 98.77 / 82.54 / 100 / 98.77 · repo 97.65 / 89.76 / 100 / 97.65 | ✅ comfortable margin |
-| `src/features/**` | 70% | browse 89 / 74.77 / 86.48 / 89 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.53 / 84 / 84.84 / 96.53 | ✅ comfortable margin |
+| `src/features/**` | 70% | browse 89 / 74.77 / 86.48 / 89 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · settings 81.93 / 73.81 / 82.78 / 81.93 · study 96.53 / 84 / 84.84 / 96.53 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 80.7 / 74.82 / 80.73 / 80.7 | ✅ comfortable margin |
 | Global floor | 60% | 87.21 / 81.54 / 87.75 / 87.21 | ✅ comfortable margin |
@@ -170,7 +170,7 @@ promotion, and pinned-search toggling.
 
 **`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, and non-kanji input, versioned KanjiForge JSON deck import validation, plus non-mutating matched/already-saved/not-found preview classification.
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched kanji while identifying existing and unknown input, mapping a CSV column into the same preview flow, loading a versioned JSON deck export into that preview flow, backup restore, and the stale-backup warning with its recovery action. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, assigning offline folders to decks, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched kanji while identifying existing and unknown input, mapping a CSV column into the same preview flow, loading a versioned JSON deck export into that preview flow, backup restore, and the stale-backup warning with its recovery action. **`deck-folders.test.ts`** covers folder-label normalization and deterministic grouping. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 

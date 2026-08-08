@@ -29,6 +29,7 @@ import {
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
+import { deckFolderSettingKey } from './deck-folders'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -412,6 +413,32 @@ describe('SettingsScreen', () => {
     expect(
       (await createUserRepositories(runtime.database).outbox.pending())[0],
     ).toMatchObject({ mutType: 'deck.upsert' })
+  })
+
+  it('persists offline folder labels for the starter and Saved decks', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Deck organization' }),
+    ).toBeInTheDocument()
+    const starterFolder = screen.getByRole('textbox', {
+      name: 'Development Kanji folder',
+    })
+    await user.type(starterFolder, 'JLPT N5')
+    await user.click(screen.getAllByRole('button', { name: 'Save folder' })[0]!)
+
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          deckFolderSettingKey('dev-kanji'),
+        ),
+      ).toMatchObject({ value: 'JLPT N5' }),
+    )
+    expect(
+      await screen.findByText('Placed deck in the “JLPT N5” folder.'),
+    ).toBeInTheDocument()
   })
 
   it('resets starter-deck colors without deleting review totals or history', async () => {
