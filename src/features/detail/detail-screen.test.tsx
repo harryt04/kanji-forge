@@ -67,6 +67,12 @@ describe('DetailScreen', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Stroke count')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('Name readings')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'あ、あき、いる、く、くさ、こう、す、たち、に、にっ、につ、へ',
+      ),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Stroke order' }),
     ).toBeInTheDocument()
