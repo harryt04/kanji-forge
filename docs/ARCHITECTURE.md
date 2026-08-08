@@ -402,12 +402,12 @@ This matches Electric’s documented pattern of “read-path sync + your existin
 - Electric shapes are filtered so a client only receives **that user’s** rows.
 - The API exposes an authenticated `/api/electric/shape` proxy for the five sync projections. It
   validates the better-auth session, allow-lists the table, replaces any client `where` clause with
-  a parameterized `user_id = $1` predicate, and keeps the Electric secret server-side. The
-  authenticated `/api/sync` snapshot remains the client's transport-compatible fallback while the
-  direct Electric client integration is phased in.
+  a parameterized `user_id = $1` predicate, and keeps the Electric secret server-side. The client
+  materializes the proxied Electric shape stream when `NEXT_PUBLIC_ELECTRIC_URL` is configured,
+  with the authenticated `/api/sync` snapshot retained as a transport fallback.
 - **The exact write-path and shape-authorization contract is `TRD.md §15` (Sync Contract).** The
-  shape-auth mechanism (preferred: an auth proxy that server-enforces `where user_id = <token uid>`)
-  is to be confirmed by a Phase 1 spike against the real Electric image before Phase 4 — see §15.4.
+  authenticated proxy server-enforces `where user_id = <token uid>` and the client only uses the
+  allow-listed shape route; the API snapshot remains available when Electric is unavailable.
 - Background reminders use the same authenticated API: the browser stores a user-owned Web Push
   subscription, while an operator-scheduled `POST /api/push/reminders` call signs and sends the
   configured local-time reminder with VAPID. The service worker validates the app-relative target

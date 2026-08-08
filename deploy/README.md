@@ -17,8 +17,8 @@ make the Next client a server: `apps/api` is an independent Node/TypeScript serv
 
 The compose ports bind to loopback only. For Coolify, attach API and Electric to its TLS-enabled
 proxy and set `BETTER_AUTH_URL`, `CORS_ORIGIN`, and the static client's public API/Electric URLs to
-their HTTPS origins. Do not expose Postgres or Electric's dashboard publicly. The shape endpoint
-must remain private until the T1.5 shape-auth proxy spike enforces `user_id` filtering.
+their HTTPS origins. Do not expose Postgres or Electric's dashboard publicly. The browser should
+use the authenticated API shape proxy, not Electric's private origin.
 
 ## Production notes
 
@@ -30,9 +30,9 @@ must remain private until the T1.5 shape-auth proxy spike enforces `user_id` fil
   rollout, or run `pnpm --dir apps/api db:migrate` as a separate Coolify deployment command.
 - `POST /api/mutations` authenticates a better-auth session and applies the supported write contract.
   `GET /api/sync` returns only that session user's reviews and metadata projections for the local
-  client read-sync fallback. Direct Electric shapes remain private until the shape-auth proxy
-  route (`GET /api/electric/shape`) is used; it enforces an allow-listed `user_id` filter and keeps
-  the Electric secret server-side.
+  client read-sync fallback. Configure `NEXT_PUBLIC_ELECTRIC_URL` in the static client to consume
+  the authenticated `GET /api/electric/shape` proxy; it enforces an allow-listed `user_id` filter
+  and keeps the Electric secret server-side.
 - Background Web Push is opt-in. Generate VAPID keys with `npx web-push generate-vapid-keys`, set
   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `PUSH_CRON_SECRET`, then run a
   scheduler every minute with `curl -fsS -X POST http://localhost:3001/api/push/reminders -H
