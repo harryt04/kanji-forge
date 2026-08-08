@@ -107,6 +107,7 @@ export interface UserRepositories {
   }
   readonly cardStates: {
     get(deckId: string, contentRef: string): Promise<CardState | undefined>
+    list(deckId: string): Promise<readonly CardState[]>
     count(deckId?: string): Promise<number>
     upsert(state: CardState): Promise<void>
   }
@@ -145,6 +146,10 @@ export interface UserRepositories {
     state: CardState
     mutation: OutboxMutation
   }): Promise<void>
+  /** Persists several manual card-state changes and their sync mutations atomically. */
+  recordCardStates(
+    inputs: readonly { state: CardState; mutation: OutboxMutation }[],
+  ): Promise<void>
   /** Persists a manual level assignment without counting it as a study review. */
   recordManualOverride(input: {
     review: Review
@@ -237,6 +242,8 @@ export function createUserRepositories(
   ]
   const putState =
     'INSERT INTO card_states(deck_id, content_ref, level, due_at, last_reviewed_at, correct_streak, total_reviews, total_correct, lapses, flagged, manual_override, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET level=excluded.level, due_at=excluded.due_at, last_reviewed_at=excluded.last_reviewed_at, correct_streak=excluded.correct_streak, total_reviews=excluded.total_reviews, total_correct=excluded.total_correct, lapses=excluded.lapses, flagged=excluded.flagged, manual_override=excluded.manual_override, updated_at=excluded.updated_at, updated_by=excluded.updated_by'
+  const putOutbox =
+    'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)'
   const reviewParams = (review: Review): readonly SqlValue[] => [
     review.id,
     userId,
@@ -377,6 +384,13 @@ export function createUserRepositories(
           )
         )[0]
         return row ? cardState(row) : undefined
+      },
+      async list(deckId) {
+        const rows = await database.read(
+          'SELECT * FROM card_states WHERE deck_id = ? ORDER BY content_ref',
+          [deckId],
+        )
+        return rows.map(cardState)
       },
       async count(deckId) {
         const rows = await database.read(
@@ -579,20 +593,26 @@ export function createUserRepositories(
       ])
     },
     async recordCardState({ state, mutation }) {
-      await database.transaction([
-        { sql: putState, parameters: stateParams(state) },
-        {
-          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
-          parameters: [
-            mutation.id,
-            userId,
-            mutation.mutType,
-            mutation.payload,
-            mutation.createdAt,
-            mutation.attempts,
-          ],
-        },
-      ])
+      await this.recordCardStates([{ state, mutation }])
+    },
+    async recordCardStates(inputs) {
+      if (inputs.length === 0) return
+      await database.transaction(
+        inputs.flatMap(({ state, mutation }) => [
+          { sql: putState, parameters: stateParams(state) },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ]),
+      )
     },
     async recordManualOverride({ review, nextState, mutation }) {
       if (review.id !== mutation.id)

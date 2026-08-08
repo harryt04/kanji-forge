@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bootstrapUserRuntime,
   clearUserRuntime,
@@ -22,6 +22,7 @@ import {
 } from '@/features/study/study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
+import { repoCardState } from '../../../test/factories'
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -235,6 +236,56 @@ describe('SettingsScreen', () => {
         ),
       ).toMatchObject({ value: 'total' }),
     )
+  })
+
+  it('resets starter-deck colors without deleting review totals or history', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const before = repoCardState({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      dueAt: Date.now() + 86_400_000,
+      lastReviewedAt: 123,
+      correctStreak: 3,
+      totalReviews: 8,
+      totalCorrect: 6,
+      lapses: 2,
+      flagged: true,
+    })
+    await createUserRepositories(runtime.database).cardStates.upsert(before)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Reset colors' })
+    await user.click(screen.getByRole('button', { name: 'Reset all colors' }))
+
+    expect(
+      await screen.findByText(
+        'Reset colors for 1 card. Review totals were kept.',
+      ),
+    ).toBeInTheDocument()
+    expect(confirm).toHaveBeenCalledOnce()
+    await expect(
+      createUserRepositories(runtime.database).cardStates.get(
+        'dev-kanji',
+        'kanji:日',
+      ),
+    ).resolves.toMatchObject({
+      level: 0,
+      dueAt: null,
+      lastReviewedAt: 123,
+      correctStreak: 0,
+      totalReviews: 8,
+      totalCorrect: 6,
+      lapses: 2,
+      flagged: true,
+      manualOverride: false,
+    })
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending())[0],
+    ).toMatchObject({ mutType: 'cardState.upsert' })
+    confirm.mockRestore()
   })
 
   it('restores a same-account backup through the Settings file picker', async () => {

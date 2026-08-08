@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { createUserRepositories } from '@/data/repo'
+import { createUserRepositories, type CardState } from '@/data/repo'
+import { getDeviceId } from '@/lib/device-id'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
   APP_BADGE_PREFERENCES,
@@ -114,6 +115,8 @@ export function SettingsScreen(): React.ReactElement {
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
   const [backupReminder, setBackupReminder] = useState<BackupReminder>(null)
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetMessage, setResetMessage] = useState<string | null>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -458,6 +461,64 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function resetColors(): Promise<void> {
+    if (
+      !runtime ||
+      resetBusy ||
+      !window.confirm(
+        'Reset all starter-deck colors to New? Review totals and history will be kept.',
+      )
+    )
+      return
+
+    setResetBusy(true)
+    setResetMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const states = await repositories.cardStates.list('dev-kanji')
+      const now = Date.now()
+      const updatedBy = getDeviceId()
+      const changes = states.map((state: CardState) => ({
+        state: {
+          ...state,
+          level: 0 as const,
+          dueAt: null,
+          correctStreak: 0,
+          manualOverride: false,
+          updatedAt: now,
+          updatedBy,
+        },
+        mutation: {
+          id: crypto.randomUUID(),
+          mutType: 'cardState.upsert' as const,
+          payload: JSON.stringify({
+            deckId: state.deckId,
+            contentRef: state.contentRef,
+            level: 0,
+            source: 'reset-colors',
+            updatedAt: now,
+          }),
+          createdAt: now,
+          attempts: 0,
+        },
+      }))
+      await repositories.recordCardStates(changes)
+      setResetMessage(
+        states.length === 0
+          ? 'No studied colors needed resetting.'
+          : `Reset colors for ${states.length} ${states.length === 1 ? 'card' : 'cards'}. Review totals were kept.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not reset colors.',
+      )
+    } finally {
+      setResetBusy(false)
+    }
+  }
+
   if (!runtime)
     return (
       <p className="text-muted-foreground p-6">Sign in to open Settings.</p>
@@ -687,6 +748,28 @@ export function SettingsScreen(): React.ReactElement {
             </Button>
           ))}
         </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Reset colors</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Return every studied card in the starter deck to New without deleting
+          review totals, flags, or history. This is useful when you want to
+          start the color progression again.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5"
+          disabled={resetBusy}
+          onClick={() => void resetColors()}
+        >
+          {resetBusy ? 'Resetting colors…' : 'Reset all colors'}
+        </Button>
+        {resetMessage && (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            {resetMessage}
+          </p>
+        )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Backup &amp; restore</h2>

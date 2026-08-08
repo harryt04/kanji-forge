@@ -60,6 +60,51 @@ describe('derived deck state projection', () => {
       ),
     ).toHaveLength(1)
   })
+
+  it('lists card states and persists a batch with matching outbox mutations', async () => {
+    const repos = await freshRepo()
+    const first = state({ deckId: 'jlpt-n5', contentRef: 'kanji:未' })
+    const second = state({
+      deckId: 'jlpt-n5',
+      contentRef: 'kanji:日',
+      level: 2,
+    })
+    await repos.cardStates.upsert(first)
+    await repos.cardStates.upsert(second)
+
+    const resetFirst = { ...first, level: 0 as const, dueAt: null }
+    const resetSecond = { ...second, level: 0 as const, dueAt: null }
+    await repos.recordCardStates([
+      {
+        state: resetFirst,
+        mutation: {
+          id: 'reset-first',
+          mutType: 'cardState.upsert',
+          payload: '{}',
+          createdAt: 1,
+          attempts: 0,
+        },
+      },
+      {
+        state: resetSecond,
+        mutation: {
+          id: 'reset-second',
+          mutType: 'cardState.upsert',
+          payload: '{}',
+          createdAt: 1,
+          attempts: 0,
+        },
+      },
+    ])
+
+    expect(await repos.cardStates.list('jlpt-n5')).toEqual([
+      resetSecond,
+      resetFirst,
+    ])
+    expect(
+      (await repos.outbox.pending()).map((mutation) => mutation.id),
+    ).toEqual(['reset-first', 'reset-second'])
+  })
 })
 
 describe('recordGrade atomicity', () => {
