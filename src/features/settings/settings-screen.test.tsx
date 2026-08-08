@@ -56,6 +56,10 @@ function fixtureFetch(): typeof fetch {
 
 describe('SettingsScreen', () => {
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
+  const originalUserAgent = Object.getOwnPropertyDescriptor(
+    navigator,
+    'userAgent',
+  )
 
   beforeEach(() => {
     vi.stubGlobal('fetch', fixtureFetch())
@@ -68,6 +72,11 @@ describe('SettingsScreen', () => {
       Object.defineProperty(navigator, 'storage', originalStorage)
     } else {
       Reflect.deleteProperty(navigator, 'storage')
+    }
+    if (originalUserAgent) {
+      Object.defineProperty(navigator, 'userAgent', originalUserAgent)
+    } else {
+      Reflect.deleteProperty(navigator, 'userAgent')
     }
     vi.unstubAllGlobals()
     clearUserRuntime()
@@ -256,6 +265,28 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Daily reminder on' }),
     ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('shows iOS Home Screen guidance when storage is not protected', async () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    })
+    Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: {
+        persisted: vi.fn().mockResolvedValue(false),
+        persist: vi.fn().mockResolvedValue(false),
+      },
+    })
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByText('Keep KanjiForge on your Home Screen'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Tap Share, then “Add to Home Screen/u),
+    ).toBeInTheDocument()
   })
 
   it('persists the selected study answer fields offline', async () => {

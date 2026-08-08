@@ -39,9 +39,11 @@ import {
   getBackgroundPushStatus,
   isDailyReminderTime,
   isAppBadgePreference,
+  readInstallGuidanceEnvironment,
   requestDailyReminderPermission,
   getStoragePersistenceStatus,
   requestStoragePersistence,
+  shouldShowIosInstallGuidance,
   STORAGE_PERSISTENCE_REQUESTED_SETTING,
   type AppBadgePreference,
   type BackgroundPushStatus,
@@ -357,6 +359,7 @@ export function SettingsScreen(): React.ReactElement {
     useState<BackgroundPushStatus | null>(null)
   const [storagePersistenceStatus, setStoragePersistenceStatus] =
     useState<StoragePersistenceStatus | null>(null)
+  const [showIosInstallGuidance, setShowIosInstallGuidance] = useState(false)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -364,6 +367,9 @@ export function SettingsScreen(): React.ReactElement {
     let cancelled = false
     setSystemDark(getSystemPreference())
     setAutoBackupSupported(supportsAutoBackup())
+    setShowIosInstallGuidance(
+      shouldShowIosInstallGuidance(readInstallGuidanceEnvironment()),
+    )
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
@@ -2681,6 +2687,16 @@ export function SettingsScreen(): React.ReactElement {
             >
               Try storage protection again
             </Button>
+          </div>
+        ) : null}
+        {showIosInstallGuidance && storagePersistenceStatus !== 'granted' ? (
+          <div className="border-border bg-muted mt-4 rounded-md border p-4">
+            <p className="font-medium">Keep KanjiForge on your Home Screen</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              iPhone and iPad Safari are more likely to retain offline study
+              data when the app is installed. Tap Share, then “Add to Home
+              Screen,” and open KanjiForge from there.
+            </p>
           </div>
         ) : null}
       </section>

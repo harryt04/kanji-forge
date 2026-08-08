@@ -38,6 +38,12 @@ export {
   getBackgroundPushStatus,
   type BackgroundPushStatus,
 } from './push'
+export {
+  isIosDevice,
+  readInstallGuidanceEnvironment,
+  shouldShowIosInstallGuidance,
+  type InstallGuidanceEnvironment,
+} from './install-guidance'
 
 /** Register the build-generated Serwist worker without making startup network-dependent. */
 export function PwaRegistration(): null {

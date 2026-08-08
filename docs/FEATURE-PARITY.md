@@ -227,7 +227,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 12.3 | Notifications | ⚠️ Partial | 2026-08-08 | Settings persist a daily reminder time and permission-aware local browser reminders fire while the app is open; clicking one opens Study. When the self-hosted VAPID sender is configured, enabling the reminder registers the device, Settings restores the device's subscription state after reload, the API scheduler sends a localized Web Push reminder, and the service worker opens Study; iOS still requires an installed PWA (T1.1) |
 | 12.4 | Extensive options | ✅ | — | PRD §4.14 |
 | 12.5 | Full in-app documentation | ✅ | 2026-08-07 | Authenticated `/help` route bundles offline guidance for study controls, levels, Browse/Dictionary, backup, and privacy |
-| — | Request persistent browser storage + warn when eviction protection is denied | ➕ ✅ | 2026-08-07 | After the first non-empty completed study session, KanjiForge requests durable storage; Settings reports unsupported/denied browsers and points users to backups |
+| — | Request persistent browser storage + warn when eviction protection is denied | ➕ ✅ | 2026-08-07 | After the first non-empty completed study session, KanjiForge requests durable storage; Settings reports unsupported/denied browsers, points users to backups, and gives non-standalone iPhone/iPad Safari users Add to Home Screen instructions |
 | — | Installable to home screen, all platforms | ➕ ✅ | 2026-08-07 | Manifest and build-generated Serwist service worker are registered on the client; the app shell and visited pages can load offline after the first visit |
 | — | Works in a plain browser with no install | ➕ ✅ | 2026-08-06 | |
 | — | Tablet / laptop / desktop layouts | ➕ ✅ | — | Two-pane above `md` |
