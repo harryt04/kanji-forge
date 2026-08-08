@@ -158,9 +158,9 @@ promotion, and pinned-search toggling.
 
 **`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level/school grade/JLPT/frequency/name readings, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
 
-### `src/features/writing` — 2 cases
+### `src/features/writing` — 3 cases
 
-**`writing-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline guide loading, pointer-stroke capture, undo, and clear actions. Stroke-order validation is intentionally not covered because it is not implemented yet.
+**`writing-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline guide loading, pointer-stroke capture, undo, clear actions, and offline persistence of the correct-strokes toggle. **`src/core/stroke/match.test.ts`** covers arc-length resampling, forward/reverse stroke order, curve similarity, and wrong-shape rejection.
 
 ### `src/features/navigation` — 2 cases
 

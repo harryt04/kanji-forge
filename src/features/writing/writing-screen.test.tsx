@@ -9,8 +9,14 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import {
+  bootstrapUserRuntime,
+  clearUserRuntime,
+  getActiveUserRuntime,
+} from '@/auth/runtime'
+import { createUserRepositories } from '@/data/repo'
 import { WritingScreen } from './writing-screen'
+import { WRITING_VALIDATION_SETTING } from './settings'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 const REPO_PACK_ROOT = join(process.cwd(), 'packs')
@@ -59,6 +65,10 @@ describe('WritingScreen', () => {
     expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument()
     expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
 
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Check stroke order' }),
+    )
+
     fireEvent.pointerDown(surface, {
       pointerId: 1,
       clientX: 20,
@@ -91,5 +101,25 @@ describe('WritingScreen', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Clear all' }))
     expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
+  })
+
+  it('persists the correct-strokes preference offline', async () => {
+    bootstrapUserRuntime('writing-settings-user')
+    const user = userEvent.setup()
+    render(<WritingScreen />)
+
+    const checkbox = await screen.findByRole('checkbox', {
+      name: 'Check stroke order',
+    })
+    await user.click(checkbox)
+
+    const runtime = getActiveUserRuntime()
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime!.database).settings.get(
+          WRITING_VALIDATION_SETTING,
+        ),
+      ).toMatchObject({ value: 'false' }),
+    )
   })
 })

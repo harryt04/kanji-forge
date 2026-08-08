@@ -9,7 +9,13 @@ import {
   parseContentRef,
   type KanjiRecord,
 } from '@/data/packs'
+import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
+import { matchStroke } from '@/core/stroke/match'
+import {
+  isWritingValidationEnabled,
+  WRITING_VALIDATION_SETTING,
+} from './settings'
 
 interface Point {
   readonly x: number
@@ -47,7 +53,7 @@ function pointsAttribute(points: readonly Point[]): string {
   return points.map((point) => `${point.x},${point.y}`).join(' ')
 }
 
-/** Offline writing practice surface. Stroke validation is a follow-up to input capture. */
+/** Offline writing practice surface with optional next-stroke validation. */
 export function WritingScreen(): React.ReactElement {
   const [contentRef] = useState(contentRefFromLocation)
   const [content, setContent] = useState<KanjiRecord | null>(null)
@@ -56,8 +62,12 @@ export function WritingScreen(): React.ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [capturedStrokes, setCapturedStrokes] = useState<readonly Point[][]>([])
   const [draftStroke, setDraftStroke] = useState<readonly Point[]>([])
+  const [validationEnabled, setValidationEnabled] = useState(true)
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [feedback, setFeedback] = useState<string | null>(null)
   const surfaceRef = useRef<SVGSVGElement>(null)
   const activePointerId = useRef<number | null>(null)
+  const draftStrokeRef = useRef<readonly Point[]>([])
 
   useEffect(() => {
     const runtime = getActiveUserRuntime()
@@ -68,15 +78,18 @@ export function WritingScreen(): React.ReactElement {
     let active = true
     void (async () => {
       try {
+        await runtime.database.ready
+        const repositories = createUserRepositories(runtime.database)
         const { type, key } = parseContentRef(contentRef)
         if (type !== 'kanji' || [...key].length !== 1) {
           throw new Error(
             'Writing practice is currently available for one kanji at a time.',
           )
         }
-        const [records, strokePaths] = await Promise.all([
+        const [records, strokePaths, savedValidation] = await Promise.all([
           getKanjiByLiterals([key]),
           getKanjiStrokes(key),
+          repositories.settings.get(WRITING_VALIDATION_SETTING),
         ])
         const record = records.get(key)
         if (!record)
@@ -84,6 +97,9 @@ export function WritingScreen(): React.ReactElement {
         if (active) {
           setContent(record)
           setPaths(strokePaths)
+          setValidationEnabled(
+            isWritingValidationEnabled(savedValidation?.value),
+          )
         }
       } catch (reason) {
         if (active)
@@ -105,37 +121,79 @@ export function WritingScreen(): React.ReactElement {
     if (!surfaceRef.current || activePointerId.current !== null) return
     activePointerId.current = event.pointerId
     surfaceRef.current.setPointerCapture?.(event.pointerId)
-    setDraftStroke([pointFromEvent(event, surfaceRef.current)])
+    const point = pointFromEvent(event, surfaceRef.current)
+    draftStrokeRef.current = [point]
+    setDraftStroke(draftStrokeRef.current)
   }
 
   function continueStroke(event: React.PointerEvent<SVGSVGElement>): void {
     if (
       !surfaceRef.current ||
       activePointerId.current !== event.pointerId ||
-      draftStroke.length === 0
+      draftStrokeRef.current.length === 0
     )
       return
     const point = pointFromEvent(event, surfaceRef.current)
-    setDraftStroke((current) => [...current, point])
+    draftStrokeRef.current = [...draftStrokeRef.current, point]
+    setDraftStroke(draftStrokeRef.current)
   }
 
   function endStroke(event: React.PointerEvent<SVGSVGElement>): void {
     if (activePointerId.current !== event.pointerId) return
     activePointerId.current = null
-    if (draftStroke.length > 1) {
-      setCapturedStrokes((current) => [...current, [...draftStroke]])
+    const stroke = draftStrokeRef.current
+    if (stroke.length > 1) {
+      const expectedPath = paths?.[capturedStrokes.length]
+      const accepted =
+        !validationEnabled ||
+        !expectedPath ||
+        matchStroke(stroke, expectedPath).accepted
+      if (accepted) {
+        setCapturedStrokes((current) => [...current, [...stroke]])
+        setFailedAttempts(0)
+        setFeedback(null)
+      } else {
+        const nextFailures = failedAttempts + 1
+        setFailedAttempts(nextFailures)
+        setFeedback(
+          nextFailures >= 3
+            ? 'Try tracing the highlighted stroke from its start.'
+            : 'That stroke was not close enough. Try again from the highlighted start.',
+        )
+      }
     }
+    draftStrokeRef.current = []
     setDraftStroke([])
   }
 
   function clearStrokes(): void {
     activePointerId.current = null
+    draftStrokeRef.current = []
     setDraftStroke([])
     setCapturedStrokes([])
+    setFailedAttempts(0)
+    setFeedback(null)
   }
 
   function undoStroke(): void {
     setCapturedStrokes((current) => current.slice(0, -1))
+    setFailedAttempts(0)
+    setFeedback(null)
+  }
+
+  function toggleValidation(enabled: boolean): void {
+    setValidationEnabled(enabled)
+    setFailedAttempts(0)
+    setFeedback(null)
+    const runtime = getActiveUserRuntime()
+    if (!runtime) return
+    void runtime.database.ready.then(() =>
+      createUserRepositories(runtime.database).settings.set({
+        key: WRITING_VALIDATION_SETTING,
+        value: String(enabled),
+        updatedAt: Date.now(),
+      }),
+    )
   }
 
   if (!getActiveUserRuntime()) {
@@ -244,6 +302,16 @@ export function WritingScreen(): React.ReactElement {
                 {content.literal}
               </text>
             )}
+            {validationEnabled &&
+              paths?.[capturedStrokes.length] &&
+              failedAttempts > 0 && (
+                <path
+                  d={paths[capturedStrokes.length]}
+                  fill="var(--accent)"
+                  opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
+                  aria-hidden="true"
+                />
+              )}
             {capturedStrokes.map((stroke, index) => (
               <polyline
                 key={`captured-${index}`}
@@ -296,9 +364,19 @@ export function WritingScreen(): React.ReactElement {
             </Button>
           </div>
         </div>
-        <p className="text-muted-foreground text-xs">
-          Stroke correctness checks are not enabled yet; this practice surface
-          is for pointer, mouse, and stylus input.
+        <label className="text-muted-foreground flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={validationEnabled}
+            onChange={(event) => toggleValidation(event.target.checked)}
+          />
+          Check stroke order
+        </label>
+        <p className="text-muted-foreground text-xs" role="status">
+          {feedback ??
+            (validationEnabled
+              ? 'Draw the highlighted strokes in order. Incorrect strokes are rejected.'
+              : 'Stroke checks are off; every captured stroke is kept.')}
         </p>
       </section>
     </main>
