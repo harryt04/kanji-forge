@@ -30,6 +30,7 @@ import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { deckFolderSettingKey } from './deck-folders'
+import { RSS_FEEDS_SETTING } from './rss-feeds'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -89,6 +90,43 @@ describe('SettingsScreen', () => {
     await expect(
       createUserRepositories(runtime!.database).settings.get(THEME_SETTING),
     ).resolves.toMatchObject({ value: 'dark' })
+  })
+
+  it('persists RSS links and provides link-out-only news sources', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Japanese news links' }),
+    ).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Label'), 'NHK Easy')
+    await user.type(
+      screen.getByLabelText('RSS URL'),
+      'https://example.test/feed',
+    )
+    await user.click(screen.getByRole('button', { name: 'Add source' }))
+
+    const link = await screen.findByRole('link', { name: 'NHK Easy' })
+    expect(link).toHaveAttribute('href', 'https://example.test/feed')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          RSS_FEEDS_SETTING,
+        ),
+      ).toMatchObject({
+        value: '[{"label":"NHK Easy","url":"https://example.test/feed"}]',
+      }),
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove RSS source NHK Easy' }),
+    )
+    expect(
+      await screen.findByText('No news sources saved yet.'),
+    ).toBeInTheDocument()
   })
 
   it('restores a saved night preference on a later render', async () => {

@@ -182,7 +182,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 9.5 | Tap an article → broken into words + furigana | 🔷 | — | Applies to any user-supplied text (T3.0) |
 | — | Add all unknown words from a text in bulk | ➕ 🔷 | 2026-08-08 | Analyzer can bulk-save deduplicated dictionary-backed word tokens not already in Saved, atomically and offline; unmatched characters remain visible for future tokenizer/enrichment work |
 | — | Web Share Target — share text into KanjiForge from any app | ➕ 🔷 | 2026-08-08 | The PWA share target opens an authenticated offline preview, extracts dictionary-backed kanji from shared text, and adds new cards to Saved with progress-preserving outbox mutations |
-| — | User-configurable RSS with link-out, no reproduction | ➕ 🔶 | — | Legal alternative to 9.4 |
+| — | User-configurable RSS with link-out, no reproduction | ➕ 🔶 | 2026-08-08 | Settings stores up to 12 validated HTTP(S) feed links per user and opens them externally; feed content is never fetched or reproduced |
 | — | CC-licensed news source (e.g. Japanese Wikinews) | ➕ 🔶 | — | Legal alternative to 9.4 |
 
 ## 10. Import & export

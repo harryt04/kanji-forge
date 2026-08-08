@@ -94,6 +94,16 @@ import {
 } from './deck-folders'
 import { planProgressTransfer } from './deck-progress'
 import { combineDeckContent } from './deck-combine'
+import {
+  addRssFeed,
+  MAX_RSS_FEEDS,
+  parseRssFeed,
+  parseRssFeeds,
+  removeRssFeed,
+  RSS_FEEDS_SETTING,
+  serializeRssFeeds,
+  type RssFeed,
+} from './rss-feeds'
 
 interface DeckSourceOption {
   readonly id: string
@@ -170,6 +180,9 @@ export function SettingsScreen(): React.ReactElement {
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
+  const [rssFeeds, setRssFeeds] = useState<readonly RssFeed[]>([])
+  const [rssLabel, setRssLabel] = useState('')
+  const [rssUrl, setRssUrl] = useState('')
   const [deckName, setDeckName] = useState(DEFAULT_STARTER_DECK_NAME)
   const [savedDeckExists, setSavedDeckExists] = useState(false)
   const [customDecks, setCustomDecks] = useState<readonly Deck[]>([])
@@ -254,6 +267,7 @@ export function SettingsScreen(): React.ReactElement {
         savedAutoPlayAudio,
         savedStrokeAnimation,
         savedSaveBehavior,
+        savedRssFeeds,
         savedBackup,
         savedDeck,
         savedUserDeck,
@@ -272,6 +286,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
+        repositories.settings.get(RSS_FEEDS_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
         repositories.decks.get(STARTER_DECK_ID),
         repositories.decks.get('saved'),
@@ -304,6 +319,7 @@ export function SettingsScreen(): React.ReactElement {
       )
       if (isSaveBehavior(savedSaveBehavior?.value))
         setSaveBehavior(savedSaveBehavior.value)
+      setRssFeeds(parseRssFeeds(savedRssFeeds?.value))
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
       setSavedDeckExists(savedUserDeck !== undefined)
       const nextCustomDecks = existingDecks.filter(
@@ -398,6 +414,55 @@ export function SettingsScreen(): React.ReactElement {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function saveRssFeeds(nextFeeds: readonly RssFeed[]): Promise<void> {
+    if (!runtime) return
+    const previous = rssFeeds
+    setRssFeeds(nextFeeds)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: RSS_FEEDS_SETTING,
+        value: serializeRssFeeds(nextFeeds),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setRssFeeds(previous)
+      setError(
+        reason instanceof Error ? reason.message : 'Could not save news links.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function addNewsFeed(
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault()
+    const feed = parseRssFeed(rssLabel, rssUrl)
+    if (!feed) {
+      setError('Enter an HTTP or HTTPS RSS feed URL without credentials.')
+      return
+    }
+    if (rssFeeds.some((candidate) => candidate.url === feed.url)) {
+      setError('That RSS source is already saved.')
+      return
+    }
+    const nextFeeds = addRssFeed(rssFeeds, feed)
+    if (nextFeeds.length === rssFeeds.length) {
+      setError('You can save up to 12 RSS sources.')
+      return
+    }
+    await saveRssFeeds(nextFeeds)
+    setRssLabel('')
+    setRssUrl('')
+  }
+
+  async function removeNewsFeed(url: string): Promise<void> {
+    await saveRssFeeds(removeRssFeed(rssFeeds, url))
   }
 
   async function chooseBadgePreference(
@@ -1572,6 +1637,89 @@ export function SettingsScreen(): React.ReactElement {
         {error && (
           <p className="text-destructive mt-4 text-sm" role="alert">
             {error}
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Japanese news links</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Keep a personal list of RSS sources and open them in your browser.
+          KanjiForge stores URLs only: it does not fetch, cache, or reproduce
+          feed content.
+        </p>
+        <form
+          className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-end"
+          onSubmit={(event) => void addNewsFeed(event)}
+        >
+          <label className="grid gap-2 text-sm font-medium" htmlFor="rss-label">
+            Label
+            <input
+              id="rss-label"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+              value={rssLabel}
+              onChange={(event) => setRssLabel(event.target.value)}
+              maxLength={80}
+              placeholder="NHK Easy"
+              disabled={saving}
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium" htmlFor="rss-url">
+            RSS URL
+            <input
+              id="rss-url"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+              value={rssUrl}
+              onChange={(event) => setRssUrl(event.target.value)}
+              type="url"
+              inputMode="url"
+              placeholder="https://example.com/feed.xml"
+              required
+              disabled={saving}
+            />
+          </label>
+          <Button
+            type="submit"
+            disabled={saving || rssFeeds.length >= MAX_RSS_FEEDS}
+          >
+            Add source
+          </Button>
+        </form>
+        {rssFeeds.length > 0 ? (
+          <ul className="mt-5 grid gap-2" aria-label="Saved RSS sources">
+            {rssFeeds.map((feed) => (
+              <li
+                key={feed.url}
+                className="border-border bg-background flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <a
+                    className="text-primary font-medium underline-offset-4 hover:underline"
+                    href={feed.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {feed.label}
+                  </a>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {feed.url}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={saving}
+                  aria-label={`Remove RSS source ${feed.label}`}
+                  onClick={() => void removeNewsFeed(feed.url)}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground mt-5 text-sm">
+            No news sources saved yet.
           </p>
         )}
       </section>
