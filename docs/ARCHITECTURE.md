@@ -121,7 +121,7 @@ Immutable, large, shared, replaceable, queried with indexes and FTS.
 ```
 packs/kanji-v3.sqlite       ~4 MB
 packs/words-core-v3.sqlite  ~6 MB
-packs/words-full-v3.sqlite   optional, ~25 MB
+packs/words-full-v3.sqlite   optional, ~40 MB compressed
 packs/names-v3.sqlite        optional, ~15 MB
 packs/sentences-v3.sqlite   ~12 MB
 packs/strokes-*.json        chunked

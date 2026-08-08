@@ -75,7 +75,7 @@ Full JMdict + JMnedict is far too much to force on a phone. Ship three packs:
 | Pack | Contents | Size (compressed) | Default |
 |---|---|---|---|
 | `words-core` | Entries with any `*_pri` tag (~30k entries) — covers essentially all study vocabulary | ~6 MB | Installed by default |
-| `words-full` | All ~200k JMdict entries | ~25 MB | Optional |
+| `words-full` | All ~200k JMdict entries | ~40 MB compressed (measured from the pinned source) | Optional |
 | `names` | JMnedict (~700k entries) | ~15 MB | Optional; build with `npm run build:names` |
 
 `words-core` alone must be enough for every study feature, every built-in deck, and import enrichment. `words-full` and `names` only extend dictionary search depth.

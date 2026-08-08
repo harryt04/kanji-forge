@@ -28,6 +28,7 @@ function files(dir) {
 const builders = [
   'build-kanji-pack.ts',
   'build-words-core-pack.ts',
+  'build-words-full-pack.ts',
   'build-strokes-pack.ts',
   'build-sentences-pack.ts',
   'build-similar-pack.ts',
