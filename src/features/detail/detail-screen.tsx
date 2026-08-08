@@ -304,7 +304,13 @@ export function DetailScreen(): React.ReactElement {
             setDetailCard({
               content: {
                 contentRef,
+                contentType: 'kanji',
                 literal: record.literal,
+                readings: [
+                  ...record.onReadings,
+                  ...record.kunReadings,
+                  ...record.nanori,
+                ],
                 radicalClassical: record.radicalClassical,
                 radicalNelson: record.radicalNelson,
                 strokeCount: record.strokeCount,

@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openLocalUserDatabase, type LocalUserDatabase } from '@/data/db'
+import { findDictionaryEntry } from '@/data/packs'
 import { loadDeck, loadStarterDeck } from './deck-loader'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -134,12 +135,15 @@ describe('loadDeck', () => {
     expect(loaded.content.get('kanji:日')).toMatchObject({ literal: '日' })
   })
 
-  it('does not expose unsupported custom content as blank cards', async () => {
+  it('loads dictionary words into custom decks as study cards', async () => {
     const database = await freshDatabase()
     const repo = (await import('@/data/repo')).createUserRepositories(database)
+    const entry = await findDictionaryEntry('お金')
+    if (!entry || entry.type !== 'word') throw new Error('word fixture missing')
+    const wordRef = `word:${entry.record.id}`
     const deck = {
-      id: 'custom-mixed',
-      name: 'Mixed deck',
+      id: 'custom-word',
+      name: 'Word deck',
       kind: 'custom' as const,
       definitionId: null,
       updatedAt: 1,
@@ -147,13 +151,13 @@ describe('loadDeck', () => {
     await repo.recordDeckMemberships({
       deck,
       deckMutation: {
-        id: 'custom-mixed-deck',
+        id: 'custom-word-deck',
         mutType: 'deck.upsert',
         payload: JSON.stringify(deck),
         createdAt: 1,
         attempts: 0,
       },
-      memberships: ['kanji:日', 'word:食べる'].map((contentRef, sortOrder) => ({
+      memberships: [wordRef].map((contentRef, sortOrder) => ({
         membership: {
           deckId: deck.id,
           contentRef,
@@ -162,7 +166,7 @@ describe('loadDeck', () => {
           updatedAt: 1,
         },
         mutation: {
-          id: `custom-mixed-${sortOrder}`,
+          id: `custom-word-${sortOrder}`,
           mutType: 'deckMembership.upsert' as const,
           payload: JSON.stringify({ deckId: deck.id, contentRef }),
           createdAt: 1,
@@ -172,6 +176,11 @@ describe('loadDeck', () => {
     })
 
     const loaded = await loadDeck(database, deck.id)
-    expect(loaded.cards.map((card) => card.contentRef)).toEqual(['kanji:日'])
+    expect(loaded.cards.map((card) => card.contentRef)).toEqual([wordRef])
+    expect(loaded.content.get(wordRef)).toMatchObject({
+      contentType: 'word',
+      literal: 'お金',
+      readings: expect.arrayContaining(['おかね']),
+    })
   })
 })

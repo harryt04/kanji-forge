@@ -212,11 +212,7 @@ export function StudyScreen({
 
   const speakCurrentCard = useCallback(() => {
     if (!studyCard) return
-    const reading =
-      studyCard.onReadings[0] ??
-      studyCard.kunReadings[0] ??
-      studyCard.nanori[0] ??
-      studyCard.literal
+    const reading = studyCard.readings[0] ?? studyCard.literal
     void playJapaneseAudio(studyCard.literal, reading)
   }, [studyCard])
 
@@ -317,10 +313,7 @@ export function StudyScreen({
   const level = card?.state?.level ?? 0
   const flagged = card?.state?.flagged ?? false
   const remaining = Math.max(0, queue.length - index)
-  const reading =
-    studyCard?.onReadings[0] ??
-    studyCard?.kunReadings[0] ??
-    studyCard?.nanori[0]
+  const reading = studyCard?.readings[0]
   const questionText = twoTapStudy
     ? (studyCard?.literal ?? '')
     : studyQuestion === 'reading'
@@ -444,15 +437,25 @@ export function StudyScreen({
                 className="mt-6 space-y-2 text-left"
                 data-testid="study-two-tap-readings"
               >
-                {studyCard.onReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
-                    音: {studyCard.onReadings.join('、')}
-                  </p>
-                )}
-                {studyCard.kunReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
-                    訓: {studyCard.kunReadings.join('、')}
-                  </p>
+                {studyCard.contentType === 'word' ? (
+                  studyCard.readings.length > 0 && (
+                    <p className="font-jp-ui text-lg">
+                      読み: {studyCard.readings.join('、')}
+                    </p>
+                  )
+                ) : (
+                  <>
+                    {studyCard.onReadings.length > 0 && (
+                      <p className="font-jp-ui text-lg">
+                        音: {studyCard.onReadings.join('、')}
+                      </p>
+                    )}
+                    {studyCard.kunReadings.length > 0 && (
+                      <p className="font-jp-ui text-lg">
+                        訓: {studyCard.kunReadings.join('、')}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -466,15 +469,27 @@ export function StudyScreen({
                     {studyCard.literal}
                   </p>
                 )}
-                {answerShows('reading') && studyCard.onReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
-                    音: {studyCard.onReadings.join('、')}
-                  </p>
-                )}
-                {answerShows('reading') && studyCard.kunReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
-                    訓: {studyCard.kunReadings.join('、')}
-                  </p>
+                {answerShows('reading') && studyCard.contentType === 'word' ? (
+                  studyCard.readings.length > 0 && (
+                    <p className="font-jp-ui text-lg">
+                      読み: {studyCard.readings.join('、')}
+                    </p>
+                  )
+                ) : (
+                  <>
+                    {answerShows('reading') &&
+                      studyCard.onReadings.length > 0 && (
+                        <p className="font-jp-ui text-lg">
+                          音: {studyCard.onReadings.join('、')}
+                        </p>
+                      )}
+                    {answerShows('reading') &&
+                      studyCard.kunReadings.length > 0 && (
+                        <p className="font-jp-ui text-lg">
+                          訓: {studyCard.kunReadings.join('、')}
+                        </p>
+                      )}
+                  </>
                 )}
                 {answerShows('meaning') && (
                   <p className="text-muted-foreground">
@@ -488,9 +503,11 @@ export function StudyScreen({
             </p>
           </div>
 
-          {revealed && answerShows('writing') && (
-            <StudyWritingAnswer literal={studyCard.literal} />
-          )}
+          {revealed &&
+            answerShows('writing') &&
+            studyCard.contentType === 'kanji' && (
+              <StudyWritingAnswer literal={studyCard.literal} />
+            )}
 
           {!revealed ? (
             <Button size="lg" onClick={handleReveal}>

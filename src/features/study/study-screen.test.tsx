@@ -16,6 +16,7 @@ import {
   getActiveUserRuntime,
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import { findDictionaryEntry } from '@/data/packs'
 import { useStudyStore } from './store'
 import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
 import {
@@ -280,6 +281,58 @@ describe('StudyScreen', () => {
     expect(
       screen.getByRole('button', { name: 'Clear writing' }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps word-only cards studyable while ignoring the writing answer', async () => {
+    const entry = await findDictionaryEntry('お金')
+    if (!entry || entry.type !== 'word') throw new Error('word fixture missing')
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+    const deck = {
+      id: 'word-study-deck',
+      name: 'Word study',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: 1,
+    }
+    await repo.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: `word:${entry.record.id}`,
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'word-study-membership',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({
+          deckId: deck.id,
+          contentRef: `word:${entry.record.id}`,
+        }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+    await repo.settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'writing',
+      updatedAt: Date.now(),
+    })
+
+    render(<StudyScreen deckDefinitionId={deck.id} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('study-question')).toHaveTextContent('お金'),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    expect(screen.getByTestId('study-answer')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Writing answer' }),
+    ).not.toBeInTheDocument()
   })
 
   it('reveals readings first and all card details on the second tap', async () => {
