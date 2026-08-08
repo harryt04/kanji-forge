@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
   APP_BADGE_PREFERENCES,
   APP_BADGE_SETTING,
@@ -98,6 +99,7 @@ export function SettingsScreen(): React.ReactElement {
   const [studyAnswer, setStudyAnswer] = useState<readonly StudyAnswer[]>(
     parseStudyAnswer(undefined),
   )
+  const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -114,14 +116,21 @@ export function SettingsScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const [saved, savedBadge, savedQuestion, savedAnswer, savedBackup] =
-        await Promise.all([
-          repositories.settings.get(THEME_SETTING),
-          repositories.settings.get(APP_BADGE_SETTING),
-          repositories.settings.get(STUDY_QUESTION_SETTING),
-          repositories.settings.get(STUDY_ANSWER_SETTING),
-          repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
-        ])
+      const [
+        saved,
+        savedBadge,
+        savedQuestion,
+        savedAnswer,
+        savedAutoPlayAudio,
+        savedBackup,
+      ] = await Promise.all([
+        repositories.settings.get(THEME_SETTING),
+        repositories.settings.get(APP_BADGE_SETTING),
+        repositories.settings.get(STUDY_QUESTION_SETTING),
+        repositories.settings.get(STUDY_ANSWER_SETTING),
+        repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
+      ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
       const nextBadgePreference = savedBadge?.value ?? ''
@@ -130,6 +139,7 @@ export function SettingsScreen(): React.ReactElement {
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
       setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
+      setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
         : undefined
@@ -248,6 +258,31 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the study answer setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleAutoPlayAudio(): Promise<void> {
+    if (!runtime || saving) return
+    const previous = autoPlayAudio
+    const next = !previous
+    setAutoPlayAudio(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: STUDY_AUTO_PLAY_AUDIO_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setAutoPlayAudio(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the audio setting.',
       )
     } finally {
       setSaving(false)
@@ -471,6 +506,31 @@ export function SettingsScreen(): React.ReactElement {
           onClick={() => void restoreStudyStyleDefaults()}
         >
           Restore study style defaults
+        </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Study audio</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Use your device&apos;s Japanese speech synthesis after revealing a
+          card. The voice is generated on your device; no audio is downloaded.
+        </p>
+        <Button
+          type="button"
+          variant={autoPlayAudio ? 'secondary' : 'outline'}
+          aria-checked={autoPlayAudio}
+          role="checkbox"
+          disabled={saving}
+          className="mt-5 h-auto min-h-14 justify-start px-4 py-3 text-left"
+          onClick={() => void toggleAutoPlayAudio()}
+        >
+          <span>
+            <span className="block font-semibold">
+              Auto-play synthesized voice
+            </span>
+            <span className="text-muted-foreground block text-sm font-normal">
+              Speak the first Japanese reading when the answer is revealed.
+            </span>
+          </span>
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">

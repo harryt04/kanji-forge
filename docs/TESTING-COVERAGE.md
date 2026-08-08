@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 35 (240 test cases: 240 passing) |
-| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 67 cases, included above) |
+| Unit/integration test files | 36 (245 test cases: 245 passing) |
+| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 70 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.88%** |
+| Overall statement coverage | **86.94%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -31,7 +31,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/features/**` | 70% | browse 90.37 / 81.21 / 84.84 / 90.37 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.44 / 83.42 / 83.87 / 96.44 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 80 / 78.29 / 81.81 / 80 | ✅ comfortable margin |
-| Global floor | 60% | 86.61 / 84.3 / 89.38 / 86.61 | ✅ comfortable margin |
+| Global floor | 60% | 86.94 / 84.01 / 89.22 / 86.94 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -74,7 +74,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
   sentence-alignment fallback/normalization.
 
-### `src/features/study` — 39 cases across 5 files
+### `src/features/study` — 41 cases across 6 files
 
 - **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
@@ -87,14 +87,17 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
-- **`study-screen.test.tsx`** (15, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
+- **`study-screen.test.tsx`** (17, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
   the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, persisted grey-stickies preference hides study
   colors and reloads in a later session, study-session persistence/closure on finish, and the
-  persisted meaning question face, and rendering only the configured answer fields.
+  persisted meaning question face, rendering only the configured answer fields, explicit synthesized
+  voice replay, and auto-play on reveal.
+- **`audio.test.ts`** (2) — browser capability detection plus Japanese utterance configuration and
+  cancellation before replay.
 - **`study-style.test.ts`** (3) — default answer fields, malformed/duplicate value parsing, and
   stable answer-field serialization.
 
@@ -154,9 +157,9 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 17 cases
+### `src/features/settings` — 18 cases
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, restoring the default study style, and app-icon badge preferences, backup restore, and the stale-backup warning with its recovery action.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, synthesized-voice autoplay, restoring the default study style, and app-icon badge preferences, backup restore, and the stale-backup warning with its recovery action.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 

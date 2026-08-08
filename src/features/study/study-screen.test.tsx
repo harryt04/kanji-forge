@@ -19,6 +19,7 @@ import { createUserRepositories } from '@/data/repo'
 import { useStudyStore } from './store'
 import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
 import { STUDY_ANSWER_SETTING, STUDY_QUESTION_SETTING } from './study-style'
+import { STUDY_AUTO_PLAY_AUDIO_SETTING } from './audio'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -71,6 +72,50 @@ describe('StudyScreen', () => {
     const revealButton = screen.getByRole('button', { name: 'Reveal (Space)' })
     await userEvent.click(revealButton)
     expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+  })
+
+  it('plays the synthesized voice from the study toolbar', async () => {
+    const speak = vi.fn()
+    const cancel = vi.fn()
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      constructor(readonly text: string) {}
+    }
+    vi.stubGlobal('speechSynthesis', { speak, cancel })
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Play synthesized voice' }),
+    )
+    expect(speak).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.any(String), lang: 'ja-JP' }),
+    )
+  })
+
+  it('auto-plays after reveal when the preference is enabled', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_AUTO_PLAY_AUDIO_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+    const speak = vi.fn()
+    const cancel = vi.fn()
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      constructor(readonly text: string) {}
+    }
+    vi.stubGlobal('speechSynthesis', { speak, cancel })
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+    expect(speak).toHaveBeenCalledOnce()
   })
 
   it('flags and unflags the current card from the study screen', async () => {

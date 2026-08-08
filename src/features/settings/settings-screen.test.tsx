@@ -19,6 +19,7 @@ import {
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
 } from '@/features/study/study-style'
+import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -102,6 +103,27 @@ describe('SettingsScreen', () => {
           STUDY_ANSWER_SETTING,
         ),
       ).toMatchObject({ value: 'kanji,reading' }),
+    )
+  })
+
+  it('persists the synthesized voice autoplay preference offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study audio' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('checkbox', { name: /Auto-play synthesized voice/ }),
+    )
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_AUTO_PLAY_AUDIO_SETTING,
+        ),
+      ).toMatchObject({ value: 'true' }),
     )
   })
 

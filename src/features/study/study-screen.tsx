@@ -23,6 +23,11 @@ import {
   type StudyAnswer,
   type StudyQuestion,
 } from './study-style'
+import {
+  speakJapanese,
+  supportsJapaneseSpeech,
+  STUDY_AUTO_PLAY_AUDIO_SETTING,
+} from './audio'
 import { useStudyStore } from './store'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -49,6 +54,7 @@ export function StudyScreen({
   const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
   const [studyAnswer, setStudyAnswer] =
     useState<readonly StudyAnswer[]>(DEFAULT_STUDY_ANSWER)
+  const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
@@ -90,12 +96,17 @@ export function StudyScreen({
       await runtime.database.ready
       const repoForSession = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
-      const [greyStickiesSetting, studyQuestionSetting, studyAnswerSetting] =
-        await Promise.all([
-          repoForSession.settings.get(GREY_STICKIES_SETTING),
-          repoForSession.settings.get(STUDY_QUESTION_SETTING),
-          repoForSession.settings.get(STUDY_ANSWER_SETTING),
-        ])
+      const [
+        greyStickiesSetting,
+        studyQuestionSetting,
+        studyAnswerSetting,
+        autoPlayAudioSetting,
+      ] = await Promise.all([
+        repoForSession.settings.get(GREY_STICKIES_SETTING),
+        repoForSession.settings.get(STUDY_QUESTION_SETTING),
+        repoForSession.settings.get(STUDY_ANSWER_SETTING),
+        repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+      ])
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
       await repoForSession.sessions.start({
@@ -121,6 +132,7 @@ export function StudyScreen({
           isStudyQuestion(savedQuestion) ? savedQuestion : 'kanji',
         )
         setStudyAnswer(parseStudyAnswer(studyAnswerSetting?.value))
+        setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
         setPreferenceError(null)
         setLoading(false)
       }
@@ -158,6 +170,21 @@ export function StudyScreen({
   const card = queue[index]
   const studyCard = card ? content.get(card.stickyId) : undefined
   const repo = runtime ? createUserRepositories(runtime.database) : null
+
+  const speakCurrentCard = useCallback(() => {
+    if (!studyCard) return
+    const reading =
+      studyCard.onReadings[0] ??
+      studyCard.kunReadings[0] ??
+      studyCard.nanori[0] ??
+      studyCard.literal
+    speakJapanese(reading)
+  }, [studyCard])
+
+  const handleReveal = useCallback(() => {
+    reveal()
+    if (autoPlayAudio) speakCurrentCard()
+  }, [autoPlayAudio, reveal, speakCurrentCard])
 
   const handleGrade = useCallback(
     (value: 'again' | 'good' | 'easy') => {
@@ -201,7 +228,7 @@ export function StudyScreen({
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === ' ') {
         event.preventDefault()
-        if (!revealed) reveal()
+        if (!revealed) handleReveal()
         return
       }
       if (!revealed) return
@@ -211,7 +238,7 @@ export function StudyScreen({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [revealed, reveal, handleGrade])
+  }, [revealed, handleGrade, handleReveal])
 
   function onTouchStart(event: React.TouchEvent): void {
     touchStartX.current = event.touches[0]?.clientX ?? null
@@ -248,6 +275,7 @@ export function StudyScreen({
         ? (studyCard?.meanings[0] ?? studyCard?.literal ?? '')
         : (studyCard?.literal ?? '')
   const questionIsJapanese = studyQuestion !== 'meaning'
+  const canSpeak = supportsJapaneseSpeech()
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`
@@ -282,6 +310,19 @@ export function StudyScreen({
               >
                 {greyStickies ? 'Show sticky colors' : 'Hide sticky colors'}
               </Button>
+              {canSpeak && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Play synthesized voice"
+                    onClick={speakCurrentCard}
+                  >
+                    Speak
+                  </Button>
+                  <span className="text-xs">Synthesized voice</span>
+                </>
+              )}
             </>
           )}
           <span>{remaining} remaining</span>
@@ -315,7 +356,7 @@ export function StudyScreen({
             className={`bg-card w-full max-w-sm rounded-[var(--radius)] border-4 p-10 text-center shadow-[var(--shadow-card)] transition-colors motion-reduce:transition-none`}
             style={{ borderColor: stickyColor }}
             data-grey-stickies={greyStickies}
-            onClick={() => !revealed && reveal()}
+            onClick={() => !revealed && handleReveal()}
             role="button"
             tabIndex={0}
             aria-label={revealed ? undefined : 'Reveal answer'}
@@ -365,7 +406,7 @@ export function StudyScreen({
           </div>
 
           {!revealed ? (
-            <Button size="lg" onClick={() => reveal()}>
+            <Button size="lg" onClick={handleReveal}>
               Reveal (Space)
             </Button>
           ) : (

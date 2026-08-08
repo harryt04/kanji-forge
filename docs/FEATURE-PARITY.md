@@ -53,7 +53,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 2.6 | Writing setting ignored for word-only decks | ✅ | — | |
 | 2.7 | Restore study style to default | ✅ | 2026-08-07 | Settings restores the kanji question and all answer fields offline |
 | 2.8 | Hide 'Related' answers until tapped | ✅ | — | |
-| 2.9 | Auto-play audio during study | ✅ | — | Device TTS in MVP |
+| 2.9 | Auto-play audio during study | ✅ | 2026-08-07 | Study can replay a labeled device-synthesized Japanese voice and optionally autoplay the first reading on reveal |
 
 ## 3. Browse
 
