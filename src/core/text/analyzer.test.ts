@@ -178,4 +178,20 @@ describe('analyzeText', () => {
       }),
     ])
   })
+
+  it('resolves passive and causative forms to their dictionary lemmas', () => {
+    expect(analyzeText('読まれました。食べさせている', words, kanji)).toEqual([
+      expect.objectContaining({
+        text: '読まれました',
+        contentRef: 'word:5',
+        reading: 'よまれました',
+      }),
+      expect.objectContaining({ text: '。', type: 'unknown' }),
+      expect.objectContaining({
+        text: '食べさせている',
+        contentRef: 'word:4',
+        reading: 'たべさせている',
+      }),
+    ])
+  })
 })

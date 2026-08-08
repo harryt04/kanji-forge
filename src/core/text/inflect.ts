@@ -230,6 +230,32 @@ const PROGRESSIVE_SUFFIXES: readonly InflectionRule[] = [
   { textSuffix: 'いた', readingSuffix: 'いた' },
 ]
 
+const AUXILIARY_RULES: readonly InflectionRule[] = [
+  { textSuffix: 'ます', readingSuffix: 'ます' },
+  { textSuffix: 'ました', readingSuffix: 'ました' },
+  { textSuffix: 'ません', readingSuffix: 'ません' },
+  { textSuffix: 'ませんでした', readingSuffix: 'ませんでした' },
+  { textSuffix: 'ない', readingSuffix: 'ない' },
+  { textSuffix: 'なかった', readingSuffix: 'なかった' },
+  { textSuffix: 'れば', readingSuffix: 'れば' },
+  { textSuffix: 'た', readingSuffix: 'た' },
+  { textSuffix: 'て', readingSuffix: 'て' },
+]
+
+const GODAN_A_ROW_STEMS: Readonly<
+  Record<string, { readonly text: string; readonly reading: string }>
+> = {
+  う: { text: 'わ', reading: 'わ' },
+  つ: { text: 'た', reading: 'た' },
+  る: { text: 'ら', reading: 'ら' },
+  く: { text: 'か', reading: 'か' },
+  ぐ: { text: 'が', reading: 'が' },
+  す: { text: 'さ', reading: 'さ' },
+  む: { text: 'ま', reading: 'ま' },
+  ぶ: { text: 'ば', reading: 'ば' },
+  ぬ: { text: 'な', reading: 'な' },
+}
+
 // The common godan-る exceptions are kept small and explicit so ordinary
 // ichidan verbs such as 食べる do not generate impossible forms such as 食べりました.
 const GODAN_RU_EXCEPTIONS = new Set([
@@ -261,7 +287,21 @@ function addRules(
     const text = formStem + rule.textSuffix
     const surfaceReading = readingStem + rule.readingSuffix
     if (text !== form && surfaceReading !== reading)
-      result.push({ text, reading: surfaceReading })
+      addSurface(result, { text, reading: surfaceReading })
+  }
+}
+
+function addSurface(
+  result: InflectedSurface[],
+  surface: InflectedSurface,
+): void {
+  if (
+    !result.some(
+      (existing) =>
+        existing.text === surface.text && existing.reading === surface.reading,
+    )
+  ) {
+    result.push(surface)
   }
 }
 
@@ -275,11 +315,25 @@ function addProgressiveRules(
   const formTe = form.slice(0, -1) + textTeSuffix
   const readingTe = reading.slice(0, -1) + readingTeSuffix
   for (const suffix of PROGRESSIVE_SUFFIXES) {
-    result.push({
+    addSurface(result, {
       text: formTe + suffix.textSuffix,
       reading: readingTe + suffix.readingSuffix,
     })
   }
+}
+
+function addDerivedVerbRules(
+  result: InflectedSurface[],
+  form: string,
+  reading: string,
+  textStemSuffix: string,
+  readingStemSuffix: string,
+): void {
+  const derivedForm = form.slice(0, -1) + textStemSuffix + 'る'
+  const derivedReading = reading.slice(0, -1) + readingStemSuffix + 'る'
+  addSurface(result, { text: derivedForm, reading: derivedReading })
+  addRules(result, derivedForm, derivedReading, AUXILIARY_RULES)
+  addProgressiveRules(result, derivedForm, derivedReading, 'て', 'て')
 }
 
 /**
@@ -300,16 +354,52 @@ export function inflectedSurfaces(
   if (lastForm === 'る' && lastReading === 'る') {
     addRules(result, form, reading, ICHIDAN_RULES)
     addProgressiveRules(result, form, reading, 'て', 'て')
+    addDerivedVerbRules(result, form, reading, 'られ', 'られ')
+    addDerivedVerbRules(result, form, reading, 'させ', 'させ')
     if (GODAN_RU_EXCEPTIONS.has(form)) {
       const godanRules = GODAN_RULES['る']
       if (godanRules) {
         addRules(result, form, reading, godanRules)
         addProgressiveRules(result, form, reading, 'って', 'って')
+        const aRowStem = GODAN_A_ROW_STEMS['る']
+        if (aRowStem) {
+          addDerivedVerbRules(
+            result,
+            form,
+            reading,
+            aRowStem.text + 'れ',
+            aRowStem.reading + 'れ',
+          )
+          addDerivedVerbRules(
+            result,
+            form,
+            reading,
+            aRowStem.text + 'せ',
+            aRowStem.reading + 'せ',
+          )
+        }
       }
     }
   } else if (lastForm in GODAN_RULES) {
     const godanRules = GODAN_RULES[lastForm]
     if (godanRules) addRules(result, form, reading, godanRules)
+    const aRowStem = GODAN_A_ROW_STEMS[lastForm]
+    if (aRowStem) {
+      addDerivedVerbRules(
+        result,
+        form,
+        reading,
+        aRowStem.text + 'れ',
+        aRowStem.reading + 'れ',
+      )
+      addDerivedVerbRules(
+        result,
+        form,
+        reading,
+        aRowStem.text + 'せ',
+        aRowStem.reading + 'せ',
+      )
+    }
     const teSuffix =
       lastForm === 'う' || lastForm === 'つ'
         ? 'って'

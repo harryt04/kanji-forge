@@ -59,6 +59,24 @@ describe('inflectedSurfaces', () => {
     )
   })
 
+  it('covers passive and causative forms with auxiliary inflections', () => {
+    expect(inflectedSurfaces('食べる', 'たべる')).toEqual(
+      expect.arrayContaining([
+        { text: '食べさせる', reading: 'たべさせる' },
+        { text: '食べさせなかった', reading: 'たべさせなかった' },
+        { text: '食べさせています', reading: 'たべさせています' },
+        { text: '食べられている', reading: 'たべられている' },
+      ]),
+    )
+    expect(inflectedSurfaces('読む', 'よむ')).toEqual(
+      expect.arrayContaining([
+        { text: '読まれる', reading: 'よまれる' },
+        { text: '読まれました', reading: 'よまれました' },
+        { text: '読ませている', reading: 'よませている' },
+      ]),
+    )
+  })
+
   it('does not invent godan forms for ordinary ichidan verbs', () => {
     expect(inflectedSurfaces('食べる', 'たべる')).not.toContainEqual({
       text: '食べりました',
