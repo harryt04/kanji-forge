@@ -67,6 +67,12 @@ describe('DetailScreen', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Stroke count')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('School grade')).toBeInTheDocument()
+    expect(screen.getByText('Grade 1')).toBeInTheDocument()
+    expect(screen.getByText('JLPT')).toBeInTheDocument()
+    expect(screen.getByText('N4')).toBeInTheDocument()
+    expect(screen.getByText('Frequency rank')).toBeInTheDocument()
+    expect(screen.getByText('#1')).toBeInTheDocument()
     expect(screen.getByText('Name readings')).toBeInTheDocument()
     expect(
       screen.getByText(

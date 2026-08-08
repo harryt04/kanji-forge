@@ -77,7 +77,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 4.1 | Kanji details: readings, meanings, stroke count, radical, elements | ✅ | 2026-08-07 | Detail shows KANJIDIC2 metadata plus an offline nested KanjiVG radical/component decomposition |
-| 4.2 | School grade, JLPT level, frequency | ✅ | — | JLPT flagged as unofficial |
+| 4.2 | School grade, JLPT level, frequency | ✅ | 2026-08-07 | Detail shows KANJIDIC2 metadata; JLPT flagged as unofficial |
 | 4.3 | Nanori (name readings) | ✅ | 2026-08-07 | Detail shows KANJIDIC2 name readings offline when available |
 | 4.4 | SKIP code display | ❌ | — | Not licensable — DATA-SOURCES §6 |
 | 4.5 | Similar-looking kanji | ✅ | 2026-08-07 | Detail shows ranked generated matches from the offline derived pack; each match links to its own kanji detail |
