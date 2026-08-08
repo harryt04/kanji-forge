@@ -34,6 +34,7 @@ import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { deckFolderSettingKey } from './deck-folders'
 import { JAPANESE_WIKINEWS_FEED, RSS_FEEDS_SETTING } from './rss-feeds'
+import { removeNamesPack } from './names-pack'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -61,7 +62,8 @@ describe('SettingsScreen', () => {
     bootstrapUserRuntime(`settings-test-${crypto.randomUUID()}`)
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await removeNamesPack()
     if (originalStorage) {
       Object.defineProperty(navigator, 'storage', originalStorage)
     } else {
@@ -155,6 +157,35 @@ describe('SettingsScreen', () => {
         value: JSON.stringify([JAPANESE_WIKINEWS_FEED]),
       }),
     )
+  })
+
+  it('installs and removes the optional names dictionary offline', async () => {
+    const user = userEvent.setup()
+    const SQL = await initSqlJs()
+    const database = new SQL.Database()
+    database.run(`
+      CREATE TABLE entries (id INTEGER PRIMARY KEY, common_score INTEGER NOT NULL, data BLOB NOT NULL);
+      CREATE TABLE forms (entry_id INTEGER NOT NULL, form TEXT NOT NULL, kind TEXT NOT NULL, is_common INTEGER NOT NULL);
+      CREATE TABLE glosses_fts (entry_id INTEGER NOT NULL, gloss TEXT NOT NULL);
+    `)
+    const bytes = database.export()
+    database.close()
+    const file = new File([bytes], 'names-v1.sqlite', {
+      type: 'application/x-sqlite3',
+    })
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => bytes.buffer,
+    })
+
+    render(<SettingsScreen />)
+    await screen.findByRole('heading', { name: 'Optional names dictionary' })
+    await user.upload(screen.getByLabelText('Install names pack'), file)
+
+    expect(await screen.findByText('JMnedict names v1')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(
+      await screen.findByText(/No optional names pack installed\./u),
+    ).toBeInTheDocument()
   })
 
   it('restores a saved night preference on a later render', async () => {

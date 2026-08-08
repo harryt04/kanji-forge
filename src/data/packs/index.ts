@@ -4,6 +4,7 @@
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js'
 import { romajiToHiragana } from '@/core/text/romaji'
 import { analyzeText, type TextAnalysisToken } from '@/core/text/analyzer'
+import { getInstalledNamesPackBytes } from '@/features/settings/names-pack'
 
 export type { TextAnalysisToken } from '@/core/text/analyzer'
 
@@ -319,19 +320,30 @@ const packHandles = new Map<string, Promise<SqlJsDatabase>>()
 function openPack(fileName: string): Promise<SqlJsDatabase> {
   let handle = packHandles.get(fileName)
   if (!handle) {
-    handle = Promise.all([
-      loadSqlJs(),
-      fetch(`/packs-dev/${fileName}`).then((response) => {
-        if (!response.ok)
-          throw new Error(
-            `Failed to load content pack ${fileName} (${response.status}).`,
-          )
-        return response.arrayBuffer()
-      }),
-    ]).then(([SQL, buffer]) => new SQL.Database(new Uint8Array(buffer)))
+    handle = Promise.all([loadSqlJs(), getPackBytes(fileName)]).then(
+      ([SQL, bytes]) => new SQL.Database(bytes),
+    )
     packHandles.set(fileName, handle)
   }
   return handle
+}
+
+async function getPackBytes(fileName: string): Promise<Uint8Array> {
+  if (fileName === 'names-v1.sqlite') {
+    const installed = await getInstalledNamesPackBytes()
+    if (installed) return installed
+  }
+  const response = await fetch(`/packs-dev/${fileName}`)
+  if (!response.ok)
+    throw new Error(
+      `Failed to load content pack ${fileName} (${response.status}).`,
+    )
+  return new Uint8Array(await response.arrayBuffer())
+}
+
+/** Forces a subsequent lookup to reopen a replaced optional pack. */
+export function invalidateContentPack(fileName: string): void {
+  packHandles.delete(fileName)
 }
 
 function jsonArray(raw: unknown): readonly string[] {

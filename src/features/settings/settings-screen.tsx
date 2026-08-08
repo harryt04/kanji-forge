@@ -20,6 +20,13 @@ import {
   type AudioPackManifest,
 } from '@/features/study/audio-pack'
 import {
+  getInstalledNamesPackManifest,
+  installNamesPack,
+  removeNamesPack,
+  type NamesPackManifest,
+} from './names-pack'
+import { invalidateContentPack } from '@/data/packs'
+import {
   APP_BADGE_PREFERENCES,
   APP_BADGE_SETTING,
   APP_BADGE_SETTING_CHANGED_EVENT,
@@ -271,6 +278,8 @@ export function SettingsScreen(): React.ReactElement {
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [audioPacks, setAudioPacks] = useState<readonly AudioPackManifest[]>([])
   const [audioPackBusy, setAudioPackBusy] = useState(false)
+  const [namesPack, setNamesPack] = useState<NamesPackManifest | null>(null)
+  const [namesPackBusy, setNamesPackBusy] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [rssFeeds, setRssFeeds] = useState<readonly RssFeed[]>([])
@@ -490,6 +499,10 @@ export function SettingsScreen(): React.ReactElement {
 
   useEffect(() => {
     void listAudioPacks().then(setAudioPacks)
+  }, [])
+
+  useEffect(() => {
+    void getInstalledNamesPackManifest().then(setNamesPack)
   }, [])
 
   useEffect(() => {
@@ -855,6 +868,46 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setAudioPackBusy(false)
+    }
+  }
+
+  async function handleNamesPackFile(file: File | undefined): Promise<void> {
+    if (!file) return
+    setNamesPackBusy(true)
+    setError(null)
+    try {
+      const manifest = await installNamesPack(
+        new Uint8Array(await file.arrayBuffer()),
+      )
+      invalidateContentPack('names-v1.sqlite')
+      setNamesPack(manifest)
+      setError(`Installed ${manifest.name} ${manifest.version}.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not install names pack.',
+      )
+    } finally {
+      setNamesPackBusy(false)
+    }
+  }
+
+  async function handleRemoveNamesPack(): Promise<void> {
+    setNamesPackBusy(true)
+    setError(null)
+    try {
+      await removeNamesPack()
+      invalidateContentPack('names-v1.sqlite')
+      setNamesPack(null)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not remove names pack.',
+      )
+    } finally {
+      setNamesPackBusy(false)
     }
   }
 
@@ -2280,6 +2333,57 @@ export function SettingsScreen(): React.ReactElement {
             </span>
           </span>
         </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Optional names dictionary</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Install the licensed JMnedict SQLite pack to search proper names and
+          places offline. A raw names-v1.sqlite file uses the built-in JMnedict
+          attribution; ZIP files may include their own manifest.json.
+        </p>
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="names-pack-file"
+        >
+          Install names pack
+        </label>
+        <input
+          id="names-pack-file"
+          type="file"
+          accept=".sqlite,.zip,application/zip,application/x-sqlite3"
+          disabled={namesPackBusy}
+          className="mt-2 block w-full text-sm"
+          onChange={(event) => {
+            void handleNamesPackFile(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
+        {namesPack ? (
+          <div className="border-border mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
+            <span>
+              <span className="block font-medium">
+                {namesPack.name} {namesPack.version}
+              </span>
+              <span className="text-muted-foreground block">
+                {namesPack.license} · {namesPack.attribution}
+              </span>
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={namesPackBusy}
+              onClick={() => void handleRemoveNamesPack()}
+            >
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <p className="text-muted-foreground mt-4 text-sm">
+            No optional names pack installed. Core dictionary search remains
+            available.
+          </p>
+        )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Community audio packs</h2>

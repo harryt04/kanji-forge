@@ -162,7 +162,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 |---|---|---|---|---|
 | 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-07 | Offline search over the installed KANJIDIC2/JMdict fixture packs |
 | 8.2 | Rōmaji input | ✅ | 2026-08-07 | Dictionary search normalizes romaji to hiragana before matching |
-| 8.3 | ~700,000 entries including names and places | 🔷 | 2026-08-08 | `npm run build:names` reproducibly builds the optional JMnedict SQLite pack; Dictionary searches and links available names when `names-v1.sqlite` is installed, while the default install remains lightweight |
+| 8.3 | ~700,000 entries including names and places | ✅ | 2026-08-08 | `npm run build:names` reproducibly builds the optional JMnedict SQLite pack; Settings installs a raw SQLite file or manifest-bearing ZIP into browser-local storage, and Dictionary searches and links names offline without forcing the default install to carry the optional pack |
 | 8.4 | Details for 6,355 kanji | ✅ | 2026-08-07 | Offline results expose KANJIDIC2 readings, meanings, stroke count, school grade, JLPT, frequency rank, and name readings; KANJIDIC2 covers 13,108 |
 | 8.5 | SKIP search | ❌ | — | Replaced by multi-radical search |
 | 8.6 | Search by radical | ✅ | 2026-08-07 | Offline classical radical-number search over the installed KANJIDIC2 pack |
