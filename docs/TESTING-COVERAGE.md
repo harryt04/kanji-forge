@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 37 (266 test cases: 266 passing) |
-| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 81 cases, included above) |
+| Unit/integration test files | 37 (269 test cases: 269 passing) |
+| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 84 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **87.84%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -143,24 +143,25 @@ level-zero cards, stable deck-order ties, and non-mutating deck-order output.
 
 ### `src/features/dictionary` — 10 cases
 
-**`dictionary-screen.test.tsx`** (7, Testing Library) — offline text, wildcard, classical-radical,
+**`dictionary-screen.test.tsx`** (8, Testing Library) — offline text, wildcard, classical-radical,
 and exact stroke-count search from the visible form, complete KANJIDIC2 metadata for kanji results,
-and user-scoped recent-search persistence with pinning, reuse, and clear behavior.
+saving results to the offline Saved deck, honoring the persisted ask-before-saving preference, and
+user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
 
-### `src/features/detail` — 10 cases
+### `src/features/detail` — 11 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
 
 ### `src/features/navigation` — 2 cases
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 17 cases
+### `src/features/settings` — 18 cases
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, renaming and restoring the starter deck name with an outbox mutation, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, backup restore, and the stale-backup warning with its recovery action.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, backup restore, and the stale-backup warning with its recovery action.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 

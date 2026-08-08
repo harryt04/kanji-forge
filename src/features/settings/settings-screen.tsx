@@ -40,6 +40,12 @@ import {
   STROKE_ANIMATION_SETTING,
 } from '@/features/detail/stroke-animation'
 import {
+  isSaveBehavior,
+  SAVE_BEHAVIOR_OPTIONS,
+  SAVE_BEHAVIOR_SETTING,
+  type SaveBehavior,
+} from '@/features/detail/save-behavior'
+import {
   applyTheme,
   isThemePreference,
   resolveTheme,
@@ -113,6 +119,7 @@ export function SettingsScreen(): React.ReactElement {
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
+  const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [deckName, setDeckName] = useState(DEFAULT_STARTER_DECK_NAME)
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -149,6 +156,7 @@ export function SettingsScreen(): React.ReactElement {
         savedTwoTap,
         savedAutoPlayAudio,
         savedStrokeAnimation,
+        savedSaveBehavior,
         savedBackup,
         savedDeck,
       ] = await Promise.all([
@@ -159,6 +167,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_TWO_TAP_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
+        repositories.settings.get(SAVE_BEHAVIOR_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
         repositories.decks.get(STARTER_DECK_ID),
       ])
@@ -175,6 +184,8 @@ export function SettingsScreen(): React.ReactElement {
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeAnimation?.value),
       )
+      if (isSaveBehavior(savedSaveBehavior?.value))
+        setSaveBehavior(savedSaveBehavior.value)
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
@@ -369,6 +380,30 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the stroke animation setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseSaveBehavior(next: SaveBehavior): Promise<void> {
+    if (!runtime || next === saveBehavior || saving) return
+    const previous = saveBehavior
+    setSaveBehavior(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: SAVE_BEHAVIOR_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setSaveBehavior(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the Saved deck behavior.',
       )
     } finally {
       setSaving(false)
@@ -881,6 +916,38 @@ export function SettingsScreen(): React.ReactElement {
             </span>
           </span>
         </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Saving cards</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Choose whether saving a card to the Saved deck needs confirmation.
+          This setting works offline.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="Saving cards"
+        >
+          {SAVE_BEHAVIOR_OPTIONS.map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={saveBehavior === value ? 'secondary' : 'outline'}
+              aria-checked={saveBehavior === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseSaveBehavior(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">App icon badge</h2>

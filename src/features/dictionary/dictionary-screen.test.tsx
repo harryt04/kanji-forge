@@ -13,6 +13,7 @@ import {
   DICTIONARY_HISTORY_SETTING,
   DICTIONARY_PINNED_SETTING,
 } from './search-history'
+import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { DictionaryScreen } from './dictionary-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -142,6 +143,31 @@ describe('DictionaryScreen', () => {
     expect(
       await createUserRepositories(runtime.database).outbox.pending(),
     ).toMatchObject([{ mutType: 'deckMembership.upsert' }])
+  })
+
+  it('asks before saving a dictionary result when configured', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: SAVE_BEHAVIOR_SETTING,
+      value: 'ask',
+      updatedAt: Date.now(),
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), '日')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    const saveButtons = await screen.findAllByRole('button', {
+      name: 'Save to Saved',
+    })
+    await user.click(saveButtons[0]!)
+
+    expect(confirm).toHaveBeenCalledWith('Save this kanji to your Saved deck?')
+    await expect(
+      createUserRepositories(runtime.database).deckMembership.list(),
+    ).resolves.toEqual([])
+    confirm.mockRestore()
   })
 
   it('persists recent searches and supports pinning and reusing them', async () => {

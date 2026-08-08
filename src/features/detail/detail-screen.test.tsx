@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import { DetailScreen } from './detail-screen'
+import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 const REPO_PACK_ROOT = join(process.cwd(), 'packs')
@@ -241,6 +242,28 @@ describe('DetailScreen', () => {
     expect(
       (await createUserRepositories(runtime.database).outbox.pending())[0],
     ).toMatchObject({ mutType: 'deckMembership.upsert' })
+  })
+
+  it('asks before saving when the preference is enabled', async () => {
+    const runtime = bootstrapUserRuntime(`detail-${userId}`)
+    await createUserRepositories(runtime.database).settings.set({
+      key: SAVE_BEHAVIOR_SETTING,
+      value: 'ask',
+      updatedAt: Date.now(),
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<DetailScreen />)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Save to Saved' }),
+    )
+
+    expect(confirm).toHaveBeenCalledWith('Save 日 to your Saved deck?')
+    await expect(
+      createUserRepositories(runtime.database).deckMembership.list(),
+    ).resolves.toEqual([])
+    confirm.mockRestore()
   })
 
   it('saves per-sticky notes and normalized tags offline', async () => {

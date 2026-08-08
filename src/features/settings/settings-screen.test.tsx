@@ -24,6 +24,7 @@ import {
 } from '@/features/study/study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
+import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -256,6 +257,25 @@ describe('SettingsScreen', () => {
           APP_BADGE_SETTING,
         ),
       ).toMatchObject({ value: 'total' }),
+    )
+  })
+
+  it('persists the Saved deck confirmation preference offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Saving cards' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Ask every time/ }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          SAVE_BEHAVIOR_SETTING,
+        ),
+      ).toMatchObject({ value: 'ask' }),
     )
   })
 

@@ -27,6 +27,7 @@ import {
   StrokeAnimation,
 } from './stroke-animation'
 import { speakJapanese, supportsJapaneseSpeech } from '@/features/study/audio'
+import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
@@ -71,6 +72,7 @@ export function DetailScreen(): React.ReactElement {
   const [strokes, setStrokes] =
     useState<Awaited<ReturnType<typeof getKanjiStrokes>>>(null)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
+  const [askBeforeSaving, setAskBeforeSaving] = useState(false)
   const [canSpeak, setCanSpeak] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -112,12 +114,17 @@ export function DetailScreen(): React.ReactElement {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database)
-      const [savedMembership, savedStrokeSetting, savedAnnotation] =
-        await Promise.all([
-          repositories.deckMembership.list(),
-          repositories.settings.get(STROKE_ANIMATION_SETTING),
-          repositories.annotations.get(loaded.deckId, contentRef),
-        ])
+      const [
+        savedMembership,
+        savedStrokeSetting,
+        savedSaveBehavior,
+        savedAnnotation,
+      ] = await Promise.all([
+        repositories.deckMembership.list(),
+        repositories.settings.get(STROKE_ANIMATION_SETTING),
+        repositories.settings.get(SAVE_BEHAVIOR_SETTING),
+        repositories.annotations.get(loaded.deckId, contentRef),
+      ])
       setSaved(
         savedMembership.some(
           (membership) => membership.contentRef === contentRef,
@@ -126,6 +133,7 @@ export function DetailScreen(): React.ReactElement {
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeSetting?.value),
       )
+      setAskBeforeSaving(savedSaveBehavior?.value === 'ask')
       if (active) {
         setNote(savedAnnotation?.note ?? '')
         setTagsInput(savedAnnotation?.tags.join(', ') ?? '')
@@ -263,6 +271,11 @@ export function DetailScreen(): React.ReactElement {
 
   async function saveToSaved(): Promise<void> {
     if (!runtime || saved || saving) return
+    if (
+      askBeforeSaving &&
+      !window.confirm(`Save ${content.literal} to your Saved deck?`)
+    )
+      return
     const now = Date.now()
     const mutation: OutboxMutation = {
       id: crypto.randomUUID(),

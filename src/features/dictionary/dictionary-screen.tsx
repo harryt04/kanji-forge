@@ -21,6 +21,7 @@ import {
   serializeSearchHistory,
   togglePinnedSearch,
 } from './search-history'
+import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 
 function contentRefForResult(result: DictionaryResult): string {
   return result.type === 'kanji'
@@ -46,6 +47,7 @@ export function DictionaryScreen(): React.ReactElement {
     [],
   )
   const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
+  const [askBeforeSaving, setAskBeforeSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,17 +57,20 @@ export function DictionaryScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const repo = createUserRepositories(runtime.database)
-      const [savedHistory, savedPinned, savedMembership] = await Promise.all([
-        repo.settings.get(DICTIONARY_HISTORY_SETTING),
-        repo.settings.get(DICTIONARY_PINNED_SETTING),
-        repo.deckMembership.list(),
-      ])
+      const [savedHistory, savedPinned, savedMembership, savedSaveBehavior] =
+        await Promise.all([
+          repo.settings.get(DICTIONARY_HISTORY_SETTING),
+          repo.settings.get(DICTIONARY_PINNED_SETTING),
+          repo.deckMembership.list(),
+          repo.settings.get(SAVE_BEHAVIOR_SETTING),
+        ])
       if (active) {
         setHistory(parseSearchHistory(savedHistory?.value))
         setPinned(parsePinnedSearches(savedPinned?.value))
         setSavedContentRefs(
           savedMembership.map((membership) => membership.contentRef),
         )
+        setAskBeforeSaving(savedSaveBehavior?.value === 'ask')
       }
     })()
     return () => {
@@ -149,6 +154,11 @@ export function DictionaryScreen(): React.ReactElement {
     if (!runtime) return
     const contentRef = contentRefForResult(result)
     if (savedContentRefs.includes(contentRef)) return
+    if (
+      askBeforeSaving &&
+      !window.confirm(`Save this ${result.type} to your Saved deck?`)
+    )
+      return
     const now = Date.now()
     const mutation: OutboxMutation = {
       id: crypto.randomUUID(),
