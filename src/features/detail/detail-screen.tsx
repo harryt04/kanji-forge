@@ -71,6 +71,9 @@ interface WordDetailViewProps {
   readonly savedDeckIds: ReadonlySet<string>
   readonly saving: boolean
   readonly onSave: (deck: Deck) => void
+  readonly backHref: string
+  readonly backLabel: string
+  readonly embedded: boolean
 }
 
 interface AudioControlProps {
@@ -146,11 +149,16 @@ function WordDetailView({
   savedDeckIds,
   saving,
   onSave,
+  backHref,
+  backLabel,
+  embedded,
 }: WordDetailViewProps): React.ReactElement {
   return (
-    <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6">
-      <Link className="text-primary w-fit text-sm underline" href="/analyze">
-        ← Back to text analyzer
+    <main
+      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
+    >
+      <Link className="text-primary w-fit text-sm underline" href={backHref}>
+        ← {backLabel}
       </Link>
       <Card data-testid="word-detail">
         <CardHeader>
@@ -244,8 +252,10 @@ function WordDetailView({
 
 export function DetailScreen({
   embedded = false,
+  embeddedPath = '/browse',
 }: {
   readonly embedded?: boolean
+  readonly embeddedPath?: '/browse' | '/dictionary'
 } = {}): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
@@ -470,6 +480,7 @@ export function DetailScreen({
     )
 
   const selectedContentRef = contentRef
+  const detailPath = embedded ? embeddedPath : '/detail'
   if (wordDetail)
     return (
       <WordDetailView
@@ -479,6 +490,13 @@ export function DetailScreen({
         saveDecks={saveDecks}
         savedDeckIds={savedDeckIds}
         saving={saving}
+        backHref={embedded ? embeddedPath : '/analyze'}
+        backLabel={
+          embeddedPath === '/dictionary'
+            ? 'Back to Dictionary'
+            : 'Back to text analyzer'
+        }
+        embedded={embedded}
         onSave={(targetDeck) => void saveToDeck(targetDeck)}
       />
     )
@@ -515,8 +533,7 @@ export function DetailScreen({
   }
 
   function navigateTo(nextContentRef: string): void {
-    const basePath = embedded ? '/browse' : '/detail'
-    const nextUrl = `${basePath}?contentRef=${encodeURIComponent(nextContentRef)}`
+    const nextUrl = `${detailPath}?contentRef=${encodeURIComponent(nextContentRef)}`
     window.history.pushState({}, '', nextUrl)
     setContentRef(nextContentRef)
   }
@@ -632,8 +649,14 @@ export function DetailScreen({
       }
       onTouchEnd={(event) => finishTouchSwipe(event.changedTouches[0]?.clientX)}
     >
-      <Link className="text-primary w-fit text-sm underline" href="/browse">
-        ← Back to Browse
+      <Link
+        className="text-primary w-fit text-sm underline"
+        href={embedded ? embeddedPath : '/browse'}
+      >
+        ←{' '}
+        {embeddedPath === '/dictionary'
+          ? 'Back to Dictionary'
+          : 'Back to Browse'}
       </Link>
       {currentIndex >= 0 && (
         <nav
@@ -902,7 +925,7 @@ export function DetailScreen({
               >
                 <Link
                   className="font-jp-ui text-primary text-lg underline underline-offset-4"
-                  href={`/detail?contentRef=${encodeURIComponent(`word:${word.id}`)}`}
+                  href={`${detailPath}?contentRef=${encodeURIComponent(`word:${word.id}`)}`}
                   lang="ja"
                   aria-label={`View details for ${word.forms[0] ?? word.readings[0]}`}
                 >
@@ -1010,7 +1033,7 @@ export function DetailScreen({
               <li key={literal}>
                 <Link
                   className="border-border bg-card text-foreground focus-visible:ring-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-3 py-2 text-2xl shadow-sm focus-visible:ring-2 focus-visible:outline-none"
-                  href={`/detail?contentRef=${encodeURIComponent(`kanji:${literal}`)}`}
+                  href={`${detailPath}?contentRef=${encodeURIComponent(`kanji:${literal}`)}`}
                   lang="ja"
                   aria-label={`View details for ${literal}`}
                 >

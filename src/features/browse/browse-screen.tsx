@@ -1266,7 +1266,7 @@ export function BrowseScreen({
           aria-label="Selected card details"
           data-testid="browse-detail-pane"
         >
-          <DetailScreen embedded />
+          <DetailScreen embedded embeddedPath="/browse" />
         </aside>
       )}
     </main>

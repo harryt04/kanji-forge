@@ -56,8 +56,31 @@ describe('DictionaryScreen', () => {
       screen.getByRole('link', { name: 'View details for お金' }),
     ).toHaveAttribute(
       'href',
-      expect.stringMatching(/^\/detail\?contentRef=word%3A\d+$/u),
+      expect.stringMatching(/^\/dictionary\?contentRef=word%3A\d+$/u),
     )
+  })
+
+  it('keeps dictionary results visible beside the selected offline detail', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), 'okane')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    const detailLink = await screen.findByRole('link', {
+      name: 'View details for お金',
+    })
+    const detailHref = detailLink.getAttribute('href')
+    expect(detailHref).toMatch(/^\/dictionary\?contentRef=word%3A\d+$/u)
+    await user.click(detailLink)
+
+    expect(
+      await screen.findByTestId('dictionary-detail-pane'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('お金')).toBeInTheDocument()
+    expect(screen.getByTestId('word-detail')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '← Back to Dictionary' }),
+    ).toHaveAttribute('href', '/dictionary')
   })
 
   it('searches the visible form with wildcards', async () => {
