@@ -198,7 +198,7 @@ promotion, and pinned-search toggling.
 
 **`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, equivalent question/reading cards with different dictionary ids, identity normalization, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
-### `src/features/share` — 12 cases
+### `src/features/share` — 14 cases
 
 **`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
 It also covers validating a legacy content-only deck URL, previewing the shared deck name, importing its matched cards, and importing a mixed version-2 deck containing a dictionary-word card.
@@ -209,7 +209,8 @@ preferences, malformed-value defaults, and reading romanization. **`src/core/tex
 and **`src/core/text/analyzer.test.ts`** cover potential, imperative, prohibitive, and progressive
 verb-form recognition in addition to the existing polite, negative, conditional, and adjective
 forms. The share-screen suite verifies
-that these preferences load offline and that tap-to-reveal glosses remain hidden until requested.
+that these preferences load offline, remain persisted after user changes, and that tap-to-reveal
+glosses remain hidden until requested.
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic mixed-card URL and readable share-file payloads, omission of SRS progress, legacy version-1 compatibility, dictionary-word round-tripping, and malformed/empty payload rejection.
 

@@ -248,6 +248,36 @@ describe('ShareTargetScreen', () => {
     expect(await screen.findByText('money')).toBeInTheDocument()
   })
 
+  it('persists display-option changes made from the analyzer', async () => {
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Furigana display')).toHaveValue('all')
+    })
+    fireEvent.change(screen.getByLabelText('Furigana display'), {
+      target: { value: 'non-n5' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: /show rōmaji/i }))
+    fireEvent.change(screen.getByLabelText('English gloss display'), {
+      target: { value: 'tap' },
+    })
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(ANALYZER_DISPLAY_SETTING),
+      ).toMatchObject({
+        value: JSON.stringify({
+          furigana: 'non-n5',
+          romaji: true,
+          gloss: 'tap',
+        }),
+      })
+    })
+  })
+
   it('persists analyzed text history, reuses entries, and clears it offline', async () => {
     window.history.replaceState({}, '', '/analyze')
     render(<ShareTargetScreen />)

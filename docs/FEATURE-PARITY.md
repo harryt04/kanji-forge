@@ -179,7 +179,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 9.1 | Paste Japanese text → readings, furigana, English | ✅ | 2026-08-08 | Authenticated `/analyze` now lazy-loads an offline Kuromoji/IPADIC morphological tokenizer pack and maps its boundaries through the dictionary, inflection, grammar, furigana, and unknown-text fallback layers. The tokenizer pack is optional and never blocks study; if unavailable, the prior dictionary-only analyzer remains usable |
-| 9.2 | Many display options for the analyzed output | 🔷 | 2026-08-08 | Analyzer preferences persist offline for furigana all/non-N5/off, optional rōmaji, and inline or tap-to-reveal English glosses |
+| 9.2 | Many display options for the analyzed output | ✅ | 2026-08-08 | Analyzer preferences persist offline for furigana all/non-N5/off, optional rōmaji, and inline or tap-to-reveal English glosses |
 | 9.3 | Tap any word → detail → save to deck | 🔷 | 2026-08-08 | Analyzer word tokens open an authenticated offline word detail route with readings, meanings, parts of speech, and the optional Kuromoji grammatical boundaries |
 | 9.4 | Live Japanese news feed, updated daily | ❌ as built | — | NHK Easy content is copyrighted |
 | 9.5 | Tap an article → broken into words + furigana | ✅ | 2026-08-08 | PWA share-target text is analyzed immediately and offline with readings/furigana; the source article URL remains an explicit external link and the supplied text can be edited and re-analyzed |
