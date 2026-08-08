@@ -1,9 +1,48 @@
 import { describe, expect, it } from 'vitest'
 import {
+  guessKanjiColumn,
   isKanjiLiteral,
+  parseCsvImport,
+  parseCsvKanjiColumn,
   parseKanjiImportText,
   previewKanjiImport,
 } from './deck-import'
+
+describe('parseCsvImport', () => {
+  it('parses quoted commas, escaped quotes, multiline cells, and a BOM', () => {
+    expect(
+      parseCsvImport(
+        '\uFEFFkanji,meaning\r\n日,"day, sun"\r\n本,"book ""volume"""',
+      ),
+    ).toEqual({
+      headers: ['kanji', 'meaning'],
+      rows: [
+        ['日', 'day, sun'],
+        ['本', 'book "volume"'],
+      ],
+    })
+  })
+
+  it('preserves newlines inside quoted cells and pads short rows', () => {
+    expect(parseCsvImport('literal,note\n日,"line one\nline two"\n本')).toEqual(
+      {
+        headers: ['literal', 'note'],
+        rows: [
+          ['日', 'line one\nline two'],
+          ['本', ''],
+        ],
+      },
+    )
+  })
+})
+
+describe('CSV kanji mapping', () => {
+  it('guesses a conventional kanji header and extracts compact values', () => {
+    const table = parseCsvImport('meaning,character\nday,日本\nbook,本')
+    expect(guessKanjiColumn(table.headers)).toBe(1)
+    expect(parseCsvKanjiColumn(table, 1)).toEqual(['日', '本'])
+  })
+})
 
 describe('parseKanjiImportText', () => {
   it('parses one-per-line and compact kanji lists in stable order', () => {

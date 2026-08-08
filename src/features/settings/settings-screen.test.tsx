@@ -639,6 +639,27 @@ describe('SettingsScreen', () => {
     ).resolves.toMatchObject([{ mutType: 'deckMembership.upsert' }])
   })
 
+  it('maps a CSV kanji column into the existing offline import preview', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.type(
+      screen.getByLabelText('CSV to import'),
+      'meaning,character\nday,"日"\nbook,"本"',
+    )
+    await user.click(screen.getByRole('button', { name: 'Read CSV columns' }))
+    expect(screen.getByLabelText('Kanji column')).toHaveValue('1')
+    await user.click(screen.getByRole('button', { name: 'Preview CSV import' }))
+
+    expect(await screen.findByLabelText('Import preview')).toHaveTextContent(
+      '日 matched — will be added',
+    )
+    expect(screen.getByLabelText('Import preview')).toHaveTextContent(
+      '本 matched — will be added',
+    )
+  })
+
   it('shows a backup reminder when the last backup is more than 30 days old', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({

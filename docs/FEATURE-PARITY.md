@@ -187,8 +187,8 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 10.1 | Import by typing/pasting into an import box | ✅ | 2026-08-07 | Settings accepts one-per-line or compact bare-kanji lists (including the first column of KanjiForge text exports), enriches matches offline, and appends them to Saved; CSV column mapping and arbitrary word imports remain future work |
-| 10.2 | CSV import | ✅ | — | With column mapping UI (T8.0) |
+| 10.1 | Import by typing/pasting into an import box | ✅ | 2026-08-07 | Settings accepts one-per-line or compact bare-kanji lists (including the first column of KanjiForge text exports), enriches matches offline, and appends them to Saved; arbitrary word imports remain future work |
+| 10.2 | CSV import | ✅ | 2026-08-07 | Settings accepts pasted or selected CSV files, parses quoted fields offline, and lets users map any column containing bare kanji into the existing preview-and-confirm flow; word enrichment and imported progress remain future work |
 | 10.3 | Multiple import formats | ✅ | — | CSV, TSV, line lists, JSON (T8.0) |
 | 10.4 | Append imported stickies to the current deck | ✅ | — | (T8.0) |
 | 10.5 | Export deck to clipboard as text | ✅ | 2026-08-07 | Settings copies the current starter deck as tab-separated kanji, readings, and meanings for pasting into another app or spreadsheet |

@@ -1,3 +1,101 @@
+/** A parsed CSV table used by the Settings import mapping UI. */
+export interface CsvImportTable {
+  readonly headers: readonly string[]
+  readonly rows: readonly (readonly string[])[]
+}
+
+/**
+ * Parses a CSV file with RFC 4180-style quoted cells. A UTF-8 BOM is ignored,
+ * and embedded commas, quotes, and newlines are preserved inside quoted cells.
+ */
+export function parseCsvImport(input: string): CsvImportTable {
+  const source = input.replace(/^\uFEFF/u, '')
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]
+    if (quoted) {
+      if (character === '"') {
+        if (source[index + 1] === '"') {
+          cell += '"'
+          index += 1
+        } else {
+          quoted = false
+        }
+      } else {
+        cell += character
+      }
+      continue
+    }
+
+    if (character === '"' && cell.length === 0) {
+      quoted = true
+    } else if (character === ',') {
+      row.push(cell)
+      cell = ''
+    } else if (character === '\n' || character === '\r') {
+      row.push(cell)
+      cell = ''
+      if (character === '\r' && source[index + 1] === '\n') index += 1
+      if (row.some((value) => value.length > 0)) rows.push(row)
+      row = []
+    } else {
+      cell += character
+    }
+  }
+
+  if (quoted) throw new Error('CSV contains an unterminated quoted field.')
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell)
+    if (row.some((value) => value.length > 0)) rows.push(row)
+  }
+
+  if (rows.length === 0) return { headers: [], rows: [] }
+
+  const width = Math.max(...rows.map((candidate) => candidate.length))
+  const headers = Array.from({ length: width }, (_, index) => {
+    const value = rows[0]?.[index]?.trim() ?? ''
+    return value || `Column ${index + 1}`
+  })
+  const dataRows = rows
+    .slice(1)
+    .map((candidate) => headers.map((_, index) => candidate[index] ?? ''))
+  return { headers, rows: dataRows }
+}
+
+/** Selects the most likely kanji column while leaving the user in control. */
+export function guessKanjiColumn(headers: readonly string[]): number {
+  const aliases = new Set([
+    'kanji',
+    'character',
+    'characters',
+    'literal',
+    'content_ref',
+    'content ref',
+  ])
+  const index = headers.findIndex((header) =>
+    aliases.has(header.trim().toLocaleLowerCase()),
+  )
+  return index >= 0 ? index : 0
+}
+
+/**
+ * Parses the selected CSV column using the same bare-kanji rules as the text
+ * importer. This deliberately keeps CSV import focused on dictionary-backed
+ * kanji; word enrichment remains a separate future import slice.
+ */
+export function parseCsvKanjiColumn(
+  table: CsvImportTable,
+  columnIndex: number,
+): readonly string[] {
+  return parseKanjiImportText(
+    table.rows.map((row) => row[columnIndex] ?? '').join('\n'),
+  )
+}
+
 /**
  * Parses the intentionally small v2 import surface: one kanji per line, or
  * KanjiForge's tab-separated text export. A line containing several kanji is

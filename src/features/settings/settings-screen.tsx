@@ -77,8 +77,12 @@ import {
   formatDeckAsText,
 } from './deck-export'
 import {
+  guessKanjiColumn,
+  parseCsvImport,
+  parseCsvKanjiColumn,
   parseKanjiImportText,
   previewKanjiImport,
+  type CsvImportTable,
   type KanjiImportPreviewItem,
 } from './deck-import'
 
@@ -182,6 +186,11 @@ export function SettingsScreen(): React.ReactElement {
   const [deckImportPreview, setDeckImportPreview] = useState<
     readonly KanjiImportPreviewItem[] | null
   >(null)
+  const [csvImportText, setCsvImportText] = useState('')
+  const [csvImportTable, setCsvImportTable] = useState<CsvImportTable | null>(
+    null,
+  )
+  const [csvKanjiColumn, setCsvKanjiColumn] = useState(0)
   const [notificationStatus, setNotificationStatus] = useState<
     NotificationPermission | 'unsupported' | null
   >(null)
@@ -728,11 +737,13 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
-  async function previewKanjiList(): Promise<void> {
+  async function previewKanjiLiterals(
+    literals: readonly string[],
+    emptyMessage: string,
+  ): Promise<void> {
     if (!runtime || deckImportBusy) return
-    const literals = parseKanjiImportText(deckImportText)
     if (literals.length === 0) {
-      setDeckImportMessage('Paste one or more kanji to import.')
+      setDeckImportMessage(emptyMessage)
       return
     }
 
@@ -761,6 +772,41 @@ export function SettingsScreen(): React.ReactElement {
     } finally {
       setDeckImportBusy(false)
     }
+  }
+
+  async function previewKanjiList(): Promise<void> {
+    await previewKanjiLiterals(
+      parseKanjiImportText(deckImportText),
+      'Paste one or more kanji to import.',
+    )
+  }
+
+  function parseCsvTable(): void {
+    try {
+      const table = parseCsvImport(csvImportText)
+      if (table.headers.length === 0 || table.rows.length === 0) {
+        setDeckImportMessage(
+          'Paste a CSV with a header row and at least one data row.',
+        )
+        return
+      }
+      setCsvImportTable(table)
+      setCsvKanjiColumn(guessKanjiColumn(table.headers))
+      setDeckImportMessage('Choose the kanji column, then preview the import.')
+    } catch (reason: unknown) {
+      setCsvImportTable(null)
+      setDeckImportMessage(
+        reason instanceof Error ? reason.message : 'Could not parse CSV.',
+      )
+    }
+  }
+
+  async function previewCsvList(): Promise<void> {
+    if (!csvImportTable) return
+    await previewKanjiLiterals(
+      parseCsvKanjiColumn(csvImportTable, csvKanjiColumn),
+      'The selected CSV column contains no kanji to import.',
+    )
   }
 
   async function importKanjiList(): Promise<void> {
@@ -1727,6 +1773,86 @@ export function SettingsScreen(): React.ReactElement {
               {deckImportMessage}
             </p>
           )}
+          <div className="border-border mt-5 border-t pt-5">
+            <h4 className="font-medium">Import from CSV</h4>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Paste a CSV with a header row, or choose a CSV file. Select the
+              column containing kanji before previewing the matched cards.
+            </p>
+            <input
+              className="mt-3 block text-sm"
+              type="file"
+              accept="text/csv,.csv"
+              aria-label="Choose CSV import file"
+              disabled={deckImportBusy}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (!file) return
+                void file.text().then((text) => {
+                  setCsvImportText(text)
+                  setCsvImportTable(null)
+                  setDeckImportPreview(null)
+                  setDeckImportMessage(null)
+                })
+              }}
+            />
+            <textarea
+              aria-label="CSV to import"
+              className="border-input bg-background focus-visible:ring-ring mt-3 min-h-28 w-full rounded-md border p-3 font-mono text-sm outline-none focus-visible:ring-2"
+              value={csvImportText}
+              onChange={(event) => {
+                setCsvImportText(event.target.value)
+                setCsvImportTable(null)
+                setDeckImportPreview(null)
+                setDeckImportMessage(null)
+              }}
+              placeholder={'kanji,reading,meaning\n日,ひ,day'}
+              disabled={deckImportBusy}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={deckImportBusy || csvImportText.trim().length === 0}
+              onClick={parseCsvTable}
+            >
+              Read CSV columns
+            </Button>
+            {csvImportTable && (
+              <div className="border-border mt-4 rounded-md border p-3">
+                <label className="block text-sm" htmlFor="csv-kanji-column">
+                  Kanji column
+                </label>
+                <select
+                  id="csv-kanji-column"
+                  className="border-input bg-background mt-2 rounded-md border p-2"
+                  value={csvKanjiColumn}
+                  onChange={(event) =>
+                    setCsvKanjiColumn(Number(event.target.value))
+                  }
+                  disabled={deckImportBusy}
+                >
+                  {csvImportTable.headers.map((header, index) => (
+                    <option key={`${index}-${header}`} value={index}>
+                      {header}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  {csvImportTable.rows.length} data row
+                  {csvImportTable.rows.length === 1 ? '' : 's'} detected.
+                </p>
+                <Button
+                  type="button"
+                  className="mt-3"
+                  disabled={deckImportBusy}
+                  onClick={() => void previewCsvList()}
+                >
+                  Preview CSV import
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </main>
