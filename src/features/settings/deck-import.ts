@@ -192,7 +192,7 @@ export interface KanjiImportPreviewItem {
 export interface ImportEntry {
   readonly label: string
   readonly contentRef: string | null
-  readonly kind: 'kanji' | 'word' | 'unknown'
+  readonly kind: 'kanji' | 'word' | 'name' | 'unknown'
 }
 
 export interface ImportPreviewItem extends ImportEntry {

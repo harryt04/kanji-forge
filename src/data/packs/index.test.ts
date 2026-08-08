@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import initSqlJs from 'sql.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -429,6 +430,82 @@ describe('data/packs', () => {
       expect(
         packFetches.filter((url) => url.includes('words-core-v1.sqlite')),
       ).toHaveLength(1)
+    })
+
+    it('searches an optional JMnedict pack without requiring it for core search', async () => {
+      const SQL = await initSqlJs()
+      const names = new SQL.Database()
+      names.run(`
+        CREATE TABLE entries (id INTEGER PRIMARY KEY, common_score INTEGER NOT NULL, data BLOB NOT NULL);
+        CREATE TABLE forms (entry_id INTEGER NOT NULL, form TEXT NOT NULL, kind TEXT NOT NULL, is_common INTEGER NOT NULL);
+        CREATE TABLE glosses_fts (entry_id INTEGER NOT NULL, gloss TEXT NOT NULL);
+      `)
+      names.run('INSERT INTO entries VALUES (?, ?, ?)', [
+        5000000,
+        80,
+        new TextEncoder().encode(
+          JSON.stringify({
+            kanji: [{ text: '山田' }],
+            kana: [{ text: 'やまだ' }],
+            translations: [{ nameTypes: ['surname'], details: ['Yamada'] }],
+          }),
+        ),
+      ])
+      names.run('INSERT INTO glosses_fts VALUES (?, ?)', [5000000, 'Yamada'])
+      names.run('INSERT INTO entries VALUES (?, ?, ?)', [
+        5000001,
+        0,
+        new TextEncoder().encode(
+          JSON.stringify({
+            kanji: [{}, null],
+            kana: [{}, null],
+            translations: [{ nameTypes: 'not-an-array' }, null],
+          }),
+        ),
+      ])
+
+      const namesBytes = names.export()
+      names.close()
+      const coreFetch = fixtureFetch()
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).includes('names-v1.sqlite')
+            ? new Response(new Uint8Array(namesBytes), { status: 200 })
+            : coreFetch(input),
+        ),
+      )
+
+      const { findDictionaryEntry, getNameById, searchDictionary } =
+        await freshPacks()
+      await expect(searchDictionary('Yamada')).resolves.toEqual([
+        {
+          type: 'name',
+          record: {
+            id: 5000000,
+            commonScore: 80,
+            forms: ['山田'],
+            readings: ['やまだ'],
+            nameTypes: ['surname'],
+            partsOfSpeech: [],
+            meanings: ['Yamada'],
+          },
+        },
+      ])
+      await expect(getNameById(5000000)).resolves.toMatchObject({
+        forms: ['山田'],
+        meanings: ['Yamada'],
+      })
+      await expect(getNameById(5000001)).resolves.toMatchObject({
+        forms: [],
+        readings: [],
+        nameTypes: [],
+        meanings: [],
+      })
+      await expect(findDictionaryEntry('Yamada')).resolves.toMatchObject({
+        type: 'name',
+        record: { id: 5000000 },
+      })
     })
   })
 

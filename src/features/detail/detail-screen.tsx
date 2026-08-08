@@ -10,8 +10,10 @@ import {
   getKanjiByLiterals,
   getKanjiStrokes,
   getSimilarKanji,
+  getNameById,
   getWordById,
   parseContentRef,
+  type NameRecord,
   type WordRecord,
 } from '@/data/packs'
 import {
@@ -61,7 +63,7 @@ function parseTags(value: string): readonly string[] {
 }
 
 interface WordDetailViewProps {
-  readonly word: WordRecord
+  readonly word: WordRecord | NameRecord
   readonly saveDecks: readonly Deck[]
   readonly savedDeckIds: ReadonlySet<string>
   readonly saving: boolean
@@ -316,14 +318,16 @@ export function DetailScreen(): React.ReactElement {
               },
               state,
             })
-        } else if (parsed.type === 'word') {
+        } else if (parsed.type === 'word' || parsed.type === 'name') {
           const wordId = Number(parsed.key)
           const word = Number.isInteger(wordId)
-            ? await getWordById(wordId)
+            ? parsed.type === 'name'
+              ? await getNameById(wordId)
+              : await getWordById(wordId)
             : null
           if (!word)
             throw new Error(
-              'This word is not available in the installed dictionary pack.',
+              'This entry is not available in the installed dictionary pack.',
             )
           if (active) setWordDetail(word)
         } else {

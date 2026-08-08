@@ -46,6 +46,16 @@ export interface WordRecord {
   readonly meanings: readonly string[]
 }
 
+export interface NameRecord {
+  readonly id: number
+  readonly commonScore: number
+  readonly forms: readonly string[]
+  readonly readings: readonly string[]
+  readonly nameTypes: readonly string[]
+  readonly partsOfSpeech: readonly string[]
+  readonly meanings: readonly string[]
+}
+
 export interface SentenceToken {
   readonly text: string
   readonly furigana: string
@@ -80,6 +90,10 @@ export type DictionaryResult =
   | {
       readonly type: 'word'
       readonly record: WordRecord
+    }
+  | {
+      readonly type: 'name'
+      readonly record: NameRecord
     }
 
 let sqlJsPromise: ReturnType<typeof initSqlJs> | undefined
@@ -561,6 +575,89 @@ function loadDictionaryWords(): Promise<readonly WordRecord[]> {
   return dictionaryWordsPromise
 }
 
+function nameRecordFromRow(row: Record<string, unknown>): NameRecord {
+  const data = jsonBlob(row.data)
+  const kanji = Array.isArray(data.kanji) ? data.kanji : []
+  const kana = Array.isArray(data.kana) ? data.kana : []
+  const translations = Array.isArray(data.translations) ? data.translations : []
+  const textValues = (values: unknown): readonly string[] =>
+    Array.isArray(values)
+      ? values.filter((value): value is string => typeof value === 'string')
+      : []
+  return {
+    id: Number(row.id),
+    commonScore: Number(row.common_score),
+    forms: kanji.flatMap((value) =>
+      value && typeof value === 'object' && 'text' in value
+        ? textValues([value.text])
+        : [],
+    ),
+    readings: kana.flatMap((value) =>
+      value && typeof value === 'object' && 'text' in value
+        ? textValues([value.text])
+        : [],
+    ),
+    nameTypes: translations.flatMap((value) =>
+      value && typeof value === 'object' && 'nameTypes' in value
+        ? textValues(value.nameTypes)
+        : [],
+    ),
+    partsOfSpeech: [],
+    meanings: translations.flatMap((value) =>
+      value && typeof value === 'object' && 'details' in value
+        ? textValues(value.details)
+        : [],
+    ),
+  }
+}
+
+async function queryNameRecords(
+  query: string,
+  limit = 100,
+): Promise<readonly NameRecord[]> {
+  try {
+    const database = await openPack('names-v1.sqlite')
+    const normalized = normalizeQuery(query)
+    const escaped = normalized.replace(/[\\%_]/gu, '\\$&')
+    const statement = database.prepare(
+      `SELECT DISTINCT e.id, e.common_score, e.data
+       FROM entries e
+       LEFT JOIN forms f ON f.entry_id = e.id
+       WHERE f.form = ? OR f.form LIKE ? ESCAPE '\\'
+          OR EXISTS (SELECT 1 FROM glosses_fts g WHERE g.entry_id = e.id AND g.gloss LIKE ?)
+       ORDER BY e.common_score DESC, e.id ASC
+       LIMIT ?`,
+      [normalized, `${escaped}%`, `%${query}%`, limit],
+    )
+    const records: NameRecord[] = []
+    while (statement.step())
+      records.push(nameRecordFromRow(statement.getAsObject()))
+    statement.free()
+    return records
+  } catch {
+    return []
+  }
+}
+
+/** Looks up one optional JMnedict proper-name entry by its stable pack id. */
+export async function getNameById(id: number): Promise<NameRecord | null> {
+  if (!Number.isInteger(id) || id < 0) return null
+  try {
+    const database = await openPack('names-v1.sqlite')
+    const statement = database.prepare(
+      'SELECT id, common_score, data FROM entries WHERE id = ?',
+      [id],
+    )
+    const result = statement.step()
+      ? nameRecordFromRow(statement.getAsObject())
+      : null
+    statement.free()
+    return result
+  } catch {
+    return null
+  }
+}
+
 /** Looks up one offline dictionary word by its stable pack id. */
 export async function getWordById(id: number): Promise<WordRecord | null> {
   if (!Number.isInteger(id) || id < 0) return null
@@ -591,7 +688,16 @@ export async function findDictionaryEntry(
       ) ||
       record.meanings.some((meaning) => lower(meaning) === lower(trimmed)),
   )
-  return word ? { type: 'word', record: word } : null
+  if (word) return { type: 'word', record: word }
+  const name = (await queryNameRecords(trimmed, 20)).find(
+    (record) =>
+      record.forms.some((form) => normalizeQuery(form) === normalized) ||
+      record.readings.some(
+        (reading) => normalizeQuery(reading) === normalized,
+      ) ||
+      record.meanings.some((meaning) => lower(meaning) === lower(trimmed)),
+  )
+  return name ? { type: 'name', record: name } : null
 }
 
 /**
@@ -726,7 +832,13 @@ export async function searchDictionary(
       ]),
       matchScore(trimmed, record.meanings, true),
     )
-    if (score > 0) results.push({ result: { type: 'kanji', record }, score })
+    if (score > 0)
+      results.push({
+        result: { type: 'kanji', record },
+        // A literal kanji hit should remain visible even when the optional
+        // names pack contains hundreds of matching surnames.
+        score: score * 1_000_000,
+      })
   }
 
   for (const record of words) {
@@ -740,6 +852,19 @@ export async function searchDictionary(
         score: score * 1000 + record.commonScore,
       })
     }
+  }
+
+  const names = await queryNameRecords(trimmed, 100)
+  for (const record of names) {
+    const score = Math.max(
+      matchScore(normalized, [...record.forms, ...record.readings]),
+      matchScore(trimmed, record.meanings, true),
+    )
+    if (score > 0)
+      results.push({
+        result: { type: 'name', record },
+        score: score * 1000 + record.commonScore,
+      })
   }
 
   return results

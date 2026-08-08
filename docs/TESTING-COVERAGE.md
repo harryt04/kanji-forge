@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 55 (395 test cases: 395 passing) |
+| Unit/integration test files | 56 (398 test cases: 398 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 124 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.96%** |
@@ -77,7 +77,7 @@ leaving local-only mutation types queued until their server contract exists.
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
   `reviews.list()` filtering by deck and content ref independently, and atomic sticky annotation persistence.
-- **`packs/index.test.ts`** (33) — `parseContentRef` valid/malformed, deck-definition loading and
+- **`packs/index.test.ts`** (35) — `parseContentRef` valid/malformed, deck-definition loading and
   caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching, ranked
   example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
   sentence-alignment fallback/normalization, and offline KanjiVG stroke-path loading.
@@ -228,7 +228,7 @@ until the local Postgres stack is available in CI.
 
 ### `scripts/build-packs`
 
-`fetch-sources.test.ts` (1), `build-decks.test.ts`
+`fetch-sources.test.ts` (1), `build-names-pack.test.ts` (2), `build-decks.test.ts`
 (5), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
 [Known issues](#known-issues).
 

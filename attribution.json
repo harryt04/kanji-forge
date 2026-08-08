@@ -73,8 +73,8 @@
       "pinned": "2026-07-25",
       "sha256": "7fd1b381b348b44d09730924968ea3f509b63756c3f7aeebd61b386b1f049cd4",
       "licenseHash": "bf403f307237ede827bca3be4e6bd84b7e42890d0f4d8f515548df74a74e0640",
-      "use": "No JMnedict data is present in the current shipped manifests; it is recorded for the optional names pack.",
-      "modification": "None shipped in MVP."
+      "use": "Optional proper-name dictionary pack for people, places, organizations and other named entities.",
+      "modification": "The reproducible names builder converts JMnedict to an indexed SQLite/FTS pack and retains English name descriptions, readings, forms and name-type tags."
     },
     {
       "id": "kradfile",

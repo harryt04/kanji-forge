@@ -118,10 +118,11 @@ function claimedCount(manifest) {
 
 function derivedCount(manifestFile, manifest) {
   const dir = join(manifestFile, '..')
-  if (['kanji', 'words-core', 'sentences'].includes(manifest.id)) {
+  if (['kanji', 'words-core', 'names', 'sentences'].includes(manifest.id)) {
     const table = {
       kanji: 'kanji',
       'words-core': 'entries',
+      names: 'entries',
       sentences: 'sentences',
     }[manifest.id]
     const stem = basename(manifestFile).replace('.manifest.json', '')

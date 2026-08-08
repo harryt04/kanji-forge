@@ -11,6 +11,7 @@
     "build:similar": "tsx scripts/build-packs/build-similar-pack.ts",
     "build:strokes-pack": "npx tsx scripts/build-packs/build-strokes-pack.ts",
     "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts",
+    "build:names": "tsx scripts/build-packs/build-names-pack.ts",
     "build": "next build",
     "ci": "npm run build && npm run lint && npm run test:coverage && npm run test:e2e && npm run packs:verify && npm run packs:test",
     "dev": "next dev",

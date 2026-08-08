@@ -1222,7 +1222,7 @@ export function SettingsScreen(): React.ReactElement {
             contentRef:
               match.type === 'kanji'
                 ? `kanji:${match.record.literal}`
-                : `word:${match.record.id}`,
+                : `${match.type}:${match.record.id}`,
             kind: match.type,
           }
         : { label: value, contentRef: null, kind: 'unknown' }

@@ -26,11 +26,12 @@ import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 function contentRefForResult(result: DictionaryResult): string {
   return result.type === 'kanji'
     ? `kanji:${result.record.literal}`
-    : `word:${result.record.id}`
+    : `${result.type}:${result.record.id}`
 }
 
 function submitLabel(result: DictionaryResult): string {
-  return result.type === 'kanji' ? 'Kanji' : 'Word'
+  if (result.type === 'kanji') return 'Kanji'
+  return result.type === 'name' ? 'Name' : 'Word'
 }
 
 type SearchMode = 'text' | 'radical' | 'stroke-count'
