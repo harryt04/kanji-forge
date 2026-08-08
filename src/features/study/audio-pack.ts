@@ -15,6 +15,11 @@ export interface InstalledAudioPack {
   readonly files: Readonly<Record<string, Uint8Array>>
 }
 
+export interface InstalledAudioRecording {
+  readonly manifest: AudioPackManifest
+  readonly bytes: Uint8Array
+}
+
 const AUDIO_PACK_DB = 'kanjiforge-audio-packs-v1'
 const AUDIO_PACK_STORE = 'packs'
 const memoryPacks = new Map<string, InstalledAudioPack>()
@@ -179,15 +184,25 @@ export async function getAudioPackFile(
   writing: string,
   reading: string,
 ): Promise<Blob | null> {
+  const recording = await getAudioPackRecording(writing, reading)
+  if (recording) {
+    const copy = new ArrayBuffer(recording.bytes.byteLength)
+    new Uint8Array(copy).set(recording.bytes)
+    return new Blob([copy], { type: 'audio/mpeg' })
+  }
+  return null
+}
+
+/** Returns the exact offline recording for a writing and reading, if installed. */
+export async function getAudioPackRecording(
+  writing: string,
+  reading: string,
+): Promise<InstalledAudioRecording | null> {
   const key = `${writing}|${reading}`
   await listAudioPacks()
   for (const pack of memoryPacks.values()) {
     const bytes = pack.files[key]
-    if (bytes) {
-      const copy = new ArrayBuffer(bytes.byteLength)
-      new Uint8Array(copy).set(bytes)
-      return new Blob([copy], { type: 'audio/mpeg' })
-    }
+    if (bytes) return { manifest: pack.manifest, bytes }
   }
   return null
 }

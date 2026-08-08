@@ -90,7 +90,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.12 | Inline stroke animations instead of static glyph | ✅ | 2026-08-07 | Kanji detail loads ordered KanjiVG paths offline with play, pause, restart, and step controls; Settings persists the global visibility toggle |
 | 4.13 | Night mode with auto 21:00–06:00 | ✅ | 2026-08-08 | Plus a full theme system; automatic refresh aligns to the next local minute boundary |
 | 4.14 | Native-speaker audio per word | ⚠️ Partial | 2026-08-08 | Kanji and dictionary-word Detail views, plus Study, prefer matching licensed community recordings installed from Settings and fall back to labeled device-synthesized Japanese audio; broad human-recorded coverage remains 🔷 — DATA-SOURCES §8 |
-| — | Installable community audio packs | ➕ ✅ | 2026-08-08 | Settings installs a licensed ZIP manifest with `writing|reading` recordings into browser-local storage; Study exposes installed recordings even when the browser has no SpeechSynthesis runtime, and Study/Detail fall back to labeled device speech synthesis |
+| — | Installable community audio packs | ➕ ✅ | 2026-08-08 | Settings installs a licensed ZIP manifest with `writing|reading` recordings into browser-local storage; Study exposes an installed recording only when it matches the current word, even when the browser has no SpeechSynthesis runtime, and Study/Detail fall back to labeled device speech synthesis |
 | — | Per-sticky notes and tags | ➕ ✅ | 2026-08-08 | Detail view persists personal notes and comma-separated tags offline, includes them in backups, and syncs annotation mutations with authenticated last-write-wins storage |
 
 ## 5. Writing

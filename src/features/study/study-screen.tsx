@@ -31,7 +31,7 @@ import {
 } from './study-style'
 import {
   playJapaneseAudio,
-  hasInstalledJapaneseAudio,
+  hasInstalledJapaneseAudioFor,
   supportsStudyCardAudio,
   supportsJapaneseSpeech,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
@@ -67,7 +67,7 @@ export function StudyScreen({
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
-  const [hasAudioPack, setHasAudioPack] = useState(false)
+  const [hasAudioRecording, setHasAudioRecording] = useState(false)
   const [relatedWords, setRelatedWords] = useState<readonly WordRecord[]>([])
   const [relatedWordsLoading, setRelatedWordsLoading] = useState(false)
   const [shownRelatedWordIds, setShownRelatedWordIds] = useState<
@@ -127,7 +127,6 @@ export function StudyScreen({
         studyAnswerSetting,
         twoTapSetting,
         autoPlayAudioSetting,
-        audioPackInstalled,
         srsModeSetting,
       ] = await Promise.all([
         repoForSession.settings.get(GREY_STICKIES_SETTING),
@@ -135,7 +134,6 @@ export function StudyScreen({
         repoForSession.settings.get(STUDY_ANSWER_SETTING),
         repoForSession.settings.get(STUDY_TWO_TAP_SETTING),
         repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
-        hasInstalledJapaneseAudio(),
         repoForSession.settings.get(SRS_MODE_SETTING),
       ])
       const startedAt = Date.now()
@@ -170,7 +168,7 @@ export function StudyScreen({
         setTwoTapStudy(parseStudyTwoTap(twoTapSetting?.value))
         setTwoTapStage(0)
         setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
-        setHasAudioPack(audioPackInstalled)
+        setHasAudioRecording(false)
         setPreferenceError(null)
         setLoading(false)
       }
@@ -221,6 +219,25 @@ export function StudyScreen({
   const card = queue[index]
   const studyCard = card ? content.get(card.stickyId) : undefined
   const repo = runtime ? createUserRepositories(runtime.database) : null
+
+  useEffect(() => {
+    let active = true
+    if (!studyCard || !supportsStudyCardAudio(studyCard.contentType)) {
+      setHasAudioRecording(false)
+      return () => {
+        active = false
+      }
+    }
+    const reading = studyCard.readings[0] ?? studyCard.literal
+    void hasInstalledJapaneseAudioFor(studyCard.literal, reading).then(
+      (available) => {
+        if (active) setHasAudioRecording(available)
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [studyCard])
 
   useEffect(() => {
     let cancelled = false
@@ -366,7 +383,7 @@ export function StudyScreen({
   const questionIsJapanese = twoTapStudy || studyQuestion !== 'meaning'
   const canSpeak =
     supportsStudyCardAudio(studyCard?.contentType) &&
-    (supportsJapaneseSpeech() || hasAudioPack)
+    (supportsJapaneseSpeech() || hasAudioRecording)
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`

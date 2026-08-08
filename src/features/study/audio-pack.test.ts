@@ -2,6 +2,7 @@ import { zipSync } from 'fflate'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   getAudioPackFile,
+  getAudioPackRecording,
   installAudioPack,
   listAudioPacks,
   parseAudioPackArchive,
@@ -74,6 +75,11 @@ describe('community audio packs', () => {
     const file = await getAudioPackFile('日', 'ひ')
     expect(file).not.toBeNull()
     expect(file?.type).toBe('audio/mpeg')
+    await expect(getAudioPackRecording('日', 'ひ')).resolves.toMatchObject({
+      manifest: { id },
+      bytes: new Uint8Array([1, 2, 3]),
+    })
+    await expect(getAudioPackRecording('お金', 'おかね')).resolves.toBeNull()
     await removeAudioPack(id)
     expect((await listAudioPacks()).some((pack) => pack.id === id)).toBe(false)
     installed.splice(installed.indexOf(id), 1)

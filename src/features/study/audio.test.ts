@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  hasInstalledJapaneseAudioFor,
   speakJapanese,
   supportsJapaneseSpeech,
   supportsStudyCardAudio,
@@ -19,6 +20,10 @@ describe('study audio', () => {
   it('reports unsupported browsers without throwing', () => {
     expect(supportsJapaneseSpeech()).toBe(false)
     expect(speakJapanese('日')).toBe(false)
+  })
+
+  it('only reports an installed recording when the writing and reading match', async () => {
+    expect(await hasInstalledJapaneseAudioFor('日', 'ひ')).toBe(false)
   })
 
   it('speaks Japanese with a labeled, slower device voice', () => {
