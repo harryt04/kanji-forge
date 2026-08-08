@@ -17,6 +17,7 @@ export interface InstalledAudioPack {
 
 export interface InstalledAudioRecording {
   readonly manifest: AudioPackManifest
+  readonly path: string
   readonly bytes: Uint8Array
 }
 
@@ -73,6 +74,34 @@ export function parseAudioPackManifest(value: unknown): AudioPackManifest {
       'Audio pack manifest must contain at least one writing|reading file.',
     )
   return { id, name, version, license, attribution, files }
+}
+
+/** Returns the browser media type implied by a community recording path. */
+export function audioMimeTypeForPath(path: string): string {
+  const withoutQuery = path.toLowerCase().split('?').at(0) ?? ''
+  const extension = withoutQuery.split('.').at(-1) ?? ''
+  switch (extension) {
+    case 'aac':
+      return 'audio/aac'
+    case 'flac':
+      return 'audio/flac'
+    case 'm4a':
+    case 'mp4':
+      return 'audio/mp4'
+    case 'mp3':
+      return 'audio/mpeg'
+    case 'oga':
+    case 'ogg':
+    case 'opus':
+      return 'audio/ogg'
+    case 'wav':
+      return 'audio/wav'
+    case 'weba':
+    case 'webm':
+      return 'audio/webm'
+    default:
+      return 'application/octet-stream'
+  }
 }
 
 export function parseAudioPackArchive(bytes: Uint8Array): InstalledAudioPack {
@@ -188,7 +217,7 @@ export async function getAudioPackFile(
   if (recording) {
     const copy = new ArrayBuffer(recording.bytes.byteLength)
     new Uint8Array(copy).set(recording.bytes)
-    return new Blob([copy], { type: 'audio/mpeg' })
+    return new Blob([copy], { type: audioMimeTypeForPath(recording.path) })
   }
   return null
 }
@@ -202,7 +231,8 @@ export async function getAudioPackRecording(
   await listAudioPacks()
   for (const pack of memoryPacks.values()) {
     const bytes = pack.files[key]
-    if (bytes) return { manifest: pack.manifest, bytes }
+    const path = pack.manifest.files[key]
+    if (bytes && path) return { manifest: pack.manifest, path, bytes }
   }
   return null
 }

@@ -7,6 +7,7 @@ import {
   listAudioPacks,
   parseAudioPackArchive,
   parseAudioPackManifest,
+  audioMimeTypeForPath,
   removeAudioPack,
 } from './audio-pack'
 
@@ -46,6 +47,15 @@ describe('community audio packs', () => {
     ).toThrow(/at least one/)
   })
 
+  it('maps common community recording formats to browser media types', () => {
+    expect(audioMimeTypeForPath('voice.mp3')).toBe('audio/mpeg')
+    expect(audioMimeTypeForPath('voice.OGG')).toBe('audio/ogg')
+    expect(audioMimeTypeForPath('voice.wav')).toBe('audio/wav')
+    expect(audioMimeTypeForPath('voice.m4a')).toBe('audio/mp4')
+    expect(audioMimeTypeForPath('voice.webm')).toBe('audio/webm')
+    expect(audioMimeTypeForPath('voice.bin')).toBe('application/octet-stream')
+  })
+
   it('extracts recordings from a ZIP and fails when a declared file is absent', () => {
     const pack = parseAudioPackArchive(archive())
     expect(pack.manifest.name).toBe('Community voice')
@@ -79,10 +89,34 @@ describe('community audio packs', () => {
       manifest: { id },
       bytes: new Uint8Array([1, 2, 3]),
     })
+    expect((await getAudioPackRecording('日', 'ひ'))?.path).toBe('audio/hi.mp3')
     await expect(getAudioPackRecording('お金', 'おかね')).resolves.toBeNull()
     await removeAudioPack(id)
     expect((await listAudioPacks()).some((pack) => pack.id === id)).toBe(false)
     installed.splice(installed.indexOf(id), 1)
     expect(await getAudioPackFile('日', 'ひ')).toBeNull()
+  })
+
+  it('preserves a non-MP3 recording type for browser playback', async () => {
+    const id = `ogg-pack-${crypto.randomUUID()}`
+    installed.push(id)
+    const manifest = {
+      id,
+      name: 'Ogg voice',
+      version: '1.0.0',
+      license: 'CC BY 4.0',
+      attribution: 'A Japanese speaker',
+      files: { '日|ひ': 'audio/hi.ogg' },
+    }
+    await installAudioPack(
+      zipSync({
+        'manifest.json': new TextEncoder().encode(JSON.stringify(manifest)),
+        'audio/hi.ogg': new Uint8Array([1, 2, 3]),
+      }),
+    )
+
+    await expect(getAudioPackFile('日', 'ひ')).resolves.toMatchObject({
+      type: 'audio/ogg',
+    })
   })
 })
