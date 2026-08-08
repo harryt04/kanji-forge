@@ -42,6 +42,13 @@ import {
   type BackupReminder,
 } from './backup'
 import {
+  chooseAutoBackupDirectory,
+  forgetAutoBackupDirectory,
+  getAutoBackupDirectory,
+  supportsAutoBackup,
+  writeBackupToDirectory,
+} from './auto-backup'
+import {
   isStrokeAnimationEnabled,
   STROKE_ANIMATION_SETTING,
 } from '@/features/detail/stroke-animation'
@@ -138,6 +145,10 @@ export function SettingsScreen(): React.ReactElement {
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
   const [backupReminder, setBackupReminder] = useState<BackupReminder>(null)
+  const [autoBackupDirectory, setAutoBackupDirectory] = useState<string | null>(
+    null,
+  )
+  const [autoBackupSupported, setAutoBackupSupported] = useState(false)
   const [resetBusy, setResetBusy] = useState(false)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [statisticsResetBusy, setStatisticsResetBusy] = useState(false)
@@ -158,6 +169,7 @@ export function SettingsScreen(): React.ReactElement {
     if (!runtime) return
     let cancelled = false
     setSystemDark(getSystemPreference())
+    setAutoBackupSupported(supportsAutoBackup())
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
@@ -216,6 +228,11 @@ export function SettingsScreen(): React.ReactElement {
         ? Number(savedBackup.value)
         : undefined
       setBackupReminder(getBackupReminder(lastBackupAt))
+      const savedAutoBackupDirectory = await getAutoBackupDirectory(
+        runtime.userId,
+      )
+      if (!cancelled)
+        setAutoBackupDirectory(savedAutoBackupDirectory?.name ?? null)
       setLoading(false)
     })().catch((reason: unknown) => {
       if (!cancelled) {
@@ -654,6 +671,58 @@ export function SettingsScreen(): React.ReactElement {
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not create backup.',
+      )
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function chooseAutomaticBackupFolder(): Promise<void> {
+    if (!runtime || backupBusy) return
+    setBackupBusy(true)
+    setBackupMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const handle = await chooseAutoBackupDirectory(runtime.userId)
+      const repositories = createUserRepositories(runtime.database)
+      const backup = await createBackup(repositories, runtime.userId)
+      await writeBackupToDirectory(handle, backup)
+      await repositories.settings.set({
+        key: BACKUP_LAST_EXPORTED_SETTING,
+        value: String(backup.exportedAt),
+        updatedAt: Date.now(),
+      })
+      setAutoBackupDirectory(handle.name)
+      setBackupReminder(null)
+      setBackupMessage(
+        `Automatic backups will be saved to “${handle.name}” once per day when the app is opened.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not enable automatic backups.',
+      )
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function forgetAutomaticBackupFolder(): Promise<void> {
+    if (!runtime || backupBusy) return
+    setBackupBusy(true)
+    setBackupMessage(null)
+    setError(null)
+    try {
+      await forgetAutoBackupDirectory(runtime.userId)
+      setAutoBackupDirectory(null)
+      setBackupMessage('Automatic backups disabled.')
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not disable automatic backups.',
       )
     } finally {
       setBackupBusy(false)
@@ -1271,6 +1340,44 @@ export function SettingsScreen(): React.ReactElement {
             {backupMessage}
           </p>
         )}
+        <div className="border-border mt-5 border-t pt-5">
+          <h3 className="font-semibold">Automatic folder backup</h3>
+          <p className="text-muted-foreground mt-1 text-sm">
+            On supported desktop browsers, save a fresh full backup once per day
+            when KanjiForge opens or returns to the foreground. The file is
+            written locally to a folder you choose.
+          </p>
+          {!autoBackupSupported ? (
+            <p className="text-muted-foreground mt-3 text-sm">
+              This browser does not support choosing a backup folder. Download a
+              backup above instead.
+            </p>
+          ) : autoBackupDirectory ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="text-sm" role="status">
+                Saving to <strong>{autoBackupDirectory}</strong>
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={backupBusy}
+                onClick={() => void forgetAutomaticBackupFolder()}
+              >
+                Forget folder
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={backupBusy}
+              onClick={() => void chooseAutomaticBackupFolder()}
+            >
+              Choose backup folder
+            </Button>
+          )}
+        </div>
         <div className="border-border mt-5 border-t pt-5">
           <h3 className="font-semibold">Export this deck as text</h3>
           <p className="text-muted-foreground mt-1 text-sm">

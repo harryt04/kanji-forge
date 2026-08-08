@@ -205,7 +205,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 11.1 | iCloud backup and sync | ❌ as built | — | Platform-locked |
 | 11.2 | Dropbox backup | ❌ | — | Discontinued upstream too |
 | — | Manual full backup file | ➕ ✅ | 2026-08-07 | Settings provides a local JSON download and same-account non-destructive restore; includes decks, settings, Saved membership, and complete review history |
-| — | Auto-backup to a chosen folder (File System Access) | ➕ 🔷 | — | Desktop (T2+) |
+| — | Auto-backup to a chosen folder (File System Access) | ➕ ✅ | 2026-08-07 | Supported desktop browsers persist the chosen folder handle per account and write one full backup per day when the app opens or returns to the foreground |
 | — | Optional self-hostable sync server | ➕ 🔷 | — | ARCHITECTURE §10 (T4.0) |
 | — | Backup nag when none taken in 30 days | ➕ ✅ | 2026-08-07 | Settings records successful backup downloads and shows a persistent warning when no backup exists or the last one is more than 30 days old |
 
