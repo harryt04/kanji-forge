@@ -139,6 +139,33 @@ describe('data/packs', () => {
     })
   })
 
+  describe('searchDictionaryByStrokeCount', () => {
+    it('returns frequency-ranked kanji with the requested stroke count', async () => {
+      const { searchDictionaryByStrokeCount } = await freshPacks()
+      const result = await searchDictionaryByStrokeCount(4)
+
+      expect(result.length).toBeGreaterThan(0)
+      expect(result.every((entry) => entry.type === 'kanji')).toBe(true)
+      expect(
+        result.every(
+          (entry) => entry.type === 'kanji' && entry.record.strokeCount === 4,
+        ),
+      ).toBe(true)
+      expect(
+        result.some(
+          (entry) => entry.type === 'kanji' && entry.record.literal === '日',
+        ),
+      ).toBe(true)
+    })
+
+    it('rejects invalid stroke counts without loading a pack', async () => {
+      const { searchDictionaryByStrokeCount } = await freshPacks()
+
+      await expect(searchDictionaryByStrokeCount(0)).resolves.toEqual([])
+      await expect(searchDictionaryByStrokeCount(4, 0)).resolves.toEqual([])
+    })
+  })
+
   describe('getExampleWords', () => {
     it('returns ranked words whose kanji form contains the requested literal', async () => {
       const { getExampleWords } = await freshPacks()

@@ -6,6 +6,7 @@ import { createUserRepositories, type OutboxMutation } from '@/data/repo'
 import {
   searchDictionary,
   searchDictionaryByRadical,
+  searchDictionaryByStrokeCount,
   type DictionaryResult,
 } from '@/data/packs'
 import { Button } from '@/ui/button'
@@ -31,7 +32,7 @@ function submitLabel(result: DictionaryResult): string {
   return result.type === 'kanji' ? 'Kanji' : 'Word'
 }
 
-type SearchMode = 'text' | 'radical'
+type SearchMode = 'text' | 'radical' | 'stroke-count'
 
 export function DictionaryScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
@@ -99,6 +100,13 @@ export function DictionaryScreen(): React.ReactElement {
         }
         setResults(await searchDictionaryByRadical(radical))
         setSearchedQuery(`radical ${radical}`)
+      } else if (searchMode === 'stroke-count') {
+        const strokeCount = Number(trimmedQuery)
+        if (!Number.isInteger(strokeCount) || strokeCount < 1) {
+          throw new Error('Enter a positive whole-number stroke count.')
+        }
+        setResults(await searchDictionaryByStrokeCount(strokeCount))
+        setSearchedQuery(`${strokeCount} strokes`)
       } else {
         const nextHistory = recordSearch(history, trimmedQuery)
         setHistory(nextHistory)
@@ -230,24 +238,41 @@ export function DictionaryScreen(): React.ReactElement {
           >
             Radical search
           </Button>
+          <Button
+            type="button"
+            variant={searchMode === 'stroke-count' ? 'secondary' : 'outline'}
+            aria-pressed={searchMode === 'stroke-count'}
+            onClick={() => {
+              setSearchMode('stroke-count')
+              setQuery('')
+              setResults([])
+              setSearchedQuery('')
+            }}
+          >
+            Stroke-count search
+          </Button>
         </div>
         <div className="flex gap-2">
           <label className="sr-only" htmlFor="dictionary-query">
             {searchMode === 'radical'
               ? 'Classical radical number'
-              : 'Dictionary search'}
+              : searchMode === 'stroke-count'
+                ? 'Stroke count'
+                : 'Dictionary search'}
           </label>
           <input
             id="dictionary-query"
-            type={searchMode === 'radical' ? 'number' : 'search'}
-            min={searchMode === 'radical' ? 1 : undefined}
+            type={searchMode === 'text' ? 'search' : 'number'}
+            min={searchMode === 'text' ? undefined : 1}
             max={searchMode === 'radical' ? 214 : undefined}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={
               searchMode === 'radical'
                 ? 'e.g. 75 (grass radical)'
-                : 'e.g. 日本, nihongo, or Japan'
+                : searchMode === 'stroke-count'
+                  ? 'e.g. 4'
+                  : 'e.g. 日本, nihongo, or Japan'
             }
             autoComplete="off"
             className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"

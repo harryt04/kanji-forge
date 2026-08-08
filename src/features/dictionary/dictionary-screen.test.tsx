@@ -86,6 +86,21 @@ describe('DictionaryScreen', () => {
     expect(screen.getByLabelText('Classical radical number')).toHaveValue(75)
   })
 
+  it('searches kanji by exact stroke count', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'Stroke-count search' }),
+    )
+    await user.type(screen.getByLabelText('Stroke count'), '4')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(await screen.findByText('日')).toBeInTheDocument()
+    expect(screen.getAllByText('Stroke count').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Stroke count')).toHaveValue(4)
+  })
+
   it('saves a dictionary result to the offline Saved deck', async () => {
     const user = userEvent.setup()
     render(<DictionaryScreen />)
