@@ -16,7 +16,7 @@ import {
   DAILY_REMINDER_ENABLED_SETTING,
   DAILY_REMINDER_TIME_SETTING,
 } from '@/pwa'
-import { THEME_SETTING } from './theme'
+import { FONT_SCALE_SETTING, THEME_SETTING } from './theme'
 import {
   BACKUP_FORMAT,
   BACKUP_LAST_EXPORTED_SETTING,
@@ -104,6 +104,25 @@ describe('SettingsScreen', () => {
     await expect(
       createUserRepositories(runtime!.database).settings.get(THEME_SETTING),
     ).resolves.toMatchObject({ value: 'dark' })
+  })
+
+  it('persists the selected text size offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Text size' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Large text/ }))
+
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(FONT_SCALE_SETTING),
+      ).toMatchObject({ value: 'large' }),
+    )
+    expect(document.documentElement.dataset.fontScale).toBe('large')
   })
 
   it('persists RSS links and provides link-out-only news sources', async () => {

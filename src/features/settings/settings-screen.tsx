@@ -95,11 +95,15 @@ import {
   type SaveBehavior,
 } from '@/features/detail/save-behavior'
 import {
+  applyFontScale,
   applyTheme,
+  FONT_SCALE_SETTING,
+  isFontScalePreference,
   isThemePreference,
   resolveTheme,
   THEME_PREFERENCES,
   THEME_SETTING,
+  type FontScalePreference,
   type ThemePreference,
 } from './theme'
 import {
@@ -161,6 +165,28 @@ const THEME_OPTIONS: ReadonlyArray<{
     value: 'night',
     label: 'Night schedule',
     description: 'Use dark theme from 21:00 to 06:00 local time.',
+  },
+]
+
+const FONT_SCALE_OPTIONS: ReadonlyArray<{
+  value: FontScalePreference
+  label: string
+  description: string
+}> = [
+  {
+    value: 'default',
+    label: 'Default text',
+    description: 'Use the standard app text size.',
+  },
+  {
+    value: 'large',
+    label: 'Large text',
+    description: 'Increase text and controls by 12.5%.',
+  },
+  {
+    value: 'x-large',
+    label: 'Extra-large text',
+    description: 'Increase text and controls by 25%.',
   },
 ]
 
@@ -269,6 +295,7 @@ function getSystemPreference(): boolean {
 export function SettingsScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [preference, setPreference] = useState<ThemePreference>('light')
+  const [fontScale, setFontScale] = useState<FontScalePreference>('default')
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false)
@@ -375,6 +402,7 @@ export function SettingsScreen(): React.ReactElement {
       const repositories = createUserRepositories(runtime.database)
       const [
         saved,
+        savedFontScale,
         savedBadge,
         savedReminderEnabled,
         savedReminderTime,
@@ -395,6 +423,7 @@ export function SettingsScreen(): React.ReactElement {
         allSettings,
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
+        repositories.settings.get(FONT_SCALE_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
         repositories.settings.get(DAILY_REMINDER_ENABLED_SETTING),
         repositories.settings.get(DAILY_REMINDER_TIME_SETTING),
@@ -416,6 +445,8 @@ export function SettingsScreen(): React.ReactElement {
       ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
+      if (isFontScalePreference(savedFontScale?.value))
+        setFontScale(savedFontScale.value)
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
@@ -525,6 +556,10 @@ export function SettingsScreen(): React.ReactElement {
     applyTheme(resolveTheme(preference, new Date(), systemDark))
   }, [preference, systemDark])
 
+  useEffect(() => {
+    applyFontScale(fontScale)
+  }, [fontScale])
+
   async function choosePreference(next: ThemePreference): Promise<void> {
     if (!runtime || next === preference) return
     setPreference(next)
@@ -542,6 +577,30 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save theme setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseFontScale(next: FontScalePreference): Promise<void> {
+    if (!runtime || next === fontScale) return
+    const previous = fontScale
+    setFontScale(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: FONT_SCALE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setFontScale(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save text-size setting.',
       )
     } finally {
       setSaving(false)
@@ -2041,6 +2100,38 @@ export function SettingsScreen(): React.ReactElement {
             {error}
           </p>
         )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Text size</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Increase app text and controls for easier reading. This setting is
+          saved on this device and works offline.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="Text size"
+        >
+          {FONT_SCALE_OPTIONS.map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={fontScale === value ? 'secondary' : 'outline'}
+              aria-checked={fontScale === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseFontScale(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Japanese news links</h2>

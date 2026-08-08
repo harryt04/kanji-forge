@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  applyFontScale,
   applyTheme,
+  isFontScalePreference,
   isNightWindow,
   isThemePreference,
   resolveTheme,
@@ -10,12 +12,15 @@ describe('theme preferences', () => {
   beforeEach(() => {
     document.documentElement.className = ''
     document.documentElement.removeAttribute('data-theme')
+    document.documentElement.removeAttribute('data-font-scale')
   })
 
   it('recognizes only supported persisted values', () => {
     expect(isThemePreference('night')).toBe(true)
     expect(isThemePreference('auto')).toBe(false)
     expect(isThemePreference(undefined)).toBe(false)
+    expect(isFontScalePreference('large')).toBe(true)
+    expect(isFontScalePreference('huge')).toBe(false)
   })
 
   it('uses the 21:00–06:00 local night window', () => {
@@ -47,5 +52,13 @@ describe('theme preferences', () => {
     applyTheme('light')
     expect(document.documentElement).not.toHaveClass('dark')
     expect(meta.content).toBe('#f7f4ec')
+  })
+
+  it('applies the selected font scale to the app root', () => {
+    applyFontScale('x-large')
+    expect(document.documentElement.dataset.fontScale).toBe('x-large')
+
+    applyFontScale('default')
+    expect(document.documentElement.dataset.fontScale).toBe('default')
   })
 })
