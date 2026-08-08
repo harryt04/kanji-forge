@@ -63,7 +63,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.2 | Configurable tile content | ✅ | 2026-08-07 | Browse tiles can show kanji, reading, or the first English meaning; the choice persists per user offline |
 | 3.3 | Zoom ratio setting | ✅ | 2026-08-07 | Browse persists 75% compact, 100% standard, and 150% large tile density per user and applies it to the tile wall |
 | 3.4 | Tap tile for detail | ✅ | 2026-08-07 | Browse tiles open an authenticated offline kanji detail view backed by the installed content pack |
-| 3.5 | List view | ✅ | 2026-08-07 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; virtualization remains a follow-up for very large packs |
+| 3.5 | List view | ✅ | 2026-08-08 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; lists above 500 cards use an overscanned fixed-row viewport so full-size packs do not create one DOM node per card |
 | 3.6 | Inline color editing in list view | ✅ | 2026-08-07 | Accessible per-card level picker schedules the new level and persists a manual override offline |
 | 3.7 | Sorting | ✅ | 2026-08-07 | Browse list sorts offline by deck order, level, stroke count, frequency, JLPT, school grade, review count, last review, or kana; ties retain deck order and missing metadata sorts last |
 | 3.8 | Filtering | ✅ | 2026-08-07 | Browse filters offline by level/color, flagged state, inclusive stroke-count range, and JLPT level; filters combine with text search and can be cleared together |

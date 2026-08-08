@@ -18,6 +18,12 @@ import {
 } from './browse-filter'
 import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
+import {
+  BROWSE_LIST_ROW_HEIGHT,
+  BROWSE_LIST_VIEWPORT_HEIGHT,
+  BROWSE_LIST_VIRTUALIZATION_THRESHOLD,
+  getBrowseVirtualRange,
+} from './browse-virtual'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
@@ -184,6 +190,7 @@ export function BrowseScreen({
   const [tileZoomError, setTileZoomError] = useState<string | null>(null)
   const [defaultsMessage, setDefaultsMessage] = useState<string | null>(null)
   const [selectedDeckId, setSelectedDeckId] = useState(deckDefinitionId)
+  const [listScrollTop, setListScrollTop] = useState(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -260,6 +267,16 @@ export function BrowseScreen({
     () => sortBrowseCards(filteredCards, sort),
     [filteredCards, sort],
   )
+  const virtualizeList =
+    view === 'list' && sortedCards.length > BROWSE_LIST_VIRTUALIZATION_THRESHOLD
+  const listRange = virtualizeList
+    ? getBrowseVirtualRange(sortedCards.length, listScrollTop)
+    : { start: 0, end: sortedCards.length }
+  const visibleListCards = sortedCards.slice(listRange.start, listRange.end)
+
+  useEffect(() => {
+    setListScrollTop(0)
+  }, [sortedCards, view])
   const selectedCards = useMemo(
     () => cards.filter((card) => selectedContentRefs.has(card.contentRef)),
     [cards, selectedContentRefs],
@@ -497,6 +514,10 @@ export function BrowseScreen({
           : 'Could not save Browse view.',
       )
     }
+  }
+
+  function handleListScroll(event: React.UIEvent<HTMLDivElement>): void {
+    setListScrollTop(event.currentTarget.scrollTop)
   }
 
   async function chooseTileContent(next: BrowseTileContent): Promise<void> {
@@ -1071,93 +1092,128 @@ export function BrowseScreen({
           })}
         </div>
       ) : (
-        <ul
-          className="grid gap-3"
+        <div
+          className={virtualizeList ? 'overflow-y-auto' : undefined}
+          style={
+            virtualizeList
+              ? {
+                  height: `${BROWSE_LIST_VIEWPORT_HEIGHT}px`,
+                }
+              : undefined
+          }
+          onScroll={virtualizeList ? handleListScroll : undefined}
           data-testid="browse-card-list"
-          aria-label={`${deck.name} cards`}
         >
-          {sortedCards.map((card) => {
-            const level = card.state?.level ?? 0
-            const flagged = card.state?.flagged ?? false
-            const reading = [...card.onReadings, ...card.kunReadings].join('、')
-            return (
-              <li key={card.contentRef}>
-                <Card
-                  className={`sticky-shape ${LEVEL_SHAPES[level]}`}
-                  data-level={level}
-                  data-content-ref={card.contentRef}
-                  data-testid="browse-card"
-                  role="article"
-                  aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
+          <ul
+            className={virtualizeList ? 'relative' : 'grid gap-3'}
+            style={
+              virtualizeList
+                ? { height: `${sortedCards.length * BROWSE_LIST_ROW_HEIGHT}px` }
+                : undefined
+            }
+            aria-label={`${deck.name} cards`}
+          >
+            {visibleListCards.map((card, visibleIndex) => {
+              const cardIndex = listRange.start + visibleIndex
+              const level = card.state?.level ?? 0
+              const flagged = card.state?.flagged ?? false
+              const reading = [...card.onReadings, ...card.kunReadings].join(
+                '、',
+              )
+              return (
+                <li
+                  key={card.contentRef}
+                  style={
+                    virtualizeList
+                      ? {
+                          position: 'absolute',
+                          top: `${cardIndex * BROWSE_LIST_ROW_HEIGHT}px`,
+                          right: 0,
+                          left: 0,
+                          height: `${BROWSE_LIST_ROW_HEIGHT - 12}px`,
+                        }
+                      : undefined
+                  }
+                  aria-setsize={sortedCards.length}
+                  aria-posinset={cardIndex + 1}
                 >
-                  <CardContent className="flex items-center gap-4 p-4 sm:p-5">
-                    <label className="shrink-0">
-                      <span className="sr-only">Select {card.literal}</span>
-                      <input
-                        type="checkbox"
-                        checked={selectedContentRefs.has(card.contentRef)}
-                        onChange={() => toggleSelection(card.contentRef)}
-                        aria-label={`Select ${card.literal}`}
-                        className="accent-primary h-5 w-5"
-                      />
-                    </label>
-                    <div
-                      className="level-swatch grid h-14 w-14 shrink-0 place-items-center rounded-md text-3xl"
-                      data-level={level}
-                      aria-hidden="true"
-                    >
-                      <span className="font-jp-display">{card.literal}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <h2 className="font-jp-ui text-lg" lang="ja">
-                          {card.literal}
-                        </h2>
-                        <span className="text-muted-foreground text-sm">
-                          Level {level} · {LEVEL_NAMES[level]}
-                        </span>
-                        {flagged && (
-                          <span className="text-primary text-xs font-semibold">
-                            Flagged
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-jp-ui text-muted-foreground mt-1 text-sm">
-                        {reading || 'No reading recorded'}
-                      </p>
-                      <p className="text-muted-foreground mt-1 truncate text-sm">
-                        {card.meanings.join('; ') || 'No meaning recorded'}
-                      </p>
-                    </div>
-                    <label className="grid shrink-0 gap-1 text-right">
-                      <span className="text-muted-foreground text-xs">
-                        Set level
-                      </span>
-                      <select
-                        value={level}
-                        disabled={savingContentRef !== null}
-                        onChange={(event) => {
-                          void setCardLevel(
-                            card,
-                            Number(event.target.value) as CardState['level'],
-                          )
-                        }}
-                        aria-label={`Set level for ${card.literal}`}
-                        className="border-input bg-background focus-visible:ring-ring h-10 min-w-24 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
+                  <Card
+                    className={`sticky-shape ${LEVEL_SHAPES[level]}`}
+                    data-level={level}
+                    data-content-ref={card.contentRef}
+                    data-testid="browse-card"
+                    role="article"
+                    aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
+                  >
+                    <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+                      <label className="shrink-0">
+                        <span className="sr-only">Select {card.literal}</span>
+                        <input
+                          type="checkbox"
+                          checked={selectedContentRefs.has(card.contentRef)}
+                          onChange={() => toggleSelection(card.contentRef)}
+                          aria-label={`Select ${card.literal}`}
+                          className="accent-primary h-5 w-5"
+                        />
+                      </label>
+                      <div
+                        className="level-swatch grid h-14 w-14 shrink-0 place-items-center rounded-md text-3xl"
+                        data-level={level}
+                        aria-hidden="true"
                       >
-                        {LEVEL_NAMES.map((name, candidateLevel) => (
-                          <option key={name} value={candidateLevel}>
-                            {candidateLevel} · {name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </CardContent>
-                </Card>
-              </li>
-            )
-          })}
-        </ul>
+                        <span className="font-jp-display">{card.literal}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <h2 className="font-jp-ui text-lg" lang="ja">
+                            {card.literal}
+                          </h2>
+                          <span className="text-muted-foreground text-sm">
+                            Level {level} · {LEVEL_NAMES[level]}
+                          </span>
+                          {flagged && (
+                            <span className="text-primary text-xs font-semibold">
+                              Flagged
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-jp-ui text-muted-foreground mt-1 text-sm">
+                          {reading || 'No reading recorded'}
+                        </p>
+                        <p className="text-muted-foreground mt-1 truncate text-sm">
+                          {card.meanings.join('; ') || 'No meaning recorded'}
+                        </p>
+                      </div>
+                      <label className="grid shrink-0 gap-1 text-right">
+                        <span className="text-muted-foreground text-xs">
+                          Set level
+                        </span>
+                        <select
+                          value={level}
+                          disabled={savingContentRef !== null}
+                          onChange={(event) => {
+                            void setCardLevel(
+                              card,
+                              Number(event.target.value) as CardState['level'],
+                            )
+                          }}
+                          aria-label={`Set level for ${card.literal}`}
+                          className="border-input bg-background focus-visible:ring-ring h-10 min-w-24 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
+                        >
+                          {LEVEL_NAMES.map((name, candidateLevel) => (
+                            <option key={name} value={candidateLevel}>
+                              {candidateLevel} · {name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </CardContent>
+                  </Card>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
     </main>
   )

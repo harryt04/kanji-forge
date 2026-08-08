@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 67 (465 test cases: 465 passing) |
+| Unit/integration test files | 68 (468 test cases: 468 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 134 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **85.51%** |
@@ -143,7 +143,7 @@ breakdown and pressed state.
 **`help-screen.test.tsx`** (Testing Library) — bundled offline documentation sections and links,
 plus the anonymous-access message when rendered outside the authenticated app shell.
 
-### `src/features/browse` — 26 cases
+### `src/features/browse` — 29 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
 loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
@@ -156,6 +156,9 @@ multiple cards in either view, and atomically bulk flagging or assigning manual 
 
 `browse-filter.test.ts` covers untouched cards as level zero, inclusive stroke ranges, flagged and
 level combinations, JLPT matching, and missing JLPT metadata.
+
+`browse-virtual.test.ts` covers bounded overscanned ranges at the top and bottom of a 2,500-card
+list and clamps invalid scroll/sizing inputs.
 
 **`browse-sort.test.ts`** (Vitest) — all metadata sort modes, missing metadata placement, implicit
 level-zero cards, stable deck-order ties, and non-mutating deck-order output.
