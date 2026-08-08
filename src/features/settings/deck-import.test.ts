@@ -198,7 +198,45 @@ describe('Anki package import', () => {
       noteCount: 2,
       kanji: ['本', '日'],
       values: ['本', 'ほん', '日本', 'にほん'],
+      taggedValues: [
+        { value: '本', tags: [] },
+        { value: 'ほん', tags: [] },
+        { value: '日本', tags: [] },
+        { value: 'にほん', tags: [] },
+      ],
     })
+    database.close()
+  })
+
+  it('preserves and merges note tags for extracted Japanese values', async () => {
+    const SQL = await initSqlJs()
+    const database = new SQL.Database()
+    database.run('CREATE TABLE col (decks TEXT)')
+    database.run('CREATE TABLE notes (id INTEGER, flds TEXT, tags TEXT)')
+    database.run('INSERT INTO col VALUES (?)', [
+      JSON.stringify({ '1': { name: 'Tagged deck' } }),
+    ])
+    database.run('INSERT INTO notes VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)', [
+      1,
+      'お金\u001fおかね\u001fMoney',
+      'money::n5 frequency',
+      2,
+      'お金\u001fおかね\u001fMoney',
+      'review',
+      3,
+      '日\u001fひ\u001fSun',
+      '',
+    ])
+
+    const result = await parseAnkiApkg(
+      zipSync({ 'collection.anki2': database.export() }).buffer,
+    )
+
+    expect(result.taggedValues).toEqual([
+      { value: 'お金', tags: ['money::n5', 'frequency', 'review'] },
+      { value: 'おかね', tags: ['money::n5', 'frequency', 'review'] },
+      { value: '日', tags: [] },
+    ])
     database.close()
   })
 

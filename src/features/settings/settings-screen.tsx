@@ -56,7 +56,7 @@ import {
   type StoragePersistenceStatus,
 } from '@/pwa'
 import { Button } from '@/ui/button'
-import { parseAnkiApkg } from '@/core/import/apkg'
+import { parseAnkiApkg, type AnkiImportValue } from '@/core/import/apkg'
 import {
   DEFAULT_STUDY_ANSWER,
   DEFAULT_STUDY_QUESTION,
@@ -1556,11 +1556,14 @@ export function SettingsScreen(): React.ReactElement {
   }
 
   async function resolveImportValues(
-    values: readonly string[],
+    values: readonly (string | AnkiImportValue)[],
   ): Promise<readonly ImportEntry[]> {
     const entries: ImportEntry[] = []
 
-    async function add(value: string): Promise<void> {
+    async function add(
+      value: string,
+      tags: readonly string[] = [],
+    ): Promise<void> {
       const match = await findDictionaryEntry(value)
       const entry: ImportEntry = match
         ? {
@@ -1570,31 +1573,39 @@ export function SettingsScreen(): React.ReactElement {
                 ? `kanji:${match.record.literal}`
                 : `${match.type}:${match.record.id}`,
             kind: match.type,
+            ...(tags.length > 0 ? { tags } : {}),
           }
-        : { label: value, contentRef: null, kind: 'unknown' }
+        : {
+            label: value,
+            contentRef: null,
+            kind: 'unknown',
+            ...(tags.length > 0 ? { tags } : {}),
+          }
       entries.push(entry)
     }
 
-    for (const value of values) {
+    for (const imported of values) {
+      const value = typeof imported === 'string' ? imported : imported.value
+      const tags = typeof imported === 'string' ? [] : imported.tags
       const direct = await findDictionaryEntry(value)
       if (direct || [...value].length <= 1) {
-        await add(value)
+        await add(value, tags)
         continue
       }
       // A compact kanji list such as 日本 still works when it is not also a
       // dictionary word; exact words take precedence for one-per-line input.
       const characters = [...value]
       if (characters.every((character) => isKanjiLiteral(character))) {
-        for (const character of characters) await add(character)
+        for (const character of characters) await add(character, tags)
       } else {
-        await add(value)
+        await add(value, tags)
       }
     }
     return deduplicateImportEntries(entries)
   }
 
   async function previewImportValues(
-    values: readonly string[],
+    values: readonly (string | AnkiImportValue)[],
     emptyMessage: string,
   ): Promise<void> {
     if (!runtime || deckImportBusy) return
@@ -1693,7 +1704,11 @@ export function SettingsScreen(): React.ReactElement {
         return
       }
       await previewImportValues(
-        deck.values.length > 0 ? deck.values : deck.kanji,
+        deck.taggedValues.length > 0
+          ? deck.taggedValues
+          : deck.values.length > 0
+            ? deck.values
+            : deck.kanji,
         'The Anki package contains no Japanese content in its note fields.',
       )
       setDeckImportMessage(
@@ -1769,6 +1784,37 @@ export function SettingsScreen(): React.ReactElement {
         existingRefs.add(contentRef)
         sortOrder += 1
         imported += 1
+      }
+
+      const annotated = deckImportPreview.filter(
+        (item) =>
+          item.contentRef &&
+          item.tags &&
+          item.tags.length > 0 &&
+          (item.status === 'matched' || item.status === 'already-in-target'),
+      )
+      for (const item of annotated) {
+        if (!item.contentRef || !item.tags) continue
+        const previous = await repositories.annotations.get(
+          targetDeck.id,
+          item.contentRef,
+        )
+        const tags = [...new Set([...(previous?.tags ?? []), ...item.tags])]
+        const annotation = {
+          deckId: targetDeck.id,
+          contentRef: item.contentRef,
+          note: previous?.note ?? '',
+          tags,
+          updatedAt: now,
+          updatedBy: getDeviceId(),
+        }
+        await repositories.annotations.upsert(annotation, {
+          id: crypto.randomUUID(),
+          mutType: 'annotation.upsert',
+          payload: JSON.stringify(annotation),
+          createdAt: now,
+          attempts: 0,
+        })
       }
 
       const alreadyInTarget = deckImportPreview.filter(
@@ -3533,8 +3579,9 @@ export function SettingsScreen(): React.ReactElement {
               <p className="text-muted-foreground mt-1 text-sm">
                 Choose an Anki .apkg export. Japanese words and kanji found in
                 its note fields are enriched through the offline dictionary and
-                previewed before being added to Saved; tags, scheduling, and
-                card templates are intentionally not imported.
+                previewed before being added to Saved; tags are preserved as
+                sticky annotations, while scheduling and card templates are
+                intentionally not imported.
               </p>
               <input
                 className="mt-3 block text-sm"

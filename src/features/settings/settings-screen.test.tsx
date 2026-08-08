@@ -1272,13 +1272,14 @@ describe('SettingsScreen', () => {
     const SQL = await initSqlJs()
     const database = new SQL.Database()
     database.run('CREATE TABLE col (decks TEXT)')
-    database.run('CREATE TABLE notes (id INTEGER, flds TEXT)')
+    database.run('CREATE TABLE notes (id INTEGER, flds TEXT, tags TEXT)')
     database.run('INSERT INTO col VALUES (?)', [
       JSON.stringify({ '1': { name: 'N5 vocabulary' } }),
     ])
-    database.run('INSERT INTO notes VALUES (?, ?)', [
+    database.run('INSERT INTO notes VALUES (?, ?, ?)', [
       1,
       'お金\u001fおかね\u001fMoney',
+      'money::n5 frequency',
     ])
     const archive = zipSync({ 'collection.anki2': database.export() })
     const file = new File([archive], 'n5.apkg', { type: 'application/zip' })
@@ -1305,6 +1306,22 @@ describe('SettingsScreen', () => {
     expect(screen.getByLabelText('Import preview')).toHaveTextContent(
       'お金 matched — will be added',
     )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Import matched kanji' }),
+    )
+    await waitFor(async () => {
+      await expect(
+        createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).annotations.list(),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          deckId: 'saved',
+          tags: ['money::n5', 'frequency'],
+        }),
+      ])
+    })
   })
 
   it('transfers studied starter progress to Saved while keeping Saved flags', async () => {

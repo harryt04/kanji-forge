@@ -6,6 +6,12 @@ export interface AnkiImportDeck {
   readonly noteCount: number
   readonly kanji: readonly string[]
   readonly values: readonly string[]
+  readonly taggedValues: readonly AnkiImportValue[]
+}
+
+export interface AnkiImportValue {
+  readonly value: string
+  readonly tags: readonly string[]
 }
 
 function getDeckName(database: Database): string | null {
@@ -87,6 +93,10 @@ function extractJapaneseValues(input: string): readonly string[] {
   return [...new Set(values)]
 }
 
+function extractAnkiTags(input: string): readonly string[] {
+  return [...new Set(input.trim().split(/\s+/u).filter(Boolean))]
+}
+
 /**
  * Reads the portable SQLite collection inside an Anki package.
  *
@@ -113,19 +123,42 @@ export async function parseAnkiApkg(
   const SQL = await initSqlJs()
   const database = new SQL.Database(collection)
   try {
-    const statement = database.prepare('SELECT flds FROM notes ORDER BY id')
+    let statement: ReturnType<Database['prepare']>
+    try {
+      statement = database.prepare('SELECT flds, tags FROM notes ORDER BY id')
+    } catch {
+      // A few older/synthetic collections omit the optional tags column.
+      statement = database.prepare('SELECT flds FROM notes ORDER BY id')
+    }
     const fields: string[] = []
+    const taggedValues = new Map<string, Set<string>>()
     while (statement.step()) {
-      const row = statement.getAsObject() as { flds?: unknown }
-      if (typeof row.flds === 'string')
-        fields.push(row.flds.replace(/\u001f/gu, '\n'))
+      const row = statement.getAsObject() as {
+        flds?: unknown
+        tags?: unknown
+      }
+      if (typeof row.flds !== 'string') continue
+      const noteFields = row.flds.replace(/\u001f/gu, '\n')
+      fields.push(noteFields)
+      const tags = typeof row.tags === 'string' ? extractAnkiTags(row.tags) : []
+      if (tags.length === 0) continue
+      for (const value of extractJapaneseValues(noteFields)) {
+        const current = taggedValues.get(value) ?? new Set<string>()
+        for (const tag of tags) current.add(tag)
+        taggedValues.set(value, current)
+      }
     }
     statement.free()
+    const values = extractJapaneseValues(fields.join('\n'))
     return {
       deckName: getDeckName(database),
       noteCount: fields.length,
       kanji: extractKanji(fields.join('\n')),
-      values: extractJapaneseValues(fields.join('\n')),
+      values,
+      taggedValues: values.map((value) => ({
+        value,
+        tags: [...(taggedValues.get(value) ?? [])],
+      })),
     }
   } catch {
     throw new Error('Anki import has no readable notes table.')

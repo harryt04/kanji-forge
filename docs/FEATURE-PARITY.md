@@ -202,7 +202,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Import preview with matched/already-in-target/not-found results | ➕ ✅ | 2026-08-08 | Preview classifies kanji and exact dictionary-word matches, existing target-deck cards, and missing entries before confirmation; ambiguous word segmentation remains future work |
 | — | Export to CSV and JSON files | ➕ ✅ | 2026-08-07 | Settings downloads the current deck's content and local study progress as versioned CSV or JSON files |
 | — | Full backup export/restore incl. review history | ➕ ✅ | 2026-08-07 | Settings downloads/restores the locked v1 JSON format; restore unions records and replays the review log |
-| — | Anki .apkg import | ➕ 🔷 | 2026-08-08 | Browser-local best-effort import reads `collection.anki2`/`.anki21`, extracts kanji from note fields, and previews them before adding to Saved; scheduling, tags, and templates are intentionally not migrated |
+| — | Anki .apkg import | ➕ 🔷 | 2026-08-08 | Browser-local best-effort import reads `collection.anki2`/`.anki21`, extracts Japanese values from note fields, previews them before adding to Saved, and preserves note tags as sticky annotations; scheduling and card templates remain intentionally unmigrated |
 
 ## 11. Sync & backup
 

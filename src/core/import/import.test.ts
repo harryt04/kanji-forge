@@ -56,6 +56,27 @@ describe('core import enrichment', () => {
     expect(deduplicateImportEntries(entries)).toEqual([entries[0], entries[2]])
   })
 
+  it('merges tags when duplicate content entries come from one import', () => {
+    expect(
+      deduplicateImportEntries([
+        { label: '日', contentRef: 'kanji:日', kind: 'kanji', tags: ['sun'] },
+        {
+          label: '日',
+          contentRef: 'kanji:日',
+          kind: 'kanji',
+          tags: ['beginner', 'sun'],
+        },
+      ]),
+    ).toEqual([
+      {
+        label: '日',
+        contentRef: 'kanji:日',
+        kind: 'kanji',
+        tags: ['sun', 'beginner'],
+      },
+    ])
+  })
+
   it('classifies matched, existing, and unresolved content', () => {
     expect(
       previewImport(deduplicateImportEntries(entries), new Set(['kanji:日'])),
