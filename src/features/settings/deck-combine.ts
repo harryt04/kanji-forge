@@ -2,6 +2,29 @@
 export interface DeckCombineSource {
   readonly deckId: string
   readonly contentRefs: readonly string[]
+  /**
+   * Optional identity keyed by contentRef. When present, equivalent cards
+   * with different dictionary ids can be collapsed during composition.
+   */
+  readonly cardIdentities?: ReadonlyMap<string, string>
+}
+
+export interface DeckCardIdentityInput {
+  readonly question: string
+  readonly readings: readonly string[]
+}
+
+/** Returns the visible question/reading identity used for duplicate removal. */
+export function cardIdentity(input: DeckCardIdentityInput): string {
+  const question = input.question.trim().normalize('NFC')
+  const readings = [
+    ...new Set(
+      input.readings
+        .map((reading) => reading.trim().normalize('NFC'))
+        .filter(Boolean),
+    ),
+  ].sort()
+  return `${question}\u0000${readings.join('\u0001')}`
 }
 
 /**
@@ -21,8 +44,9 @@ export function combineDeckContent(
   const combined: string[] = []
   for (const source of sources) {
     for (const contentRef of source.contentRefs) {
-      if (seen.has(contentRef)) continue
-      seen.add(contentRef)
+      const identity = source.cardIdentities?.get(contentRef) ?? contentRef
+      if (seen.has(identity)) continue
+      seen.add(identity)
       combined.push(contentRef)
       if (firstN !== undefined && combined.length >= firstN) return combined
     }

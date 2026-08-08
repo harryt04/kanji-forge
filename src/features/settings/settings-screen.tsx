@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState, type Deck } from '@/data/repo'
-import { findDictionaryEntry, loadDeckDefinitions } from '@/data/packs'
+import {
+  findDictionaryEntry,
+  getKanjiByLiterals,
+  getWordById,
+  loadDeckDefinitions,
+  parseContentRef,
+} from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
@@ -107,7 +113,7 @@ import {
   normalizeDeckFolder,
 } from './deck-folders'
 import { planProgressTransfer } from './deck-progress'
-import { combineDeckContent } from './deck-combine'
+import { cardIdentity, combineDeckContent } from './deck-combine'
 import {
   addRssFeed,
   JAPANESE_WIKINEWS_FEED,
@@ -169,6 +175,75 @@ const APP_BADGE_OPTIONS: ReadonlyArray<{
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DEFAULT_STARTER_DECK_NAME = 'Development Kanji'
+
+async function loadCardIdentities(
+  sources: readonly DeckSourceOption[],
+): Promise<ReadonlyMap<string, string>> {
+  const refs = [...new Set(sources.flatMap((source) => source.contentRefs))]
+  if (refs.length === 0) return new Map()
+  const kanjiLiterals = refs.flatMap((contentRef) => {
+    try {
+      const parsed = parseContentRef(contentRef)
+      return parsed.type === 'kanji' ? [parsed.key] : []
+    } catch {
+      return []
+    }
+  })
+  const kanjiByLiteral = await getKanjiByLiterals(kanjiLiterals)
+  const wordRefs = refs.flatMap((contentRef) => {
+    try {
+      const parsed = parseContentRef(contentRef)
+      if (parsed.type !== 'word') return []
+      const id = Number(parsed.key)
+      return Number.isInteger(id) && id >= 0 ? [{ contentRef, id }] : []
+    } catch {
+      return []
+    }
+  })
+  const wordRecords = await Promise.all(
+    wordRefs.map(
+      async ({ contentRef, id }) =>
+        [contentRef, await getWordById(id)] as const,
+    ),
+  )
+
+  const identities = new Map<string, string>()
+  for (const contentRef of refs) {
+    try {
+      const parsed = parseContentRef(contentRef)
+      if (parsed.type === 'kanji') {
+        const record = kanjiByLiteral.get(parsed.key)
+        if (record) {
+          identities.set(
+            contentRef,
+            cardIdentity({
+              question: record.literal,
+              readings: [
+                ...record.onReadings,
+                ...record.kunReadings,
+                ...record.nanori,
+              ],
+            }),
+          )
+        }
+      }
+    } catch {
+      // Keep malformed or unsupported refs on their literal-ref fallback.
+    }
+  }
+  for (const [contentRef, record] of wordRecords) {
+    if (record && record.forms.length > 0) {
+      identities.set(
+        contentRef,
+        cardIdentity({
+          question: record.forms[0] ?? '',
+          readings: record.readings,
+        }),
+      )
+    }
+  }
+  return identities
+}
 
 function getSystemPreference(): boolean {
   return (
@@ -962,10 +1037,12 @@ export function SettingsScreen(): React.ReactElement {
       const selectedSources = deckSources.filter((source) =>
         selectedDeckSourceIds.includes(source.id),
       )
+      const cardIdentities = await loadCardIdentities(selectedSources)
       const contentRefs = combineDeckContent(
         selectedSources.map(({ id, contentRefs: refs }) => ({
           deckId: id,
           contentRefs: refs,
+          cardIdentities,
         })),
         firstN,
       )

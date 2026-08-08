@@ -127,7 +127,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 6.15 | Reset colors | ✅ | 2026-08-07 | Settings resets starter-deck levels and schedules atomically while preserving review totals, flags, and history |
 | 6.16 | Reset statistics | ✅ | 2026-08-07 | Settings clears starter-deck review/daily/session statistics and returns touched cards to New while preserving flags and annotations |
 | 6.17 | Restore built-in deck to original | ✅ | 2026-08-07 | Settings restores the built-in starter deck's original name offline and queues the metadata mutation for sync without changing progress |
-| 6.18 | Remove duplicates (same question + reading) | ✅ | — | |
+| 6.18 | Remove duplicates (same question + reading) | ✅ | 2026-08-08 | Custom-deck composition now canonicalizes the visible question and readings, so equivalent dictionary entries with different ids are kept only once; unknown refs still fall back to exact contentRef identity |
 | 6.19 | Transfer progress between decks sharing stickies | ✅ | 2026-08-08 | Settings can copy studied SRS progress from the built-in starter deck to matching Saved cards offline; destination flags and annotations are preserved |
 | — | Deck folders / grouping | ➕ ✅ | 2026-08-08 | Settings assigns decks to named offline folders; Home and Settings render custom decks grouped by folder, with empty labels remaining in Unfiled |
 | — | Deck sharing by file or URL | ➕ 🔶 | 2026-08-08 | Settings copies a content-only URL for the built-in deck; the authenticated `/analyze` route previews dictionary matches and imports them into Saved without sharing private SRS progress |

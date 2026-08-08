@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 60 (412 test cases: 412 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 124 cases, included above) |
+| Unit/integration test files | 61 (423 test cases: 423 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 131 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.69%** |
+| Overall statement coverage | **86.71%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -31,7 +31,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/features/**` | 70% | browse 91.7 / 78.18 / 83.01 / 91.7 · history 100 / 100 / 87.5 / 100 · home 97.21 / 85.59 / 93.75 / 97.21 · settings 82.6 / 74.53 / 84.61 / 82.6 · study 86.6 / 83.07 / 72.41 / 86.6 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 84.18 / 75 / 86 / 84.18 | ✅ comfortable margin |
-| Global floor | 60% | 86.6 / 81.14 / 85.95 / 86.6 | ✅ comfortable margin |
+| Global floor | 60% | 86.71 / 81.16 / 86.39 / 86.71 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -188,7 +188,7 @@ promotion, and pinned-search toggling.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 
-**`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
+**`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, equivalent question/reading cards with different dictionary ids, identity normalization, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
 ### `src/features/share` — 11 cases
 
