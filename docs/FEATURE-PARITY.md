@@ -191,7 +191,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 10.2 | CSV import | ✅ | — | With column mapping UI (T8.0) |
 | 10.3 | Multiple import formats | ✅ | — | CSV, TSV, line lists, JSON (T8.0) |
 | 10.4 | Append imported stickies to the current deck | ✅ | — | (T8.0) |
-| 10.5 | Export deck to clipboard as text | ✅ | — | (T8.0) |
+| 10.5 | Export deck to clipboard as text | ✅ | 2026-08-07 | Settings copies the current starter deck as tab-separated kanji, readings, and meanings for pasting into another app or spreadsheet |
 | — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | — | ARCHITECTURE §9 (T8.0) |
 | — | Import preview with matched/ambiguous/not-found | ➕ ✅ | — | (T8.0) |
 | — | Export to CSV and JSON files | ➕ ✅ | — | (T8.0) |

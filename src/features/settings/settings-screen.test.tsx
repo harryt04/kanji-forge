@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -24,12 +26,31 @@ import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { repoCardState, repoReview } from '../../../test/factories'
 
+const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
+
+function fixtureFetch(): typeof fetch {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const path = String(input).replace(/^\/packs-dev\//, '')
+    try {
+      const buffer = readFileSync(join(FIXTURE_ROOT, path))
+      const body = path.endsWith('.json')
+        ? buffer.toString('utf8')
+        : new Uint8Array(buffer)
+      return new Response(body as BodyInit, { status: 200 })
+    } catch {
+      return new Response('not found', { status: 404 })
+    }
+  }) as unknown as typeof fetch
+}
+
 describe('SettingsScreen', () => {
   beforeEach(() => {
+    vi.stubGlobal('fetch', fixtureFetch())
     bootstrapUserRuntime(`settings-test-${crypto.randomUUID()}`)
   })
 
   afterEach(() => {
+    vi.unstubAllGlobals()
     clearUserRuntime()
     document.documentElement.className = ''
   })
@@ -453,6 +474,28 @@ describe('SettingsScreen', () => {
     await expect(
       createUserRepositories(runtime.database).settings.get(THEME_SETTING),
     ).resolves.toMatchObject({ value: 'dark' })
+  })
+
+  it('copies the starter deck as text for offline export', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.click(screen.getByRole('button', { name: 'Copy deck as text' }))
+
+    expect(
+      await screen.findByText(
+        /Copied 200 cards from “Development Kanji” as text\./,
+      ),
+    ).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledOnce()
+    expect(writeText.mock.calls[0]?.[0]).toContain('日\t')
+    expect(writeText.mock.calls[0]?.[0]).toContain('\n')
   })
 
   it('shows a backup reminder when the last backup is more than 30 days old', async () => {

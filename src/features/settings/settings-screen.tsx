@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { getDeviceId } from '@/lib/device-id'
+import { loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
   APP_BADGE_PREFERENCES,
@@ -46,6 +47,7 @@ import {
   THEME_SETTING,
   type ThemePreference,
 } from './theme'
+import { formatDeckAsText } from './deck-export'
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -126,6 +128,10 @@ export function SettingsScreen(): React.ReactElement {
     string | null
   >(null)
   const [deckMessage, setDeckMessage] = useState<string | null>(null)
+  const [deckExportBusy, setDeckExportBusy] = useState(false)
+  const [deckExportMessage, setDeckExportMessage] = useState<string | null>(
+    null,
+  )
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -469,6 +475,29 @@ export function SettingsScreen(): React.ReactElement {
     if (!runtime || saving || deckName === DEFAULT_STARTER_DECK_NAME) return
     setDeckName(DEFAULT_STARTER_DECK_NAME)
     await persistDeckName(DEFAULT_STARTER_DECK_NAME)
+  }
+
+  async function exportDeckToClipboard(): Promise<void> {
+    if (!runtime || deckExportBusy) return
+    setDeckExportBusy(true)
+    setDeckExportMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard access is unavailable in this browser.')
+      const deck = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      await navigator.clipboard.writeText(formatDeckAsText(deck))
+      setDeckExportMessage(
+        `Copied ${deck.cards.filter((card) => deck.content.has(card.contentRef)).length} cards from “${deck.name}” as text.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not export deck.',
+      )
+    } finally {
+      setDeckExportBusy(false)
+    }
   }
 
   async function exportBackup(): Promise<void> {
@@ -1039,6 +1068,27 @@ export function SettingsScreen(): React.ReactElement {
             {backupMessage}
           </p>
         )}
+        <div className="border-border mt-5 border-t pt-5">
+          <h3 className="font-semibold">Export this deck as text</h3>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Copy the current starter deck as tab-separated kanji, readings, and
+            meanings for pasting into another app or spreadsheet.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            disabled={deckExportBusy}
+            onClick={() => void exportDeckToClipboard()}
+          >
+            {deckExportBusy ? 'Copying deck…' : 'Copy deck as text'}
+          </Button>
+          {deckExportMessage && (
+            <p className="text-muted-foreground mt-4 text-sm" role="status">
+              {deckExportMessage}
+            </p>
+          )}
+        </div>
       </section>
     </main>
   )
