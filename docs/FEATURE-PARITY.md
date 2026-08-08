@@ -222,7 +222,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 12.1 | Night mode (manual + auto 21:00–06:00) | ✅ | 2026-08-07 | Settings persists light, dark, device, and StickyStudy-compatible 21:00–06:00 night preferences per user and applies them app-wide |
-| 12.2 | App icon badge with configurable info | ⚠️ Partial | 2026-08-08 | Settings choose Cards to study, All cards, or Off; the optional Badging API is used when supported, refreshes immediately after local study grades/undo, and remains unavailable on iOS Safari |
+| 12.2 | App icon badge with configurable info | ⚠️ Partial | 2026-08-08 | Settings choose Cards to study, All cards, or Off; the optional Badging API is used when supported, refreshes immediately after local study grades/undo, and falls back to a temporary browser-tab title count when the platform cannot show an app-icon badge; iOS Safari still cannot show an icon badge |
 | 12.3 | Notifications | ⚠️ Partial | 2026-08-08 | Settings persist a daily reminder time and permission-aware local browser reminders fire while the app is open; clicking one opens Study. When the self-hosted VAPID sender is configured, enabling the reminder registers the device, the API scheduler sends a localized Web Push reminder, and the service worker opens Study; iOS still requires an installed PWA (T1.1) |
 | 12.4 | Extensive options | ✅ | — | PRD §4.14 |
 | 12.5 | Full in-app documentation | ✅ | 2026-08-07 | Authenticated `/help` route bundles offline guidance for study controls, levels, Browse/Dictionary, backup, and privacy |

@@ -24,6 +24,7 @@ describe('app icon badges', () => {
   const now = 15
 
   beforeEach(() => {
+    document.title = 'KanjiForge'
     Object.defineProperty(navigator, 'setAppBadge', {
       configurable: true,
       value: vi.fn(async () => undefined),
@@ -37,6 +38,7 @@ describe('app icon badges', () => {
   afterEach(() => {
     clearUserRuntime()
     vi.restoreAllMocks()
+    document.title = 'KanjiForge'
     delete (navigator as Navigator & { setAppBadge?: unknown }).setAppBadge
     delete (navigator as Navigator & { clearAppBadge?: unknown }).clearAppBadge
   })
@@ -76,6 +78,31 @@ describe('app icon badges', () => {
     })
     window.dispatchEvent(new Event('kanjiforge:app-badge-setting-changed'))
     await waitFor(() => expect(navigator.clearAppBadge).toHaveBeenCalled())
+    unmount()
+  })
+
+  it('shows the count in the browser tab when app badges are unsupported', async () => {
+    delete (navigator as Navigator & { setAppBadge?: unknown }).setAppBadge
+    delete (navigator as Navigator & { clearAppBadge?: unknown }).clearAppBadge
+
+    const userId = `badge-title-${crypto.randomUUID()}`
+    const runtime = bootstrapUserRuntime(userId)
+    await createUserRepositories(runtime.database).settings.set({
+      key: APP_BADGE_SETTING,
+      value: 'total',
+      updatedAt: Date.now(),
+    })
+
+    const { unmount } = render(<AppBadgeController userId={userId} />)
+    await waitFor(() => expect(document.title).toBe('KanjiForge (4)'))
+
+    await createUserRepositories(runtime.database).settings.set({
+      key: APP_BADGE_SETTING,
+      value: 'off',
+      updatedAt: Date.now(),
+    })
+    window.dispatchEvent(new Event('kanjiforge:app-badge-setting-changed'))
+    await waitFor(() => expect(document.title).toBe('KanjiForge'))
     unmount()
   })
 })

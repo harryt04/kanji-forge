@@ -52,9 +52,11 @@ function getAppBadgeNavigator(): AppBadgeNavigator | undefined {
   return typeof candidate.setAppBadge === 'function' ? candidate : undefined
 }
 
-async function updateAppBadge(userId: string): Promise<void> {
+async function updateAppBadge(
+  userId: string,
+  fallbackTitle: string,
+): Promise<void> {
   const badgeNavigator = getAppBadgeNavigator()
-  if (!badgeNavigator) return
 
   const runtime = getActiveUserRuntime()
   if (!runtime || runtime.userId !== userId) return
@@ -68,6 +70,12 @@ async function updateAppBadge(userId: string): Promise<void> {
   const deck = await loadStarterDeck(runtime.database)
   const count = countAppBadgeCards(deck.cards, preference, Date.now())
 
+  if (!badgeNavigator) {
+    document.title = count > 0 ? `${fallbackTitle} (${count})` : fallbackTitle
+    return
+  }
+
+  document.title = fallbackTitle
   if (count === 0) {
     if (typeof badgeNavigator.clearAppBadge === 'function') {
       await badgeNavigator.clearAppBadge()
@@ -85,9 +93,10 @@ export function AppBadgeController({
 }): null {
   useEffect(() => {
     let active = true
+    const fallbackTitle = document.title || 'KanjiForge'
 
     const refresh = (): void => {
-      void updateAppBadge(userId).catch(() => {
+      void updateAppBadge(userId, fallbackTitle).catch(() => {
         // A missing pack or rejected platform badge must never affect study.
       })
     }
@@ -117,6 +126,7 @@ export function AppBadgeController({
       window.removeEventListener(APP_BADGE_STATE_CHANGED_EVENT, onStateChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       void getAppBadgeNavigator()?.clearAppBadge?.()
+      document.title = fallbackTitle
     }
   }, [userId])
 
