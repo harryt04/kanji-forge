@@ -87,13 +87,14 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
-- **`study-screen.test.tsx`** (13, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
+- **`study-screen.test.tsx`** (14, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
   the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
   the previous card and re-disables itself, session-summary totals match store state, and the
   tap-to-show elapsed timer updates while visible, persisted grey-stickies preference hides study
-  colors and reloads in a later session, and study-session persistence/closure on finish.
+  colors and reloads in a later session, study-session persistence/closure on finish, and the
+  persisted meaning question face.
 
 ### `src/features/home` — 12 cases
 
@@ -148,7 +149,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/settings` — 9 cases
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the app-icon badge preference, backup restore, and the stale-backup warning with its recovery action.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question and app-icon badge preferences, backup restore, and the stale-backup warning with its recovery action.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 

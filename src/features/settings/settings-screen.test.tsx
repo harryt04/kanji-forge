@@ -15,6 +15,7 @@ import {
   BACKUP_VERSION,
 } from './backup'
 import { SettingsScreen } from './settings-screen'
+import { STUDY_QUESTION_SETTING } from '@/features/study/study-style'
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -61,6 +62,25 @@ describe('SettingsScreen', () => {
     expect(
       await screen.findByRole('radio', { name: /Night schedule/ }),
     ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('persists the selected study question offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study question' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Meaning/ }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_QUESTION_SETTING,
+        ),
+      ).toMatchObject({ value: 'meaning' }),
+    )
   })
 
   it('persists the selected app icon badge information offline', async () => {

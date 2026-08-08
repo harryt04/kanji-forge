@@ -45,7 +45,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 2.1 | Choose what appears before the tap | ✅ | — | |
+| 2.1 | Choose what appears before the tap | ✅ | 2026-08-07 | Settings persistently chooses kanji, reading, or first meaning for the starter-deck question face; the answer reveals the remaining fields |
 | 2.2 | Choose what appears after the tap | ✅ | — | |
 | 2.3 | 2-tap study (word → readings → everything) | ✅ | — | Overrides field config |
 | 2.4 | Word + writing cannot both be the question | ✅ | — | Enforced in the UI |

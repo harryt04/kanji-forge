@@ -18,6 +18,7 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { useStudyStore } from './store'
 import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
+import { STUDY_QUESTION_SETTING } from './study-style'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -150,6 +151,22 @@ describe('StudyScreen', () => {
     expect(
       screen.getByRole('button', { name: 'Reveal answer' }),
     ).toHaveAttribute('data-grey-stickies', 'true')
+  })
+
+  it('uses the saved meaning as the question before reveal', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_QUESTION_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+
+    const question = screen.getByTestId('study-question')
+    expect(question).toHaveAttribute('data-study-question', 'meaning')
+    expect(question).toHaveTextContent('country')
+    expect(question).not.toHaveTextContent('日')
   })
 
   it('grades via keyboard once revealed', async () => {

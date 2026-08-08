@@ -14,6 +14,11 @@ import {
   DialogTitle,
 } from '@/ui/dialog'
 import { loadStarterDeck } from './deck-loader'
+import {
+  isStudyQuestion,
+  STUDY_QUESTION_SETTING,
+  type StudyQuestion,
+} from './study-style'
 import { useStudyStore } from './store'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -37,6 +42,7 @@ export function StudyScreen({
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [showTimer, setShowTimer] = useState(false)
   const [greyStickies, setGreyStickies] = useState(false)
+  const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
   const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
@@ -78,9 +84,10 @@ export function StudyScreen({
       await runtime.database.ready
       const repoForSession = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
-      const greyStickiesSetting = await repoForSession.settings.get(
-        GREY_STICKIES_SETTING,
-      )
+      const [greyStickiesSetting, studyQuestionSetting] = await Promise.all([
+        repoForSession.settings.get(GREY_STICKIES_SETTING),
+        repoForSession.settings.get(STUDY_QUESTION_SETTING),
+      ])
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
       await repoForSession.sessions.start({
@@ -101,6 +108,10 @@ export function StudyScreen({
         setElapsedSeconds(0)
         setShowTimer(false)
         setGreyStickies(greyStickiesSetting?.value === 'true')
+        const savedQuestion = studyQuestionSetting?.value ?? ''
+        setStudyQuestion(
+          isStudyQuestion(savedQuestion) ? savedQuestion : 'kanji',
+        )
         setPreferenceError(null)
         setLoading(false)
       }
@@ -217,6 +228,17 @@ export function StudyScreen({
   const level = card?.state?.level ?? 0
   const flagged = card?.state?.flagged ?? false
   const remaining = Math.max(0, queue.length - index)
+  const reading =
+    studyCard?.onReadings[0] ??
+    studyCard?.kunReadings[0] ??
+    studyCard?.nanori[0]
+  const questionText =
+    studyQuestion === 'reading'
+      ? (reading ?? studyCard?.literal ?? '')
+      : studyQuestion === 'meaning'
+        ? (studyCard?.meanings[0] ?? studyCard?.literal ?? '')
+        : (studyCard?.literal ?? '')
+  const questionIsJapanese = studyQuestion !== 'meaning'
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`
@@ -287,20 +309,45 @@ export function StudyScreen({
             tabIndex={0}
             aria-label={revealed ? undefined : 'Reveal answer'}
           >
-            <p className="font-jp-display text-8xl">{studyCard.literal}</p>
+            <p
+              className={
+                questionIsJapanese
+                  ? 'font-jp-display text-8xl'
+                  : 'text-3xl font-semibold'
+              }
+              data-testid="study-question"
+              data-study-question={studyQuestion}
+              lang={questionIsJapanese ? 'ja' : undefined}
+            >
+              {questionText}
+            </p>
             {revealed && (
               <div className="mt-6 space-y-2 text-left">
+                {studyQuestion !== 'kanji' && (
+                  <p className="font-jp-display text-5xl" lang="ja">
+                    {studyCard.literal}
+                  </p>
+                )}
                 {studyCard.onReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
+                  <p
+                    className="font-jp-ui text-lg"
+                    hidden={studyQuestion === 'reading'}
+                  >
                     音: {studyCard.onReadings.join('、')}
                   </p>
                 )}
                 {studyCard.kunReadings.length > 0 && (
-                  <p className="font-jp-ui text-lg">
+                  <p
+                    className="font-jp-ui text-lg"
+                    hidden={studyQuestion === 'reading'}
+                  >
                     訓: {studyCard.kunReadings.join('、')}
                   </p>
                 )}
-                <p className="text-muted-foreground">
+                <p
+                  className="text-muted-foreground"
+                  hidden={studyQuestion === 'meaning'}
+                >
                   {studyCard.meanings.join(', ')}
                 </p>
               </div>

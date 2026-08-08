@@ -12,6 +12,12 @@ import {
 } from '@/pwa'
 import { Button } from '@/ui/button'
 import {
+  isStudyQuestion,
+  STUDY_QUESTION_OPTIONS,
+  STUDY_QUESTION_SETTING,
+  type StudyQuestion,
+} from '@/features/study/study-style'
+import {
   BACKUP_LAST_EXPORTED_SETTING,
   createBackup,
   getBackupReminder,
@@ -81,6 +87,7 @@ export function SettingsScreen(): React.ReactElement {
   const [preference, setPreference] = useState<ThemePreference>('light')
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
+  const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -97,16 +104,21 @@ export function SettingsScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const [saved, savedBadge, savedBackup] = await Promise.all([
-        repositories.settings.get(THEME_SETTING),
-        repositories.settings.get(APP_BADGE_SETTING),
-        repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
-      ])
+      const [saved, savedBadge, savedQuestion, savedBackup] = await Promise.all(
+        [
+          repositories.settings.get(THEME_SETTING),
+          repositories.settings.get(APP_BADGE_SETTING),
+          repositories.settings.get(STUDY_QUESTION_SETTING),
+          repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
+        ],
+      )
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
+      if (savedQuestion && isStudyQuestion(savedQuestion.value))
+        setStudyQuestion(savedQuestion.value as StudyQuestion)
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
         : undefined
@@ -173,6 +185,30 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save app badge setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseStudyQuestion(next: StudyQuestion): Promise<void> {
+    if (!runtime || next === studyQuestion) return
+    const previous = studyQuestion
+    setStudyQuestion(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: STUDY_QUESTION_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setStudyQuestion(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the study question setting.',
       )
     } finally {
       setSaving(false)
@@ -290,6 +326,38 @@ export function SettingsScreen(): React.ReactElement {
             {error}
           </p>
         )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Study question</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Choose what you recall before revealing the answer. This setting is
+          saved on this device and works offline.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="Study question"
+        >
+          {STUDY_QUESTION_OPTIONS.map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={studyQuestion === value ? 'secondary' : 'outline'}
+              aria-checked={studyQuestion === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseStudyQuestion(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">App icon badge</h2>
