@@ -89,7 +89,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.11 | "Save to Saved deck" vs. always-ask setting | ✅ | — | |
 | 4.12 | Inline stroke animations instead of static glyph | ✅ | 2026-08-07 | Kanji detail loads ordered KanjiVG paths offline with play, pause, restart, and step controls; Settings persists the global visibility toggle |
 | 4.13 | Night mode with auto 21:00–06:00 | ✅ | — | Plus a full theme system |
-| 4.14 | Native-speaker audio per word | ⚠️ Partial | — | Device TTS in MVP; community packs 🔷 — DATA-SOURCES §8 |
+| 4.14 | Native-speaker audio per word | ⚠️ Partial | 2026-08-07 | Detail exposes device-synthesized Japanese audio when supported; human-recorded community packs remain 🔷 — DATA-SOURCES §8 |
 | — | Per-sticky notes and tags | ➕ 🔷 | — | |
 
 ## 5. Writing

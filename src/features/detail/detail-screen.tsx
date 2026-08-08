@@ -25,6 +25,7 @@ import {
   STROKE_ANIMATION_SETTING,
   StrokeAnimation,
 } from './stroke-animation'
+import { speakJapanese, supportsJapaneseSpeech } from '@/features/study/audio'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
@@ -56,6 +57,7 @@ export function DetailScreen(): React.ReactElement {
   const [strokes, setStrokes] =
     useState<Awaited<ReturnType<typeof getKanjiStrokes>>>(null)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
+  const [canSpeak, setCanSpeak] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -166,6 +168,10 @@ export function DetailScreen(): React.ReactElement {
     }
   }, [contentRef, runtime])
 
+  useEffect(() => {
+    setCanSpeak(supportsJapaneseSpeech())
+  }, [])
+
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to view details.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
@@ -183,6 +189,7 @@ export function DetailScreen(): React.ReactElement {
   const { content, state } = detailCard
   const level = state?.level ?? 0
   const reading = [...content.onReadings, ...content.kunReadings]
+  const audioText = reading[0] ?? content.nanori[0] ?? content.literal
   const selectedContentRef = contentRef
   const navigableRefs = deck.cards
     .map((card) => card.contentRef)
@@ -327,6 +334,22 @@ export function DetailScreen(): React.ReactElement {
             Level {level} · {LEVEL_NAMES[level]}
             {state?.flagged ? ' · Flagged' : ''}
           </p>
+          {canSpeak && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => speakJapanese(audioText)}
+                aria-label={`Play synthesized Japanese audio for ${content.literal}`}
+              >
+                Play audio
+              </Button>
+              <span className="text-muted-foreground text-xs">
+                Synthesized voice
+              </span>
+            </div>
+          )}
           <Button
             type="button"
             variant="outline"

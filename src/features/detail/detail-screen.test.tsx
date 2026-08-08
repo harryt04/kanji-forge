@@ -103,6 +103,35 @@ describe('DetailScreen', () => {
     ).toHaveAttribute('href', '/browse')
   })
 
+  it('plays the selected kanji reading with the device voice when available', async () => {
+    const speak = vi.fn()
+    const cancel = vi.fn()
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      constructor(readonly text: string) {}
+    }
+    vi.stubGlobal('speechSynthesis', { speak, cancel })
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
+
+    bootstrapUserRuntime(`detail-${userId}`)
+    render(<DetailScreen />)
+
+    const button = await screen.findByRole('button', {
+      name: 'Play synthesized Japanese audio for 日',
+    })
+    await userEvent.click(button)
+
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(speak).toHaveBeenCalledOnce()
+    expect(speak.mock.calls[0]?.[0]).toMatchObject({
+      text: 'ニチ',
+      lang: 'ja-JP',
+      rate: 0.85,
+    })
+    expect(screen.getByText('Synthesized voice')).toBeInTheDocument()
+  })
+
   it('opens a similar kanji that is outside the starter deck', async () => {
     bootstrapUserRuntime(`detail-${userId}`)
     window.history.replaceState({}, '', '/detail?contentRef=kanji%3A%E5%9B%BD')
