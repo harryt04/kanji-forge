@@ -273,26 +273,34 @@ function isBetterPlan(next: Plan, current: Plan | undefined): boolean {
   return next.tokens.length < current.tokens.length
 }
 
-/**
- * Segments supplied Japanese using the installed dictionary without network or
- * tokenizer dependencies. Written forms and kana readings are indexed once,
- * then a small dynamic-programming pass prefers covered, common, longer words.
- * Unknown runs remain visible instead of being silently discarded.
- */
-export function analyzeText(
-  text: string,
-  words: readonly AnalyzerWord[],
-  kanji: readonly AnalyzerKanji[],
-  maxTokens = 500,
+function compactUnknownTokens(
+  tokens: readonly TextAnalysisToken[],
+  maxTokens: number,
 ): readonly TextAnalysisToken[] {
-  const normalizedText = text.normalize('NFC')
-  if (!normalizedText.trim() || maxTokens <= 0) return []
+  const compacted: TextAnalysisToken[] = []
+  for (const token of tokens) {
+    const previous = compacted.at(-1)
+    if (
+      token.type === 'unknown' &&
+      previous?.type === 'unknown' &&
+      canJoinUnknown(previous.text, token.text)
+    ) {
+      compacted[compacted.length - 1] = unknownToken(previous.text + token.text)
+    } else {
+      compacted.push(token)
+    }
+    if (compacted.length >= maxTokens) break
+  }
+  return compacted
+}
 
+function analyzeTextWithIndex(
+  normalizedText: string,
+  wordsByFirstCharacter: ReadonlyMap<string, readonly SurfaceCandidate[]>,
+  kanjiByLiteral: ReadonlyMap<string, AnalyzerKanji>,
+): readonly TextAnalysisToken[] {
+  if (!normalizedText) return []
   const characters = [...normalizedText]
-  const wordsByFirstCharacter = candidateIndex(words)
-  const kanjiByLiteral = new Map(
-    kanji.map((record) => [record.literal, record]),
-  )
   const plans: Array<Plan | undefined> = Array(characters.length + 1)
   plans[characters.length] = { score: 0, tokens: [] }
 
@@ -355,20 +363,56 @@ export function analyzeText(
     plans[index] = best
   }
 
-  const tokens = plans[0]?.tokens ?? []
-  const compacted: TextAnalysisToken[] = []
-  for (const token of tokens) {
-    const previous = compacted.at(-1)
-    if (
-      token.type === 'unknown' &&
-      previous?.type === 'unknown' &&
-      canJoinUnknown(previous.text, token.text)
-    ) {
-      compacted[compacted.length - 1] = unknownToken(previous.text + token.text)
-    } else {
-      compacted.push(token)
-    }
-    if (compacted.length >= maxTokens) break
-  }
-  return compacted
+  return plans[0]?.tokens ?? []
+}
+
+/**
+ * Segments supplied Japanese using the installed dictionary without network
+ * or tokenizer dependencies. Written forms and kana readings are indexed
+ * once, then a small dynamic-programming pass prefers covered, common,
+ * longer words. Unknown runs remain visible instead of being silently
+ * discarded.
+ */
+export function analyzeText(
+  text: string,
+  words: readonly AnalyzerWord[],
+  kanji: readonly AnalyzerKanji[],
+  maxTokens = 500,
+): readonly TextAnalysisToken[] {
+  const normalizedText = text.normalize('NFC')
+  if (!normalizedText.trim() || maxTokens <= 0) return []
+  const tokens = analyzeTextWithIndex(
+    normalizedText,
+    candidateIndex(words),
+    new Map(kanji.map((record) => [record.literal, record])),
+  )
+  return compactUnknownTokens(tokens, maxTokens)
+}
+
+/**
+ * Re-runs the same dictionary analysis inside boundaries supplied by the
+ * optional offline IPADIC tokenizer. This preserves the existing safe
+ * dictionary/grammar mapping while allowing a real morphological tokenizer
+ * to prevent implausible cross-word longest matches.
+ */
+export function analyzeTextWithSegments(
+  text: string,
+  segments: readonly string[],
+  words: readonly AnalyzerWord[],
+  kanji: readonly AnalyzerKanji[],
+  maxTokens = 500,
+): readonly TextAnalysisToken[] {
+  const normalizedText = text.normalize('NFC')
+  if (!normalizedText.trim() || maxTokens <= 0) return []
+  if (segments.join('') !== normalizedText)
+    return analyzeText(normalizedText, words, kanji, maxTokens)
+
+  const wordsByFirstCharacter = candidateIndex(words)
+  const kanjiByLiteral = new Map(
+    kanji.map((record) => [record.literal, record]),
+  )
+  const tokens = segments.flatMap((segment) =>
+    analyzeTextWithIndex(segment, wordsByFirstCharacter, kanjiByLiteral),
+  )
+  return compactUnknownTokens(tokens, maxTokens)
 }

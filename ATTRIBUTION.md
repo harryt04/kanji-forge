@@ -35,6 +35,7 @@ JMnedict pack is currently shipped.
 - **JLPT Kanji Data (davidluzgouveia) — MIT; derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY.** Resolved into JLPT kanji deck membership and labeled as an unofficial community estimate.
 - **JLPT Vocabulary (yomitan) — CC BY-SA 4.0; derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY.** Resolved into vocabulary deck membership; unresolved entries are recorded in `jlpt-coverage.json`, and deck descriptions say the levels are unofficial.
 - **Kanji Kentei level lists — CC BY 4.0.** The pinned `kanji` npm package (v0.9.1) republishes the official 日本漢字能力検定級別漢字表 as level arrays. KanjiForge resolves those lists against KANJIDIC2, orders each resulting deck by frequency, and reports rare source characters unavailable in KANJIDIC2 in the deck coverage report.
+- **Kuromoji.js and mecab-ipadic-2.7.0 — Apache-2.0 plus the included IPADIC/ICOT terms.** Kuromoji.js is included as an optional lazy-loaded morphological tokenizer. Its IPADIC dictionary is copied to a static asset during the build and retains the upstream `NOTICE.md` attribution and no-warranty terms; it is used only to provide token boundaries, while meanings and saveable content continue to come from the separately licensed KanjiForge dictionary packs.
 - **Noto Serif JP — The Noto Project Authors — SIL OFL 1.1.** Pinned generator-only font used for deterministic 64×64 glyph rasterization. Its glyph raster contribution is used to generate `similar`; the font file is not embedded in that JSON pack.
 
 ## Full license texts

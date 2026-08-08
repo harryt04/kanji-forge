@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeText, type AnalyzerKanji, type AnalyzerWord } from './analyzer'
+import {
+  analyzeText,
+  analyzeTextWithSegments,
+  type AnalyzerKanji,
+  type AnalyzerWord,
+} from './analyzer'
 
 const kanji: readonly AnalyzerKanji[] = [
   {
@@ -223,6 +228,31 @@ describe('analyzeText', () => {
         type: 'word',
         contentRef: 'word:3',
       }),
+    ])
+  })
+
+  it('honors morphological boundaries while retaining dictionary and grammar mapping', () => {
+    const overlappingWords: readonly AnalyzerWord[] = [
+      ...words,
+      {
+        id: 6,
+        commonScore: 1000,
+        forms: ['日本ではない'],
+        readings: ['にほんではない'],
+        meanings: ['an intentionally overlapping fixture entry'],
+      },
+    ]
+
+    expect(
+      analyzeTextWithSegments(
+        '日本ではない',
+        ['日本', 'ではない'],
+        overlappingWords,
+        kanji,
+      ),
+    ).toEqual([
+      expect.objectContaining({ text: '日本', contentRef: 'word:1' }),
+      expect.objectContaining({ text: 'ではない', type: 'grammar' }),
     ])
   })
 })

@@ -248,14 +248,13 @@ available in CI.
 [Known issues](#known-issues).
 
 `src/core/text/furigana.test.ts` (4) covers BOM-safe JSON and decoded-array furigana alignment
-parsing, malformed/empty fallback, and invalid-reading normalization. `src/core/text/analyzer.test.ts` (11) covers the offline analyzer's indexed written-form and kana
+parsing, malformed/empty fallback, and invalid-reading normalization. `src/core/text/analyzer.test.ts` (12) covers the offline analyzer's indexed written-form and kana
 reading matches, longest-word preference, unknown-text preservation, token limits, and common
 inflected surfaces resolving to dictionary lemmas with surface readings, including negative,
 conditional, volitional, imperative, prohibitive, passive, causative, and progressive forms,
-plus particle/copula grammar recognition and dictionary-over-grammar precedence. `inflect.test.ts` (6) covers ichidan, godan, and
+plus particle/copula grammar recognition, dictionary-over-grammar precedence, and preserving tokenizer boundaries while retaining dictionary/grammar mapping. `inflect.test.ts` (6) covers ichidan, godan, and
 i-adjective surface generation, including the expanded polite-negative, past-negative, conditional,
-volitional, imperative, prohibitive, passive, causative, and progressive auxiliary forms including polite negatives. A full IPADIC/UniDic morphological tokenizer remains
-a separate optional-pack follow-up.
+volitional, imperative, prohibitive, passive, causative, and progressive auxiliary forms including polite negatives. The browser tokenizer loader is lazy and failure-safe; its static-pack copy is exercised by the build path.
 
 ---
 

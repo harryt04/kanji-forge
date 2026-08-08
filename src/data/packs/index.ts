@@ -3,7 +3,12 @@
  * pack handle is cached process-wide once opened. */
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js'
 import { romajiToHiragana } from '@/core/text/romaji'
-import { analyzeText, type TextAnalysisToken } from '@/core/text/analyzer'
+import {
+  analyzeText,
+  analyzeTextWithSegments,
+  type TextAnalysisToken,
+} from '@/core/text/analyzer'
+import { tokenizeJapaneseText } from '@/core/text/tokenizer'
 import { parseFuriganaTokens, type FuriganaToken } from '@/core/text/furigana'
 import { getInstalledNamesPackBytes } from '@/features/settings/names-pack'
 
@@ -684,13 +689,12 @@ export async function findDictionaryEntry(
 }
 
 /**
- * Performs a small, fully offline text analysis pass over the installed packs.
+ * Performs a fully offline text analysis pass over the installed packs.
  *
- * The optional tokenizer pack will eventually improve segmentation, but a
- * longest dictionary-form match is already useful for pasted study material
- * and keeps this route functional without a network request or a large new
- * dependency. Unmatched characters remain visible as unknown tokens rather
- * than being silently discarded.
+ * The optional IPADIC tokenizer improves morphological boundaries after its
+ * first lazy load. If that optional asset is unavailable, the dictionary-only
+ * longest-match segmenter remains available and unmatched characters remain
+ * visible as unknown tokens rather than being silently discarded.
  */
 export async function analyzeJapaneseText(
   text: string,
@@ -700,7 +704,10 @@ export async function analyzeJapaneseText(
     loadDictionaryWords(),
     loadDictionaryKanji(),
   ])
-  return analyzeText(text, words, kanji, maxTokens)
+  const segments = await tokenizeJapaneseText(text)
+  return segments
+    ? analyzeTextWithSegments(text, segments, words, kanji, maxTokens)
+    : analyzeText(text, words, kanji, maxTokens)
 }
 
 function matchScore(

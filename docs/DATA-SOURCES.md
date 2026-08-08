@@ -17,7 +17,7 @@ Every byte KanjiForge ships must have a documented, verified, compatible open li
 | Stroke order paths | KanjiVG | CC BY-SA 3.0 | ~100 MB SVG → ~8 MB packed | ✅ |
 | Furigana alignment | JmdictFurigana | CC BY-SA (verify) | ~8 MB → ~2 MB | ✅ |
 | Example sentences | Tatoeba (incl. Tanaka Corpus) | CC BY 2.0 FR | ~200 MB → ~12 MB packed for JA-EN pairs | ✅ (tiered) |
-| Tokenizer + dictionary | Kuromoji.js + IPADIC / Lindera-wasm + UniDic | Apache-2.0 / BSD-like | ~15 MB dict | v1.1 |
+| Tokenizer + dictionary | Kuromoji.js + mecab-ipadic-2.7.0 | Apache-2.0 plus included IPADIC/ICOT terms | ~15 MB dict | Implemented as an optional lazy pack |
 | Japanese fonts | Noto Sans JP, Noto Serif JP, Klee One | SIL OFL 1.1 | subset to ~2 MB | ✅ |
 | Pitch accent | Kanjium / derived open sets | verify per-file | ~2 MB | ⬜ |
 | Audio | Device TTS + optional community packs | n/a / per-pack | 0 (TTS) | ✅ (TTS only) |
@@ -233,7 +233,7 @@ Do **not** rely on system Japanese fonts. Android device coverage is inconsisten
 | **Lindera-wasm** + IPADIC/UniDic | Rust compiled to WASM. Faster, smaller memory footprint, more modern. Check the exact dictionary license (IPADIC is BSD-like; UniDic has its own terms). |
 | Server-side MeCab | ❌ Rejected. Breaks the offline requirement and the no-server principle. |
 
-Whichever is chosen, the tokenizer dictionary is a **separately downloadable content pack**, only fetched when the user first opens the text analyzer. It must never be in the critical path for study.
+KanjiForge uses **Kuromoji.js + mecab-ipadic-2.7.0**. The tokenizer dictionary is a **separately served optional content pack**, fetched only when the user first opens the text analyzer. It must never be in the critical path for study. If the pack fails to load, the existing dictionary-only analyzer remains available.
 
 ---
 

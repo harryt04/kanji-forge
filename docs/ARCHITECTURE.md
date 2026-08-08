@@ -20,7 +20,7 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 | Server database | **Postgres 16** | better-auth, app tables, Electric source. Self-hosted via Coolify. |
 | Charts | **uPlot** or hand-rolled SVG | Recharts/Chart.js are too heavy for a 200 KB budget and we only need bars. |
 | Animation | **Motion** (framer-motion successor) for card transitions; raw `requestAnimationFrame` for stroke animation and tile pan | |
-| Tokenizer | Kuromoji.js or Lindera-WASM, lazy-loaded (v1.1) | See DATA-SOURCES §10. |
+| Tokenizer | Kuromoji.js + IPADIC, lazy-loaded optional pack | See DATA-SOURCES §10. The dictionary is copied to a static asset only during install/build and never enters the study critical path. |
 | Testing | Vitest (unit), Playwright (e2e incl. offline), Testing Library | The SRS engine must be pure and 100%-covered. |
 
 ### 1.1 Explicit non-choices
