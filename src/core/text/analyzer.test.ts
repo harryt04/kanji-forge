@@ -146,4 +146,20 @@ describe('analyzeText', () => {
       ],
     )
   })
+
+  it('resolves imperative and prohibitive forms to their dictionary lemmas', () => {
+    expect(analyzeText('読め。食べるな', words, kanji)).toEqual([
+      expect.objectContaining({
+        text: '読め',
+        contentRef: 'word:5',
+        reading: 'よめ',
+      }),
+      expect.objectContaining({ text: '。', type: 'unknown' }),
+      expect.objectContaining({
+        text: '食べるな',
+        contentRef: 'word:4',
+        reading: 'たべるな',
+      }),
+    ])
+  })
 })

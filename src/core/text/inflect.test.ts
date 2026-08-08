@@ -29,6 +29,21 @@ describe('inflectedSurfaces', () => {
     )
   })
 
+  it('covers plain imperative and prohibitive forms', () => {
+    expect(inflectedSurfaces('食べる', 'たべる')).toEqual(
+      expect.arrayContaining([
+        { text: '食べろ', reading: 'たべろ' },
+        { text: '食べるな', reading: 'たべるな' },
+      ]),
+    )
+    expect(inflectedSurfaces('読む', 'よむ')).toEqual(
+      expect.arrayContaining([
+        { text: '読め', reading: 'よめ' },
+        { text: '読むな', reading: 'よむな' },
+      ]),
+    )
+  })
+
   it('does not invent godan forms for ordinary ichidan verbs', () => {
     expect(inflectedSurfaces('食べる', 'たべる')).not.toContainEqual({
       text: '食べりました',

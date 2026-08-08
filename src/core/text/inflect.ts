@@ -18,6 +18,8 @@ const ICHIDAN_RULES: readonly InflectionRule[] = [
   { textSuffix: 'て', readingSuffix: 'て' },
   { textSuffix: 'た', readingSuffix: 'た' },
   { textSuffix: 'れば', readingSuffix: 'れば' },
+  { textSuffix: 'ろ', readingSuffix: 'ろ' },
+  { textSuffix: 'るな', readingSuffix: 'るな' },
 ]
 
 const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
@@ -32,6 +34,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'わなかった', readingSuffix: 'わなかった' },
     { textSuffix: 'えば', readingSuffix: 'えば' },
     { textSuffix: 'おう', readingSuffix: 'おう' },
+    { textSuffix: 'え', readingSuffix: 'え' },
+    { textSuffix: 'うな', readingSuffix: 'うな' },
   ],
   つ: [
     { textSuffix: 'ちます', readingSuffix: 'ちます' },
@@ -44,6 +48,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'たなかった', readingSuffix: 'たなかった' },
     { textSuffix: 'てば', readingSuffix: 'てば' },
     { textSuffix: 'とう', readingSuffix: 'とう' },
+    { textSuffix: 'て', readingSuffix: 'て' },
+    { textSuffix: 'つな', readingSuffix: 'つな' },
   ],
   る: [
     { textSuffix: 'ります', readingSuffix: 'ります' },
@@ -56,6 +62,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'らなかった', readingSuffix: 'らなかった' },
     { textSuffix: 'れば', readingSuffix: 'れば' },
     { textSuffix: 'ろう', readingSuffix: 'ろう' },
+    { textSuffix: 'れ', readingSuffix: 'れ' },
+    { textSuffix: 'るな', readingSuffix: 'るな' },
   ],
   く: [
     { textSuffix: 'きます', readingSuffix: 'きます' },
@@ -68,6 +76,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'かなかった', readingSuffix: 'かなかった' },
     { textSuffix: 'けば', readingSuffix: 'けば' },
     { textSuffix: 'こう', readingSuffix: 'こう' },
+    { textSuffix: 'け', readingSuffix: 'け' },
+    { textSuffix: 'くな', readingSuffix: 'くな' },
   ],
   ぐ: [
     { textSuffix: 'ぎます', readingSuffix: 'ぎます' },
@@ -80,6 +90,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'がなかった', readingSuffix: 'がなかった' },
     { textSuffix: 'げば', readingSuffix: 'げば' },
     { textSuffix: 'ごう', readingSuffix: 'ごう' },
+    { textSuffix: 'げ', readingSuffix: 'げ' },
+    { textSuffix: 'ぐな', readingSuffix: 'ぐな' },
   ],
   す: [
     { textSuffix: 'します', readingSuffix: 'します' },
@@ -92,6 +104,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'さなかった', readingSuffix: 'さなかった' },
     { textSuffix: 'せば', readingSuffix: 'せば' },
     { textSuffix: 'そう', readingSuffix: 'そう' },
+    { textSuffix: 'せ', readingSuffix: 'せ' },
+    { textSuffix: 'すな', readingSuffix: 'すな' },
   ],
   む: [
     { textSuffix: 'みます', readingSuffix: 'みます' },
@@ -104,6 +118,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'まなかった', readingSuffix: 'まなかった' },
     { textSuffix: 'めば', readingSuffix: 'めば' },
     { textSuffix: 'もう', readingSuffix: 'もう' },
+    { textSuffix: 'め', readingSuffix: 'め' },
+    { textSuffix: 'むな', readingSuffix: 'むな' },
   ],
   ぶ: [
     { textSuffix: 'びます', readingSuffix: 'びます' },
@@ -116,6 +132,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'ばなかった', readingSuffix: 'ばなかった' },
     { textSuffix: 'べば', readingSuffix: 'べば' },
     { textSuffix: 'ぼう', readingSuffix: 'ぼう' },
+    { textSuffix: 'べ', readingSuffix: 'べ' },
+    { textSuffix: 'ぶな', readingSuffix: 'ぶな' },
   ],
   ぬ: [
     { textSuffix: 'にます', readingSuffix: 'にます' },
@@ -128,6 +146,8 @@ const GODAN_RULES: Readonly<Record<string, readonly InflectionRule[]>> = {
     { textSuffix: 'ななかった', readingSuffix: 'ななかった' },
     { textSuffix: 'ねば', readingSuffix: 'ねば' },
     { textSuffix: 'のう', readingSuffix: 'のう' },
+    { textSuffix: 'ね', readingSuffix: 'ね' },
+    { textSuffix: 'ぬな', readingSuffix: 'ぬな' },
   ],
 }
 

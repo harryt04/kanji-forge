@@ -244,9 +244,9 @@ available in CI.
 `src/core/text/analyzer.test.ts` (6) covers the offline analyzer's indexed written-form and kana
 reading matches, longest-word preference, unknown-text preservation, token limits, and common
 inflected surfaces resolving to dictionary lemmas with surface readings, including negative,
-conditional, volitional, and progressive forms. `inflect.test.ts` (4) covers ichidan, godan, and
+conditional, volitional, imperative, prohibitive, and progressive forms. `inflect.test.ts` (5) covers ichidan, godan, and
 i-adjective surface generation, including the expanded polite-negative, past-negative, conditional,
-volitional, and progressive auxiliary forms including polite negatives. A full IPADIC/UniDic morphological tokenizer remains
+volitional, imperative, prohibitive, and progressive auxiliary forms including polite negatives. A full IPADIC/UniDic morphological tokenizer remains
 a separate optional-pack follow-up.
 
 ---
