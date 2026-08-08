@@ -188,6 +188,50 @@ describe('DictionaryScreen', () => {
     ).toMatchObject([{ mutType: 'deckMembership.upsert' }])
   })
 
+  it('saves a dictionary result to an existing custom deck', async () => {
+    const runtime = getActiveUserRuntime()!
+    const customDeck = {
+      id: 'custom-reading',
+      name: 'Reading practice',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: Date.now(),
+    }
+    await createUserRepositories(runtime.database).decks.upsert(customDeck)
+
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), '日')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    const addButtons = await screen.findAllByRole('button', {
+      name: 'Add to Reading practice',
+    })
+    await user.click(addButtons[0]!)
+
+    expect(
+      await screen.findByRole('button', { name: 'In Reading practice' }),
+    ).toBeDisabled()
+    expect(
+      await createUserRepositories(runtime.database).deckMembership.list(
+        customDeck.id,
+      ),
+    ).toMatchObject([
+      expect.objectContaining({
+        deckId: customDeck.id,
+        contentRef: 'kanji:日',
+      }),
+    ])
+    expect(
+      await createUserRepositories(runtime.database).outbox.pending(),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mutType: 'deckMembership.upsert' }),
+      ]),
+    )
+  })
+
   it('asks before saving a dictionary result when configured', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({

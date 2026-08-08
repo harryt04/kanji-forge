@@ -3,7 +3,11 @@
 import { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { createUserRepositories, type OutboxMutation } from '@/data/repo'
+import {
+  createUserRepositories,
+  type Deck,
+  type OutboxMutation,
+} from '@/data/repo'
 import {
   searchDictionary,
   searchDictionaryByRadical,
@@ -56,10 +60,11 @@ export function DictionaryScreen(): React.ReactElement {
   const [searchedQuery, setSearchedQuery] = useState('')
   const [history, setHistory] = useState<readonly string[]>([])
   const [pinned, setPinned] = useState<readonly string[]>([])
-  const [savedContentRefs, setSavedContentRefs] = useState<readonly string[]>(
-    [],
-  )
-  const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
+  const [saveDecks, setSaveDecks] = useState<readonly Deck[]>([])
+  const [membershipDeckIds, setMembershipDeckIds] = useState<
+    ReadonlyMap<string, ReadonlySet<string>>
+  >(() => new Map())
+  const [savingTarget, setSavingTarget] = useState<string | null>(null)
   const [askBeforeSaving, setAskBeforeSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,19 +86,39 @@ export function DictionaryScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const repo = createUserRepositories(runtime.database)
-      const [savedHistory, savedPinned, savedMembership, savedSaveBehavior] =
+      const [savedHistory, savedPinned, decks, memberships, savedSaveBehavior] =
         await Promise.all([
           repo.settings.get(DICTIONARY_HISTORY_SETTING),
           repo.settings.get(DICTIONARY_PINNED_SETTING),
+          repo.decks.list(),
           repo.deckMembership.list(),
           repo.settings.get(SAVE_BEHAVIOR_SETTING),
         ])
       if (active) {
         setHistory(parseSearchHistory(savedHistory?.value))
         setPinned(parsePinnedSearches(savedPinned?.value))
-        setSavedContentRefs(
-          savedMembership.map((membership) => membership.contentRef),
-        )
+        const savedDeck =
+          decks.find((deck) => deck.id === 'saved') ??
+          ({
+            id: 'saved',
+            name: 'Saved',
+            kind: 'saved',
+            definitionId: null,
+            updatedAt: Date.now(),
+          } satisfies Deck)
+        setSaveDecks([
+          savedDeck,
+          ...decks.filter((deck) => deck.kind === 'custom'),
+        ])
+        const nextMembershipDeckIds = new Map<string, Set<string>>()
+        for (const membership of memberships) {
+          const deckIds =
+            nextMembershipDeckIds.get(membership.contentRef) ??
+            new Set<string>()
+          deckIds.add(membership.deckId)
+          nextMembershipDeckIds.set(membership.contentRef, deckIds)
+        }
+        setMembershipDeckIds(nextMembershipDeckIds)
         setAskBeforeSaving(savedSaveBehavior?.value === 'ask')
       }
     })()
@@ -174,13 +199,18 @@ export function DictionaryScreen(): React.ReactElement {
     }
   }
 
-  async function saveResult(result: DictionaryResult): Promise<void> {
+  async function saveResult(
+    result: DictionaryResult,
+    targetDeck: Deck,
+  ): Promise<void> {
     if (!runtime) return
     const contentRef = contentRefForResult(result)
-    if (savedContentRefs.includes(contentRef)) return
+    if (membershipDeckIds.get(contentRef)?.has(targetDeck.id)) return
     if (
       askBeforeSaving &&
-      !window.confirm(`Save this ${result.type} to your Saved deck?`)
+      !window.confirm(
+        `Save this ${result.type} to your ${targetDeck.name} deck?`,
+      )
     )
       return
     const now = Date.now()
@@ -188,44 +218,43 @@ export function DictionaryScreen(): React.ReactElement {
       id: crypto.randomUUID(),
       mutType: 'deckMembership.upsert',
       payload: JSON.stringify({
-        deckId: 'saved',
+        deckId: targetDeck.id,
         contentRef,
         updatedAt: now,
       }),
       createdAt: now,
       attempts: 0,
     }
-    setSavingContentRef(contentRef)
+    const savingKey = `${targetDeck.id}:${contentRef}`
+    setSavingTarget(savingKey)
     setError(null)
     try {
       const repo = createUserRepositories(runtime.database)
-      const saved = await repo.deckMembership.list()
+      const memberships = await repo.deckMembership.list(targetDeck.id)
       await repo.recordDeckMembership({
-        deck: {
-          id: 'saved',
-          name: 'Saved',
-          kind: 'saved',
-          definitionId: null,
-          updatedAt: now,
-        },
+        deck: targetDeck,
         membership: {
-          deckId: 'saved',
+          deckId: targetDeck.id,
           contentRef,
-          sortOrder: saved.length,
+          sortOrder: memberships.length,
           addedAt: now,
           updatedAt: now,
         },
         mutation,
       })
-      setSavedContentRefs((current) =>
-        current.includes(contentRef) ? current : [...current, contentRef],
-      )
+      setMembershipDeckIds((current) => {
+        const next = new Map(current)
+        const deckIds = new Set(next.get(contentRef) ?? [])
+        deckIds.add(targetDeck.id)
+        next.set(contentRef, deckIds)
+        return next
+      })
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : 'Could not save result.',
       )
     } finally {
-      setSavingContentRef(null)
+      setSavingTarget(null)
     }
   }
 
@@ -473,23 +502,34 @@ export function DictionaryScreen(): React.ReactElement {
                     {submitLabel(result)}
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-fit"
-                  disabled={
-                    savingContentRef !== null ||
-                    savedContentRefs.includes(contentRefForResult(result))
-                  }
-                  onClick={() => void saveResult(result)}
-                >
-                  {savedContentRefs.includes(contentRefForResult(result))
-                    ? 'Saved'
-                    : savingContentRef === contentRefForResult(result)
-                      ? 'Saving…'
-                      : 'Save to Saved'}
-                </Button>
+                {saveDecks.map((deck) => {
+                  const contentRef = contentRefForResult(result)
+                  const isSaved = membershipDeckIds
+                    .get(contentRef)
+                    ?.has(deck.id)
+                  const savingKey = `${deck.id}:${contentRef}`
+                  return (
+                    <Button
+                      key={deck.id}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-fit"
+                      disabled={savingTarget !== null || isSaved}
+                      onClick={() => void saveResult(result, deck)}
+                    >
+                      {isSaved
+                        ? deck.id === 'saved'
+                          ? 'Saved'
+                          : `In ${deck.name}`
+                        : savingTarget === savingKey
+                          ? 'Saving…'
+                          : deck.id === 'saved'
+                            ? 'Save to Saved'
+                            : `Add to ${deck.name}`}
+                    </Button>
+                  )
+                })}
                 {result.type === 'kanji' ? (
                   <>
                     <dl
