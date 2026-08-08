@@ -9,6 +9,8 @@ import {
 export interface StudyCard {
   readonly contentRef: string
   readonly literal: string
+  readonly radicalClassical?: number | null
+  readonly radicalNelson?: number | null
   readonly strokeCount: number
   readonly frequency: number | null
   readonly jlptLegacy: number | null
@@ -70,6 +72,8 @@ export async function loadStarterDeck(
     content.set(ref, {
       contentRef: ref,
       literal: record.literal,
+      radicalClassical: record.radicalClassical,
+      radicalNelson: record.radicalNelson,
       strokeCount: record.strokeCount,
       frequency: record.freq,
       jlptLegacy: record.jlptLegacy,

@@ -115,6 +115,30 @@ describe('data/packs', () => {
     })
   })
 
+  describe('searchDictionaryByRadical', () => {
+    it('returns frequency-ranked kanji for a classical radical', async () => {
+      const { searchDictionaryByRadical } = await freshPacks()
+      const result = await searchDictionaryByRadical(75)
+
+      expect(result.length).toBeGreaterThan(0)
+      expect(result.every((entry) => entry.type === 'kanji')).toBe(true)
+      expect(
+        result.every(
+          (entry) =>
+            entry.type === 'kanji' && entry.record.radicalClassical === 75,
+        ),
+      ).toBe(true)
+      expect(result[0]).toMatchObject({ type: 'kanji' })
+    })
+
+    it('rejects invalid radical numbers without loading a pack', async () => {
+      const { searchDictionaryByRadical } = await freshPacks()
+
+      await expect(searchDictionaryByRadical(0)).resolves.toEqual([])
+      await expect(searchDictionaryByRadical(75, 0)).resolves.toEqual([])
+    })
+  })
+
   describe('getExampleWords', () => {
     it('returns ranked words whose kanji form contains the requested literal', async () => {
       const { getExampleWords } = await freshPacks()

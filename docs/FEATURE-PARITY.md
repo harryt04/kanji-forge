@@ -162,7 +162,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 8.3 | ~700,000 entries including names and places | 🔷 | — | JMnedict as an optional pack |
 | 8.4 | Details for 6,355 kanji | ✅ | 2026-08-07 | Offline results expose KANJIDIC2 readings, meanings, stroke count, school grade, JLPT, frequency rank, and name readings; KANJIDIC2 covers 13,108 |
 | 8.5 | SKIP search | ❌ | — | Replaced by multi-radical search |
-| 8.6 | Search by radical | ✅ | — | KRADFILE/RADKFILE |
+| 8.6 | Search by radical | ✅ | 2026-08-07 | Offline classical radical-number search over the installed KANJIDIC2 pack |
 | 8.7 | Search by stroke count | ✅ | — | |
 | 8.8 | Wildcard search | ✅ | — | |
 | 8.9 | Save any result to a deck | ✅ | 2026-08-07 | Dictionary results can be saved offline to the per-user Saved system deck and queue a membership sync mutation |

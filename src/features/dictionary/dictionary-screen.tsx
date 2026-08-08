@@ -3,7 +3,11 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type OutboxMutation } from '@/data/repo'
-import { searchDictionary, type DictionaryResult } from '@/data/packs'
+import {
+  searchDictionary,
+  searchDictionaryByRadical,
+  type DictionaryResult,
+} from '@/data/packs'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
 import {
@@ -27,9 +31,12 @@ function submitLabel(result: DictionaryResult): string {
   return result.type === 'kanji' ? 'Kanji' : 'Word'
 }
 
+type SearchMode = 'text' | 'radical'
+
 export function DictionaryScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [query, setQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<SearchMode>('text')
   const [results, setResults] = useState<readonly DictionaryResult[]>([])
   const [searchedQuery, setSearchedQuery] = useState('')
   const [history, setHistory] = useState<readonly string[]>([])
@@ -85,11 +92,20 @@ export function DictionaryScreen(): React.ReactElement {
     setLoading(true)
     setError(null)
     try {
-      const nextHistory = recordSearch(history, trimmedQuery)
-      setHistory(nextHistory)
-      await saveSearchSetting(DICTIONARY_HISTORY_SETTING, nextHistory)
-      setResults(await searchDictionary(trimmedQuery))
-      setSearchedQuery(trimmedQuery)
+      if (searchMode === 'radical') {
+        const radical = Number(trimmedQuery)
+        if (!Number.isInteger(radical) || radical < 1 || radical > 214) {
+          throw new Error('Enter a classical radical number from 1 to 214.')
+        }
+        setResults(await searchDictionaryByRadical(radical))
+        setSearchedQuery(`radical ${radical}`)
+      } else {
+        const nextHistory = recordSearch(history, trimmedQuery)
+        setHistory(nextHistory)
+        await saveSearchSetting(DICTIONARY_HISTORY_SETTING, nextHistory)
+        setResults(await searchDictionary(trimmedQuery))
+        setSearchedQuery(trimmedQuery)
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Search failed.')
     } finally {
@@ -177,25 +193,69 @@ export function DictionaryScreen(): React.ReactElement {
         <p className="font-jp-ui text-muted-foreground text-sm">辞書</p>
         <h1 className="font-display mt-1 text-3xl font-bold">Dictionary</h1>
         <p className="text-muted-foreground mt-2">
-          Search the installed dictionary by kanji, kana, romaji, or English.
+          Search the installed dictionary by kanji, kana, romaji, English, or
+          classical radical number.
         </p>
       </header>
 
-      <form className="flex gap-2" onSubmit={(event) => void submit(event)}>
-        <label className="sr-only" htmlFor="dictionary-query">
-          Dictionary search
-        </label>
-        <input
-          id="dictionary-query"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="e.g. 日本, nihongo, or Japan"
-          autoComplete="off"
-          className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
-        />
-        <Button type="submit" size="lg" disabled={loading}>
-          {loading ? 'Searching…' : 'Search'}
-        </Button>
+      <form className="grid gap-3" onSubmit={(event) => void submit(event)}>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Dictionary search type"
+        >
+          <Button
+            type="button"
+            variant={searchMode === 'text' ? 'secondary' : 'outline'}
+            aria-pressed={searchMode === 'text'}
+            onClick={() => {
+              setSearchMode('text')
+              setQuery('')
+              setResults([])
+              setSearchedQuery('')
+            }}
+          >
+            Text search
+          </Button>
+          <Button
+            type="button"
+            variant={searchMode === 'radical' ? 'secondary' : 'outline'}
+            aria-pressed={searchMode === 'radical'}
+            onClick={() => {
+              setSearchMode('radical')
+              setQuery('')
+              setResults([])
+              setSearchedQuery('')
+            }}
+          >
+            Radical search
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <label className="sr-only" htmlFor="dictionary-query">
+            {searchMode === 'radical'
+              ? 'Classical radical number'
+              : 'Dictionary search'}
+          </label>
+          <input
+            id="dictionary-query"
+            type={searchMode === 'radical' ? 'number' : 'search'}
+            min={searchMode === 'radical' ? 1 : undefined}
+            max={searchMode === 'radical' ? 214 : undefined}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={
+              searchMode === 'radical'
+                ? 'e.g. 75 (grass radical)'
+                : 'e.g. 日本, nihongo, or Japan'
+            }
+            autoComplete="off"
+            className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
+          />
+          <Button type="submit" size="lg" disabled={loading}>
+            {loading ? 'Searching…' : 'Search'}
+          </Button>
+        </div>
       </form>
 
       {(pinned.length > 0 || history.length > 0) && (
@@ -347,6 +407,14 @@ export function DictionaryScreen(): React.ReactElement {
                       <dt className="text-muted-foreground">Stroke count</dt>
                       <dd className="mt-0.5">
                         {result.record.strokeCount || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">
+                        Classical radical
+                      </dt>
+                      <dd className="mt-0.5">
+                        {result.record.radicalClassical ?? 'Not listed'}
                       </dd>
                     </div>
                     <div>

@@ -102,6 +102,8 @@ export function DetailScreen(): React.ReactElement {
             content: {
               contentRef,
               literal: record.literal,
+              radicalClassical: record.radicalClassical,
+              radicalNelson: record.radicalNelson,
               strokeCount: record.strokeCount,
               frequency: record.freq,
               jlptLegacy: record.jlptLegacy,
@@ -310,6 +312,12 @@ export function DetailScreen(): React.ReactElement {
             <div>
               <dt className="text-muted-foreground">Stroke count</dt>
               <dd className="mt-1">{content.strokeCount || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Classical radical</dt>
+              <dd className="mt-1">
+                {content.radicalClassical ?? 'Not listed'}
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">School grade</dt>

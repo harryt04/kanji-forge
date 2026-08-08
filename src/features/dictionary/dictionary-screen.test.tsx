@@ -70,6 +70,20 @@ describe('DictionaryScreen', () => {
     expect(firstDetails.getByText('School grade')).toBeInTheDocument()
     expect(firstDetails.getByText('JLPT')).toBeInTheDocument()
     expect(firstDetails.getByText('Frequency rank')).toBeInTheDocument()
+    expect(firstDetails.getByText('Classical radical')).toBeInTheDocument()
+  })
+
+  it('searches kanji by classical radical number', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.click(screen.getByRole('button', { name: 'Radical search' }))
+    await user.type(screen.getByLabelText('Classical radical number'), '75')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(await screen.findByText('本')).toBeInTheDocument()
+    expect(screen.getAllByText('Classical radical').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Classical radical number')).toHaveValue(75)
   })
 
   it('saves a dictionary result to the offline Saved deck', async () => {

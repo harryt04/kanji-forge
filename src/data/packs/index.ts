@@ -15,6 +15,8 @@ export interface DeckDefinition {
 
 export interface KanjiRecord {
   readonly literal: string
+  readonly radicalClassical: number | null
+  readonly radicalNelson: number | null
   readonly strokeCount: number
   readonly grade: number | null
   readonly freq: number | null
@@ -255,6 +257,10 @@ export async function getKanjiByLiterals(
       const row = statement.getAsObject()
       result.set(literal, {
         literal: String(row.literal),
+        radicalClassical:
+          row.radical_classical === null ? null : Number(row.radical_classical),
+        radicalNelson:
+          row.radical_nelson === null ? null : Number(row.radical_nelson),
         strokeCount: Number(row.stroke_count),
         grade: row.grade === null ? null : Number(row.grade),
         freq: row.freq === null ? null : Number(row.freq),
@@ -274,13 +280,17 @@ let dictionaryKanjiPromise: Promise<readonly KanjiRecord[]> | undefined
 function loadDictionaryKanji(): Promise<readonly KanjiRecord[]> {
   dictionaryKanjiPromise ??= openPack('kanji-v1.sqlite').then((database) => {
     const statement = database.prepare(
-      'SELECT literal, stroke_count, grade, freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori FROM kanji',
+      'SELECT literal, radical_classical, radical_nelson, stroke_count, grade, freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori FROM kanji',
     )
     const records: KanjiRecord[] = []
     while (statement.step()) {
       const row = statement.getAsObject()
       records.push({
         literal: String(row.literal),
+        radicalClassical:
+          row.radical_classical === null ? null : Number(row.radical_classical),
+        radicalNelson:
+          row.radical_nelson === null ? null : Number(row.radical_nelson),
         strokeCount: Number(row.stroke_count),
         grade: row.grade === null ? null : Number(row.grade),
         freq: row.freq === null ? null : Number(row.freq),
@@ -295,6 +305,49 @@ function loadDictionaryKanji(): Promise<readonly KanjiRecord[]> {
     return records
   })
   return dictionaryKanjiPromise
+}
+
+/** Searches kanji by the KANJIDIC2 classical radical number. */
+export async function searchDictionaryByRadical(
+  radical: number,
+  limit = 30,
+): Promise<readonly DictionaryResult[]> {
+  if (!Number.isInteger(radical) || radical < 1 || limit <= 0) return []
+
+  const database = await openPack('kanji-v1.sqlite')
+  const statement = database.prepare(
+    `SELECT literal, radical_classical, radical_nelson, stroke_count, grade,
+      freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori
+     FROM kanji
+     WHERE radical_classical = ?
+     ORDER BY CASE WHEN freq IS NULL THEN 1 ELSE 0 END, freq ASC, literal ASC
+     LIMIT ?`,
+    [radical, limit],
+  )
+  const results: DictionaryResult[] = []
+  while (statement.step()) {
+    const row = statement.getAsObject()
+    results.push({
+      type: 'kanji',
+      record: {
+        literal: String(row.literal),
+        radicalClassical:
+          row.radical_classical === null ? null : Number(row.radical_classical),
+        radicalNelson:
+          row.radical_nelson === null ? null : Number(row.radical_nelson),
+        strokeCount: Number(row.stroke_count),
+        grade: row.grade === null ? null : Number(row.grade),
+        freq: row.freq === null ? null : Number(row.freq),
+        jlptLegacy: row.jlpt_legacy === null ? null : Number(row.jlpt_legacy),
+        nanori: jsonArray(row.nanori),
+        onReadings: jsonArray(row.on_readings),
+        kunReadings: jsonArray(row.kun_readings),
+        meanings: jsonArray(row.meanings),
+      },
+    })
+  }
+  statement.free()
+  return results
 }
 
 let dictionaryWordsPromise: Promise<readonly WordRecord[]> | undefined

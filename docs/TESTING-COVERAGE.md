@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 34 (223 test cases: 223 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 61 cases, included above) |
+| Unit/integration test files | 34 (226 test cases: 226 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 62 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.2%** |
+| Overall statement coverage | **86.3%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -29,9 +29,9 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
 | `src/data/**` | 85% | db 93.19 / 86 / 100 / 93.19 · packs 98.39 / 85.98 / 100 / 98.39 · repo 97.44 / 90.38 / 100 / 97.44 | ✅ comfortable margin |
 | `src/features/**` | 70% | browse 90.37 / 81.21 / 84.84 / 90.37 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.44 / 83.42 / 83.87 / 96.44 | ✅ comfortable margin |
-| `src/features/dictionary/**` | 70% | 95.02 / 75.51 / 92 / 95.02 | ✅ comfortable margin |
+| `src/features/dictionary/**` | 70% | 94.15 / 78.81 / 88.88 / 94.15 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 79.81 / 76.8 / 80.64 / 79.81 | ✅ comfortable margin |
-| Global floor | 60% | 86.2 / 84.29 / 89.24 / 86.2 | ✅ comfortable margin |
+| Global floor | 60% | 86.3 / 84.05 / 89 / 86.3 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -132,10 +132,10 @@ level combinations, JLPT matching, and missing JLPT metadata.
 **`browse-sort.test.ts`** (Vitest) — all metadata sort modes, missing metadata placement, implicit
 level-zero cards, stable deck-order ties, and non-mutating deck-order output.
 
-### `src/features/dictionary` — 6 cases
+### `src/features/dictionary` — 8 cases
 
-**`dictionary-screen.test.tsx`** (3, Testing Library) — offline search from the visible form, complete
-KANJIDIC2 metadata for kanji results, and
+**`dictionary-screen.test.tsx`** (5, Testing Library) — offline text and classical-radical search from
+the visible form, complete KANJIDIC2 metadata for kanji results, and
 user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
