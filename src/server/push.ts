@@ -74,6 +74,16 @@ export function isReminderMinute(
   }
 }
 
+/** Returns whether a browser-provided push subscription expiry has passed. */
+export function isPushSubscriptionExpired(
+  expirationTime: Date | null | undefined,
+  now: Date,
+): boolean {
+  return expirationTime !== null && expirationTime !== undefined
+    ? expirationTime.getTime() <= now.getTime()
+    : false
+}
+
 type ApiDatabase = ReturnType<typeof createDatabase>
 
 export async function savePushSubscription(
@@ -138,6 +148,7 @@ export async function sendDuePushReminders(
   const rows = await database
     .select({
       endpoint: pushSubscriptions.endpoint,
+      userId: pushSubscriptions.userId,
       p256dh: pushSubscriptions.p256dh,
       auth: pushSubscriptions.auth,
       expirationTime: pushSubscriptions.expirationTime,
@@ -173,6 +184,18 @@ export async function sendDuePushReminders(
   let removed = 0
   let skipped = 0
   for (const row of rows) {
+    if (isPushSubscriptionExpired(row.expirationTime, now)) {
+      await database
+        .delete(pushSubscriptions)
+        .where(
+          and(
+            eq(pushSubscriptions.endpoint, row.endpoint),
+            eq(pushSubscriptions.userId, row.userId),
+          ),
+        )
+      removed += 1
+      continue
+    }
     if (row.enabled !== 'true') {
       skipped += 1
       continue
