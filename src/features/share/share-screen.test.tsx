@@ -10,6 +10,7 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import {
   ShareTargetScreen,
+  getUnsavedAnalysisWords,
   readSharedDeckPayload,
   readSharedTextPayload,
 } from './share-screen'
@@ -46,6 +47,37 @@ describe('ShareTargetScreen', () => {
     vi.unstubAllGlobals()
     clearUserRuntime()
     window.history.replaceState({}, '', '/')
+  })
+
+  it('deduplicates only unsaved dictionary word tokens for bulk saving', () => {
+    const words = getUnsavedAnalysisWords(
+      [
+        {
+          text: 'お金',
+          reading: 'おかね',
+          meanings: ['money'],
+          type: 'word',
+          contentRef: 'word:1',
+        },
+        {
+          text: 'お金',
+          reading: 'おかね',
+          meanings: ['money'],
+          type: 'word',
+          contentRef: 'word:1',
+        },
+        {
+          text: '日',
+          reading: 'ひ',
+          meanings: ['day'],
+          type: 'kanji',
+          contentRef: 'kanji:日',
+        },
+      ],
+      new Set(['word:already-saved']),
+    )
+
+    expect(words.map((token) => token.contentRef)).toEqual(['word:1'])
   })
 
   it('reads text, title, and URL from a GET share target payload', () => {
@@ -108,6 +140,47 @@ describe('ShareTargetScreen', () => {
       'href',
       expect.stringMatching(/^\/detail\?contentRef=word%3A\d+$/u),
     )
+    expect(
+      screen.getByRole('button', { name: 'Add 1 unsaved word to Saved' }),
+    ).toBeInTheDocument()
+  })
+
+  it('bulk-saves analyzed dictionary words atomically with sync mutations', async () => {
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    fireEvent.change(screen.getByLabelText('Japanese text'), {
+      target: { value: 'お金を' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze text' }))
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Add 1 unsaved word to Saved',
+      }),
+    )
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(runtime.database).deckMembership.list(
+          'saved',
+        ),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            contentRef: expect.stringMatching(/^word:\d+$/u),
+          }),
+        ]),
+      )
+    })
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending()).filter(
+        (mutation) => mutation.mutType === 'deckMembership.upsert',
+      ),
+    ).toHaveLength(1)
+    expect(
+      await screen.findByText('Added 1 word to Saved.'),
+    ).toBeInTheDocument()
   })
 
   it('imports matched shared kanji to Saved atomically with sync mutations', async () => {

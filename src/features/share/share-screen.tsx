@@ -41,6 +41,25 @@ export function readSharedDeckPayload(search: string): DeckSharePayload | null {
   return raw ? parseDeckSharePayload(raw) : null
 }
 
+/** Returns dictionary-backed word tokens that are not already in Saved. */
+export function getUnsavedAnalysisWords(
+  analysis: readonly TextAnalysisToken[],
+  savedContentRefs: ReadonlySet<string>,
+): readonly TextAnalysisToken[] {
+  const seen = new Set<string>()
+  return analysis.filter((token) => {
+    if (
+      token.type !== 'word' ||
+      !token.contentRef ||
+      savedContentRefs.has(token.contentRef) ||
+      seen.has(token.contentRef)
+    )
+      return false
+    seen.add(token.contentRef)
+    return true
+  })
+}
+
 export function ShareTargetScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [payload, setPayload] = useState<SharedTextPayload>({
@@ -55,6 +74,9 @@ export function ShareTargetScreen(): React.ReactElement {
   const [draftText, setDraftText] = useState('')
   const [analysis, setAnalysis] = useState<readonly TextAnalysisToken[] | null>(
     null,
+  )
+  const [savedContentRefs, setSavedContentRefs] = useState<ReadonlySet<string>>(
+    () => new Set(),
   )
   const [analyzing, setAnalyzing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -93,6 +115,13 @@ export function ShareTargetScreen(): React.ReactElement {
           repositories.deckMembership.list(),
         ])
         if (!active) return
+        setSavedContentRefs(
+          new Set(
+            existing
+              .filter((membership) => membership.deckId === 'saved')
+              .map((membership) => membership.contentRef),
+          ),
+        )
         setPreview(
           previewKanjiImport(
             literals,
@@ -213,6 +242,80 @@ export function ShareTargetScreen(): React.ReactElement {
     }
   }
 
+  async function saveUnsavedAnalysisWords(): Promise<void> {
+    if (!runtime || !analysis || importing) return
+    const words = getUnsavedAnalysisWords(analysis, savedContentRefs)
+    if (words.length === 0) {
+      setMessage('There are no new dictionary words to add.')
+      return
+    }
+
+    setImporting(true)
+    setMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const existing = await repositories.deckMembership.list('saved')
+      const now = Date.now()
+      const savedDeck = {
+        id: 'saved',
+        name: 'Saved',
+        kind: 'saved' as const,
+        definitionId: null,
+        updatedAt: now,
+      }
+      await repositories.recordDeckMemberships({
+        deck: savedDeck,
+        deckMutation: {
+          id: crypto.randomUUID(),
+          mutType: 'deck.upsert',
+          payload: JSON.stringify(savedDeck),
+          createdAt: now,
+          attempts: 0,
+        },
+        memberships: words.map((token, index) => {
+          const contentRef = token.contentRef!
+          const membership = {
+            deckId: 'saved' as const,
+            contentRef,
+            sortOrder: existing.length + index,
+            addedAt: now,
+            updatedAt: now,
+          }
+          return {
+            membership,
+            mutation: {
+              id: crypto.randomUUID(),
+              mutType: 'deckMembership.upsert' as const,
+              payload: JSON.stringify(membership),
+              createdAt: now,
+              attempts: 0,
+            },
+          }
+        }),
+      })
+      setSavedContentRefs((current) => {
+        const next = new Set(current)
+        for (const token of words) {
+          if (token.contentRef) next.add(token.contentRef)
+        }
+        return next
+      })
+      setMessage(
+        `Added ${words.length} word${words.length === 1 ? '' : 's'} to Saved.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save analyzed words.',
+      )
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
       <p className="font-jp-ui text-muted-foreground text-sm">
@@ -320,6 +423,18 @@ export function ShareTargetScreen(): React.ReactElement {
             )}
           </div>
         )}
+        {analysis &&
+          getUnsavedAnalysisWords(analysis, savedContentRefs).length > 0 && (
+            <Button
+              className="w-fit"
+              disabled={importing}
+              onClick={() => void saveUnsavedAnalysisWords()}
+            >
+              {importing
+                ? 'Saving…'
+                : `Add ${getUnsavedAnalysisWords(analysis, savedContentRefs).length} unsaved word${getUnsavedAnalysisWords(analysis, savedContentRefs).length === 1 ? '' : 's'} to Saved`}
+            </Button>
+          )}
       </section>
       {loading && (
         <p className="text-muted-foreground mt-5">Preparing preview…</p>
