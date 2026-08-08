@@ -164,6 +164,85 @@ describe('recordGrade atomicity', () => {
 })
 
 describe('recordCardState atomicity', () => {
+  it('resets one deck statistics atomically while preserving flags', async () => {
+    const repos = await freshRepo()
+    const firstReview = review({ deckId: 'dev-kanji', contentRef: 'kanji:日' })
+    const studiedState = state({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      totalReviews: 4,
+      totalCorrect: 3,
+      lapses: 1,
+      flagged: true,
+    })
+    await repos.recordGrade({
+      review: firstReview,
+      nextState: studiedState,
+      day: '2023-11-14',
+      mutation: {
+        id: firstReview.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(firstReview),
+        createdAt: firstReview.at,
+        attempts: 0,
+      },
+    })
+    await repos.sessions.start({
+      id: 'session-to-reset',
+      deckId: 'dev-kanji',
+      startedAt: 1,
+      endedAt: 2,
+    })
+
+    const resetState = {
+      ...studiedState,
+      level: 0 as const,
+      dueAt: null,
+      lastReviewedAt: null,
+      correctStreak: 0,
+      totalReviews: 0,
+      totalCorrect: 0,
+      lapses: 0,
+      manualOverride: false,
+      updatedAt: 10,
+      updatedBy: 'device-reset',
+    }
+    await repos.resetStatistics({
+      deckId: 'dev-kanji',
+      states: [
+        {
+          state: resetState,
+          mutation: {
+            id: 'statistics-reset-1',
+            mutType: 'cardState.upsert',
+            payload: JSON.stringify({ source: 'reset-statistics' }),
+            createdAt: 10,
+            attempts: 0,
+          },
+        },
+      ],
+    })
+
+    await expect(repos.reviews.list('dev-kanji')).resolves.toEqual([])
+    await expect(repos.dailyStats.list()).resolves.toEqual([])
+    await expect(repos.sessions.list('dev-kanji')).resolves.toEqual([])
+    await expect(
+      repos.cardStates.get('dev-kanji', 'kanji:日'),
+    ).resolves.toMatchObject({
+      level: 0,
+      dueAt: null,
+      lastReviewedAt: null,
+      totalReviews: 0,
+      totalCorrect: 0,
+      lapses: 0,
+      flagged: true,
+    })
+    await expect(repos.outbox.pending()).resolves.toEqual([
+      expect.objectContaining({ id: 'statistics-reset-1' }),
+    ])
+  })
+
   it('persists deck metadata together with its outbox mutation', async () => {
     const repos = await freshRepo()
     const deck = {

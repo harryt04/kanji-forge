@@ -170,6 +170,11 @@ export interface UserRepositories {
   recordCardStates(
     inputs: readonly { state: CardState; mutation: OutboxMutation }[],
   ): Promise<void>
+  /** Clears one deck's local study statistics and reprojects its touched cards to New atomically. */
+  resetStatistics(input: {
+    deckId: string
+    states: readonly { state: CardState; mutation: OutboxMutation }[]
+  }): Promise<void>
   /** Persists deck metadata and its sync mutation atomically. */
   recordDeck(input: { deck: Deck; mutation: OutboxMutation }): Promise<void>
   /** Persists a manual level assignment without counting it as a study review. */
@@ -709,6 +714,41 @@ export function createUserRepositories(
           },
         ]),
       )
+    },
+    async resetStatistics({ deckId, states }) {
+      await database.transaction([
+        {
+          sql: 'DELETE FROM reviews WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM outbox WHERE user_id = ? AND mut_type = ? AND payload LIKE ?',
+          parameters: [userId, 'review.append', `%\"deckId\":\"${deckId}\"%`],
+        },
+        {
+          sql: 'DELETE FROM sessions WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          // daily_stats is currently the local aggregate for the app's active study deck.
+          sql: 'DELETE FROM daily_stats WHERE user_id = ?',
+          parameters: [userId],
+        },
+        ...states.flatMap(({ state, mutation }) => [
+          { sql: putState, parameters: stateParams(state) },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ]),
+      ])
     },
     async recordDeck({ deck, mutation }) {
       await database.transaction([

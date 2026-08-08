@@ -121,6 +121,10 @@ export function SettingsScreen(): React.ReactElement {
   const [backupReminder, setBackupReminder] = useState<BackupReminder>(null)
   const [resetBusy, setResetBusy] = useState(false)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
+  const [statisticsResetBusy, setStatisticsResetBusy] = useState(false)
+  const [statisticsResetMessage, setStatisticsResetMessage] = useState<
+    string | null
+  >(null)
   const [deckMessage, setDeckMessage] = useState<string | null>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
@@ -587,6 +591,72 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function resetStatistics(): Promise<void> {
+    if (
+      !runtime ||
+      statisticsResetBusy ||
+      !window.confirm(
+        'Reset all starter-deck statistics? This removes review history and study time, and returns colors to New. Flags and notes will be kept.',
+      )
+    )
+      return
+
+    setStatisticsResetBusy(true)
+    setStatisticsResetMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const states = await repositories.cardStates.list(STARTER_DECK_ID)
+      const now = Date.now()
+      const updatedBy = getDeviceId()
+      await repositories.resetStatistics({
+        deckId: STARTER_DECK_ID,
+        states: states.map((state: CardState) => ({
+          state: {
+            ...state,
+            level: 0,
+            dueAt: null,
+            lastReviewedAt: null,
+            correctStreak: 0,
+            totalReviews: 0,
+            totalCorrect: 0,
+            lapses: 0,
+            manualOverride: false,
+            updatedAt: now,
+            updatedBy,
+          },
+          mutation: {
+            id: crypto.randomUUID(),
+            mutType: 'cardState.upsert',
+            payload: JSON.stringify({
+              deckId: state.deckId,
+              contentRef: state.contentRef,
+              level: 0,
+              source: 'reset-statistics',
+              updatedAt: now,
+            }),
+            createdAt: now,
+            attempts: 0,
+          },
+        })),
+      })
+      setStatisticsResetMessage(
+        states.length === 0
+          ? 'No starter-deck statistics needed resetting.'
+          : `Reset statistics for ${states.length} ${states.length === 1 ? 'card' : 'cards'}. Review history and study time were cleared.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not reset statistics.',
+      )
+    } finally {
+      setStatisticsResetBusy(false)
+    }
+  }
+
   if (!runtime)
     return (
       <p className="text-muted-foreground p-6">Sign in to open Settings.</p>
@@ -879,6 +949,29 @@ export function SettingsScreen(): React.ReactElement {
         {resetMessage && (
           <p className="text-muted-foreground mt-4 text-sm" role="status">
             {resetMessage}
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Reset statistics</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Clear the starter deck&apos;s review history, daily activity, and
+          study time, and return its touched cards to New. Flags and notes are
+          kept. This cannot be undone, so make a backup first if you may want
+          the history later.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5"
+          disabled={statisticsResetBusy}
+          onClick={() => void resetStatistics()}
+        >
+          {statisticsResetBusy ? 'Resetting statistics…' : 'Reset statistics'}
+        </Button>
+        {statisticsResetMessage && (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            {statisticsResetMessage}
           </p>
         )}
       </section>

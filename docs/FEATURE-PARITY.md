@@ -124,7 +124,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 6.13 | Built-in Top 500 Kanji | ✅ | 2026-08-06 | freq 1–500 (content pipeline) |
 | 6.14 | Built-in Hiragana / Katakana / Kana Words | ✅ | 2026-08-06 | (content pipeline) |
 | 6.15 | Reset colors | ✅ | 2026-08-07 | Settings resets starter-deck levels and schedules atomically while preserving review totals, flags, and history |
-| 6.16 | Reset statistics | ✅ | — | |
+| 6.16 | Reset statistics | ✅ | 2026-08-07 | Settings clears starter-deck review/daily/session statistics and returns touched cards to New while preserving flags and annotations |
 | 6.17 | Restore built-in deck to original | ✅ | 2026-08-07 | Settings restores the built-in starter deck's original name offline and queues the metadata mutation for sync without changing progress |
 | 6.18 | Remove duplicates (same question + reading) | ✅ | — | |
 | 6.19 | Transfer progress between decks sharing stickies | ✅ | — | |

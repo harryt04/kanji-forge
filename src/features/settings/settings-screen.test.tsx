@@ -22,7 +22,7 @@ import {
 } from '@/features/study/study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
-import { repoCardState } from '../../../test/factories'
+import { repoCardState, repoReview } from '../../../test/factories'
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -347,6 +347,72 @@ describe('SettingsScreen', () => {
     expect(
       (await createUserRepositories(runtime.database).outbox.pending())[0],
     ).toMatchObject({ mutType: 'cardState.upsert' })
+    confirm.mockRestore()
+  })
+
+  it('resets starter-deck statistics and keeps flags', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    const reviewedAt = Date.now() - 86_400_000
+    const review = repoReview({
+      id: crypto.randomUUID(),
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      at: reviewedAt,
+    })
+    await repositories.recordGrade({
+      review,
+      nextState: repoCardState({
+        deckId: 'dev-kanji',
+        contentRef: 'kanji:日',
+        level: 3,
+        totalReviews: 4,
+        totalCorrect: 3,
+        lapses: 1,
+        flagged: true,
+      }),
+      day: '2023-11-14',
+      mutation: {
+        id: review.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(review),
+        createdAt: reviewedAt,
+        attempts: 0,
+      },
+    })
+    await repositories.sessions.start({
+      id: 'settings-statistics-session',
+      deckId: 'dev-kanji',
+      startedAt: 1,
+      endedAt: 2,
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Reset statistics' })
+    await user.click(screen.getByRole('button', { name: 'Reset statistics' }))
+
+    expect(
+      await screen.findByText(
+        'Reset statistics for 1 card. Review history and study time were cleared.',
+      ),
+    ).toBeInTheDocument()
+    expect(confirm).toHaveBeenCalledOnce()
+    await expect(repositories.reviews.list('dev-kanji')).resolves.toEqual([])
+    await expect(repositories.dailyStats.list()).resolves.toEqual([])
+    await expect(repositories.sessions.list('dev-kanji')).resolves.toEqual([])
+    await expect(
+      repositories.cardStates.get('dev-kanji', 'kanji:日'),
+    ).resolves.toMatchObject({
+      level: 0,
+      dueAt: null,
+      lastReviewedAt: null,
+      totalReviews: 0,
+      totalCorrect: 0,
+      lapses: 0,
+      flagged: true,
+    })
     confirm.mockRestore()
   })
 
