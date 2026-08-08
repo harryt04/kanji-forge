@@ -21,6 +21,8 @@ export const STUDY_QUESTION_OPTIONS = [
 
 export type StudyQuestion = (typeof STUDY_QUESTION_OPTIONS)[number]['value']
 
+export const DEFAULT_STUDY_QUESTION: StudyQuestion = 'kanji'
+
 export function isStudyQuestion(value: string): value is StudyQuestion {
   return STUDY_QUESTION_OPTIONS.some((option) => option.value === value)
 }

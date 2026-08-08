@@ -105,6 +105,44 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('restores the default study style offline', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_QUESTION_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Study answer' })
+    await user.click(
+      screen.getByRole('button', { name: 'Restore study style defaults' }),
+    )
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_QUESTION_SETTING,
+        ),
+      ).toMatchObject({ value: 'kanji' })
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_ANSWER_SETTING,
+        ),
+      ).toMatchObject({ value: 'kanji,reading,meaning' })
+    })
+    expect(screen.getByRole('radio', { name: /Kanji/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+  })
+
   it('persists the selected app icon badge information offline', async () => {
     const user = userEvent.setup()
     render(<SettingsScreen />)

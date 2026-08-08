@@ -12,6 +12,8 @@ import {
 } from '@/pwa'
 import { Button } from '@/ui/button'
 import {
+  DEFAULT_STUDY_ANSWER,
+  DEFAULT_STUDY_QUESTION,
   isStudyQuestion,
   parseStudyAnswer,
   serializeStudyAnswer,
@@ -252,6 +254,40 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function restoreStudyStyleDefaults(): Promise<void> {
+    if (!runtime || saving) return
+    const previousQuestion = studyQuestion
+    const previousAnswer = studyAnswer
+    const repositories = createUserRepositories(runtime.database)
+    const updatedAt = Date.now()
+    setStudyQuestion(DEFAULT_STUDY_QUESTION)
+    setStudyAnswer([...DEFAULT_STUDY_ANSWER])
+    setError(null)
+    setSaving(true)
+    try {
+      await repositories.settings.set({
+        key: STUDY_QUESTION_SETTING,
+        value: DEFAULT_STUDY_QUESTION,
+        updatedAt,
+      })
+      await repositories.settings.set({
+        key: STUDY_ANSWER_SETTING,
+        value: serializeStudyAnswer(DEFAULT_STUDY_ANSWER),
+        updatedAt,
+      })
+    } catch (reason: unknown) {
+      setStudyQuestion(previousQuestion)
+      setStudyAnswer(previousAnswer)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not restore the default study style.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function exportBackup(): Promise<void> {
     if (!runtime) return
     setBackupBusy(true)
@@ -427,6 +463,15 @@ export function SettingsScreen(): React.ReactElement {
             )
           })}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5"
+          disabled={saving}
+          onClick={() => void restoreStudyStyleDefaults()}
+        >
+          Restore study style defaults
+        </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">App icon badge</h2>

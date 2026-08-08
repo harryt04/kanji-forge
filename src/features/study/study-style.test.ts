@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_STUDY_ANSWER,
+  DEFAULT_STUDY_QUESTION,
   parseStudyAnswer,
   serializeStudyAnswer,
 } from './study-style'
 
 describe('study answer settings', () => {
+  it('uses kanji with all answer fields as the study-style default', () => {
+    expect(DEFAULT_STUDY_QUESTION).toBe('kanji')
+    expect(DEFAULT_STUDY_ANSWER).toEqual(['kanji', 'reading', 'meaning'])
+  })
+
   it('defaults to all available answer fields', () => {
     expect(parseStudyAnswer(undefined)).toEqual([...DEFAULT_STUDY_ANSWER])
   })

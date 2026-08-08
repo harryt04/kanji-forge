@@ -51,7 +51,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 2.4 | Word + writing cannot both be the question | ✅ | — | Enforced in the UI |
 | 2.5 | Audio setting ignored for kanji-only decks | ✅ | — | |
 | 2.6 | Writing setting ignored for word-only decks | ✅ | — | |
-| 2.7 | Restore study style to default | ✅ | — | |
+| 2.7 | Restore study style to default | ✅ | 2026-08-07 | Settings restores the kanji question and all answer fields offline |
 | 2.8 | Hide 'Related' answers until tapped | ✅ | — | |
 | 2.9 | Auto-play audio during study | ✅ | — | Device TTS in MVP |
 
