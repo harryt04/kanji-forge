@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addRssFeed,
+  JAPANESE_WIKINEWS_FEED,
   MAX_RSS_FEEDS,
   parseRssFeed,
   parseRssFeeds,
@@ -47,5 +48,14 @@ describe('RSS feed links', () => {
       withFirst,
     )
     expect(removeRssFeed([...withFirst, second], first.url)).toEqual([second])
+  })
+
+  it('provides a safe Japanese Wikinews preset with explicit attribution', () => {
+    expect(
+      parseRssFeed(JAPANESE_WIKINEWS_FEED.label, JAPANESE_WIKINEWS_FEED.url),
+    ).toEqual(JAPANESE_WIKINEWS_FEED)
+    expect(addRssFeed([], JAPANESE_WIKINEWS_FEED)).toEqual([
+      JAPANESE_WIKINEWS_FEED,
+    ])
   })
 })

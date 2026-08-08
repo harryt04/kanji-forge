@@ -110,6 +110,7 @@ import { planProgressTransfer } from './deck-progress'
 import { combineDeckContent } from './deck-combine'
 import {
   addRssFeed,
+  JAPANESE_WIKINEWS_FEED,
   MAX_RSS_FEEDS,
   parseRssFeed,
   parseRssFeeds,
@@ -486,6 +487,18 @@ export function SettingsScreen(): React.ReactElement {
     await saveRssFeeds(nextFeeds)
     setRssLabel('')
     setRssUrl('')
+  }
+
+  async function addJapaneseWikinews(): Promise<void> {
+    if (rssFeeds.some((feed) => feed.url === JAPANESE_WIKINEWS_FEED.url)) {
+      setError('Japanese Wikinews is already saved.')
+      return
+    }
+    if (rssFeeds.length >= MAX_RSS_FEEDS) {
+      setError('You can save up to 12 RSS sources.')
+      return
+    }
+    await saveRssFeeds(addRssFeed(rssFeeds, JAPANESE_WIKINEWS_FEED))
   }
 
   async function removeNewsFeed(url: string): Promise<void> {
@@ -1816,6 +1829,29 @@ export function SettingsScreen(): React.ReactElement {
           KanjiForge stores URLs only: it does not fetch, cache, or reproduce
           feed content.
         </p>
+        <div className="border-border bg-background mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-3 text-sm">
+          <p className="max-w-2xl">
+            Try{' '}
+            <a
+              className="text-primary font-medium underline-offset-4 hover:underline"
+              href="https://ja.wikinews.org/wiki/メインページ"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Japanese Wikinews
+            </a>{' '}
+            — a Japanese, Creative Commons news source. KanjiForge links out to
+            it and does not reproduce its articles.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving || rssFeeds.length >= MAX_RSS_FEEDS}
+            onClick={() => void addJapaneseWikinews()}
+          >
+            Add Japanese Wikinews
+          </Button>
+        </div>
         <form
           className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-end"
           onSubmit={(event) => void addNewsFeed(event)}

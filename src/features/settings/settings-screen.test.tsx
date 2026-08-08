@@ -33,7 +33,7 @@ import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { deckFolderSettingKey } from './deck-folders'
-import { RSS_FEEDS_SETTING } from './rss-feeds'
+import { JAPANESE_WIKINEWS_FEED, RSS_FEEDS_SETTING } from './rss-feeds'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -130,6 +130,31 @@ describe('SettingsScreen', () => {
     expect(
       await screen.findByText('No news sources saved yet.'),
     ).toBeInTheDocument()
+  })
+
+  it('adds the attributed Japanese Wikinews preset from Settings', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add Japanese Wikinews' }),
+    )
+
+    const link = await screen.findByRole('link', {
+      name: JAPANESE_WIKINEWS_FEED.label,
+    })
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          RSS_FEEDS_SETTING,
+        ),
+      ).toMatchObject({
+        value: JSON.stringify([JAPANESE_WIKINEWS_FEED]),
+      }),
+    )
   })
 
   it('restores a saved night preference on a later render', async () => {

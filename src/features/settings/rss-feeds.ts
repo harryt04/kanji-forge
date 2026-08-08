@@ -1,6 +1,12 @@
 export const RSS_FEEDS_SETTING = 'news:rss-feeds'
 export const MAX_RSS_FEEDS = 12
 
+/** A legal, Japanese-language news option that remains link-out only. */
+export const JAPANESE_WIKINEWS_FEED: RssFeed = {
+  label: 'Japanese Wikinews (CC BY 4.0)',
+  url: 'https://ja.wikinews.org/w/index.php?title=%E7%89%B9%E5%88%A5:%E6%9C%80%E8%BF%91%E3%81%AE%E6%9B%B4%E6%96%B0&feed=rss&namespace=0',
+}
+
 export interface RssFeed {
   readonly label: string
   readonly url: string
