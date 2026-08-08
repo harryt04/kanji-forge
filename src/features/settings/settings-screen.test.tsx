@@ -460,6 +460,45 @@ describe('SettingsScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('deletes the Saved deck after confirmation and queues a delete mutation', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    await repositories.decks.upsert({
+      id: 'saved',
+      name: 'Saved',
+      kind: 'saved',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repositories.deckMembership.save({
+      deckId: 'saved',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Delete Saved deck' })
+    await user.click(screen.getByRole('button', { name: 'Delete Saved deck' }))
+
+    await waitFor(async () =>
+      expect(await repositories.decks.get('saved')).toBeUndefined(),
+    )
+    expect(await repositories.deckMembership.list()).toEqual([])
+    expect(
+      await screen.findByText(
+        'Deleted the Saved deck. It will be recreated when you save a card.',
+      ),
+    ).toBeInTheDocument()
+    expect(await repositories.outbox.pending()).toEqual([
+      expect.objectContaining({ mutType: 'deck.delete' }),
+    ])
+    confirm.mockRestore()
+  })
+
   it('resets starter-deck colors without deleting review totals or history', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!

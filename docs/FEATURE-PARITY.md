@@ -111,7 +111,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 |---|---|---|---|---|
 | 6.1 | Deck chooser with progress %, color, last studied | ✅ | 2026-08-06 | |
 | 6.2 | Rename deck | ✅ | 2026-08-07 | Settings renames the built-in starter deck offline and queues its metadata mutation for sync |
-| 6.3 | Delete deck (swipe) | ✅ | — | |
+| 6.3 | Delete deck (swipe) | ✅ | 2026-08-08 | Settings can delete the user-owned Saved deck after confirmation, atomically removing its membership, progress, notes, reviews, sessions, and folder metadata; the built-in starter deck is protected |
 | 6.4 | Create new deck | ✅ | — | |
 | 6.5 | Combine multiple decks into a new deck | ✅ | — | |
 | 6.6 | Take only the first N stickies when combining | ✅ | — | |

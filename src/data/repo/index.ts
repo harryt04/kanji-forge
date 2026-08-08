@@ -83,6 +83,7 @@ export interface OutboxMutation {
     | 'deck.upsert'
     | 'settings.upsert'
     | 'deckMembership.upsert'
+    | 'deck.delete'
     | 'annotation.upsert'
   payload: string
   createdAt: number
@@ -177,6 +178,8 @@ export interface UserRepositories {
   }): Promise<void>
   /** Persists deck metadata and its sync mutation atomically. */
   recordDeck(input: { deck: Deck; mutation: OutboxMutation }): Promise<void>
+  /** Deletes one user-owned deck and all of its local study data atomically. */
+  deleteDeck(input: { deckId: string; mutation: OutboxMutation }): Promise<void>
   /** Persists a manual level assignment without counting it as a study review. */
   recordManualOverride(input: {
     review: Review
@@ -803,6 +806,57 @@ export function createUserRepositories(
             deck.definitionId,
             deck.updatedAt,
           ],
+        },
+        {
+          sql: putOutbox,
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
+    },
+    async deleteDeck({ deckId, mutation }) {
+      if (deckId === 'dev-kanji')
+        throw new Error('The built-in starter deck cannot be deleted.')
+      if (mutation.mutType !== 'deck.delete')
+        throw new Error('Deck deletion must use the deck.delete mutation.')
+      await database.transaction([
+        {
+          sql: 'DELETE FROM outbox WHERE user_id = ? AND payload LIKE ?',
+          parameters: [userId, `%\"deckId\":\"${deckId}\"%`],
+        },
+        {
+          sql: 'DELETE FROM deck_membership WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM card_states WHERE deck_id = ?',
+          parameters: [deckId],
+        },
+        {
+          sql: 'DELETE FROM reviews WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM sessions WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM sticky_annotations WHERE user_id = ? AND deck_id = ?',
+          parameters: [userId, deckId],
+        },
+        {
+          sql: 'DELETE FROM settings WHERE user_id = ? AND key = ?',
+          parameters: [userId, `deck-folder:${deckId}`],
+        },
+        {
+          sql: 'DELETE FROM decks WHERE user_id = ? AND id = ?',
+          parameters: [userId, deckId],
         },
         {
           sql: putOutbox,

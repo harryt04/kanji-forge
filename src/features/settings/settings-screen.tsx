@@ -164,6 +164,7 @@ export function SettingsScreen(): React.ReactElement {
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [deckName, setDeckName] = useState(DEFAULT_STARTER_DECK_NAME)
+  const [savedDeckExists, setSavedDeckExists] = useState(false)
   const [deckFolders, setDeckFolders] = useState<Record<string, string>>({})
   const [deckFolderDrafts, setDeckFolderDrafts] = useState<
     Record<string, string>
@@ -239,6 +240,7 @@ export function SettingsScreen(): React.ReactElement {
         savedSaveBehavior,
         savedBackup,
         savedDeck,
+        savedUserDeck,
         savedFolder,
         savedSavedFolder,
       ] = await Promise.all([
@@ -254,6 +256,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
         repositories.decks.get(STARTER_DECK_ID),
+        repositories.decks.get('saved'),
         repositories.settings.get(deckFolderSettingKey(STARTER_DECK_ID)),
         repositories.settings.get(deckFolderSettingKey('saved')),
       ])
@@ -282,6 +285,7 @@ export function SettingsScreen(): React.ReactElement {
       if (isSaveBehavior(savedSaveBehavior?.value))
         setSaveBehavior(savedSaveBehavior.value)
       setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
+      setSavedDeckExists(savedUserDeck !== undefined)
       const loadedDeckFolders = {
         [STARTER_DECK_ID]: normalizeDeckFolder(savedFolder?.value),
         saved: normalizeDeckFolder(savedSavedFolder?.value),
@@ -726,6 +730,49 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the deck folder.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteSavedDeck(): Promise<void> {
+    if (
+      !runtime ||
+      saving ||
+      !savedDeckExists ||
+      !window.confirm(
+        'Delete the Saved deck? Its cards, progress, notes, and review history will be removed from this device.',
+      )
+    )
+      return
+
+    setSaving(true)
+    setDeckMessage(null)
+    setError(null)
+    try {
+      const now = Date.now()
+      await createUserRepositories(runtime.database).deleteDeck({
+        deckId: 'saved',
+        mutation: {
+          id: crypto.randomUUID(),
+          mutType: 'deck.delete',
+          payload: JSON.stringify({ deckId: 'saved', deletedAt: now }),
+          createdAt: now,
+          attempts: 0,
+        },
+      })
+      setSavedDeckExists(false)
+      setDeckFolders((current) => ({ ...current, saved: '' }))
+      setDeckFolderDrafts((current) => ({ ...current, saved: '' }))
+      setDeckMessage(
+        'Deleted the Saved deck. It will be recreated when you save a card.',
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not delete Saved deck.',
       )
     } finally {
       setSaving(false)
@@ -1767,6 +1814,23 @@ export function SettingsScreen(): React.ReactElement {
             {deckFolderMessage}
           </p>
         )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Delete Saved deck</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Remove the Saved deck and its cards, progress, notes, and review
+          history from this device. The built-in starter deck is not affected;
+          saving a card creates Saved again.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5"
+          disabled={saving || !savedDeckExists}
+          onClick={() => void deleteSavedDeck()}
+        >
+          {savedDeckExists ? 'Delete Saved deck' : 'Saved deck is empty'}
+        </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Reset colors</h2>

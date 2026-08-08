@@ -269,6 +269,121 @@ describe('recordCardState atomicity', () => {
     ])
   })
 
+  it('deletes a user deck and its study data atomically', async () => {
+    const repos = await freshRepo()
+    const deckId = 'saved'
+    const now = 20
+    const savedDeck: Deck = {
+      id: deckId,
+      name: 'Saved',
+      kind: 'saved',
+      definitionId: null,
+      updatedAt: now,
+    }
+    await repos.recordDeckMembership({
+      deck: savedDeck,
+      membership: {
+        deckId: 'saved',
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: now,
+        updatedAt: now,
+      },
+      mutation: {
+        id: 'saved-membership-1',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({ deckId, contentRef: 'kanji:日' }),
+        createdAt: now,
+        attempts: 0,
+      },
+    })
+    const savedReview = review({
+      id: 'saved-review-1',
+      deckId,
+      contentRef: 'kanji:日',
+    })
+    await repos.recordGrade({
+      review: savedReview,
+      nextState: state({ deckId, contentRef: 'kanji:日', level: 2 }),
+      day: '2023-11-14',
+      mutation: {
+        id: savedReview.id,
+        mutType: 'review.append',
+        payload: JSON.stringify(savedReview),
+        createdAt: now,
+        attempts: 0,
+      },
+    })
+    await repos.sessions.start({
+      id: 'saved-session-1',
+      deckId,
+      startedAt: 1,
+      endedAt: 2,
+    })
+    await repos.settings.set({
+      key: 'deck-folder:saved',
+      value: 'Personal',
+      updatedAt: now,
+    })
+    await repos.annotations.upsert(
+      {
+        deckId,
+        contentRef: 'kanji:日',
+        note: 'keep practicing',
+        tags: ['review'],
+        updatedAt: now,
+        updatedBy: 'device-1',
+      },
+      {
+        id: 'saved-annotation-1',
+        mutType: 'annotation.upsert',
+        payload: JSON.stringify({ deckId, contentRef: 'kanji:日' }),
+        createdAt: now,
+        attempts: 0,
+      },
+    )
+
+    await repos.deleteDeck({
+      deckId,
+      mutation: {
+        id: 'saved-delete-1',
+        mutType: 'deck.delete',
+        payload: JSON.stringify({ deckId }),
+        createdAt: now + 1,
+        attempts: 0,
+      },
+    })
+
+    await expect(repos.decks.get(deckId)).resolves.toBeUndefined()
+    await expect(repos.deckMembership.list()).resolves.toEqual([])
+    await expect(repos.cardStates.list(deckId)).resolves.toEqual([])
+    await expect(repos.reviews.list(deckId)).resolves.toEqual([])
+    await expect(repos.sessions.list(deckId)).resolves.toEqual([])
+    await expect(repos.annotations.list()).resolves.toEqual([])
+    await expect(
+      repos.settings.get('deck-folder:saved'),
+    ).resolves.toBeUndefined()
+    await expect(repos.outbox.pending()).resolves.toEqual([
+      expect.objectContaining({ id: 'saved-delete-1', mutType: 'deck.delete' }),
+    ])
+  })
+
+  it('refuses to delete the built-in starter deck', async () => {
+    const repos = await freshRepo()
+    await expect(
+      repos.deleteDeck({
+        deckId: 'dev-kanji',
+        mutation: {
+          id: 'starter-delete-1',
+          mutType: 'deck.delete',
+          payload: JSON.stringify({ deckId: 'dev-kanji' }),
+          createdAt: 1,
+          attempts: 0,
+        },
+      }),
+    ).rejects.toThrow('built-in starter deck cannot be deleted')
+  })
+
   it('persists a manual flag change together with its outbox mutation', async () => {
     const repos = await freshRepo()
     const nextState = state({ flagged: true })
