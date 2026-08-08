@@ -14,6 +14,7 @@ import { Button } from '@/ui/button'
 import {
   parseKanjiImportText,
   previewImport,
+  deduplicateImportEntries,
   type ImportEntry,
   type ImportPreviewItem,
 } from '@/features/settings/deck-import'
@@ -103,14 +104,34 @@ async function resolveSharedDeckEntries(
 }
 
 async function resolveTextImportEntries(
-  entries: readonly ImportEntry[],
+  text: string,
 ): Promise<readonly ImportEntry[]> {
-  const records = await getKanjiByLiterals(entries.map((entry) => entry.label))
-  return entries.map((entry) => ({
+  const kanjiEntries = parseKanjiImportText(text).map((label) => ({
+    label,
+    contentRef: null,
+    kind: 'unknown' as const,
+  }))
+  const records = await getKanjiByLiterals(
+    kanjiEntries.map((entry) => entry.label),
+  )
+  const resolvedKanji = kanjiEntries.map((entry) => ({
     ...entry,
     contentRef: records.has(entry.label) ? `kanji:${entry.label}` : null,
     kind: 'kanji' as const,
   }))
+  const analysis = await analyzeJapaneseText(text)
+  const resolvedWords = analysis.flatMap((token) =>
+    token.type === 'word' && token.contentRef
+      ? [
+          {
+            label: token.text,
+            contentRef: token.contentRef,
+            kind: 'word' as const,
+          },
+        ]
+      : [],
+  )
+  return deduplicateImportEntries([...resolvedWords, ...resolvedKanji])
 }
 
 /** Returns dictionary-backed word tokens that are not already in Saved. */
@@ -199,13 +220,7 @@ export function ShareTargetScreen(): React.ReactElement {
     }
     const importEntries = nextDeck
       ? resolveSharedDeckEntries(nextDeck)
-      : Promise.resolve<readonly ImportEntry[]>(
-          parseKanjiImportText(nextPayload.text).map((label) => ({
-            label,
-            contentRef: null,
-            kind: 'unknown',
-          })),
-        )
+      : resolveTextImportEntries(nextPayload.text)
     if (!runtime) {
       setLoading(false)
       return () => {
@@ -237,12 +252,9 @@ export function ShareTargetScreen(): React.ReactElement {
               .map((membership) => membership.contentRef),
           ),
         )
-        const resolvedEntries = nextDeck
-          ? entries
-          : await resolveTextImportEntries(entries)
         setPreview(
           previewImport(
-            resolvedEntries,
+            entries,
             new Set(
               existing
                 .filter((membership) => membership.deckId === 'saved')
@@ -421,6 +433,9 @@ export function ShareTargetScreen(): React.ReactElement {
       const unknown = preview.filter(
         (item) => item.status === 'not-found',
       ).length
+      const importedWords = matched.filter(
+        (item) => item.kind === 'word',
+      ).length
       setPreview(
         preview.map((item) =>
           item.status === 'matched'
@@ -429,7 +444,7 @@ export function ShareTargetScreen(): React.ReactElement {
         ),
       )
       setMessage(
-        `Added ${sharedDeck ? `${imported} card${imported === 1 ? '' : 's'}` : `${imported} kanji`}${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${sharedDeck || importedWords > 0 ? `${imported} card${imported === 1 ? '' : 's'}` : `${imported} kanji`}${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
@@ -836,7 +851,12 @@ export function ShareTargetScreen(): React.ReactElement {
               ? 'Importing…'
               : sharedDeck
                 ? 'Import shared deck to Saved'
-                : 'Import matched kanji to Saved'}
+                : preview.some(
+                      (item) =>
+                        item.status === 'matched' && item.kind === 'word',
+                    )
+                  ? 'Import matched cards to Saved'
+                  : 'Import matched kanji to Saved'}
           </Button>
         </section>
       )}

@@ -7,6 +7,7 @@ import {
   type ParsedImportTable,
 } from '@/core/import/parse'
 import {
+  deduplicateImportEntries as deduplicateCoreImportEntries,
   previewImport as previewCoreImport,
   type ImportEntry,
   type ImportPreviewItem,
@@ -142,6 +143,13 @@ export function previewImport(
   existingContentRefs: ReadonlySet<string>,
 ): readonly ImportPreviewItem[] {
   return previewCoreImport(entries, existingContentRefs)
+}
+
+/** Removes repeated content identities before a preview or import. */
+export function deduplicateImportEntries(
+  entries: readonly ImportEntry[],
+): readonly ImportEntry[] {
+  return deduplicateCoreImportEntries(entries)
 }
 
 /** Classifies a parsed import without changing local deck membership. */

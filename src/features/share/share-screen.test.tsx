@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bootstrapUserRuntime,
@@ -129,6 +135,42 @@ describe('ShareTargetScreen', () => {
       await screen.findByRole('region', { name: 'Shared text import preview' }),
     ).toHaveTextContent('日')
     expect(screen.getAllByText('matched')).toHaveLength(2)
+  })
+
+  it('previews and imports dictionary-backed words from shared text', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/analyze?text=%E3%81%8A%E9%87%91%E3%82%92',
+    )
+    render(<ShareTargetScreen />)
+
+    const preview = await screen.findByRole('region', {
+      name: 'Shared text import preview',
+    })
+    expect(preview).toHaveTextContent('お金')
+    expect(preview).toHaveTextContent('word')
+    const importButton = within(preview).getByRole('button', {
+      name: 'Import matched cards to Saved',
+    })
+    fireEvent.click(importButton)
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).deckMembership.list('saved'),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            contentRef: expect.stringMatching(/^word:\d+$/u),
+          }),
+        ]),
+      )
+    })
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /Added \d+ cards? to Saved\./u,
+    )
   })
 
   it('analyzes pasted Japanese text with readings and meanings offline', async () => {
