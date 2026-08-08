@@ -23,7 +23,7 @@ This log captures product/architecture choices from the MVP scoping session so t
 | D13 | Dictionary / detail | **Full** PRD depth | |
 | D14 | Tile view | **Full canvas→DOM hybrid** | Phase 0 perf gate |
 | D15 | Platforms | iOS Safari PWA, Android Chrome, desktop | |
-| D16 | Hosting | Maintainer **Coolify**; static client + backend services | No multi-tenant public SaaS requirement |
+| D16 | Hosting | Maintainer **Coolify**; **one app deployable per environment** (UI + `/api/*` in one Next.js server) + a Postgres resource. Superseded the original static-client-plus-separate-backend split, which cost two deployables per environment. Electric is optional; without it sync polls `/api/sync` | No multi-tenant public SaaS requirement, so static-host portability was not worth the extra deployables |
 | D17 | Undo last answer | **In MVP** (in-session) | |
 | D18 | FEATURE-PARITY.md | **Not edited** in scoping | Remains final-vision inventory |
 | — | Rocicorp Zero | **Rejected** | No offline writes |

@@ -5,8 +5,8 @@ import {
   reviews,
   settings,
   stickyAnnotations,
-} from './db/schema.js'
-import { readSyncSnapshot } from './sync.js'
+} from './db/schema'
+import { readSyncSnapshot } from './sync'
 
 describe('sync snapshot projection', () => {
   it('serializes only the sync projections into the client contract', async () => {

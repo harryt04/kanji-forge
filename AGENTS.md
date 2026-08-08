@@ -51,9 +51,9 @@ v2. Custom decks + import/enrichment
 ## Sync stance
 
 - **Local database** is the source of truth for grading (works on a plane).
-- **ElectricSQL** (Coolify) syncs Postgres → clients (read path).
+- **Read path** is the authenticated `/api/sync` snapshot, polled while online. **ElectricSQL** is an optional upgrade to live streaming, off by default (`docs/ARCHITECTURE.md` §10.5).
 - **Write API + outbox** pushes local mutations to Postgres when online.
-- **better-auth**—account required, no anonymous.
+- **better-auth**—account required, no anonymous. It and the write API are route handlers in this same Next.js app (`src/server/` + `src/app/api/`), not a separate service: one deployable per environment.
 - **Rocicorp Zero** is not used (no offline writes).
 - Details: `docs/ARCHITECTURE.md` §10, `docs/TRD.md` D2–D4.
 

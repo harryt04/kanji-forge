@@ -1,12 +1,12 @@
 import { eq } from 'drizzle-orm'
-import { createDatabase } from './db/client.js'
+import { createDatabase } from './db/client'
 import {
   deckMembership,
   decks,
   reviews,
   settings,
   stickyAnnotations,
-} from './db/schema.js'
+} from './db/schema'
 
 export interface SyncReview {
   readonly id: string

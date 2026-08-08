@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readEnv } from './env.js'
+import { readEnv } from './env'
 
 const validEnv = {
   DATABASE_URL: 'postgresql://user:password@localhost:5432/kanjiforge',
@@ -10,8 +10,6 @@ const validEnv = {
 describe('readEnv', () => {
   it('requires the backend secrets and applies safe network defaults', () => {
     expect(readEnv(validEnv)).toMatchObject({
-      API_HOST: '0.0.0.0',
-      API_PORT: 3001,
       ELECTRIC_URL: null,
       ELECTRIC_SECRET: null,
       VAPID_PUBLIC_KEY: null,

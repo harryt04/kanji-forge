@@ -25,7 +25,7 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 
 ### 1.1 Explicit non-choices
 
-- **No SSR, no server components doing data work — with one deliberate exception.** All *study* data is on-device and derived by client-side `replay()`; server components render only the static shell. The exception is accounts and sync: better-auth, the write API, and Electric are a real, mandatory backend. §2's "fully static export" describes the client app only. Backend services are always-required deployables (Coolify — see §10).
+- **No SSR, no server components doing data work — with one deliberate exception.** All *study* data is on-device and derived by client-side `replay()`; server components render only the shell. The exception is accounts and sync: better-auth and the write API are a real, mandatory backend. They run as route handlers inside this same Next.js app (§2), not as a separate service.
 - **No ORM for content packs.** Hand-written SQL over SQLite-WASM. Server Postgres uses Drizzle via better-auth / app migrations.
 - **No heavy component library.** shadcn/ui-style copy-in primitives (`BRAND-DESIGN-LANGUAGE.md`).
 - **No analytics SDK.** See PRD §7.3.
@@ -36,22 +36,29 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 
 ## 2. Next.js configuration
 
-Deploy the **client app** as a **fully static export** (`output: 'export'`) so it can be hosted on GitHub Pages, Cloudflare Pages, Netlify, or a user's own static host, with the backend (better-auth + write API + Electric + Postgres, §10) run as separate, mandatory services the client is configured to talk to. An account is required before study begins — no anonymous mode. Self-hosters run the backend themselves (e.g. via Coolify Electric template + app services).
+Deploy the app as a **single Node server**: one Next.js application that serves the UI *and* its own backend (better-auth + write API + sync) as App Router route handlers under `/api/*`. An account is required before study begins — no anonymous mode.
+
+This replaces the original static-export-plus-separate-backend split. That split existed so the client could sit on any static host, but the only deployment target is the maintainer's Coolify (D16), where it cost two deployables per environment — four across beta and prod. One server per environment is the trade taken instead. Postgres remains a managed database resource, and Electric is optional (§10.5).
+
+What this buys:
+- **Same-origin API.** No CORS layer and no cross-origin cookie configuration; the client calls relative `/api/*` paths.
+- **Runtime configuration.** Backend config is read from the environment at request time, not inlined at build time, so one image serves any environment. Only `NEXT_PUBLIC_*` values are still build-time — and none are required now that the API is same-origin.
 
 Consequences to design around:
-- No API routes in the Next.js app itself. Accounts and sync are handled entirely by the separate server (§10) over its own origin, configured by URL at build/runtime.
-- Dynamic routes need `generateStaticParams` or must be client-routed. **Client-route everything below the shell**: `/study`, `/browse`, `/detail/[id]`, `/dictionary` are all client-side routes over a static shell. Use a single catch-all page with a client router if the App Router's static export fights you on deep links.
+- Route handlers must not touch `process.env` or open a database connection at module scope. Next imports every route module during `next build`, which has no database. Go through the memoised `getServerContext()` in `src/server/context.ts` **inside** the handler.
+- Pages stay client-rendered: no `generateStaticParams`, no server components doing data work. `/study`, `/browse`, `/detail`, `/dictionary` remain client routes over a shell, driven by query params.
 - Content packs are static assets served from `/packs/`, or from a CDN/GitHub Release URL configurable at build time.
 
 ```js
-// next.config.js
+// next.config.js — note: no `output`, so this builds as a server, not a static export
 const nextConfig = {
-  output: 'export',
   images: { unoptimized: true },
   reactStrictMode: true,
   experimental: { optimizePackageImports: ['motion'] },
 };
 ```
+
+Server code lives in `src/server/` (better-auth config, Drizzle schema/client, mutations, sync, push, the Electric proxy) and is exposed by thin route handlers in `src/app/api/`. Migrations live in `drizzle/` and run from `pnpm start` before the server accepts traffic, which is what keeps deployment a single unit.
 
 ---
 
@@ -425,31 +432,34 @@ This matches Electric’s documented pattern of “read-path sync + your existin
 
 ### 10.5 Deployment (Coolify)
 
-Typical services:
+**One application per environment**, plus a database:
 
-1. **Postgres 16** (logical replication / slots as required by the Electric version you deploy).
-2. **Electric** — Coolify template acceptable; point at Postgres; expose shape endpoint behind TLS.
-3. **App API** — better-auth + write routes + any pack URL config (can be Node/Bun service; not the static export).
-4. **Static web** — Next `output: 'export'` artifacts.
+1. **Postgres 16** — a managed Coolify database resource, one per environment. Logical replication settings are only needed if you also deploy Electric.
+2. **The app** — this repo, built by Nixpacks. `pnpm start` runs migrations and then `next start`; it serves the UI and `/api/*` together. Health check: `/api/healthz`.
+3. **Electric** *(optional)* — omitted by default. Without it the client polls the authenticated `/api/sync` snapshot every 15s. Deploy it only if you want live streaming reads; it is the one component that cannot fold into the app, since it is a third-party image.
 
-Illustrative env (names may match your template):
+Environment (set on the app, read at runtime):
 
 ```
-# Postgres
-POSTGRES_DB=kanjiforge
-POSTGRES_USER=kanjiforge
-POSTGRES_PASSWORD=<secret>
 DATABASE_URL=postgres://kanjiforge:<secret>@postgres:5432/kanjiforge
+BETTER_AUTH_SECRET=<32+ char random, unique per environment>
+BETTER_AUTH_URL=https://app.example.com   # this app's own public origin
 
-# better-auth / API
-BETTER_AUTH_SECRET=<32+ char random>
-BETTER_AUTH_URL=https://app.example.com
-# public URLs the static client uses:
-NEXT_PUBLIC_API_URL=https://api.example.com
-NEXT_PUBLIC_ELECTRIC_URL=https://electric.example.com
+# Optional Web Push. A scheduled task then POSTs /api/push/reminders every minute
+# with the x-kanjiforge-push-secret header.
+VAPID_PUBLIC_KEY=…
+VAPID_PRIVATE_KEY=…
+VAPID_SUBJECT=mailto:admin@example.com
+PUSH_CRON_SECRET=<random>
+
+# Optional live sync. Setting these switches /api/electric/shape from 503 to proxying.
+ELECTRIC_URL=http://electric:3000
+ELECTRIC_SECRET=<secret>
 ```
 
-The repo pins the Electric image/version and shape proxy contract in `deploy/` and `apps/api/src/electric.ts`.
+`NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_ELECTRIC_URL` are **not** set in this deployment: the client calls its own origin. They are build-time values, so setting them would bake an origin into the image. `NEXT_PUBLIC_ELECTRIC_URL` remains the client-side gate for the live read path — enabling Electric means a rebuild with it set, whereas the server-side proxy needs only the runtime variables above.
+
+The repo pins the Electric image/version and the shape proxy contract in `deploy/` and `src/server/electric.ts`.
 
 ### 10.6 Backup remains mandatory
 

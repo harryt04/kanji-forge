@@ -15,7 +15,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'json-summary'],
       reportOnFailure: true,
-      include: ['src/**/*.{ts,tsx}', 'apps/api/src/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/prototype/**',
         'src/types/**',

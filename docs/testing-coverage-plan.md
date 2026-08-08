@@ -63,7 +63,7 @@ backend: Partial", all of which were superseded by commits `831840d` and `8475b7
 - **Implemented & tested:** `core/srs` (all 5 modules + types), `data/db` (SQLite-WASM, OPFS,
   migrations, schema v1 / 10 tables), `data/repo` (7 repositories + atomic `recordGrade()`),
   `auth/runtime.ts` (user-scoped isolation, no-anonymous enforcement at 3 entry points),
-  `apps/api` env validation + schema contract, `scripts/build-packs` ETL (6 pack builders + CI
+  `src/server` env validation + schema contract, `scripts/build-packs` ETL (6 pack builders + CI
   pipeline + reproducibility check).
 - **Implemented, untested:** `features/study` (store, screen, deck-loader, adapters),
   `features/home/home-screen.tsx`, `auth/client.ts`, `auth/auth-gate.tsx`, `data/packs/index.ts`,
@@ -83,9 +83,9 @@ coverage) and should be cross-linked from `AGENTS.md`.
 **Files:** `vitest.config.ts`, new `test/setup.ts`, new `test/factories.ts`, `package.json`
 
 1. **Split Vitest into projects by environment.** Today `environment: 'jsdom'` is applied globally,
-   including to `scripts/build-packs/*.test.ts` and `apps/api/src/*.test.ts`, which are Node code.
+   including to `scripts/build-packs/*.test.ts` and `src/server/**/*.test.ts`, which are Node code.
    Use `test.projects` (Vitest 2 API):
-   - `unit-node` → `scripts/**`, `apps/api/**`, `src/core/**` — `environment: 'node'`
+   - `unit-node` → `scripts/**`, `src/server/**`, `src/core/**` — `environment: 'node'`
    - `unit-dom` → `src/{data,features,auth,lib,ui}/**` — `environment: 'jsdom'`
 
    This also enforces the `core/` purity rule at runtime: if `core/` ever reaches for a browser

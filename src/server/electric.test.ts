@@ -3,7 +3,7 @@ import {
   electricRequestHeaders,
   ElectricShapeRequestError,
   prepareElectricShapeUrl,
-} from './electric.js'
+} from './electric'
 
 describe('Electric shape proxy', () => {
   it('pins supported shapes to the authenticated user and preserves cursors', () => {

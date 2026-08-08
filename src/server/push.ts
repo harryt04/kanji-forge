@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import webpush from 'web-push'
-import { createDatabase } from './db/client.js'
-import { pushSubscriptions, settings } from './db/schema.js'
+import { createDatabase } from './db/client'
+import { pushSubscriptions, settings } from './db/schema'
 
 export const DAILY_REMINDER_ENABLED_SETTING =
   'notifications.daily-reminder.enabled'

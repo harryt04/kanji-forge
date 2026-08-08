@@ -8,7 +8,7 @@ export default defineWorkspace([
       environment: 'node',
       include: [
         'scripts/**/*.test.{ts,mts,mjs}',
-        'apps/api/**/*.test.ts',
+        'src/server/**/*.test.ts',
         'src/core/**/*.test.ts',
       ],
       // build-decks.test.ts asserts against packs/*.sqlite, which are

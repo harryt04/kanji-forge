@@ -3,7 +3,7 @@ import {
   MutationValidationError,
   parseMutationBatch,
   validateMutation,
-} from './mutations.js'
+} from './mutations'
 
 const review = {
   id: 'review-1',

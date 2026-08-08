@@ -8,7 +8,7 @@ const migration = [
   '0002_sticky_annotations.sql',
 ]
   .map((file) =>
-    readFileSync(resolve(import.meta.dirname, `../drizzle/${file}`), 'utf8'),
+    readFileSync(resolve(import.meta.dirname, `../../drizzle/${file}`), 'utf8'),
   )
   .join('\n')
 

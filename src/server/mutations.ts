@@ -1,12 +1,12 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { createDatabase } from './db/client.js'
+import { createDatabase } from './db/client'
 import {
   deckMembership,
   decks,
   reviews,
   settings,
   stickyAnnotations,
-} from './db/schema.js'
+} from './db/schema'
 
 export const MUTATION_TYPES = [
   'review.append',

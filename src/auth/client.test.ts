@@ -103,7 +103,8 @@ describe('auth client', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () => new Response('<!DOCTYPE html><html></html>', { status: 200 }),
+        async () =>
+          new Response('<!DOCTYPE html><html></html>', { status: 200 }),
       ),
     )
     const { getSession } = await importClient()

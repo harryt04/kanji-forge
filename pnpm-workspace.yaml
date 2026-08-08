@@ -1,5 +1,6 @@
-packages:
-  - 'apps/*'
+# No workspace packages: the API used to live in apps/api and now ships inside the root
+# Next.js app (src/server). The file stays for the settings below.
+packages: []
 
 allowBuilds:
   better-sqlite3: true

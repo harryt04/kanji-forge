@@ -3,7 +3,7 @@ import {
   isReminderMinute,
   isValidPushSubscription,
   reminderPayload,
-} from './push.js'
+} from './push'
 
 describe('background push reminders', () => {
   it('validates browser subscriptions without trusting arbitrary endpoints', () => {

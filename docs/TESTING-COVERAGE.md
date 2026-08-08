@@ -38,7 +38,7 @@ any directory gate above):
 
 | Area | Coverage | Why |
 |---|---|---|
-| `apps/api/src/{auth,index}.ts`, `apps/api/src/db/**` | 0% | Server-side backend; not exercised by the frontend unit suite. |
+| `src/server/{auth,index}.ts`, `src/server/db/**` | 0% | Server-side backend; not exercised by the frontend unit suite. |
 | `src/auth/auth-gate.tsx` | 0% | UI shell; not one of the component-test targets. |
 | `src/app/layout.tsx` | 0% | Route shell, excluded by convention (`src/app/**/page.tsx` is excluded outright; `layout.tsx` is just never imported by a test). |
 | `src/lib/store.ts` | 0% | Legacy/unused file, not referenced by `testing-coverage-plan.md`. |
@@ -209,7 +209,7 @@ that these preferences load offline and that tap-to-reveal glosses remain hidden
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic mixed-card URL and readable share-file payloads, omission of SRS progress, legacy version-1 compatibility, dictionary-word round-tripping, and malformed/empty payload rejection.
 
-**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`apps/api/src/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
+**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`src/server/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 
 ### `src/pwa` — 10 cases
 
@@ -230,7 +230,7 @@ that these preferences load offline and that tap-to-reveal glosses remain hidden
 **`device-id.test.ts`** (new) — stability across calls, localStorage persistence, reuse of an
 existing id, safe `'server'` placeholder without `window`, generation via `crypto.randomUUID()`.
 
-### `apps/api` — 10 cases across 5 files
+### `src/server` — 10 cases across 5 files
 
 `mutations.test.ts` covers complete review, metadata, and sticky-annotation mutation validation, removal of
 body-supplied user identity, review/mutation id matching, supported-type handling, and the

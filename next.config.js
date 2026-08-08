@@ -2,7 +2,9 @@ import withSerwistInit from '@serwist/next'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Not a static export: this app also serves its own API under /api/* (better-auth, the
+  // write API, sync), so it ships as one Node server — a single Coolify deployable per
+  // environment. See docs/ARCHITECTURE.md §2.
   images: { unoptimized: true },
   reactStrictMode: true,
   experimental: { optimizePackageImports: ['motion'] },

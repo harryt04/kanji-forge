@@ -1,10 +1,14 @@
 name: kanjiforge
 
+# Local dependencies for the app. The app itself is not here: it runs from the repo root
+# with `pnpm dev` (or `pnpm build && pnpm start`) and serves its own API under /api/*.
 services:
   postgres:
     image: postgres:16.10-alpine
     restart: unless-stopped
     env_file: ${KANJIFORGE_ENV_FILE:-.env}
+    # The logical-replication flags are only needed by the optional Electric service
+    # below; they are harmless otherwise, so the volume stays compatible either way.
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -16,23 +20,11 @@ services:
       timeout: 5s
       retries: 20
 
-  api:
-    build:
-      context: ../apps/api
-    restart: unless-stopped
-    env_file: ${KANJIFORGE_ENV_FILE:-.env}
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      API_HOST: 0.0.0.0
-      API_PORT: 3001
-      ELECTRIC_URL: http://electric:3000
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:3001:3001"
-
+  # Optional. Sync works without it: the client polls the authenticated /api/sync
+  # snapshot instead. Start it with `--profile electric` and set ELECTRIC_URL and
+  # ELECTRIC_SECRET on the app to switch the live read path on.
   electric:
+    profiles: ["electric"]
     # Pinned to Electric 1.7.8; update deliberately after the shape-auth spike.
     image: electricsql/electric:1.7.8
     restart: unless-stopped
