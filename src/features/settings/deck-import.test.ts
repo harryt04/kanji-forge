@@ -109,6 +109,25 @@ describe('parseJsonKanjiImport', () => {
     ).toEqual(['日', '本'])
   })
 
+  it('extracts dictionary-word labels from a mixed version-2 share file', () => {
+    expect(
+      parseJsonKanjiImport(
+        JSON.stringify({
+          format: 'kanjiforge-deck-share',
+          version: 2,
+          name: 'Travel words',
+          cards: [
+            {
+              contentRef: 'word:1001820',
+              kind: 'word',
+              label: 'お金',
+            },
+          ],
+        }),
+      ),
+    ).toEqual(['お金'])
+  })
+
   it('rejects malformed and unsupported deck JSON', () => {
     expect(() => parseJsonKanjiImport('{')).toThrow('not valid JSON')
     expect(() => parseJsonKanjiImport('{}')).toThrow('must be a KanjiForge')

@@ -89,4 +89,49 @@ describe('deck sharing', () => {
       ),
     ).toThrow(/no kanji/u)
   })
+
+  it('round-trips dictionary-word cards without study progress', () => {
+    const parsed = parseDeckSharePayload(formatDeckSharePayload(deckWithWord()))
+    expect(parsed.cards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentRef: 'word:1',
+          kind: 'word',
+          label: '日本',
+        }),
+      ]),
+    )
+    expect(formatDeckSharePayload(deckWithWord())).not.toContain('totalReviews')
+  })
 })
+
+function deckWithWord(): LoadedDeck {
+  const base = deck()
+  return {
+    ...base,
+    cards: [
+      ...base.cards,
+      { deckId: base.deckId, contentRef: 'word:1', state: undefined },
+    ],
+    content: new Map([
+      ...base.content,
+      [
+        'word:1',
+        {
+          contentRef: 'word:1',
+          contentType: 'word',
+          literal: '日本',
+          readings: ['にほん'],
+          strokeCount: 0,
+          frequency: 1,
+          jlptLegacy: null,
+          grade: null,
+          nanori: [],
+          meanings: ['Japan'],
+          onReadings: [],
+          kunReadings: [],
+        },
+      ],
+    ]),
+  }
+}

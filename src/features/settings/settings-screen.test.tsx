@@ -933,6 +933,7 @@ describe('SettingsScreen', () => {
     expect(payload).not.toBeNull()
     expect(JSON.parse(payload!)).toMatchObject({
       name: 'Travel set',
+      version: 1,
       kanji: ['日'],
     })
   })

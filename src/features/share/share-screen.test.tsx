@@ -307,7 +307,42 @@ describe('ShareTargetScreen', () => {
       ).toHaveLength(2)
     })
     expect(await screen.findByRole('status')).toHaveTextContent(
-      'Added 2 kanji from “Travel kanji” to Saved.',
+      'Added 2 cards from “Travel kanji” to Saved.',
     )
+  })
+
+  it('previews and imports dictionary-word cards from a mixed shared deck', async () => {
+    const payload = encodeURIComponent(
+      JSON.stringify({
+        format: 'kanjiforge-deck-share',
+        version: 2,
+        name: 'Travel words',
+        cards: [
+          {
+            contentRef: 'word:1001820',
+            kind: 'word',
+            label: 'お金',
+            readings: ['おかね'],
+            meanings: ['money'],
+          },
+        ],
+      }),
+    )
+    window.history.replaceState({}, '', `/analyze?deck=${payload}`)
+    render(<ShareTargetScreen />)
+
+    expect(await screen.findByText('お金')).toBeInTheDocument()
+    expect(screen.getByText('word')).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import shared deck to Saved' }),
+    )
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).deckMembership.list('saved'),
+      ).toEqual([expect.objectContaining({ contentRef: 'word:1001820' })])
+    })
   })
 })

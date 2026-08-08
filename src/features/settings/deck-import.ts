@@ -155,8 +155,12 @@ export function parseJsonKanjiImport(input: string): readonly string[] {
   if (!isRecord(value)) {
     throw new Error('JSON import must be a KanjiForge deck export.')
   }
-  if (value.format === 'kanjiforge-deck-share')
-    return parseDeckSharePayload(input).kanji
+  if (value.format === 'kanjiforge-deck-share') {
+    const payload = parseDeckSharePayload(input)
+    return payload.cards
+      ? payload.cards.map((card) => card.label)
+      : payload.kanji
+  }
   if (value.format !== 'kanjiforge-deck-export') {
     throw new Error('JSON import must be a KanjiForge deck export.')
   }

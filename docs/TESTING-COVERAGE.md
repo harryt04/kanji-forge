@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 65 (445 test cases: 445 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 133 cases, included above) |
+| Unit/integration test files | 67 (462 test cases: 462 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 134 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.51%** |
+| Overall statement coverage | **85.51%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -194,10 +194,10 @@ promotion, and pinned-search toggling.
 
 **`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, equivalent question/reading cards with different dictionary ids, identity normalization, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
-### `src/features/share` — 11 cases
+### `src/features/share` — 12 cases
 
 **`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
-It also covers validating a content-only deck URL, previewing the shared deck name, and importing its matched cards.
+It also covers validating a legacy content-only deck URL, previewing the shared deck name, importing its matched cards, and importing a mixed version-2 deck containing a dictionary-word card.
 The Settings component coverage also selects and shares a locally owned custom deck, confirming the generated payload uses that deck's name and content.
 
 **`analyzer-settings.test.ts`** covers persisted furigana, rōmaji, and inline/on-tap gloss
@@ -207,7 +207,7 @@ verb-form recognition in addition to the existing polite, negative, conditional,
 forms. The share-screen suite verifies
 that these preferences load offline and that tap-to-reveal glosses remain hidden until requested.
 
-**`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL and readable share-file payloads, omission of SRS progress, and malformed/empty payload rejection.
+**`src/features/settings/deck-share.test.ts`** covers deterministic mixed-card URL and readable share-file payloads, omission of SRS progress, legacy version-1 compatibility, dictionary-word round-tripping, and malformed/empty payload rejection.
 
 **`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`apps/api/src/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 

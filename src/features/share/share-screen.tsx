@@ -6,16 +6,19 @@ import { getActiveUserRuntime } from '@/auth/runtime'
 import {
   analyzeJapaneseText,
   getKanjiByLiterals,
+  getWordById,
   type TextAnalysisToken,
 } from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import {
   parseKanjiImportText,
-  previewKanjiImport,
-  type KanjiImportPreviewItem,
+  previewImport,
+  type ImportEntry,
+  type ImportPreviewItem,
 } from '@/features/settings/deck-import'
 import {
+  cardsFromDeckSharePayload,
   parseDeckSharePayload,
   type DeckSharePayload,
 } from '@/features/settings/deck-share'
@@ -62,6 +65,48 @@ export function readSharedDeckPayload(search: string): DeckSharePayload | null {
   return raw ? parseDeckSharePayload(raw) : null
 }
 
+async function resolveSharedDeckEntries(
+  deck: DeckSharePayload,
+): Promise<readonly ImportEntry[]> {
+  const cards = cardsFromDeckSharePayload(deck)
+  const kanji = await getKanjiByLiterals(
+    cards.filter((card) => card.kind === 'kanji').map((card) => card.label),
+  )
+  const words = await Promise.all(
+    cards.map(async (card) => {
+      if (card.kind !== 'word') return null
+      const id = Number(card.contentRef.slice('word:'.length))
+      return [card.contentRef, await getWordById(id)] as const
+    }),
+  )
+  const wordByRef = new Map(
+    words.flatMap((entry) => (entry?.[1] ? [entry] : [])),
+  )
+  return cards.map((card) => ({
+    label: card.label,
+    contentRef:
+      card.kind === 'kanji'
+        ? kanji.has(card.label)
+          ? card.contentRef
+          : null
+        : wordByRef.has(card.contentRef)
+          ? card.contentRef
+          : null,
+    kind: card.kind,
+  }))
+}
+
+async function resolveTextImportEntries(
+  entries: readonly ImportEntry[],
+): Promise<readonly ImportEntry[]> {
+  const records = await getKanjiByLiterals(entries.map((entry) => entry.label))
+  return entries.map((entry) => ({
+    ...entry,
+    contentRef: records.has(entry.label) ? `kanji:${entry.label}` : null,
+    kind: 'kanji' as const,
+  }))
+}
+
 /** Returns dictionary-backed word tokens that are not already in Saved. */
 export function getUnsavedAnalysisWords(
   analysis: readonly TextAnalysisToken[],
@@ -89,9 +134,9 @@ export function ShareTargetScreen(): React.ReactElement {
     url: null,
   })
   const [sharedDeck, setSharedDeck] = useState<DeckSharePayload | null>(null)
-  const [preview, setPreview] = useState<
-    readonly KanjiImportPreviewItem[] | null
-  >(null)
+  const [preview, setPreview] = useState<readonly ImportPreviewItem[] | null>(
+    null,
+  )
   const [draftText, setDraftText] = useState('')
   const [analysis, setAnalysis] = useState<readonly TextAnalysisToken[] | null>(
     null,
@@ -144,7 +189,15 @@ export function ShareTargetScreen(): React.ReactElement {
             )
         })
     }
-    const literals = nextDeck?.kanji ?? parseKanjiImportText(nextPayload.text)
+    const importEntries = nextDeck
+      ? resolveSharedDeckEntries(nextDeck)
+      : Promise.resolve<readonly ImportEntry[]>(
+          parseKanjiImportText(nextPayload.text).map((label) => ({
+            label,
+            contentRef: null,
+            kind: 'unknown',
+          })),
+        )
     if (!runtime) {
       setLoading(false)
       return () => {
@@ -156,10 +209,10 @@ export function ShareTargetScreen(): React.ReactElement {
       try {
         await runtime.database.ready
         const repositories = createUserRepositories(runtime.database)
-        const [records, existing, savedDisplaySettings] = await Promise.all([
-          getKanjiByLiterals(literals),
+        const [existing, savedDisplaySettings, entries] = await Promise.all([
           repositories.deckMembership.list(),
           repositories.settings.get(ANALYZER_DISPLAY_SETTING),
+          importEntries,
         ])
         if (!active) return
         setDisplaySettings(
@@ -172,11 +225,17 @@ export function ShareTargetScreen(): React.ReactElement {
               .map((membership) => membership.contentRef),
           ),
         )
+        const resolvedEntries = nextDeck
+          ? entries
+          : await resolveTextImportEntries(entries)
         setPreview(
-          previewKanjiImport(
-            literals,
-            records,
-            new Set(existing.map((membership) => membership.contentRef)),
+          previewImport(
+            resolvedEntries,
+            new Set(
+              existing
+                .filter((membership) => membership.deckId === 'saved')
+                .map((membership) => membership.contentRef),
+            ),
           ),
         )
       } catch (reason: unknown) {
@@ -242,11 +301,11 @@ export function ShareTargetScreen(): React.ReactElement {
     })
   }
 
-  async function importMatchedKanji(): Promise<void> {
+  async function importMatchedDeckCards(): Promise<void> {
     if (!runtime || !preview || importing) return
     const matched = preview.filter((item) => item.status === 'matched')
     if (matched.length === 0) {
-      setMessage('There are no new matched kanji to add.')
+      setMessage('There are no new matched cards to add.')
       return
     }
 
@@ -256,10 +315,7 @@ export function ShareTargetScreen(): React.ReactElement {
     try {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const records = await getKanjiByLiterals(
-        preview.map((item) => item.literal),
-      )
-      const existing = await repositories.deckMembership.list()
+      const existing = await repositories.deckMembership.list('saved')
       const existingRefs = new Set(
         existing.map((membership) => membership.contentRef),
       )
@@ -267,12 +323,11 @@ export function ShareTargetScreen(): React.ReactElement {
       let sortOrder = existing.length
       let imported = 0
 
-      for (const { literal } of matched) {
-        const contentRef = `kanji:${literal}`
-        if (!records.has(literal) || existingRefs.has(contentRef)) continue
+      for (const item of matched) {
+        if (!item.contentRef || existingRefs.has(item.contentRef)) continue
         const membership = {
           deckId: 'saved' as const,
-          contentRef,
+          contentRef: item.contentRef,
           sortOrder,
           addedAt: now,
           updatedAt: now,
@@ -294,7 +349,7 @@ export function ShareTargetScreen(): React.ReactElement {
             attempts: 0,
           },
         })
-        existingRefs.add(contentRef)
+        existingRefs.add(item.contentRef)
         sortOrder += 1
         imported += 1
       }
@@ -313,11 +368,11 @@ export function ShareTargetScreen(): React.ReactElement {
         ),
       )
       setMessage(
-        `Added ${imported} kanji${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${sharedDeck ? `${imported} card${imported === 1 ? '' : 's'}` : `${imported} kanji`}${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
-        reason instanceof Error ? reason.message : 'Could not import kanji.',
+        reason instanceof Error ? reason.message : 'Could not import cards.',
       )
     } finally {
       setImporting(false)
@@ -408,7 +463,7 @@ export function ShareTargetScreen(): React.ReactElement {
       </h1>
       <p className="text-muted-foreground mt-3">
         {sharedDeck
-          ? `Review “${sharedDeck.name}” and add its dictionary-backed kanji to Saved without changing study progress.`
+          ? `Review “${sharedDeck.name}” and add its dictionary-backed kanji and word cards to Saved without changing study progress.`
           : 'KanjiForge found dictionary-backed kanji offline. Review the preview, then add new cards to Saved without changing study progress.'}
       </p>
       {(payload.title || payload.url) && (
@@ -637,7 +692,7 @@ export function ShareTargetScreen(): React.ReactElement {
       )}
       {!loading && preview && preview.length === 0 && (
         <p className="text-muted-foreground mt-5" role="status">
-          No kanji were found in the shared text.
+          No importable cards were found in the shared content.
         </p>
       )}
       {preview && preview.length > 0 && (
@@ -656,9 +711,12 @@ export function ShareTargetScreen(): React.ReactElement {
             {preview.map((item) => (
               <li
                 className="border-border bg-card rounded-md border p-3"
-                key={item.literal}
+                key={`${item.contentRef ?? item.label}-${item.kind}`}
               >
-                <span className="font-jp-ui text-xl">{item.literal}</span>{' '}
+                <span className="font-jp-ui text-xl">{item.label}</span>{' '}
+                <span className="text-muted-foreground text-xs uppercase">
+                  {item.kind}
+                </span>{' '}
                 <span className="text-muted-foreground text-sm">
                   {item.status === 'matched'
                     ? 'matched'
@@ -674,7 +732,7 @@ export function ShareTargetScreen(): React.ReactElement {
             disabled={
               importing || !preview.some((item) => item.status === 'matched')
             }
-            onClick={() => void importMatchedKanji()}
+            onClick={() => void importMatchedDeckCards()}
           >
             {importing
               ? 'Importing…'
