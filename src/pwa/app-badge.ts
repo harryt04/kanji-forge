@@ -46,6 +46,32 @@ type AppBadgeNavigator = Omit<Navigator, 'clearAppBadge' | 'setAppBadge'> & {
   clearAppBadge?: () => Promise<void>
 }
 
+const BADGE_ICON_BACKGROUND = '#f7f4ec'
+const BADGE_ICON_FOREGROUND = '#27231f'
+const BADGE_ICON_ACCENT = '#c87842'
+
+function getFaviconLink(): HTMLLinkElement | null {
+  if (typeof document === 'undefined') return null
+  return document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+}
+
+/** Creates a small, self-contained favicon badge for browsers without Badging API. */
+export function createBrowserBadgeIconDataUrl(count: number): string {
+  const label = count > 99 ? '99+' : String(Math.max(0, count))
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="32" fill="${BADGE_ICON_BACKGROUND}"/><text x="78" y="119" fill="${BADGE_ICON_FOREGROUND}" font-family="serif" font-size="92" text-anchor="middle">鍛</text><circle cx="151" cy="43" r="36" fill="${BADGE_ICON_ACCENT}"/><text x="151" y="52" fill="${BADGE_ICON_BACKGROUND}" font-family="sans-serif" font-size="28" font-weight="700" text-anchor="middle">${label}</text></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+function updateBrowserBadgeIcon(
+  link: HTMLLinkElement | null,
+  originalHref: string | null,
+  count: number,
+): void {
+  if (!link) return
+  link.href =
+    count > 0 ? createBrowserBadgeIconDataUrl(count) : (originalHref ?? '')
+}
+
 function getAppBadgeNavigator(): AppBadgeNavigator | undefined {
   if (typeof navigator === 'undefined') return undefined
   const candidate = navigator as AppBadgeNavigator
@@ -55,6 +81,8 @@ function getAppBadgeNavigator(): AppBadgeNavigator | undefined {
 async function updateAppBadge(
   userId: string,
   fallbackTitle: string,
+  faviconLink: HTMLLinkElement | null,
+  originalFaviconHref: string | null,
 ): Promise<void> {
   const badgeNavigator = getAppBadgeNavigator()
 
@@ -72,10 +100,12 @@ async function updateAppBadge(
 
   if (!badgeNavigator) {
     document.title = count > 0 ? `${fallbackTitle} (${count})` : fallbackTitle
+    updateBrowserBadgeIcon(faviconLink, originalFaviconHref, count)
     return
   }
 
   document.title = fallbackTitle
+  updateBrowserBadgeIcon(faviconLink, originalFaviconHref, 0)
   if (count === 0) {
     if (typeof badgeNavigator.clearAppBadge === 'function') {
       await badgeNavigator.clearAppBadge()
@@ -94,9 +124,16 @@ export function AppBadgeController({
   useEffect(() => {
     let active = true
     const fallbackTitle = document.title || 'KanjiForge'
+    const faviconLink = getFaviconLink()
+    const originalFaviconHref = faviconLink?.href ?? null
 
     const refresh = (): void => {
-      void updateAppBadge(userId, fallbackTitle).catch(() => {
+      void updateAppBadge(
+        userId,
+        fallbackTitle,
+        faviconLink,
+        originalFaviconHref,
+      ).catch(() => {
         // A missing pack or rejected platform badge must never affect study.
       })
     }
@@ -127,6 +164,7 @@ export function AppBadgeController({
       document.removeEventListener('visibilitychange', onVisibilityChange)
       void getAppBadgeNavigator()?.clearAppBadge?.()
       document.title = fallbackTitle
+      updateBrowserBadgeIcon(faviconLink, originalFaviconHref, 0)
     }
   }, [userId])
 

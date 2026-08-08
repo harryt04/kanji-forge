@@ -6,6 +6,7 @@ import {
   APP_BADGE_STATE_CHANGED_EVENT,
   AppBadgeController,
   APP_BADGE_SETTING,
+  createBrowserBadgeIconDataUrl,
   countAppBadgeCards,
 } from './app-badge'
 
@@ -25,6 +26,10 @@ describe('app icon badges', () => {
 
   beforeEach(() => {
     document.title = 'KanjiForge'
+    const favicon = document.createElement('link')
+    favicon.rel = 'icon'
+    favicon.href = 'original-icon.svg'
+    document.head.append(favicon)
     Object.defineProperty(navigator, 'setAppBadge', {
       configurable: true,
       value: vi.fn(async () => undefined),
@@ -39,6 +44,7 @@ describe('app icon badges', () => {
     clearUserRuntime()
     vi.restoreAllMocks()
     document.title = 'KanjiForge'
+    document.head.querySelector('link[rel="icon"]')?.remove()
     delete (navigator as Navigator & { setAppBadge?: unknown }).setAppBadge
     delete (navigator as Navigator & { clearAppBadge?: unknown }).clearAppBadge
   })
@@ -94,7 +100,12 @@ describe('app icon badges', () => {
     })
 
     const { unmount } = render(<AppBadgeController userId={userId} />)
-    await waitFor(() => expect(document.title).toBe('KanjiForge (4)'))
+    await waitFor(() => {
+      expect(document.title).toBe('KanjiForge (4)')
+      expect(
+        document.head.querySelector('link[rel="icon"]')?.getAttribute('href'),
+      ).toBe(createBrowserBadgeIconDataUrl(4))
+    })
 
     await createUserRepositories(runtime.database).settings.set({
       key: APP_BADGE_SETTING,
@@ -102,7 +113,12 @@ describe('app icon badges', () => {
       updatedAt: Date.now(),
     })
     window.dispatchEvent(new Event('kanjiforge:app-badge-setting-changed'))
-    await waitFor(() => expect(document.title).toBe('KanjiForge'))
+    await waitFor(() => {
+      expect(document.title).toBe('KanjiForge')
+      expect(
+        document.head.querySelector('link[rel="icon"]')?.getAttribute('href'),
+      ).toBe(new URL('original-icon.svg', window.location.href).href)
+    })
     unmount()
   })
 })
