@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   getAudioPackFile,
   getAudioPackRecording,
+  countAudioPackRecordings,
   installAudioPack,
   listAudioPacks,
   parseAudioPackArchive,
@@ -59,6 +60,7 @@ describe('community audio packs', () => {
   it('extracts recordings from a ZIP and fails when a declared file is absent', () => {
     const pack = parseAudioPackArchive(archive())
     expect(pack.manifest.name).toBe('Community voice')
+    expect(countAudioPackRecordings(pack.manifest)).toBe(1)
     expect(pack.files['日|ひ']).toEqual(new Uint8Array([1, 2, 3]))
 
     const missing = zipSync({

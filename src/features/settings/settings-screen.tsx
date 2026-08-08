@@ -15,6 +15,7 @@ import { getDeviceId } from '@/lib/device-id'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
+  countAudioPackRecordings,
   installAudioPack,
   listAudioPacks,
   removeAudioPack,
@@ -2766,6 +2767,12 @@ export function SettingsScreen(): React.ReactElement {
                   </span>
                   <span className="text-muted-foreground block">
                     {pack.license} · {pack.attribution}
+                  </span>
+                  <span className="text-muted-foreground block">
+                    {countAudioPackRecordings(pack)}{' '}
+                    {countAudioPackRecordings(pack) === 1
+                      ? 'recording'
+                      : 'recordings'}
                   </span>
                 </span>
                 <Button

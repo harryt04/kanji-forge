@@ -21,6 +21,11 @@ export interface InstalledAudioRecording {
   readonly bytes: Uint8Array
 }
 
+/** Returns the number of writing/reading recordings declared by a pack. */
+export function countAudioPackRecordings(pack: AudioPackManifest): number {
+  return Object.keys(pack.files).length
+}
+
 const AUDIO_PACK_DB = 'kanjiforge-audio-packs-v1'
 const AUDIO_PACK_STORE = 'packs'
 const memoryPacks = new Map<string, InstalledAudioPack>()
