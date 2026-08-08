@@ -122,4 +122,64 @@ describe('WritingScreen', () => {
       ).toMatchObject({ value: 'false' }),
     )
   })
+
+  it('runs a standalone writing drill for a chosen number of repetitions', async () => {
+    bootstrapUserRuntime('writing-drill-user')
+    const user = userEvent.setup()
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Check stroke order' }),
+    )
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Repetitions' }), {
+      target: { value: '2' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Start drill' }))
+    expect(screen.getByText('Repetition 1 of 2')).toBeInTheDocument()
+
+    const drawAllStrokes = (): void => {
+      for (let index = 0; index < 4; index += 1) {
+        const pointerId = index + 10
+        fireEvent.pointerDown(surface, {
+          pointerId,
+          clientX: 20,
+          clientY: 20,
+        })
+        fireEvent.pointerMove(surface, {
+          pointerId,
+          clientX: 70,
+          clientY: 70,
+        })
+        fireEvent.pointerUp(surface, {
+          pointerId,
+          clientX: 80,
+          clientY: 80,
+        })
+      }
+    }
+
+    drawAllStrokes()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Next repetition' }),
+      ).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'Next repetition' }))
+    expect(screen.getByText('Repetition 2 of 2')).toBeInTheDocument()
+    expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
+
+    drawAllStrokes()
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Finish drill' }),
+      ).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'Finish drill' }))
+    expect(
+      screen.getByText('Drill complete — 2 repetitions finished.'),
+    ).toBeInTheDocument()
+  })
 })

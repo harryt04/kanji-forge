@@ -103,7 +103,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Hint escalation after repeated failures | ➕ ✅ | — | (T6.0) |
 | — | Leniency setting | ➕ ✅ | — | Accessibility (T6.0) |
 | — | Alternate-stroke-order exceptions table | ➕ ✅ | — | ARCHITECTURE §8 (T6.0) |
-| — | Standalone drill mode | ➕ 🔷 | — | |
+| — | Standalone drill mode | ➕ 🔷 | 2026-08-07 | Detail-linked offline writing practice can run a selected kanji for 1–10 repetitions without changing study progress |
 
 ## 6. Decks
 

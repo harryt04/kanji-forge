@@ -65,6 +65,9 @@ export function WritingScreen(): React.ReactElement {
   const [validationEnabled, setValidationEnabled] = useState(true)
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [drillRepetitions, setDrillRepetitions] = useState(3)
+  const [drillAttempt, setDrillAttempt] = useState(0)
+  const [drillComplete, setDrillComplete] = useState(false)
   const surfaceRef = useRef<SVGSVGElement>(null)
   const activePointerId = useRef<number | null>(null)
   const draftStrokeRef = useRef<readonly Point[]>([])
@@ -175,6 +178,30 @@ export function WritingScreen(): React.ReactElement {
     setFeedback(null)
   }
 
+  function startDrill(): void {
+    const repetitions = Math.min(10, Math.max(1, drillRepetitions))
+    setDrillRepetitions(repetitions)
+    setDrillAttempt(1)
+    setDrillComplete(false)
+    clearStrokes()
+  }
+
+  function exitDrill(): void {
+    setDrillAttempt(0)
+    setDrillComplete(false)
+    clearStrokes()
+  }
+
+  function finishDrillRepetition(): void {
+    if (!paths || capturedStrokes.length < paths.length) return
+    if (drillAttempt >= drillRepetitions) {
+      setDrillComplete(true)
+      return
+    }
+    clearStrokes()
+    setDrillAttempt((current) => current + 1)
+  }
+
   function undoStroke(): void {
     setCapturedStrokes((current) => current.slice(0, -1))
     setFailedAttempts(0)
@@ -213,6 +240,10 @@ export function WritingScreen(): React.ReactElement {
     )
   }
 
+  const drillActive = drillAttempt > 0 && !drillComplete
+  const repetitionComplete =
+    Boolean(paths) && capturedStrokes.length >= (paths?.length ?? 0)
+
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -234,6 +265,74 @@ export function WritingScreen(): React.ReactElement {
           clear them.
         </p>
       </header>
+
+      <section
+        className="border-border bg-card mt-6 grid gap-3 rounded-xl border p-4"
+        aria-labelledby="standalone-drill-heading"
+      >
+        <div>
+          <h2 id="standalone-drill-heading" className="font-semibold">
+            Standalone drill
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Practice this kanji repeatedly without changing your study progress.
+          </p>
+        </div>
+        {!drillActive && !drillComplete && (
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1 text-sm" htmlFor="drill-repetitions">
+              <span className="font-medium">Repetitions</span>
+              <input
+                id="drill-repetitions"
+                className="border-input bg-background h-10 w-24 rounded-md border px-3"
+                type="number"
+                min={1}
+                max={10}
+                value={drillRepetitions}
+                onChange={(event) =>
+                  setDrillRepetitions(
+                    Math.min(10, Math.max(1, Number(event.target.value) || 1)),
+                  )
+                }
+              />
+            </label>
+            <Button type="button" onClick={startDrill}>
+              Start drill
+            </Button>
+          </div>
+        )}
+        {drillActive && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm" role="status">
+              Repetition {drillAttempt} of {drillRepetitions}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={exitDrill}>
+                Exit drill
+              </Button>
+              <Button
+                type="button"
+                onClick={finishDrillRepetition}
+                disabled={!repetitionComplete}
+              >
+                {drillAttempt === drillRepetitions
+                  ? 'Finish drill'
+                  : 'Next repetition'}
+              </Button>
+            </div>
+          </div>
+        )}
+        {drillComplete && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm" role="status">
+              Drill complete — {drillRepetitions} repetitions finished.
+            </p>
+            <Button type="button" variant="outline" onClick={startDrill}>
+              Start again
+            </Button>
+          </div>
+        )}
+      </section>
 
       <section
         className="mt-6 grid gap-4"
