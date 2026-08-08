@@ -28,6 +28,12 @@ export function isNightWindow(date: Date): boolean {
   return hour >= 21 || hour < 6
 }
 
+/** Returns a safe delay that lands on the next local minute boundary. */
+export function getMillisecondsUntilNextMinute(date: Date): number {
+  const elapsed = date.getSeconds() * 1_000 + date.getMilliseconds()
+  return Math.max(1, 60_000 - elapsed)
+}
+
 export function resolveTheme(
   preference: ThemePreference,
   date: Date = new Date(),

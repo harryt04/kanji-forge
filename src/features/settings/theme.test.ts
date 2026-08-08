@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   applyFontScale,
   applyTheme,
+  getMillisecondsUntilNextMinute,
   isFontScalePreference,
   isNightWindow,
   isThemePreference,
@@ -30,6 +31,15 @@ describe('theme preferences', () => {
     expect(isNightWindow(new Date(2026, 7, 8, 6, 0))).toBe(false)
     expect(resolveTheme('night', new Date(2026, 7, 7, 22))).toBe('dark')
     expect(resolveTheme('night', new Date(2026, 7, 7, 12))).toBe('light')
+  })
+
+  it('schedules night-mode refreshes on the next minute boundary', () => {
+    expect(
+      getMillisecondsUntilNextMinute(new Date(2026, 7, 7, 21, 0, 0, 0)),
+    ).toBe(60_000)
+    expect(
+      getMillisecondsUntilNextMinute(new Date(2026, 7, 7, 20, 59, 59, 999)),
+    ).toBe(1)
   })
 
   it('resolves explicit and device preferences', () => {

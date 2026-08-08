@@ -7,6 +7,7 @@ import {
   applyFontScale,
   applyTheme,
   FONT_SCALE_SETTING,
+  getMillisecondsUntilNextMinute,
   isFontScalePreference,
   isThemePreference,
   resolveTheme,
@@ -24,6 +25,7 @@ export function ThemeController({ userId }: { userId: string }): null {
     let cancelled = false
     let preference: ThemePreference = 'system'
     let fontScale: FontScalePreference = 'default'
+    let timerId: number | undefined
     const media =
       typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         ? window.matchMedia('(prefers-color-scheme: dark)')
@@ -34,6 +36,14 @@ export function ThemeController({ userId }: { userId: string }): null {
         applyTheme(
           resolveTheme(preference, new Date(), media?.matches ?? false),
         )
+    }
+
+    const scheduleNightRefresh = (): void => {
+      if (cancelled || preference !== 'night') return
+      timerId = window.setTimeout(() => {
+        renderTheme()
+        scheduleNightRefresh()
+      }, getMillisecondsUntilNextMinute(new Date()))
     }
 
     void (async () => {
@@ -50,23 +60,17 @@ export function ThemeController({ userId }: { userId: string }): null {
         fontScale = savedFontScale.value
       applyFontScale(fontScale)
       renderTheme()
+      scheduleNightRefresh()
     })()
 
     const onSystemChange = (): void => {
       if (preference === 'system') renderTheme()
     }
     media?.addEventListener('change', onSystemChange)
-    const timerId = window.setInterval(() => {
-      if (preference === 'night') {
-        // Re-evaluate at the minute boundary so the schedule changes without a reload.
-        renderTheme()
-      }
-    }, 60_000)
-
     return () => {
       cancelled = true
       media?.removeEventListener('change', onSystemChange)
-      window.clearInterval(timerId)
+      if (timerId !== undefined) window.clearTimeout(timerId)
     }
   }, [userId])
 
