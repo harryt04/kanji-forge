@@ -766,6 +766,78 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('transfers studied starter progress to Saved while keeping Saved flags', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    await repositories.deckMembership.save({
+      deckId: 'saved',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    await repositories.recordCardState({
+      state: repoCardState({
+        deckId: 'dev-kanji',
+        contentRef: 'kanji:日',
+        level: 3,
+        flagged: false,
+        totalReviews: 8,
+        totalCorrect: 7,
+        lapses: 1,
+      }),
+      mutation: {
+        id: 'starter-progress-1',
+        mutType: 'cardState.upsert',
+        payload: '{}',
+        createdAt: Date.now(),
+        attempts: 0,
+      },
+    })
+    await repositories.recordCardState({
+      state: repoCardState({
+        deckId: 'saved',
+        contentRef: 'kanji:日',
+        level: 1,
+        flagged: true,
+        totalReviews: 2,
+        totalCorrect: 2,
+      }),
+      mutation: {
+        id: 'saved-progress-1',
+        mutType: 'cardState.upsert',
+        payload: '{}',
+        createdAt: Date.now(),
+        attempts: 0,
+      },
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Transfer progress' })
+    await user.click(screen.getByRole('button', { name: 'Transfer to Saved' }))
+
+    expect(
+      await screen.findByText(
+        'Transferred progress for 1 shared card into Saved. Saved flags and notes were kept.',
+      ),
+    ).toBeInTheDocument()
+    await expect(
+      repositories.cardStates.get('saved', 'kanji:日'),
+    ).resolves.toMatchObject({
+      level: 3,
+      totalReviews: 8,
+      totalCorrect: 7,
+      lapses: 1,
+      flagged: true,
+    })
+    await expect(repositories.outbox.pending()).resolves.toContainEqual(
+      expect.objectContaining({ mutType: 'cardState.upsert' }),
+    )
+    confirm.mockRestore()
+  })
+
   it('shows a backup reminder when the last backup is more than 30 days old', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({

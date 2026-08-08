@@ -92,6 +92,7 @@ import {
   groupDecksByFolder,
   normalizeDeckFolder,
 } from './deck-folders'
+import { planProgressTransfer } from './deck-progress'
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -185,6 +186,10 @@ export function SettingsScreen(): React.ReactElement {
   const [resetMessage, setResetMessage] = useState<string | null>(null)
   const [statisticsResetBusy, setStatisticsResetBusy] = useState(false)
   const [statisticsResetMessage, setStatisticsResetMessage] = useState<
+    string | null
+  >(null)
+  const [progressTransferBusy, setProgressTransferBusy] = useState(false)
+  const [progressTransferMessage, setProgressTransferMessage] = useState<
     string | null
   >(null)
   const [deckMessage, setDeckMessage] = useState<string | null>(null)
@@ -1225,6 +1230,75 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function transferStarterProgress(): Promise<void> {
+    if (
+      !runtime ||
+      progressTransferBusy ||
+      !window.confirm(
+        'Copy studied progress from the starter deck into matching Saved cards? Existing Saved progress for those cards will be replaced. Saved flags and notes will be kept.',
+      )
+    )
+      return
+
+    setProgressTransferBusy(true)
+    setProgressTransferMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const source = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      const memberships = await repositories.deckMembership.list()
+      const targetCards = await Promise.all(
+        memberships.map(async (membership) => ({
+          deckId: membership.deckId,
+          contentRef: membership.contentRef,
+          state: await repositories.cardStates.get(
+            membership.deckId,
+            membership.contentRef,
+          ),
+        })),
+      )
+      const now = Date.now()
+      const transfers = planProgressTransfer(
+        source.cards,
+        targetCards,
+        'saved',
+        now,
+        getDeviceId(),
+      )
+      await repositories.recordCardStates(
+        transfers.map(({ state, sourceDeckId }) => ({
+          state,
+          mutation: {
+            id: crypto.randomUUID(),
+            mutType: 'cardState.upsert' as const,
+            payload: JSON.stringify({
+              ...state,
+              source: 'transfer',
+              sourceDeckId,
+              targetDeckId: 'saved',
+            }),
+            createdAt: now,
+            attempts: 0,
+          },
+        })),
+      )
+      setProgressTransferMessage(
+        transfers.length === 0
+          ? 'No studied shared cards needed transferring.'
+          : `Transferred progress for ${transfers.length} ${transfers.length === 1 ? 'shared card' : 'shared cards'} into Saved. Saved flags and notes were kept.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not transfer deck progress.',
+      )
+    } finally {
+      setProgressTransferBusy(false)
+    }
+  }
+
   if (!runtime)
     return (
       <p className="text-muted-foreground p-6">Sign in to open Settings.</p>
@@ -1736,6 +1810,30 @@ export function SettingsScreen(): React.ReactElement {
         {statisticsResetMessage && (
           <p className="text-muted-foreground mt-4 text-sm" role="status">
             {statisticsResetMessage}
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Transfer progress</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Copy the starter deck&apos;s studied levels, schedules, and review
+          totals to matching cards in Saved. Untouched cards are skipped, and
+          Saved flags and notes stay with Saved.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5"
+          disabled={progressTransferBusy}
+          onClick={() => void transferStarterProgress()}
+        >
+          {progressTransferBusy
+            ? 'Transferring progress…'
+            : 'Transfer to Saved'}
+        </Button>
+        {progressTransferMessage && (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            {progressTransferMessage}
           </p>
         )}
       </section>
