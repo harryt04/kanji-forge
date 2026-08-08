@@ -18,7 +18,7 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { useStudyStore } from './store'
 import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
-import { STUDY_QUESTION_SETTING } from './study-style'
+import { STUDY_ANSWER_SETTING, STUDY_QUESTION_SETTING } from './study-style'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -167,6 +167,26 @@ describe('StudyScreen', () => {
     expect(question).toHaveAttribute('data-study-question', 'meaning')
     expect(question).toHaveTextContent('country')
     expect(question).not.toHaveTextContent('日')
+  })
+
+  it('renders only the saved answer fields after reveal', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    const answer = screen.getByTestId('study-answer')
+    expect(answer).toHaveTextContent('country')
+    expect(answer).not.toHaveTextContent('音:')
+    expect(answer).not.toHaveTextContent('訓:')
+    expect(answer).not.toHaveTextContent('日')
   })
 
   it('grades via keyboard once revealed', async () => {

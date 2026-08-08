@@ -13,8 +13,13 @@ import {
 import { Button } from '@/ui/button'
 import {
   isStudyQuestion,
+  parseStudyAnswer,
+  serializeStudyAnswer,
+  STUDY_ANSWER_OPTIONS,
+  STUDY_ANSWER_SETTING,
   STUDY_QUESTION_OPTIONS,
   STUDY_QUESTION_SETTING,
+  type StudyAnswer,
   type StudyQuestion,
 } from '@/features/study/study-style'
 import {
@@ -88,6 +93,9 @@ export function SettingsScreen(): React.ReactElement {
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
   const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
+  const [studyAnswer, setStudyAnswer] = useState<readonly StudyAnswer[]>(
+    parseStudyAnswer(undefined),
+  )
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -104,14 +112,14 @@ export function SettingsScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const [saved, savedBadge, savedQuestion, savedBackup] = await Promise.all(
-        [
+      const [saved, savedBadge, savedQuestion, savedAnswer, savedBackup] =
+        await Promise.all([
           repositories.settings.get(THEME_SETTING),
           repositories.settings.get(APP_BADGE_SETTING),
           repositories.settings.get(STUDY_QUESTION_SETTING),
+          repositories.settings.get(STUDY_ANSWER_SETTING),
           repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
-        ],
-      )
+        ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
       const nextBadgePreference = savedBadge?.value ?? ''
@@ -119,6 +127,7 @@ export function SettingsScreen(): React.ReactElement {
         setBadgePreference(nextBadgePreference)
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
+      setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
         : undefined
@@ -209,6 +218,34 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the study question setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleStudyAnswer(field: StudyAnswer): Promise<void> {
+    if (!runtime || saving) return
+    const previous = studyAnswer
+    const next = previous.includes(field)
+      ? previous.filter((value) => value !== field)
+      : [...previous, field]
+    if (next.length === 0) return
+    setStudyAnswer(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: STUDY_ANSWER_SETTING,
+        value: serializeStudyAnswer(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setStudyAnswer(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the study answer setting.',
       )
     } finally {
       setSaving(false)
@@ -357,6 +394,38 @@ export function SettingsScreen(): React.ReactElement {
               </span>
             </Button>
           ))}
+        </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Study answer</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Choose which fields appear after revealing the answer. Keep at least
+          one field selected. This setting is saved on this device and works
+          offline.
+        </p>
+        <div className="mt-5 grid gap-3" role="group" aria-label="Study answer">
+          {STUDY_ANSWER_OPTIONS.map(({ value, label, description }) => {
+            const checked = studyAnswer.includes(value)
+            return (
+              <Button
+                key={value}
+                type="button"
+                variant={checked ? 'secondary' : 'outline'}
+                aria-checked={checked}
+                role="checkbox"
+                disabled={saving || (checked && studyAnswer.length === 1)}
+                className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+                onClick={() => void toggleStudyAnswer(value)}
+              >
+                <span>
+                  <span className="block font-semibold">{label}</span>
+                  <span className="text-muted-foreground block text-sm font-normal">
+                    {description}
+                  </span>
+                </span>
+              </Button>
+            )
+          })}
         </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">

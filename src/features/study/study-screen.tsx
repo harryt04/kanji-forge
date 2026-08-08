@@ -15,8 +15,12 @@ import {
 } from '@/ui/dialog'
 import { loadStarterDeck } from './deck-loader'
 import {
+  DEFAULT_STUDY_ANSWER,
   isStudyQuestion,
+  parseStudyAnswer,
+  STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
+  type StudyAnswer,
   type StudyQuestion,
 } from './study-style'
 import { useStudyStore } from './store'
@@ -43,6 +47,8 @@ export function StudyScreen({
   const [showTimer, setShowTimer] = useState(false)
   const [greyStickies, setGreyStickies] = useState(false)
   const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
+  const [studyAnswer, setStudyAnswer] =
+    useState<readonly StudyAnswer[]>(DEFAULT_STUDY_ANSWER)
   const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
@@ -84,10 +90,12 @@ export function StudyScreen({
       await runtime.database.ready
       const repoForSession = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
-      const [greyStickiesSetting, studyQuestionSetting] = await Promise.all([
-        repoForSession.settings.get(GREY_STICKIES_SETTING),
-        repoForSession.settings.get(STUDY_QUESTION_SETTING),
-      ])
+      const [greyStickiesSetting, studyQuestionSetting, studyAnswerSetting] =
+        await Promise.all([
+          repoForSession.settings.get(GREY_STICKIES_SETTING),
+          repoForSession.settings.get(STUDY_QUESTION_SETTING),
+          repoForSession.settings.get(STUDY_ANSWER_SETTING),
+        ])
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
       await repoForSession.sessions.start({
@@ -112,6 +120,7 @@ export function StudyScreen({
         setStudyQuestion(
           isStudyQuestion(savedQuestion) ? savedQuestion : 'kanji',
         )
+        setStudyAnswer(parseStudyAnswer(studyAnswerSetting?.value))
         setPreferenceError(null)
         setLoading(false)
       }
@@ -242,6 +251,8 @@ export function StudyScreen({
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`
+  const answerShows = (field: StudyAnswer): boolean =>
+    studyAnswer.includes(field)
 
   return (
     <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
@@ -322,34 +333,30 @@ export function StudyScreen({
               {questionText}
             </p>
             {revealed && (
-              <div className="mt-6 space-y-2 text-left">
-                {studyQuestion !== 'kanji' && (
+              <div
+                className="mt-6 space-y-2 text-left"
+                data-testid="study-answer"
+              >
+                {answerShows('kanji') && (
                   <p className="font-jp-display text-5xl" lang="ja">
                     {studyCard.literal}
                   </p>
                 )}
-                {studyCard.onReadings.length > 0 && (
-                  <p
-                    className="font-jp-ui text-lg"
-                    hidden={studyQuestion === 'reading'}
-                  >
+                {answerShows('reading') && studyCard.onReadings.length > 0 && (
+                  <p className="font-jp-ui text-lg">
                     音: {studyCard.onReadings.join('、')}
                   </p>
                 )}
-                {studyCard.kunReadings.length > 0 && (
-                  <p
-                    className="font-jp-ui text-lg"
-                    hidden={studyQuestion === 'reading'}
-                  >
+                {answerShows('reading') && studyCard.kunReadings.length > 0 && (
+                  <p className="font-jp-ui text-lg">
                     訓: {studyCard.kunReadings.join('、')}
                   </p>
                 )}
-                <p
-                  className="text-muted-foreground"
-                  hidden={studyQuestion === 'meaning'}
-                >
-                  {studyCard.meanings.join(', ')}
-                </p>
+                {answerShows('meaning') && (
+                  <p className="text-muted-foreground">
+                    {studyCard.meanings.join(', ')}
+                  </p>
+                )}
               </div>
             )}
             <p className="text-muted-foreground mt-4 text-xs">

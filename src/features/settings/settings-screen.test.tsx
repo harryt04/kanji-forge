@@ -15,7 +15,10 @@ import {
   BACKUP_VERSION,
 } from './backup'
 import { SettingsScreen } from './settings-screen'
-import { STUDY_QUESTION_SETTING } from '@/features/study/study-style'
+import {
+  STUDY_ANSWER_SETTING,
+  STUDY_QUESTION_SETTING,
+} from '@/features/study/study-style'
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -80,6 +83,25 @@ describe('SettingsScreen', () => {
           STUDY_QUESTION_SETTING,
         ),
       ).toMatchObject({ value: 'meaning' }),
+    )
+  })
+
+  it('persists the selected study answer fields offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study answer' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /Meaning/ }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_ANSWER_SETTING,
+        ),
+      ).toMatchObject({ value: 'kanji,reading' }),
     )
   })
 
