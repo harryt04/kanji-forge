@@ -5,11 +5,13 @@ export {
   APP_BADGE_PREFERENCES,
   APP_BADGE_SETTING,
   APP_BADGE_SETTING_CHANGED_EVENT,
+  APP_BADGE_STATE_CHANGED_EVENT,
   AppBadgeController,
   countAppBadgeCards,
   isAppBadgePreference,
   type AppBadgePreference,
 } from './app-badge'
+export { requestAppBadgeRefresh } from './events'
 export {
   DAILY_REMINDER_ENABLED_SETTING,
   DAILY_REMINDER_SETTING_CHANGED_EVENT,

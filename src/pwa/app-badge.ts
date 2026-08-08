@@ -4,6 +4,9 @@ import { useEffect } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import { loadStarterDeck } from '@/features/study/deck-loader'
+import { APP_BADGE_STATE_CHANGED_EVENT } from './events'
+
+export { APP_BADGE_STATE_CHANGED_EVENT } from './events'
 
 export const APP_BADGE_SETTING = 'app-badge'
 export const APP_BADGE_SETTING_CHANGED_EVENT =
@@ -89,6 +92,7 @@ export function AppBadgeController({
       })
     }
     const onSettingChange = (): void => refresh()
+    const onStateChange = (): void => refresh()
     const onVisibilityChange = (): void => {
       if (document.visibilityState === 'visible') refresh()
     }
@@ -99,6 +103,7 @@ export function AppBadgeController({
     }, 30_000)
     window.addEventListener('focus', refresh)
     window.addEventListener(APP_BADGE_SETTING_CHANGED_EVENT, onSettingChange)
+    window.addEventListener(APP_BADGE_STATE_CHANGED_EVENT, onStateChange)
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
@@ -109,6 +114,7 @@ export function AppBadgeController({
         APP_BADGE_SETTING_CHANGED_EVENT,
         onSettingChange,
       )
+      window.removeEventListener(APP_BADGE_STATE_CHANGED_EVENT, onStateChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       void getAppBadgeNavigator()?.clearAppBadge?.()
     }

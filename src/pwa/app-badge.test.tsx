@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import {
+  APP_BADGE_STATE_CHANGED_EVENT,
   AppBadgeController,
   APP_BADGE_SETTING,
   countAppBadgeCards,
@@ -64,6 +65,9 @@ describe('app icon badges', () => {
 
     const { unmount } = render(<AppBadgeController userId={userId} />)
     await waitFor(() => expect(navigator.setAppBadge).toHaveBeenCalledWith(4))
+
+    window.dispatchEvent(new Event(APP_BADGE_STATE_CHANGED_EVENT))
+    await waitFor(() => expect(navigator.setAppBadge).toHaveBeenCalledTimes(2))
 
     await createUserRepositories(runtime.database).settings.set({
       key: APP_BADGE_SETTING,

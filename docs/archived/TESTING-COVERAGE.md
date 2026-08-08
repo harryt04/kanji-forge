@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 67 (462 test cases: 462 passing) |
+| Unit/integration test files | 67 (465 test cases: 465 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 134 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **85.51%** |
@@ -86,7 +86,7 @@ leaving local-only mutation types queued until their server contract exists.
 
 ### `src/features/study` — 54 cases across 7 files
 
-- **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
+- **`store.test.ts`** (17) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
   advancement, `wentGreen` tally, "again" requeue position matches `requeueAfterAgain()` exactly,
   session finish on last card, **persistence-failure isolation** (a rejected `recordGrade()` leaves
@@ -209,7 +209,7 @@ that these preferences load offline and that tap-to-reveal glosses remain hidden
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic mixed-card URL and readable share-file payloads, omission of SRS progress, legacy version-1 compatibility, dictionary-word round-tripping, and malformed/empty payload rejection.
 
-**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`src/server/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
+**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`src/server/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline. The app-badge suite also covers an explicit refresh after local study state changes, not only timer/focus refreshes.
 
 ### `src/pwa` — 10 cases
 

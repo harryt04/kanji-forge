@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserRepositories } from '@/data/repo'
 import { requeueAfterAgain } from '@/core/srs/queue'
+import { APP_BADGE_STATE_CHANGED_EVENT } from '@/pwa/events'
 import { useStudyStore } from './store'
 import type { LoadedDeck } from './deck-loader'
 
@@ -112,6 +113,18 @@ describe('useStudyStore.grade', () => {
       grade: 'good',
       source: 'study',
     })
+  })
+
+  it('requests an app-badge refresh after a persisted grade', async () => {
+    const dispatch = vi.spyOn(window, 'dispatchEvent')
+    useStudyStore.getState().start(loadedDeck(1))
+
+    await useStudyStore.getState().grade(fakeRepo(), 'good')
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: APP_BADGE_STATE_CHANGED_EVENT }),
+    )
+    dispatch.mockRestore()
   })
 
   it('advances the index and tallies the summary on a passing grade', async () => {
