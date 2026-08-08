@@ -1229,13 +1229,19 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
-  async function deleteSavedDeck(): Promise<void> {
+  async function deleteUserDeck(
+    deck: Pick<Deck, 'id' | 'name'>,
+  ): Promise<void> {
+    const isSavedDeck = deck.id === 'saved'
+    const exists = isSavedDeck
+      ? savedDeckExists
+      : customDecks.some((candidate) => candidate.id === deck.id)
     if (
       !runtime ||
       saving ||
-      !savedDeckExists ||
+      !exists ||
       !window.confirm(
-        'Delete the Saved deck? Its cards, progress, notes, and review history will be removed from this device.',
+        `Delete the ${deck.name} deck? Its cards, progress, notes, and review history will be removed from this device.`,
       )
     )
       return
@@ -1246,26 +1252,50 @@ export function SettingsScreen(): React.ReactElement {
     try {
       const now = Date.now()
       await createUserRepositories(runtime.database).deleteDeck({
-        deckId: 'saved',
+        deckId: deck.id,
         mutation: {
           id: crypto.randomUUID(),
           mutType: 'deck.delete',
-          payload: JSON.stringify({ deckId: 'saved', deletedAt: now }),
+          payload: JSON.stringify({ deckId: deck.id, deletedAt: now }),
           createdAt: now,
           attempts: 0,
         },
       })
-      setSavedDeckExists(false)
-      setDeckFolders((current) => ({ ...current, saved: '' }))
-      setDeckFolderDrafts((current) => ({ ...current, saved: '' }))
+      if (isSavedDeck) {
+        setSavedDeckExists(false)
+      } else {
+        setCustomDecks((current) =>
+          current.filter((candidate) => candidate.id !== deck.id),
+        )
+      }
+      setDeckSources((current) =>
+        current.filter((source) => source.id !== deck.id),
+      )
+      setSelectedDeckSourceIds((current) =>
+        current.filter((sourceId) => sourceId !== deck.id),
+      )
+      setDeckFolders((current) => {
+        const next = { ...current }
+        delete next[deck.id]
+        return next
+      })
+      setDeckFolderDrafts((current) => {
+        const next = { ...current }
+        delete next[deck.id]
+        return next
+      })
+      if (shareDeckId === deck.id) setShareDeckId(STARTER_DECK_ID)
+      if (importDeckId === deck.id) setImportDeckId('saved')
       setDeckMessage(
-        'Deleted the Saved deck. It will be recreated when you save a card.',
+        isSavedDeck
+          ? 'Deleted the Saved deck. It will be recreated when you save a card.'
+          : `Deleted the “${deck.name}” deck.`,
       )
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
           ? reason.message
-          : 'Could not delete Saved deck.',
+          : `Could not delete the ${deck.name} deck.`,
       )
     } finally {
       setSaving(false)
@@ -2757,6 +2787,16 @@ export function SettingsScreen(): React.ReactElement {
                     <Button type="submit" disabled={saving}>
                       Save folder
                     </Button>
+                    {deck.kind === 'custom' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => void deleteUserDeck(deck)}
+                      >
+                        Delete {deck.name}
+                      </Button>
+                    )}
                   </form>
                 ))}
               </div>
@@ -2781,7 +2821,12 @@ export function SettingsScreen(): React.ReactElement {
           variant="outline"
           className="mt-5"
           disabled={saving || !savedDeckExists}
-          onClick={() => void deleteSavedDeck()}
+          onClick={() =>
+            void deleteUserDeck({
+              id: 'saved',
+              name: 'Saved',
+            })
+          }
         >
           {savedDeckExists ? 'Delete Saved deck' : 'Saved deck is empty'}
         </Button>

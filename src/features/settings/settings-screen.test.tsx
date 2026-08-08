@@ -690,6 +690,48 @@ describe('SettingsScreen', () => {
     confirm.mockRestore()
   })
 
+  it('deletes a custom deck after confirmation and removes it from deck tools', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    await repositories.decks.upsert({
+      id: 'custom-delete',
+      name: 'Practice deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repositories.deckMembership.save({
+      deckId: 'custom-delete',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SettingsScreen />)
+
+    await screen.findByRole('button', { name: 'Delete Practice deck' })
+    await user.click(
+      screen.getByRole('button', { name: 'Delete Practice deck' }),
+    )
+
+    await waitFor(async () =>
+      expect(await repositories.decks.get('custom-delete')).toBeUndefined(),
+    )
+    expect(await repositories.deckMembership.list()).toEqual([])
+    expect(
+      await screen.findByText('Deleted the “Practice deck” deck.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete Practice deck' }),
+    ).not.toBeInTheDocument()
+    expect(await repositories.outbox.pending()).toEqual([
+      expect.objectContaining({ mutType: 'deck.delete' }),
+    ])
+    confirm.mockRestore()
+  })
+
   it('resets starter-deck colors without deleting review totals or history', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!
