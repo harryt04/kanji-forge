@@ -31,6 +31,36 @@ The compose ports bind to loopback only. On Coolify, attach the app to the TLS p
 browser reaches Electric only through the authenticated `/api/electric/shape` proxy, which keeps
 the secret server-side and pins the shape filter to the session user.
 
+## Coolify checklist (per environment)
+
+The app is one Coolify application per environment (beta, prod) — not two. Each needs its own
+Postgres resource; do not share one Postgres between beta and prod, and do not reuse a
+`BETTER_AUTH_SECRET` across environments (a beta secret would validate prod sessions).
+
+For each environment's app, in Coolify:
+
+1. Create a dedicated Postgres database resource for that environment.
+2. Set these variables on the app (see `docs/ARCHITECTURE.md` §10.5 for the full list including
+   optional Web Push / Electric vars):
+   ```
+   NIXPACKS_NODE_VERSION=22
+   DATABASE_URL=<internal connection string to that environment's Postgres>
+   BETTER_AUTH_SECRET=<generate below — unique to this environment>
+   BETTER_AUTH_URL=<this app's own public HTTPS origin, e.g. https://beta.kanjiforge.app>
+   ```
+   Generate a secret with:
+   ```bash
+   openssl rand -base64 48
+   ```
+3. **Do not set `NEXT_PUBLIC_API_URL`.** It is a leftover from the old two-deployment split, where
+   it pointed the client at a separate backend origin. The client now calls its own origin, and
+   this is a build-time value — leaving it set bakes a stale/self-referential origin into the
+   build.
+4. Set the health check path to `/api/healthz` (method GET, expect 200) and enable it.
+
+This replaced an earlier setup with two Coolify apps per environment (a static export plus a
+separate `apps/api` service) — see `docs/DECISIONS.md` D16 for why.
+
 ## Production notes
 
 - Postgres 16 starts with `wal_level=logical`, replication slots, and WAL senders required by
