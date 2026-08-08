@@ -28,43 +28,49 @@ export interface LoadedDeck {
   readonly content: ReadonlyMap<string, StudyCard>
 }
 
-/** Loads (and lazily registers) one built-in deck by its packs-dev definition id. */
-export async function loadStarterDeck(
+/** Loads a built-in or user-owned deck from the local pack/database projection. */
+export async function loadDeck(
   database: LocalUserDatabase,
-  definitionId = 'dev-kanji',
+  deckId = 'dev-kanji',
 ): Promise<LoadedDeck> {
   const definitions = await loadDeckDefinitions()
-  const definition = definitions.find(
-    (candidate) => candidate.id === definitionId,
-  )
-  if (!definition) throw new Error(`Unknown deck definition: ${definitionId}`)
-
   const repo = createUserRepositories(database)
-  const existingDeck = await repo.decks.get(definition.id)
-  if (!existingDeck) {
-    await repo.decks.upsert({
+  let deck = await repo.decks.get(deckId)
+  if (!deck) {
+    const definition = definitions.find((candidate) => candidate.id === deckId)
+    if (!definition) throw new Error(`Unknown deck definition: ${deckId}`)
+    deck = {
       id: definition.id,
       name: definition.name,
       kind: 'derived',
       definitionId: definition.id,
       updatedAt: Date.now(),
-    })
+    }
+    await repo.decks.upsert(deck)
   }
 
+  const definition =
+    deck.kind === 'derived'
+      ? definitions.find((candidate) => candidate.id === deck.definitionId)
+      : undefined
+  if (deck.kind === 'derived' && !definition) {
+    throw new Error(`Unknown deck definition: ${deck.definitionId}`)
+  }
   const source = {
-    contentRefsFor: (deck: Deck): readonly string[] =>
-      deck.definitionId === definition.id ? definition.contentRefs : [],
+    contentRefsFor: (candidate: Deck): readonly string[] =>
+      candidate.kind === 'derived' ? (definition?.contentRefs ?? []) : [],
   }
-  const cards = await repo.decks.listCards(definition.id, source)
+  const cards = await repo.decks.listCards(deck.id, source)
 
-  const kanjiLiterals = definition.contentRefs
+  const kanjiLiterals = cards
+    .map((card) => card.contentRef)
     .map((ref) => parseContentRef(ref))
     .filter((parsed) => parsed.type === 'kanji')
     .map((parsed) => parsed.key)
   const kanjiByLiteral = await getKanjiByLiterals(kanjiLiterals)
 
   const content = new Map<string, StudyCard>()
-  for (const ref of definition.contentRefs) {
+  for (const ref of cards.map((card) => card.contentRef)) {
     const parsed = parseContentRef(ref)
     if (parsed.type !== 'kanji') continue // words/sentences arrive with a future starter deck
     const record = kanjiByLiteral.get(parsed.key)
@@ -86,9 +92,18 @@ export async function loadStarterDeck(
   }
 
   return {
-    deckId: definition.id,
-    name: existingDeck?.name ?? definition.name,
-    cards,
+    deckId: deck.id,
+    name: deck.name,
+    // Unsupported future content types must not produce blank study cards.
+    cards: cards.filter((card) => content.has(card.contentRef)),
     content,
   }
+}
+
+/** Loads (and lazily registers) one built-in deck by its packs-dev definition id. */
+export async function loadStarterDeck(
+  database: LocalUserDatabase,
+  definitionId = 'dev-kanji',
+): Promise<LoadedDeck> {
+  return loadDeck(database, definitionId)
 }

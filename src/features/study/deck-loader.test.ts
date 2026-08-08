@@ -2,7 +2,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openLocalUserDatabase, type LocalUserDatabase } from '@/data/db'
-import { loadStarterDeck } from './deck-loader'
+import { loadDeck, loadStarterDeck } from './deck-loader'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -93,5 +93,85 @@ describe('loadStarterDeck', () => {
       expect(ref.startsWith('kanji:')).toBe(true)
       expect(card.literal.length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('loadDeck', () => {
+  it('loads kanji memberships from a user-owned custom deck', async () => {
+    const database = await freshDatabase()
+    const repo = (await import('@/data/repo')).createUserRepositories(database)
+    const deck = {
+      id: 'custom-travel',
+      name: 'Travel kanji',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: 1,
+    }
+    await repo.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'custom-membership',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({ deckId: deck.id, contentRef: 'kanji:日' }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+
+    const loaded = await loadDeck(database, deck.id)
+    expect(loaded).toMatchObject({
+      deckId: deck.id,
+      name: deck.name,
+      cards: [{ deckId: deck.id, contentRef: 'kanji:日' }],
+    })
+    expect(loaded.content.get('kanji:日')).toMatchObject({ literal: '日' })
+  })
+
+  it('does not expose unsupported custom content as blank cards', async () => {
+    const database = await freshDatabase()
+    const repo = (await import('@/data/repo')).createUserRepositories(database)
+    const deck = {
+      id: 'custom-mixed',
+      name: 'Mixed deck',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: 1,
+    }
+    await repo.recordDeckMemberships({
+      deck,
+      deckMutation: {
+        id: 'custom-mixed-deck',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 1,
+        attempts: 0,
+      },
+      memberships: ['kanji:日', 'word:食べる'].map((contentRef, sortOrder) => ({
+        membership: {
+          deckId: deck.id,
+          contentRef,
+          sortOrder,
+          addedAt: 1,
+          updatedAt: 1,
+        },
+        mutation: {
+          id: `custom-mixed-${sortOrder}`,
+          mutType: 'deckMembership.upsert' as const,
+          payload: JSON.stringify({ deckId: deck.id, contentRef }),
+          createdAt: 1,
+          attempts: 0,
+        },
+      })),
+    })
+
+    const loaded = await loadDeck(database, deck.id)
+    expect(loaded.cards.map((card) => card.contentRef)).toEqual(['kanji:日'])
   })
 })

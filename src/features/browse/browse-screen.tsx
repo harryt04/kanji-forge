@@ -9,7 +9,7 @@ import type { CardState } from '@/data/repo'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
-import { loadStarterDeck, type LoadedDeck } from '@/features/study/deck-loader'
+import { loadDeck, type LoadedDeck } from '@/features/study/deck-loader'
 import { getDeviceId } from '@/lib/device-id'
 import {
   DEFAULT_BROWSE_FILTERS,
@@ -183,6 +183,13 @@ export function BrowseScreen({
   const [tileContentError, setTileContentError] = useState<string | null>(null)
   const [tileZoomError, setTileZoomError] = useState<string | null>(null)
   const [defaultsMessage, setDefaultsMessage] = useState<string | null>(null)
+  const [selectedDeckId, setSelectedDeckId] = useState(deckDefinitionId)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const requested = new URL(window.location.href).searchParams.get('deckId')
+    setSelectedDeckId(requested || deckDefinitionId)
+  }, [deckDefinitionId])
 
   useEffect(() => {
     if (!runtime) return
@@ -191,7 +198,7 @@ export function BrowseScreen({
     setError(null)
     void (async () => {
       await runtime.database.ready
-      const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
+      const loaded = await loadDeck(runtime.database, selectedDeckId)
       const repositories = createUserRepositories(runtime.database)
       const [
         savedView,
@@ -242,7 +249,7 @@ export function BrowseScreen({
     return () => {
       active = false
     }
-  }, [runtime, deckDefinitionId])
+  }, [runtime, deckDefinitionId, selectedDeckId])
 
   const cards = useMemo(() => (deck ? toBrowseCards(deck) : []), [deck])
   const filteredCards = useMemo(() => {

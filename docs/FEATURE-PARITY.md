@@ -131,6 +131,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Deck folders / grouping | ➕ 🔷 | 2026-08-08 | Settings assigns the built-in and Saved decks to named offline folders; empty labels remain in an Unfiled group |
 | — | Deck sharing by file or URL | ➕ 🔶 | 2026-08-08 | Settings copies a content-only URL for the built-in deck; the authenticated `/analyze` route previews dictionary matches and imports them into Saved without sharing private SRS progress |
 | — | Save a Detail card to a custom deck | ➕ ✅ | 2026-08-08 | Detail lists existing user-owned custom decks and adds the selected kanji offline with an idempotent membership action and sync outbox mutation |
+| — | Study and Browse custom decks | ➕ ✅ | 2026-08-08 | Home exposes each user-owned custom deck with its own progress/color and offline Study/Browse links; both surfaces load the deck's local memberships and SRS state |
 | — | Kanji Kentei level decks | ➕ 🔶 | — | If an openly-licensed list is found |
 
 ## 7. Goal scheduler, history & statistics

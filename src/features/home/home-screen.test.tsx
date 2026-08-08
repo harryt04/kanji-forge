@@ -73,6 +73,50 @@ describe('HomeScreen', () => {
     expect(screen.getByText('No goal date set yet.')).toBeInTheDocument()
   })
 
+  it('shows custom decks with offline study and browse links', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    await createUserRepositories(runtime.database).recordDeckMembership({
+      deck: {
+        id: 'custom-travel',
+        name: 'Travel kanji',
+        kind: 'custom',
+        definitionId: null,
+        updatedAt: 1,
+      },
+      membership: {
+        deckId: 'custom-travel',
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'custom-travel-membership',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({
+          deckId: 'custom-travel',
+          contentRef: 'kanji:日',
+        }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('custom-deck-shelf')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('Travel kanji')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Study', exact: true }),
+    ).toHaveAttribute('href', '/study?deckId=custom-travel')
+    expect(
+      screen.getByRole('link', { name: 'Browse', exact: true }),
+    ).toHaveAttribute('href', '/browse?deckId=custom-travel')
+  })
+
   it('shows the total duration of completed study sessions', async () => {
     const runtime = bootstrapUserRuntime(`home-${userId}`)
     await runtime.database.ready

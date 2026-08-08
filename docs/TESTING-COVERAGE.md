@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 49 (340 test cases: 340 passing) |
+| Unit/integration test files | 49 (344 test cases: 344 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 112 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **87.31%** |
@@ -77,7 +77,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
   sentence-alignment fallback/normalization, and offline KanjiVG stroke-path loading.
 
-### `src/features/study` — 42 cases across 6 files
+### `src/features/study` — 51 cases across 6 files
 
 - **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
@@ -87,9 +87,9 @@ Locked at 100% by the CI gate; this directory should never regress.
   prior snapshot, undo writes a compensating manual-source review, undo no-op with nothing to undo,
   and flag/unflag persistence for the current card.
 - **`adapters.test.ts`** (2) — `contentRef`↔`stickyId` round-trip in both directions.
-- **`deck-loader.test.ts`** (5) — lazy deck registration against real `packs-dev` fixtures, no
+- **`deck-loader.test.ts`** (7) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
-  refs missing from the pack.
+  refs missing from the pack, and loading/filtering memberships from user-owned decks.
 - **`study-screen.test.tsx`** (20, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
   the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
@@ -105,7 +105,7 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`study-style.test.ts`** (3) — default answer fields, malformed/duplicate value parsing, and
   stable answer-field serialization.
 
-### `src/features/home` — 12 cases
+### `src/features/home` — 13 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
@@ -115,7 +115,8 @@ on-pace/behind-pace readout, and projected completion compares recent correct-an
 the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action,
 and retention by starting level excludes manual adjustments and early-interval reviews and flags low retention, leech
 identification surfaces cards at six or more lapses while ignoring cards below the threshold, and
-the 30-day scheduled review forecast buckets overdue and future due cards.
+the 30-day scheduled review forecast buckets overdue and future due cards. It also verifies that
+user-owned custom decks appear with offline Study and Browse links.
 
 ### `src/features/history` — 3 cases
 

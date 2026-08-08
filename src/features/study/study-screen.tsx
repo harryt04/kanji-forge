@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/ui/dialog'
-import { loadStarterDeck } from './deck-loader'
+import { loadDeck } from './deck-loader'
 import {
   DEFAULT_STUDY_ANSWER,
   isStudyQuestion,
@@ -65,6 +65,13 @@ export function StudyScreen({
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
   const sessionRepo = useRef<UserRepositories | null>(null)
+  const [selectedDeckId, setSelectedDeckId] = useState(deckDefinitionId)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const requested = new URL(window.location.href).searchParams.get('deckId')
+    setSelectedDeckId(requested || deckDefinitionId)
+  }, [deckDefinitionId])
 
   const {
     deckName,
@@ -101,7 +108,7 @@ export function StudyScreen({
     ;(async () => {
       await runtime.database.ready
       const repoForSession = createUserRepositories(runtime.database)
-      const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
+      const loaded = await loadDeck(runtime.database, selectedDeckId)
       const [
         greyStickiesSetting,
         studyQuestionSetting,
@@ -158,7 +165,7 @@ export function StudyScreen({
       cancelled = true
       endSession()
     }
-  }, [runtime, deckDefinitionId, endSession, start])
+  }, [runtime, endSession, selectedDeckId, start])
 
   useEffect(() => {
     if (finished) endSession()
