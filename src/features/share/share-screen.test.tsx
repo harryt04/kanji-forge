@@ -237,13 +237,13 @@ describe('ShareTargetScreen', () => {
     expect(
       await screen.findByLabelText('Text analysis results'),
     ).toHaveTextContent('okane')
-    expect(
-      screen.getByRole('button', { name: 'Show gloss' }),
-    ).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Show gloss' })).toHaveLength(
+      2,
+    )
     expect(
       screen.getByLabelText('Text analysis results'),
     ).not.toHaveTextContent('money')
-    fireEvent.click(screen.getByRole('button', { name: 'Show gloss' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Show gloss' })[0]!)
     expect(await screen.findByText('money')).toBeInTheDocument()
   })
 

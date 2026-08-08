@@ -20,16 +20,141 @@ export interface TextAnalysisToken {
   readonly text: string
   readonly reading: string | null
   readonly meanings: readonly string[]
-  readonly type: 'word' | 'kanji' | 'unknown'
+  readonly type: 'word' | 'grammar' | 'kanji' | 'unknown'
   readonly contentRef?: string
   readonly hasNonN5Kanji?: boolean
 }
 
 interface WordCandidate {
+  readonly kind: 'word'
   readonly text: string
   readonly word: AnalyzerWord
   readonly reading?: string
 }
+
+interface GrammarCandidate {
+  readonly kind: 'grammar'
+  readonly text: string
+  readonly reading: string
+  readonly meanings: readonly string[]
+}
+
+type SurfaceCandidate = WordCandidate | GrammarCandidate
+
+/**
+ * A deliberately small grammar lexicon keeps common function words readable
+ * without pretending to be a full morphological tokenizer. Dictionary words
+ * still win whenever they cover the same surface.
+ */
+const GRAMMAR_CANDIDATES: readonly GrammarCandidate[] = [
+  {
+    kind: 'grammar',
+    text: 'ではない',
+    reading: 'ではない',
+    meanings: ['is not'],
+  },
+  {
+    kind: 'grammar',
+    text: 'じゃない',
+    reading: 'じゃない',
+    meanings: ['is not'],
+  },
+  {
+    kind: 'grammar',
+    text: 'でしょう',
+    reading: 'でしょう',
+    meanings: ['probably; it seems'],
+  },
+  {
+    kind: 'grammar',
+    text: 'だろう',
+    reading: 'だろう',
+    meanings: ['probably; I suppose'],
+  },
+  {
+    kind: 'grammar',
+    text: 'だった',
+    reading: 'だった',
+    meanings: ['was; were'],
+  },
+  {
+    kind: 'grammar',
+    text: 'ながら',
+    reading: 'ながら',
+    meanings: ['while; although'],
+  },
+  {
+    kind: 'grammar',
+    text: 'ばかり',
+    reading: 'ばかり',
+    meanings: ['just; only'],
+  },
+  { kind: 'grammar', text: 'ので', reading: 'ので', meanings: ['because'] },
+  {
+    kind: 'grammar',
+    text: 'のに',
+    reading: 'のに',
+    meanings: ['although; despite'],
+  },
+  { kind: 'grammar', text: 'まで', reading: 'まで', meanings: ['until; even'] },
+  {
+    kind: 'grammar',
+    text: 'から',
+    reading: 'から',
+    meanings: ['from; because'],
+  },
+  { kind: 'grammar', text: 'より', reading: 'より', meanings: ['than; from'] },
+  { kind: 'grammar', text: 'だけ', reading: 'だけ', meanings: ['only; just'] },
+  {
+    kind: 'grammar',
+    text: 'ほど',
+    reading: 'ほど',
+    meanings: ['to the extent; about'],
+  },
+  { kind: 'grammar', text: 'さえ', reading: 'さえ', meanings: ['even'] },
+  {
+    kind: 'grammar',
+    text: 'こそ',
+    reading: 'こそ',
+    meanings: ['indeed; precisely'],
+  },
+  {
+    kind: 'grammar',
+    text: 'では',
+    reading: 'では',
+    meanings: ['as for; then'],
+  },
+  { kind: 'grammar', text: 'です', reading: 'です', meanings: ['be; is'] },
+  {
+    kind: 'grammar',
+    text: 'ます',
+    reading: 'ます',
+    meanings: ['polite auxiliary'],
+  },
+  { kind: 'grammar', text: 'ない', reading: 'ない', meanings: ['not; do not'] },
+  { kind: 'grammar', text: 'だ', reading: 'だ', meanings: ['be; is'] },
+  { kind: 'grammar', text: 'は', reading: 'は', meanings: ['topic marker'] },
+  { kind: 'grammar', text: 'が', reading: 'が', meanings: ['subject marker'] },
+  { kind: 'grammar', text: 'を', reading: 'を', meanings: ['object marker'] },
+  { kind: 'grammar', text: 'に', reading: 'に', meanings: ['in; at; to'] },
+  { kind: 'grammar', text: 'へ', reading: 'へ', meanings: ['toward'] },
+  { kind: 'grammar', text: 'で', reading: 'で', meanings: ['at; by; with'] },
+  { kind: 'grammar', text: 'と', reading: 'と', meanings: ['and; with'] },
+  { kind: 'grammar', text: 'も', reading: 'も', meanings: ['also; too'] },
+  { kind: 'grammar', text: 'の', reading: 'の', meanings: ['of; possessive'] },
+  { kind: 'grammar', text: 'や', reading: 'や', meanings: ['and; among'] },
+  {
+    kind: 'grammar',
+    text: 'ね',
+    reading: 'ね',
+    meanings: ['right?; isn’t it?'],
+  },
+  { kind: 'grammar', text: 'よ', reading: 'よ', meanings: ['emphasis'] },
+  { kind: 'grammar', text: 'か', reading: 'か', meanings: ['question marker'] },
+  { kind: 'grammar', text: 'な', reading: 'な', meanings: ['don’t; emphasis'] },
+  { kind: 'grammar', text: 'ぞ', reading: 'ぞ', meanings: ['emphasis'] },
+  { kind: 'grammar', text: 'ぜ', reading: 'ぜ', meanings: ['emphasis'] },
+]
 
 interface Plan {
   readonly score: number
@@ -38,8 +163,15 @@ interface Plan {
 
 function candidateIndex(
   words: readonly AnalyzerWord[],
-): ReadonlyMap<string, readonly WordCandidate[]> {
-  const index = new Map<string, WordCandidate[]>()
+): ReadonlyMap<string, readonly SurfaceCandidate[]> {
+  const index = new Map<string, SurfaceCandidate[]>()
+  for (const candidate of GRAMMAR_CANDIDATES) {
+    const first = [...candidate.text][0]
+    if (!first) continue
+    const candidates = index.get(first) ?? []
+    candidates.push(candidate)
+    index.set(first, candidates)
+  }
   for (const word of words) {
     const values = new Set([...word.forms, ...word.readings])
     for (const text of values) {
@@ -47,7 +179,7 @@ function candidateIndex(
       const first = [...text][0]
       if (!first) continue
       const candidates = index.get(first) ?? []
-      candidates.push({ text, word })
+      candidates.push({ kind: 'word', text, word })
       index.set(first, candidates)
     }
     const reading = word.readings[0]
@@ -57,7 +189,12 @@ function candidateIndex(
         const first = [...surface.text][0]
         if (!first) continue
         const candidates = index.get(first) ?? []
-        candidates.push({ text: surface.text, word, reading: surface.reading })
+        candidates.push({
+          kind: 'word',
+          text: surface.text,
+          word,
+          reading: surface.reading,
+        })
         index.set(first, candidates)
       }
     }
@@ -82,6 +219,15 @@ function wordToken(
     type: 'word',
     contentRef: `word:${word.id}`,
     ...(hasNonN5Kanji ? { hasNonN5Kanji: true } : {}),
+  }
+}
+
+function grammarToken(candidate: GrammarCandidate): TextAnalysisToken {
+  return {
+    text: candidate.text,
+    reading: candidate.reading,
+    meanings: candidate.meanings,
+    type: 'grammar',
   }
 }
 
@@ -167,20 +313,33 @@ export function analyzeText(
       if (characters.slice(index, end).join('') !== candidate.text) continue
       const tail = plans[end]
       if (!tail) continue
-      const candidatePlan = {
-        // Coverage dominates; common score and length break realistic ties.
-        score:
-          tail.score + 1_000_000 + length * 1_000 + candidate.word.commonScore,
-        tokens: [
-          wordToken(
-            candidate.text,
-            candidate.word,
-            kanjiByLiteral,
-            candidate.reading ?? candidate.word.readings[0] ?? null,
-          ),
-          ...tail.tokens,
-        ],
-      }
+      const candidatePlan =
+        candidate.kind === 'word'
+          ? {
+              // Coverage dominates; common score and length break realistic ties.
+              score:
+                tail.score +
+                1_000_000 +
+                length * 1_000 +
+                candidate.word.commonScore,
+              tokens: [
+                wordToken(
+                  candidate.text,
+                  candidate.word,
+                  kanjiByLiteral,
+                  candidate.reading ?? candidate.word.readings[0] ?? null,
+                ),
+                ...tail.tokens,
+              ],
+            }
+          : {
+              // Grammar is a fallback below dictionary words but above an
+              // unannotated character, so real entries always win ties. The
+              // small per-token cost prefers one longer construction such as
+              // ではない over three shorter grammar fragments.
+              score: tail.score + length * 100 - 10,
+              tokens: [grammarToken(candidate), ...tail.tokens],
+            }
       if (isBetterPlan(candidatePlan, best)) best = candidatePlan
     }
 

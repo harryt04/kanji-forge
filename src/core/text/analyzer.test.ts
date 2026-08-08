@@ -194,4 +194,35 @@ describe('analyzeText', () => {
       }),
     ])
   })
+
+  it('annotates common particles and longer functional phrases offline', () => {
+    expect(analyzeText('日本ではない。日を読む', words, kanji)).toEqual([
+      expect.objectContaining({ text: '日本', type: 'word' }),
+      expect.objectContaining({
+        text: 'ではない',
+        type: 'grammar',
+        reading: 'ではない',
+        meanings: ['is not'],
+      }),
+      expect.objectContaining({ text: '。', type: 'unknown' }),
+      expect.objectContaining({ text: '日', type: 'kanji' }),
+      expect.objectContaining({
+        text: 'を',
+        type: 'grammar',
+        reading: 'を',
+        meanings: ['object marker'],
+      }),
+      expect.objectContaining({ text: '読む', type: 'word' }),
+    ])
+  })
+
+  it('keeps dictionary words ahead of overlapping grammar fragments', () => {
+    expect(analyzeText('です', words, kanji)).toEqual([
+      expect.objectContaining({
+        text: 'です',
+        type: 'word',
+        contentRef: 'word:3',
+      }),
+    ])
+  })
 })
