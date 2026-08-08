@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState } from '@/data/repo'
+import { getKanjiByLiterals } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
@@ -75,6 +76,7 @@ import {
   formatDeckAsJson,
   formatDeckAsText,
 } from './deck-export'
+import { parseKanjiImportText } from './deck-import'
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -166,6 +168,11 @@ export function SettingsScreen(): React.ReactElement {
   const [deckMessage, setDeckMessage] = useState<string | null>(null)
   const [deckExportBusy, setDeckExportBusy] = useState(false)
   const [deckExportMessage, setDeckExportMessage] = useState<string | null>(
+    null,
+  )
+  const [deckImportText, setDeckImportText] = useState('')
+  const [deckImportBusy, setDeckImportBusy] = useState(false)
+  const [deckImportMessage, setDeckImportMessage] = useState<string | null>(
     null,
   )
   const [notificationStatus, setNotificationStatus] = useState<
@@ -711,6 +718,77 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setDeckExportBusy(false)
+    }
+  }
+
+  async function importKanjiList(): Promise<void> {
+    if (!runtime || deckImportBusy) return
+    const literals = parseKanjiImportText(deckImportText)
+    if (literals.length === 0) {
+      setDeckImportMessage('Paste one or more kanji to import.')
+      return
+    }
+
+    setDeckImportBusy(true)
+    setDeckImportMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const records = await getKanjiByLiterals(literals)
+      const existing = await repositories.deckMembership.list()
+      const existingRefs = new Set(
+        existing.map((membership) => membership.contentRef),
+      )
+      const now = Date.now()
+      let sortOrder = existing.length
+      let imported = 0
+
+      for (const literal of literals) {
+        const contentRef = `kanji:${literal}`
+        if (!records.has(literal) || existingRefs.has(contentRef)) continue
+        const membership = {
+          deckId: 'saved' as const,
+          contentRef,
+          sortOrder,
+          addedAt: now,
+          updatedAt: now,
+        }
+        await repositories.recordDeckMembership({
+          deck: {
+            id: 'saved',
+            name: 'Saved',
+            kind: 'saved',
+            definitionId: null,
+            updatedAt: now,
+          },
+          membership,
+          mutation: {
+            id: crypto.randomUUID(),
+            mutType: 'deckMembership.upsert',
+            payload: JSON.stringify(membership),
+            createdAt: now,
+            attempts: 0,
+          },
+        })
+        existingRefs.add(contentRef)
+        sortOrder += 1
+        imported += 1
+      }
+
+      const unknown = literals.length - records.size
+      setDeckImportText('')
+      setDeckImportMessage(
+        imported === 0
+          ? `No new kanji were added. ${unknown > 0 ? `${unknown} were not found in the installed dictionary.` : 'They may already be in Saved.'}`
+          : `Added ${imported} kanji to Saved.${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not import kanji.',
+      )
+    } finally {
+      setDeckImportBusy(false)
     }
   }
 
@@ -1527,6 +1605,38 @@ export function SettingsScreen(): React.ReactElement {
           {deckExportMessage && (
             <p className="text-muted-foreground mt-4 text-sm" role="status">
               {deckExportMessage}
+            </p>
+          )}
+        </div>
+        <div className="border-border mt-5 border-t pt-5">
+          <h3 className="font-semibold">Import kanji</h3>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Paste one kanji per line, a compact kanji list, or the first column
+            from a KanjiForge text export. Matched kanji are enriched from the
+            installed offline dictionary and added to your Saved deck.
+          </p>
+          <textarea
+            aria-label="Kanji to import"
+            className="border-input bg-background focus-visible:ring-ring font-jp-ui mt-3 min-h-28 w-full rounded-md border p-3 outline-none focus-visible:ring-2"
+            value={deckImportText}
+            onChange={(event) => setDeckImportText(event.target.value)}
+            placeholder={'日\n本\n語'}
+            disabled={deckImportBusy}
+          />
+          <Button
+            type="button"
+            className="mt-3"
+            disabled={
+              deckImportBusy ||
+              parseKanjiImportText(deckImportText).length === 0
+            }
+            onClick={() => void importKanjiList()}
+          >
+            {deckImportBusy ? 'Importing…' : 'Import to Saved'}
+          </Button>
+          {deckImportMessage && (
+            <p className="text-muted-foreground mt-4 text-sm" role="status">
+              {deckImportMessage}
             </p>
           )}
         </div>

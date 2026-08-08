@@ -591,6 +591,28 @@ describe('SettingsScreen', () => {
     expect(writeText.mock.calls[0]?.[0]).toContain('\n')
   })
 
+  it('imports matched kanji into the Saved deck while reporting unknown input', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.type(screen.getByLabelText('Kanji to import'), '日\n𠮷')
+    await user.click(screen.getByRole('button', { name: 'Import to Saved' }))
+
+    expect(
+      await screen.findByText(
+        'Added 1 kanji to Saved. 1 were not found in the installed dictionary.',
+      ),
+    ).toBeInTheDocument()
+    await expect(
+      createUserRepositories(runtime.database).deckMembership.list(),
+    ).resolves.toMatchObject([{ contentRef: 'kanji:日' }])
+    await expect(
+      createUserRepositories(runtime.database).outbox.pending(),
+    ).resolves.toMatchObject([{ mutType: 'deckMembership.upsert' }])
+  })
+
   it('shows a backup reminder when the last backup is more than 30 days old', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({

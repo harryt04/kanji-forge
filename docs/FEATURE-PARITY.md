@@ -187,12 +187,12 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 10.1 | Import by typing/pasting into an import box | ✅ | — | (T8.0) |
+| 10.1 | Import by typing/pasting into an import box | ✅ | 2026-08-07 | Settings accepts one-per-line or compact bare-kanji lists (including the first column of KanjiForge text exports), enriches matches offline, and appends them to Saved; CSV column mapping and arbitrary word imports remain future work |
 | 10.2 | CSV import | ✅ | — | With column mapping UI (T8.0) |
 | 10.3 | Multiple import formats | ✅ | — | CSV, TSV, line lists, JSON (T8.0) |
 | 10.4 | Append imported stickies to the current deck | ✅ | — | (T8.0) |
 | 10.5 | Export deck to clipboard as text | ✅ | 2026-08-07 | Settings copies the current starter deck as tab-separated kanji, readings, and meanings for pasting into another app or spreadsheet |
-| — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | — | ARCHITECTURE §9 (T8.0) |
+| — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | 2026-08-07 | Bare kanji imports are matched against the installed offline KANJIDIC2 pack before being added to Saved; word enrichment remains future work |
 | — | Import preview with matched/ambiguous/not-found | ➕ ✅ | — | (T8.0) |
 | — | Export to CSV and JSON files | ➕ ✅ | 2026-08-07 | Settings downloads the current deck's content and local study progress as versioned CSV or JSON files |
 | — | Full backup export/restore incl. review history | ➕ ✅ | 2026-08-07 | Settings downloads/restores the locked v1 JSON format; restore unions records and replays the review log |
