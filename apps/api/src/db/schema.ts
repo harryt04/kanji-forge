@@ -125,6 +125,8 @@ export const decks = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    kind: text('kind').notNull(),
+    definitionId: text('definition_id'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -133,13 +135,21 @@ export const decks = pgTable(
   ],
 )
 
-export const settings = pgTable('settings', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  payload: jsonb('payload').notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
-})
+export const settings = pgTable(
+  'settings',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.key] }),
+    index('settings_user_id_idx').on(table.userId),
+  ],
+)
 
 export const deckMembership = pgTable(
   'deck_membership',

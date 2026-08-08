@@ -4,10 +4,17 @@ import {
   type ServerResponse,
 } from 'node:http'
 import { createAuth } from './auth.js'
+import { createDatabase } from './db/client.js'
 import { readEnv } from './env.js'
+import {
+  MutationValidationError,
+  applyMutation,
+  parseMutationBatch,
+} from './mutations.js'
 
 const env = readEnv()
-const auth = createAuth(env)
+const database = createDatabase(env.DATABASE_URL)
+const auth = createAuth(env, database)
 
 function originAllowed(origin: string | undefined): boolean {
   return origin === undefined || origin === env.CORS_ORIGIN
@@ -98,14 +105,27 @@ const server = createServer(async (request, response) => {
       if (!session)
         return json(response, 401, { error: 'unauthenticated' }, origin)
 
-      // T1.0 deliberately does not apply mutations yet. T1.4 will validate each
-      // mutation and stamp session.user.id rather than accepting user_id from the body.
-      return json(
-        response,
-        501,
-        { error: 'mutation_ingest_not_implemented' },
-        origin,
-      )
+      try {
+        const mutations = parseMutationBatch(await fetchRequest.json())
+        const applied: string[] = []
+        const rejected: Array<{ id: string; reason: string }> = []
+        for (const mutation of mutations) {
+          try {
+            await applyMutation(database, session.user.id, mutation)
+            applied.push(mutation.id)
+          } catch (error) {
+            rejected.push({
+              id: mutation.id,
+              reason: error instanceof Error ? error.message : 'apply_failed',
+            })
+          }
+        }
+        return json(response, 200, { applied, rejected }, origin)
+      } catch (error) {
+        if (error instanceof MutationValidationError)
+          return json(response, 400, { error: error.message }, origin)
+        throw error
+      }
     }
   } catch (error) {
     console.error('API request failed', error)

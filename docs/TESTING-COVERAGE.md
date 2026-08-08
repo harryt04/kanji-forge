@@ -213,9 +213,17 @@ that these preferences load offline and that tap-to-reveal glosses remain hidden
 **`device-id.test.ts`** (new) — stability across calls, localStorage persistence, reuse of an
 existing id, safe `'server'` placeholder without `window`, generation via `crypto.randomUUID()`.
 
-### `apps/api` and `scripts/build-packs` — pre-existing, unchanged by this plan
+### `apps/api` — 6 cases across 3 files
 
-`env.test.ts` (2), `schema.contract.test.ts` (1), `fetch-sources.test.ts` (1), `build-decks.test.ts`
+`mutations.test.ts` covers complete review and metadata mutation validation, removal of
+body-supplied user identity, review/mutation id matching, supported-type handling, and the
+batch-size limit. `env.test.ts` and `schema.contract.test.ts` continue to cover backend
+configuration and the server projection schema. Database integration coverage remains deferred
+until the local Postgres stack is available in CI.
+
+### `scripts/build-packs`
+
+`fetch-sources.test.ts` (1), `build-decks.test.ts`
 (5), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
 [Known issues](#known-issues).
 
