@@ -457,6 +457,12 @@ describe('HomeScreen', () => {
     expect(screen.getByText('一')).toBeInTheDocument()
     expect(screen.getByText('6 lapses')).toBeInTheDocument()
     expect(screen.getByText('8 lapses')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'View details for 日' }),
+    ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E6%97%A5')
+    expect(
+      screen.getByRole('link', { name: 'View details for 一' }),
+    ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E4%B8%80')
     expect(screen.queryByText('国')).not.toBeInTheDocument()
     expect(
       screen.getByText(/Cards missed six or more times/),

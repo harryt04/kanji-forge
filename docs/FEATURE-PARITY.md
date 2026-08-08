@@ -153,7 +153,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Level distribution stacked bar | ➕ ✅ | 2026-08-07 | Home shows all five belt-rank levels, including untouched cards as level 0, with an accessible stacked bar and count legend |
 | — | 30-day review forecast | ➕ 🔷 | 2026-08-07 | Home shows the currently scheduled due-review workload for the next 30 calendar days; overdue cards count today and unscheduled new cards are excluded |
 | — | Retention rate per level | ➕ 🔷 | 2026-08-07 | Home reports retained study answers by starting level, excluding manual history and reviews taken before 80% of the configured stage interval |
-| — | Leech identification | ➕ 🔷 | 2026-08-07 | Home surfaces cards with six or more lapses for manual attention, following SRS-SPEC §8 |
+| — | Leech identification | ➕ ✅ | 2026-08-08 | Home surfaces cards with six or more lapses for manual attention and links each card to its offline Detail view, following SRS-SPEC §8 |
 | — | Heatmap calendar | ➕ 🔷 | 2026-08-07 | History includes a keyboard-accessible 30-day activity grid with intensity by review count and shared day detail selection |
 | — | Unrealistic-pace warning with inline fixes | ➕ ✅ | 2026-08-07 | Home warns above 200 answers/day and offers a one-tap later-date suggestion; smaller-deck selection remains unavailable for the built-in fixture deck |
 

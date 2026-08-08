@@ -573,9 +573,14 @@ export function HomeScreen(): React.ReactElement {
                     className="border-border flex items-center justify-between gap-3 rounded-md border p-2"
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="text-xl" lang="ja">
+                      <Link
+                        className="text-primary text-xl underline underline-offset-4"
+                        href={`/detail?contentRef=${encodeURIComponent(leech.stickyId)}`}
+                        lang="ja"
+                        aria-label={`View details for ${card?.literal ?? leech.stickyId}`}
+                      >
                         {card?.literal ?? leech.stickyId}
-                      </span>
+                      </Link>
                       <span className="text-muted-foreground truncate">
                         Level {leech.level}
                       </span>
