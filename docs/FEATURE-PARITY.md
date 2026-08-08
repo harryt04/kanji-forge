@@ -233,7 +233,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Tablet / laptop / desktop layouts | ➕ ✅ | — | Two-pane above `md` |
 | — | Full keyboard operability | ➕ ✅ | 2026-08-06 | |
 | — | CVD-safe alternate color ramp | ➕ ✅ | 2026-08-08 | The belt ramp uses luminance and always-on fold shapes so Home distribution, Browse cards, tiles, and deck chips remain distinguishable without hue perception; the red→green default is avoided |
-| — | Screen reader support | ➕ ✅ | — | |
+| — | Screen reader support | ➕ ✅ | 2026-08-08 | Study announces card position, reveal state, and grading prompt through a polite live region; the focused flashcard also supports Enter activation |
 | — | Open source, self-hostable, no account | ➕ ✅ | 2026-08-06 | The whole point |
 | — | Chinese/hanzi support (StickyStudy has a separate app) | 🔶 | — | Architecture allows; out of MVP scope |
 

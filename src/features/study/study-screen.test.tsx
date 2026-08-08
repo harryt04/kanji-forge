@@ -89,6 +89,33 @@ describe('StudyScreen', () => {
     expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
   })
 
+  it('announces study-card position and reveal state to assistive technology', async () => {
+    await renderReady()
+    const announcement = screen.getByTestId('study-announcement')
+
+    expect(announcement).toHaveTextContent(
+      `Card 1 of ${useStudyStore.getState().queue.length}`,
+    )
+    expect(announcement).toHaveTextContent('Answer hidden')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    expect(announcement).toHaveTextContent('Answer revealed')
+    expect(announcement).toHaveTextContent('Choose a grade')
+  })
+
+  it('allows the focused flashcard to reveal with Enter', async () => {
+    await renderReady()
+    const card = screen.getByRole('button', { name: 'Reveal answer' })
+
+    card.focus()
+    await userEvent.keyboard('{Enter}')
+
+    expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+  })
+
   it('does not expose audio controls for kanji-only cards', async () => {
     const speak = vi.fn()
     const cancel = vi.fn()
