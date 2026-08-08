@@ -724,6 +724,13 @@ export function SettingsScreen(): React.ReactElement {
         value: next,
         updatedAt: Date.now(),
       })
+      // Re-register an already-subscribed device so a timezone change is
+      // reflected in the server-side background reminder row as well.
+      if (dailyReminderEnabled) {
+        void enableBackgroundPush()
+          .then(setBackgroundPushStatus)
+          .catch(() => setBackgroundPushStatus('not-configured'))
+      }
       window.dispatchEvent(new Event(DAILY_REMINDER_SETTING_CHANGED_EVENT))
     } catch (reason: unknown) {
       setDailyReminderTime(previous)

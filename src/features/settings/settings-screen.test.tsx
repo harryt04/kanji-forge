@@ -16,6 +16,7 @@ import {
   DAILY_REMINDER_ENABLED_SETTING,
   DAILY_REMINDER_TIME_SETTING,
 } from '@/pwa'
+import * as pwa from '@/pwa'
 import { FONT_SCALE_SETTING, THEME_SETTING } from './theme'
 import {
   BACKUP_FORMAT,
@@ -320,6 +321,32 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Daily reminder on' }),
     ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('refreshes an active background push subscription when the reminder time changes', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: DAILY_REMINDER_ENABLED_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+    const refreshPush = vi
+      .spyOn(pwa, 'enableBackgroundPush')
+      .mockResolvedValue('subscribed')
+    render(<SettingsScreen />)
+
+    const time = await screen.findByLabelText('Reminder time')
+    fireEvent.change(time, { target: { value: '07:30' } })
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          DAILY_REMINDER_TIME_SETTING,
+        ),
+      ).toMatchObject({ value: '07:30' })
+    })
+    expect(refreshPush).toHaveBeenCalledOnce()
+    refreshPush.mockRestore()
   })
 
   it('shows iOS Home Screen guidance when storage is not protected', async () => {
