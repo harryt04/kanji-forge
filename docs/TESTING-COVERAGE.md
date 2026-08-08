@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 31 (199 test cases: 199 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 49 cases, included above) |
+| Unit/integration test files | 31 (200 test cases: 200 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 50 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **85.63%** |
+| Overall statement coverage | **85.76%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -137,9 +137,9 @@ user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
 
-### `src/features/detail` — 2 cases
+### `src/features/detail` — 3 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked example words (or the pack-empty state), rendering ranked similar-looking kanji links, and opening a linked kanji outside the starter deck from the offline content pack.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked example words (or the pack-empty state), rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, and saving the selected kanji to the offline Saved deck with an outbox mutation.
 
 ### `src/features/navigation` — 2 cases
 

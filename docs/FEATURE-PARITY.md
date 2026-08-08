@@ -85,7 +85,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.7 | Example sentences with breakdown | ✅ | — | Tatoeba |
 | 4.8 | Everything hyperlinked | ✅ | — | Navigation stack |
 | 4.9 | Swipe between stickies in detail view | ✅ | — | |
-| 4.10 | Save sticky to a deck | ✅ | — | |
+| 4.10 | Save sticky to a deck | ✅ | 2026-08-07 | Kanji detail saves the selected card offline to the per-user Saved deck and queues the membership mutation for sync |
 | 4.11 | "Save to Saved deck" vs. always-ask setting | ✅ | — | |
 | 4.12 | Inline stroke animations instead of static glyph | ✅ | — | Global setting |
 | 4.13 | Night mode with auto 21:00–06:00 | ✅ | — | Plus a full theme system |

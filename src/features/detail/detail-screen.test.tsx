@@ -1,8 +1,10 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import { createUserRepositories } from '@/data/repo'
 import { DetailScreen } from './detail-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -87,5 +89,26 @@ describe('DetailScreen', () => {
     expect(
       screen.getByRole('link', { name: 'View details for 固' }),
     ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E5%9B%BA')
+  })
+
+  it('saves the selected kanji to the offline Saved deck', async () => {
+    const runtime = bootstrapUserRuntime(`detail-${userId}`)
+    const user = userEvent.setup()
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save to Saved' }),
+      ).toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: 'Save to Saved' }))
+
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeDisabled()
+    expect(
+      await createUserRepositories(runtime.database).deckMembership.list(),
+    ).toMatchObject([{ contentRef: 'kanji:日', deckId: 'saved' }])
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending())[0],
+    ).toMatchObject({ mutType: 'deckMembership.upsert' })
   })
 })

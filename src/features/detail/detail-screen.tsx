@@ -9,12 +9,13 @@ import {
   getSimilarKanji,
   parseContentRef,
 } from '@/data/packs'
-import { createUserRepositories } from '@/data/repo'
+import { createUserRepositories, type OutboxMutation } from '@/data/repo'
 import {
   loadStarterDeck,
   type LoadedDeck,
   type StudyCard,
 } from '@/features/study/deck-loader'
+import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -37,6 +38,8 @@ export function DetailScreen(): React.ReactElement {
   const [exampleWords, setExampleWords] = useState<
     Awaited<ReturnType<typeof getExampleWords>>
   >([])
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -46,7 +49,17 @@ export function DetailScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const loaded = await loadStarterDeck(runtime.database)
+      const savedMembership = await createUserRepositories(
+        runtime.database,
+      ).deckMembership.list()
       const requestedRef = requestedContentRef()
+      if (active && requestedRef) {
+        setSaved(
+          savedMembership.some(
+            (membership) => membership.contentRef === requestedRef,
+          ),
+        )
+      }
       if (!requestedRef) {
         if (active) setDeck(loaded)
         return
@@ -124,6 +137,53 @@ export function DetailScreen(): React.ReactElement {
   const { content, state } = detailCard
   const level = state?.level ?? 0
   const reading = [...content.onReadings, ...content.kunReadings]
+  const selectedContentRef = contentRef
+
+  async function saveToSaved(): Promise<void> {
+    if (!runtime || saved || saving) return
+    const now = Date.now()
+    const mutation: OutboxMutation = {
+      id: crypto.randomUUID(),
+      mutType: 'deckMembership.upsert',
+      payload: JSON.stringify({
+        deckId: 'saved',
+        contentRef: selectedContentRef,
+        updatedAt: now,
+      }),
+      createdAt: now,
+      attempts: 0,
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const repo = createUserRepositories(runtime.database)
+      const memberships = await repo.deckMembership.list()
+      await repo.recordDeckMembership({
+        deck: {
+          id: 'saved',
+          name: 'Saved',
+          kind: 'saved',
+          definitionId: null,
+          updatedAt: now,
+        },
+        membership: {
+          deckId: 'saved',
+          contentRef: selectedContentRef,
+          sortOrder: memberships.length,
+          addedAt: now,
+          updatedAt: now,
+        },
+        mutation,
+      })
+      setSaved(true)
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not save card.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6">
@@ -144,6 +204,16 @@ export function DetailScreen(): React.ReactElement {
             Level {level} · {LEVEL_NAMES[level]}
             {state?.flagged ? ' · Flagged' : ''}
           </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 w-fit"
+            disabled={saved || saving}
+            onClick={() => void saveToSaved()}
+          >
+            {saved ? 'Saved' : saving ? 'Saving…' : 'Save to Saved'}
+          </Button>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
