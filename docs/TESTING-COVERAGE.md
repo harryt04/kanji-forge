@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 31 (197 test cases: 197 passing) |
+| Unit/integration test files | 31 (199 test cases: 199 passing) |
 | Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 49 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **85.48%** |
+| Overall statement coverage | **85.63%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -69,8 +69,9 @@ Locked at 100% by the CI gate; this directory should never regress.
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
   `reviews.list()` filtering by deck and content ref independently.
-- **`packs/index.test.ts`** (9) — `parseContentRef` valid/malformed, deck-definition loading and
-  caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching.
+- **`packs/index.test.ts`** (14) — `parseContentRef` valid/malformed, deck-definition loading and
+  caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching, and
+  ranked example-word lookup with empty-input limits.
 
 ### `src/features/study` — 32 cases across 4 files
 
@@ -138,7 +139,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/detail` — 2 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked similar-looking kanji links, and opening a linked kanji outside the starter deck from the offline content pack.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked example words (or the pack-empty state), rendering ranked similar-looking kanji links, and opening a linked kanji outside the starter deck from the offline content pack.
 
 ### `src/features/navigation` — 2 cases
 

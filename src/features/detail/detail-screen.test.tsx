@@ -56,6 +56,14 @@ describe('DetailScreen', () => {
     expect(screen.getByText('Stroke count')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(
+      screen.getByRole('heading', { name: 'Example words' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No example words are available in the installed dictionary pack.',
+      ),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole('link', { name: '← Back to Browse' }),
     ).toHaveAttribute('href', '/browse')
   })
@@ -69,6 +77,10 @@ describe('DetailScreen', () => {
       expect(screen.getByRole('heading', { name: '国' })).toBeInTheDocument(),
     )
     expect(screen.getByText('country')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Example words' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/love of one's country/)).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Similar-looking kanji' }),
     ).toBeInTheDocument()

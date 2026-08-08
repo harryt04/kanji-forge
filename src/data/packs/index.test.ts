@@ -115,6 +115,29 @@ describe('data/packs', () => {
     })
   })
 
+  describe('getExampleWords', () => {
+    it('returns ranked words whose kanji form contains the requested literal', async () => {
+      const { getExampleWords } = await freshPacks()
+      const result = await getExampleWords('国')
+
+      expect(result.length).toBeGreaterThan(0)
+      expect(result[0]).toMatchObject({
+        forms: ['愛国'],
+        readings: ['あいこく'],
+      })
+      expect(
+        result.every((word) => word.forms.some((form) => form.includes('国'))),
+      ).toBe(true)
+    })
+
+    it('returns no examples for an empty literal or exhausted limit', async () => {
+      const { getExampleWords } = await freshPacks()
+
+      await expect(getExampleWords('国', 0)).resolves.toEqual([])
+      await expect(getExampleWords('')).resolves.toEqual([])
+    })
+  })
+
   describe('searchDictionary', () => {
     it('searches kanji and words by Japanese text, romaji, and English', async () => {
       const { searchDictionary } = await freshPacks()

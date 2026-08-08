@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import {
+  getExampleWords,
   getKanjiByLiterals,
   getSimilarKanji,
   parseContentRef,
@@ -33,6 +34,9 @@ export function DetailScreen(): React.ReactElement {
     readonly state: LoadedDeck['cards'][number]['state']
   } | null>(null)
   const [similarKanji, setSimilarKanji] = useState<readonly string[]>([])
+  const [exampleWords, setExampleWords] = useState<
+    Awaited<ReturnType<typeof getExampleWords>>
+  >([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -83,7 +87,14 @@ export function DetailScreen(): React.ReactElement {
       }
       if (active) {
         setDeck(loaded)
-        setSimilarKanji(literal ? await getSimilarKanji(literal) : [])
+        if (literal) {
+          const [similar, examples] = await Promise.all([
+            getSimilarKanji(literal),
+            getExampleWords(literal),
+          ])
+          setSimilarKanji(similar)
+          setExampleWords(examples)
+        }
       }
     })().catch((reason: unknown) => {
       if (active)
@@ -179,6 +190,41 @@ export function DetailScreen(): React.ReactElement {
           </dl>
         </CardContent>
       </Card>
+      <section aria-labelledby="example-words-heading">
+        <h2
+          id="example-words-heading"
+          className="font-jp-ui text-lg font-semibold"
+        >
+          Example words
+        </h2>
+        {exampleWords.length > 0 ? (
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+            {exampleWords.map((word) => (
+              <li
+                key={word.id}
+                className="border-border bg-card rounded-md border p-3"
+              >
+                <p className="font-jp-ui text-lg" lang="ja">
+                  {word.forms.join('、') || word.readings.join('、')}
+                </p>
+                <p
+                  className="font-jp-ui text-muted-foreground text-sm"
+                  lang="ja"
+                >
+                  {word.readings.join('、') || 'Reading unavailable'}
+                </p>
+                <p className="mt-1 text-sm">
+                  {word.meanings.join('; ') || 'Meaning unavailable'}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground mt-2 text-sm">
+            No example words are available in the installed dictionary pack.
+          </p>
+        )}
+      </section>
       {similarKanji.length > 0 && (
         <section aria-labelledby="similar-kanji-heading">
           <h2

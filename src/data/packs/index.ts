@@ -97,6 +97,22 @@ export async function getSimilarKanji(
   return similar[literal] ?? []
 }
 
+/** Returns ranked dictionary words whose kanji form contains the supplied literal. */
+export async function getExampleWords(
+  literal: string,
+  limit = 12,
+): Promise<readonly WordRecord[]> {
+  if (!literal || limit <= 0) return []
+  const words = await loadDictionaryWords()
+  return words
+    .filter((word) => word.forms.some((form) => form.includes(literal)))
+    .sort(
+      (left, right) =>
+        right.commonScore - left.commonScore || left.id - right.id,
+    )
+    .slice(0, limit)
+}
+
 const packHandles = new Map<string, Promise<SqlJsDatabase>>()
 function openPack(fileName: string): Promise<SqlJsDatabase> {
   let handle = packHandles.get(fileName)

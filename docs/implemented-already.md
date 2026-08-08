@@ -67,7 +67,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 | Stroke processing | `src/core/stroke/{match,resample}.ts` | Each exports a single `*_STUB` constant. | T6.0 (writing trainer) |
 | Import/enrichment | `src/core/import/{parse,enrich}.ts` | Each exports a single `*_STUB` constant. | T8.0 (v2, deferred with custom decks) |
 | PWA registration | `src/pwa/index.ts`, `src/pwa/sw.ts`, `next.config.js` | Registers the build-generated Serwist worker in the browser; the worker precaches build assets and caches visited navigations for offline reloads. Updated workers wait rather than interrupting an active study session. | T5.0 |
-| Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Route + feature-module placeholders; no real UI or data wiring. | Phases 2–3, or Deferred for Writing per TRD |
+| Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Detail and Settings are real authenticated offline screens; Detail includes kanji metadata, ranked similar-kanji links, and ranked example words from the installed words pack. Writing remains a placeholder. | Phases 2–3, or Deferred for Writing per TRD |
 
 ---
 
