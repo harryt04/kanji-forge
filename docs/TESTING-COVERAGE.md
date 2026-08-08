@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 52 (372 test cases: 372 passing) |
+| Unit/integration test files | 54 (388 test cases: 388 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 124 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.58%** |
+| Overall statement coverage | **86.96%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,7 +27,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.89 / 86 / 100 / 93.89 · packs 96.81 / 82.5 / 100 / 96.81 · repo 97.97 / 90.47 / 100 / 97.97 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.89 / 87.03 / 100 / 93.89 · outbox 85.86 / 81.81 / 91.66 / 85.86 · packs 98.46 / 82.55 / 100 / 98.46 · repo 97.97 / 90.54 / 100 / 97.97 | ✅ comfortable margin |
 | `src/features/**` | 70% | browse 91.7 / 78.18 / 83.01 / 91.7 · history 100 / 100 / 87.5 / 100 · home 97.21 / 85.59 / 93.75 / 97.21 · settings 82.6 / 74.53 / 84.61 / 82.6 · study 86.6 / 83.07 / 72.41 / 86.6 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 84.18 / 75 / 86 / 84.18 | ✅ comfortable margin |
@@ -43,7 +43,7 @@ any directory gate above):
 | `src/app/layout.tsx` | 0% | Route shell, excluded by convention (`src/app/**/page.tsx` is excluded outright; `layout.tsx` is just never imported by a test). |
 | `src/lib/store.ts` | 0% | Legacy/unused file, not referenced by `testing-coverage-plan.md`. |
 | `src/features/study/index.ts` | 0% | A four-line re-export barrel; the real modules it re-exports (`store.ts`, `adapters.ts`, `deck-loader.ts`, `study-screen.tsx`) are each independently covered above. |
-| `src/prototype/**`, `src/core/{text,stroke,import}/**`, `src/data/{sync,outbox}/**`, `src/pwa/**`, most `src/features/*/index.ts` | excluded from the coverage denominator entirely | Stubs/prototype — see the exclusion list in `vitest.config.ts` and `docs/implemented-already.md`. Removing a file from this list is part of implementing it for real. |
+| `src/prototype/**`, `src/core/{text,stroke,import}/**`, `src/data/sync/**`, `src/pwa/**`, most `src/features/*/index.ts` | excluded from the coverage denominator entirely | Stubs/prototype — see the exclusion list in `vitest.config.ts` and `docs/implemented-already.md`. Removing a file from this list is part of implementing it for real. |
 
 ---
 
@@ -57,7 +57,11 @@ the progress-to-belt-rank mapping, retention-by-level aggregation with the 80%-o
 and leech/forecast edge cases.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 71 cases across 4 files
+### `src/data` — 83 cases across 5 files
+
+**`outbox/index.test.ts`** (5) — supported mutation batching and acknowledgement removal,
+network backoff with queue preservation, auth-expiry pause/resume, rejected-row quarantine, and
+leaving local-only mutation types queued until their server contract exists.
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v3 creates all 10 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.

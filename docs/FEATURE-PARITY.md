@@ -210,7 +210,8 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Manual full backup file | ➕ ✅ | 2026-08-07 | Settings provides a local JSON download and same-account non-destructive restore; includes decks, settings, Saved membership, and complete review history |
 | — | Auto-backup to a chosen folder (File System Access) | ➕ ✅ | 2026-08-07 | Supported desktop browsers persist the chosen folder handle per account and write one full backup per day when the app opens or returns to the foreground |
 | — | Optional self-hostable sync server | ➕ 🔷 | — | ARCHITECTURE §10 (T4.0) |
-| — | Authenticated mutation write API | ➕ ✅ | 2026-08-08 | Self-hosted API accepts authenticated batches for reviews and deck/settings/membership metadata, stamps the session user id, applies reviews idempotently, and resolves metadata last-write-wins; Electric read sync and the client flusher remain future work |
+| — | Authenticated mutation write API | ➕ ✅ | 2026-08-08 | Self-hosted API accepts authenticated batches for reviews and deck/settings/membership metadata, stamps the session user id, applies reviews idempotently, and resolves metadata last-write-wins; Electric read sync remains future work |
+| — | Client outbox flush and retry | ➕ ✅ | 2026-08-08 | Authenticated local mutations for the current write contract batch to `/api/mutations`, delete only acknowledged rows, retry network/server failures with backoff, pause on expired auth, and retain poison rows for diagnostics; unsupported local-only mutation types remain queued until their server contract exists |
 | — | Backup nag when none taken in 30 days | ➕ ✅ | 2026-08-07 | Settings records successful backup downloads and shows a persistent warning when no backup exists or the last one is more than 30 days old |
 
 ## 12. Platform & settings
