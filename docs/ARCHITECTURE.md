@@ -400,6 +400,9 @@ This matches Electric’s documented pattern of “read-path sync + your existin
 - **better-auth** on Postgres (Drizzle adapter). Sign-in required; no anonymous routes that create study data.
 - Write API verifies session/JWT and **forces `user_id` from the token** (never trust body `user_id`).
 - Electric shapes are filtered so a client only receives **that user’s** rows.
+- Until the Electric auth proxy is deployed, the API exposes an authenticated `/api/sync` snapshot
+  with the same four projections. The client applies it using the same review-union and metadata-LWW
+  merge contract, so local-first behavior does not depend on Electric availability.
 - **The exact write-path and shape-authorization contract is `TRD.md §15` (Sync Contract).** The
   shape-auth mechanism (preferred: an auth proxy that server-enforces `where user_id = <token uid>`)
   is to be confirmed by a Phase 1 spike against the real Electric image before Phase 4 — see §15.4.

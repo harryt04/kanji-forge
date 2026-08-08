@@ -28,5 +28,7 @@ must remain private until the T1.5 shape-auth proxy spike enforces `user_id` fil
   mutations are not sent to Electric.
 - API startup runs Drizzle migrations before serving traffic. Use one API replica during migration
   rollout, or run `pnpm --dir apps/api db:migrate` as a separate Coolify deployment command.
-- `POST /api/mutations` authenticates a better-auth session but intentionally returns `501` in this
-  scaffold. T1.4 owns validation, per-mutation idempotency, and server-stamped `user_id`.
+- `POST /api/mutations` authenticates a better-auth session and applies the supported write contract.
+  `GET /api/sync` returns only that session user's reviews and metadata projections for the local
+  client read-sync fallback. Direct Electric shapes remain private until the shape-auth proxy
+  spike enforces `user_id` filtering.

@@ -11,6 +11,7 @@ import {
   applyMutation,
   parseMutationBatch,
 } from './mutations.js'
+import { readSyncSnapshot } from './sync.js'
 
 const env = readEnv()
 const database = createDatabase(env.DATABASE_URL)
@@ -126,6 +127,19 @@ const server = createServer(async (request, response) => {
           return json(response, 400, { error: error.message }, origin)
         throw error
       }
+    }
+
+    if (url.pathname === '/api/sync' && request.method === 'GET') {
+      const session = await auth.api.getSession({
+        headers: fetchRequest.headers,
+      })
+      if (!session)
+        return json(response, 401, { error: 'unauthenticated' }, origin)
+      return json(
+        response,
+        await readSyncSnapshot(database, session.user.id),
+        origin,
+      )
     }
   } catch (error) {
     console.error('API request failed', error)

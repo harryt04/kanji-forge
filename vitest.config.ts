@@ -24,7 +24,6 @@ export default defineConfig({
         'src/core/text/**',
         'src/core/stroke/**',
         'src/core/import/**',
-        'src/data/sync/**',
         'src/features/browse/index.ts',
         'src/features/detail/index.ts',
         'src/features/dictionary/index.ts',
