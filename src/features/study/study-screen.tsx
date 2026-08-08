@@ -30,8 +30,8 @@ import {
   type StudyQuestion,
 } from './study-style'
 import {
-  playJapaneseAudio,
-  hasInstalledJapaneseAudioFor,
+  playJapaneseAudioForReadings,
+  findInstalledJapaneseAudioReading,
   supportsStudyCardAudio,
   supportsJapaneseSpeech,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
@@ -228,12 +228,12 @@ export function StudyScreen({
         active = false
       }
     }
-    const reading = studyCard.readings[0] ?? studyCard.literal
-    void hasInstalledJapaneseAudioFor(studyCard.literal, reading).then(
-      (available) => {
-        if (active) setHasAudioRecording(available)
-      },
-    )
+    void findInstalledJapaneseAudioReading(
+      studyCard.literal,
+      studyCard.readings,
+    ).then((available) => {
+      if (active) setHasAudioRecording(Boolean(available))
+    })
     return () => {
       active = false
     }
@@ -271,8 +271,7 @@ export function StudyScreen({
 
   const speakCurrentCard = useCallback(() => {
     if (!studyCard || !supportsStudyCardAudio(studyCard.contentType)) return
-    const reading = studyCard.readings[0] ?? studyCard.literal
-    void playJapaneseAudio(studyCard.literal, reading)
+    void playJapaneseAudioForReadings(studyCard.literal, studyCard.readings)
   }, [studyCard])
 
   const handleReveal = useCallback(() => {

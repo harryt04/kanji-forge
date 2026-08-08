@@ -35,15 +35,16 @@ import {
   StrokeAnimation,
 } from './stroke-animation'
 import {
-  playJapaneseAudio,
+  playJapaneseAudioForReadings,
   supportsJapaneseSpeech,
+  findInstalledJapaneseAudioReading,
 } from '@/features/study/audio'
-import { getAudioPackFile, listAudioPacks } from '@/features/study/audio-pack'
+import { listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
-type AudioSource = Awaited<ReturnType<typeof playJapaneseAudio>>
+type AudioSource = Awaited<ReturnType<typeof playJapaneseAudioForReadings>>
 
 function requestedContentRef(): string | null {
   if (typeof window === 'undefined') return null
@@ -78,19 +79,20 @@ interface WordDetailViewProps {
 
 interface AudioControlProps {
   readonly writing: string
-  readonly reading: string
+  readonly readings: readonly string[]
   readonly canSpeak: boolean
   readonly hasAudioPack: boolean
 }
 
 function AudioControl({
   writing,
-  reading,
+  readings,
   canSpeak,
   hasAudioPack,
 }: AudioControlProps): React.ReactElement | null {
   const [source, setSource] = useState<AudioSource | null>(null)
   const [hasRecording, setHasRecording] = useState(false)
+  const readingKey = readings.join('\u0000')
 
   useEffect(() => {
     let active = true
@@ -100,13 +102,17 @@ function AudioControl({
         active = false
       }
     }
-    void getAudioPackFile(writing, reading).then((file) => {
-      if (active) setHasRecording(Boolean(file))
+    setSource(null)
+    void findInstalledJapaneseAudioReading(
+      writing,
+      readingKey ? readingKey.split('\u0000') : [],
+    ).then((reading) => {
+      if (active) setHasRecording(Boolean(reading))
     })
     return () => {
       active = false
     }
-  }, [hasAudioPack, reading, writing])
+  }, [hasAudioPack, readingKey, writing])
 
   if (!canSpeak && !hasRecording) return null
 
@@ -130,7 +136,7 @@ function AudioControl({
         variant="outline"
         size="sm"
         onClick={() => {
-          void playJapaneseAudio(writing, reading).then(setSource)
+          void playJapaneseAudioForReadings(writing, readings).then(setSource)
         }}
         aria-label={actionLabel}
       >
@@ -171,7 +177,7 @@ function WordDetailView({
           </p>
           <AudioControl
             writing={word.forms[0] ?? word.readings[0] ?? ''}
-            reading={word.readings[0] ?? word.forms[0] ?? ''}
+            readings={word.readings}
             canSpeak={canSpeak}
             hasAudioPack={hasAudioPack}
           />
@@ -704,7 +710,7 @@ export function DetailScreen({
           </p>
           <AudioControl
             writing={content.literal}
-            reading={audioText}
+            readings={[audioText, ...reading]}
             canSpeak={canSpeak}
             hasAudioPack={hasAudioPack}
           />

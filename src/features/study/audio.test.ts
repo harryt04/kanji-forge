@@ -1,12 +1,33 @@
+import { zipSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { installAudioPack, removeAudioPack } from './audio-pack'
 import {
+  findInstalledJapaneseAudioReading,
   hasInstalledJapaneseAudioFor,
   speakJapanese,
   supportsJapaneseSpeech,
   supportsStudyCardAudio,
 } from './audio'
 
-afterEach(() => {
+function archive(id: string): Uint8Array {
+  const manifest = {
+    id,
+    name: 'Alternate reading voice',
+    version: '1.0.0',
+    license: 'CC BY 4.0',
+    attribution: 'A Japanese speaker',
+    files: { '生|しょう': 'audio/shou.mp3' },
+  }
+  return zipSync({
+    'manifest.json': new TextEncoder().encode(JSON.stringify(manifest)),
+    'audio/shou.mp3': new Uint8Array([1, 2, 3]),
+  })
+}
+
+const installed: string[] = []
+
+afterEach(async () => {
+  for (const id of installed.splice(0)) await removeAudioPack(id)
   vi.unstubAllGlobals()
 })
 
@@ -24,6 +45,16 @@ describe('study audio', () => {
 
   it('only reports an installed recording when the writing and reading match', async () => {
     expect(await hasInstalledJapaneseAudioFor('日', 'ひ')).toBe(false)
+  })
+
+  it('finds an installed recording on an alternate valid reading', async () => {
+    const id = `alternate-${crypto.randomUUID()}`
+    installed.push(id)
+    await installAudioPack(archive(id))
+
+    await expect(
+      findInstalledJapaneseAudioReading('生', ['なま', 'しょう']),
+    ).resolves.toBe('しょう')
   })
 
   it('speaks Japanese with a labeled, slower device voice', () => {

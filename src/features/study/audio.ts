@@ -30,6 +30,18 @@ export async function hasInstalledJapaneseAudioFor(
   }
 }
 
+/** Returns the first installed exact recording across a word's valid readings. */
+export async function findInstalledJapaneseAudioReading(
+  writing: string,
+  readings: readonly string[],
+): Promise<string | null> {
+  const candidates = [...new Set([...readings, writing].filter(Boolean))]
+  for (const reading of candidates) {
+    if (await hasInstalledJapaneseAudioFor(writing, reading)) return reading
+  }
+  return null
+}
+
 /** Speaks Japanese text using the device voice, if the browser supports it. */
 export function speakJapanese(text: string): boolean {
   if (!text || !supportsJapaneseSpeech()) return false
@@ -68,4 +80,15 @@ export async function playJapaneseAudio(
     }
   }
   return speakJapanese(reading) ? 'synthesized' : 'unsupported'
+}
+
+/** Plays the first installed exact recording across a word's valid readings. */
+export async function playJapaneseAudioForReadings(
+  writing: string,
+  readings: readonly string[],
+): Promise<'pack' | 'synthesized' | 'unsupported'> {
+  const fallback = readings.find(Boolean) ?? writing
+  const reading =
+    (await findInstalledJapaneseAudioReading(writing, readings)) ?? fallback
+  return playJapaneseAudio(writing, reading)
 }
