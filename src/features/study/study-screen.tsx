@@ -31,6 +31,7 @@ import {
 } from './study-style'
 import {
   playJapaneseAudio,
+  supportsStudyCardAudio,
   supportsJapaneseSpeech,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
@@ -247,7 +248,7 @@ export function StudyScreen({
   }, [revealed, studyCard])
 
   const speakCurrentCard = useCallback(() => {
-    if (!studyCard) return
+    if (!studyCard || !supportsStudyCardAudio(studyCard.contentType)) return
     const reading = studyCard.readings[0] ?? studyCard.literal
     void playJapaneseAudio(studyCard.literal, reading)
   }, [studyCard])
@@ -358,7 +359,8 @@ export function StudyScreen({
         ? (studyCard?.meanings[0] ?? studyCard?.literal ?? '')
         : (studyCard?.literal ?? '')
   const questionIsJapanese = twoTapStudy || studyQuestion !== 'meaning'
-  const canSpeak = supportsJapaneseSpeech()
+  const canSpeak =
+    supportsStudyCardAudio(studyCard?.contentType) && supportsJapaneseSpeech()
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`

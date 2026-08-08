@@ -2,6 +2,13 @@ import { getAudioPackFile } from './audio-pack'
 
 export const STUDY_AUTO_PLAY_AUDIO_SETTING = 'study.autoPlayAudio'
 
+/** StickyStudy's audio preference applies to word cards, not kanji-only decks. */
+export function supportsStudyCardAudio(
+  contentType: 'kanji' | 'word' | undefined,
+): boolean {
+  return contentType === 'word'
+}
+
 /** Returns whether this browser exposes a usable speech-synthesis runtime. */
 export function supportsJapaneseSpeech(): boolean {
   return (

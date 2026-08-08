@@ -1,11 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { speakJapanese, supportsJapaneseSpeech } from './audio'
+import {
+  speakJapanese,
+  supportsJapaneseSpeech,
+  supportsStudyCardAudio,
+} from './audio'
 
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
 describe('study audio', () => {
+  it('only enables study audio for dictionary-word cards', () => {
+    expect(supportsStudyCardAudio('word')).toBe(true)
+    expect(supportsStudyCardAudio('kanji')).toBe(false)
+    expect(supportsStudyCardAudio(undefined)).toBe(false)
+  })
+
   it('reports unsupported browsers without throwing', () => {
     expect(supportsJapaneseSpeech()).toBe(false)
     expect(speakJapanese('日')).toBe(false)
