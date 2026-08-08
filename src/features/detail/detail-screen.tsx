@@ -6,6 +6,7 @@ import { getActiveUserRuntime } from '@/auth/runtime'
 import {
   getExampleSentences,
   getExampleWords,
+  getKanjiComponents,
   getKanjiByLiterals,
   getSimilarKanji,
   parseContentRef,
@@ -44,6 +45,8 @@ export function DetailScreen(): React.ReactElement {
   const [exampleSentences, setExampleSentences] = useState<
     Awaited<ReturnType<typeof getExampleSentences>>
   >([])
+  const [components, setComponents] =
+    useState<Awaited<ReturnType<typeof getKanjiComponents>>>(null)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +71,7 @@ export function DetailScreen(): React.ReactElement {
     setSimilarKanji([])
     setExampleWords([])
     setExampleSentences([])
+    setComponents(null)
     setError(null)
     void (async () => {
       await runtime.database.ready
@@ -119,15 +123,19 @@ export function DetailScreen(): React.ReactElement {
       if (!active) return
       setDeck(loaded)
       if (literal) {
-        const [similar, examples, sentences] = await Promise.all([
-          getSimilarKanji(literal),
-          getExampleWords(literal),
-          getExampleSentences(literal),
-        ])
+        const [similar, examples, sentences, componentTree] = await Promise.all(
+          [
+            getSimilarKanji(literal),
+            getExampleWords(literal),
+            getExampleSentences(literal),
+            getKanjiComponents(literal),
+          ],
+        )
         if (active) {
           setSimilarKanji(similar)
           setExampleWords(examples)
           setExampleSentences(sentences)
+          setComponents(componentTree)
         }
       }
     })().catch((reason: unknown) => {
@@ -169,6 +177,22 @@ export function DetailScreen(): React.ReactElement {
     currentIndex >= 0 && currentIndex < navigableRefs.length - 1
       ? navigableRefs[currentIndex + 1]
       : null
+
+  function renderComponentTree(
+    nodes: NonNullable<typeof components>['children'],
+  ): React.ReactElement | null {
+    if (nodes.length === 0) return null
+    return (
+      <ul className="mt-2 grid gap-2 pl-5" aria-label="Character elements">
+        {nodes.map((node, index) => (
+          <li key={`${node.element}-${index}`} lang="ja">
+            <span className="font-jp-display text-2xl">{node.element}</span>
+            {node.children.length > 0 && renderComponentTree(node.children)}
+          </li>
+        ))}
+      </ul>
+    )
+  }
 
   function navigateTo(nextContentRef: string): void {
     const nextUrl = `/detail?contentRef=${encodeURIComponent(nextContentRef)}`
@@ -348,6 +372,25 @@ export function DetailScreen(): React.ReactElement {
           </dl>
         </CardContent>
       </Card>
+      <section aria-labelledby="components-heading">
+        <h2
+          id="components-heading"
+          className="font-jp-ui text-lg font-semibold"
+        >
+          Radical and components
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Classical radical: {content.radicalClassical ?? 'Not listed'}
+        </p>
+        {components?.children.length ? (
+          renderComponentTree(components.children)
+        ) : (
+          <p className="text-muted-foreground mt-2 text-sm">
+            No component decomposition is available in the installed stroke
+            pack.
+          </p>
+        )}
+      </section>
       <section aria-labelledby="example-words-heading">
         <h2
           id="example-words-heading"

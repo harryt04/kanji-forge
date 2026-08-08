@@ -27,6 +27,11 @@ export interface KanjiRecord {
   readonly meanings: readonly string[]
 }
 
+export interface ComponentNode {
+  readonly element: string
+  readonly children: readonly ComponentNode[]
+}
+
 export interface WordRecord {
   readonly id: number
   readonly commonScore: number
@@ -82,6 +87,80 @@ export function loadDeckDefinitions(): Promise<readonly DeckDefinition[]> {
 
 let similarKanjiPromise:
   Promise<Readonly<Record<string, readonly string[]>>> | undefined
+
+const strokeChunkPromises = new Map<
+  string,
+  Promise<Readonly<Record<string, ComponentNode>>>
+>()
+
+function strokeChunkFor(literal: string): string | null {
+  if ([...literal].length !== 1) return null
+  const codePoint = literal.codePointAt(0)
+  if (codePoint === undefined) return null
+  if (codePoint >= 0x4e00 && codePoint <= 0x4fff) return '4E00-4FFF'
+  if (codePoint >= 0x5000 && codePoint <= 0x5fff) return '5000-5FFF'
+  if (codePoint >= 0x6000 && codePoint <= 0x6fff) return '6000-6FFF'
+  if (codePoint >= 0x7000 && codePoint <= 0x7fff) return '7000-7FFF'
+  if (codePoint >= 0x8000 && codePoint <= 0x9fff) return '8000-9FFF'
+  if (codePoint > 0x20000 && codePoint <= 0x2ffff) return 'CJK_Extended'
+  return null
+}
+
+function parseComponentNode(value: unknown): ComponentNode | null {
+  if (!value || typeof value !== 'object' || !('element' in value)) return null
+  const element = value.element
+  if (typeof element !== 'string' || element.length === 0) return null
+  const children =
+    'children' in value && Array.isArray(value.children)
+      ? value.children.flatMap((child): ComponentNode[] => {
+          const parsed = parseComponentNode(child)
+          return parsed ? [parsed] : []
+        })
+      : []
+  return { element, children }
+}
+
+function loadStrokeChunk(
+  chunk: string,
+): Promise<Readonly<Record<string, ComponentNode>>> {
+  let promise = strokeChunkPromises.get(chunk)
+  if (!promise) {
+    promise = fetch(`/packs-dev/strokes/strokes-${chunk}.json`)
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(
+            `Failed to load stroke component pack (${response.status}).`,
+          )
+        return response.json() as Promise<Record<string, unknown>>
+      })
+      .then((body) => {
+        const result: Record<string, ComponentNode> = {}
+        for (const [codePoint, value] of Object.entries(body)) {
+          const parsed =
+            value && typeof value === 'object' && 'components' in value
+              ? parseComponentNode(value.components)
+              : null
+          if (parsed) result[codePoint] = parsed
+        }
+        return result
+      })
+    strokeChunkPromises.set(chunk, promise)
+  }
+  return promise
+}
+
+/** Returns an offline KanjiVG component tree for a kanji when the stroke pack includes it. */
+export async function getKanjiComponents(
+  literal: string,
+): Promise<ComponentNode | null> {
+  const chunk = strokeChunkFor(literal)
+  if (!chunk) return null
+  const codePoint = literal.codePointAt(0)
+  if (codePoint === undefined) return null
+  const key = codePoint.toString(16).padStart(5, '0').toLowerCase()
+  const records = await loadStrokeChunk(chunk)
+  return records[key] ?? null
+}
 
 function loadSimilarKanji(): Promise<
   Readonly<Record<string, readonly string[]>>
@@ -250,7 +329,7 @@ export async function getKanjiByLiterals(
   const result = new Map<string, KanjiRecord>()
   for (const literal of literals) {
     const statement = database.prepare(
-      'SELECT literal, stroke_count, grade, freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori FROM kanji WHERE literal = ?',
+      'SELECT literal, radical_classical, radical_nelson, stroke_count, grade, freq, jlpt_legacy, on_readings, kun_readings, meanings, nanori FROM kanji WHERE literal = ?',
       [literal],
     )
     if (statement.step()) {

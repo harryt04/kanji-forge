@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 34 (231 test cases: 231 passing) |
+| Unit/integration test files | 34 (235 test cases: 235 passing) |
 | Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 64 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.37%** |
+| Overall statement coverage | **86.58%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -141,9 +141,9 @@ user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
 
-### `src/features/detail` — 6 cases
+### `src/features/detail` — 7 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, saving the selected kanji to the offline Saved deck with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, saving the selected kanji to the offline Saved deck with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
 
 ### `src/features/navigation` — 2 cases
 

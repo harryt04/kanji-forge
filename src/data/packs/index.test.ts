@@ -11,7 +11,12 @@ function fixtureFetch(): typeof fetch {
     const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(
-        join(path === 'similar.json' ? REPO_PACK_ROOT : FIXTURE_ROOT, path),
+        join(
+          path === 'similar.json' || path.startsWith('strokes/')
+            ? REPO_PACK_ROOT
+            : FIXTURE_ROOT,
+          path,
+        ),
       )
       const body = path.endsWith('.json')
         ? buffer.toString('utf8')
@@ -98,6 +103,58 @@ describe('data/packs', () => {
         .mocked(fetch)
         .mock.calls.filter(([url]) => String(url).includes('kanji-v1.sqlite'))
       expect(packFetches).toHaveLength(1)
+    })
+  })
+
+  describe('getKanjiComponents', () => {
+    it('loads the nested offline component tree for a kanji', async () => {
+      const { getKanjiComponents } = await freshPacks()
+      await expect(getKanjiComponents('国')).resolves.toEqual({
+        element: '国',
+        children: [
+          { element: '囗', children: [] },
+          {
+            element: '玉',
+            children: [
+              { element: '王', children: [] },
+              { element: '丶', children: [] },
+            ],
+          },
+          { element: '囗', children: [] },
+        ],
+      })
+    })
+
+    it('returns null for a non-kanji or missing stroke entry', async () => {
+      const { getKanjiComponents } = await freshPacks()
+      await expect(getKanjiComponents('あ')).resolves.toBeNull()
+      await expect(getKanjiComponents('𠀀')).resolves.toBeNull()
+      await expect(getKanjiComponents('𠀁')).resolves.toBeNull()
+      await expect(getKanjiComponents('鿿')).resolves.toBeNull()
+    })
+
+    it('returns a leaf component for a kanji without children', async () => {
+      const { getKanjiComponents } = await freshPacks()
+      await expect(getKanjiComponents('日')).resolves.toEqual({
+        element: '日',
+        children: [],
+      })
+    })
+
+    it('reports an unavailable stroke component pack', async () => {
+      const fixture = fixtureFetch()
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) => {
+          if (String(input).includes('/strokes/'))
+            return new Response('unavailable', { status: 503 })
+          return fixture(input)
+        }),
+      )
+      const { getKanjiComponents } = await freshPacks()
+      await expect(getKanjiComponents('国')).rejects.toThrow(
+        'Failed to load stroke component pack (503)',
+      )
     })
   })
 

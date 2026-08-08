@@ -18,4 +18,7 @@ cpSync(
   path.join(root, 'packs', 'similar.json'),
   path.join(destination, 'similar.json'),
 )
+cpSync(path.join(root, 'packs', 'strokes'), path.join(destination, 'strokes'), {
+  recursive: true,
+})
 console.info('Mirrored packs-dev/ into public/packs-dev/')

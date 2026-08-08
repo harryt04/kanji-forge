@@ -14,12 +14,15 @@ import { createUserRepositories } from '@/data/repo'
 import { DetailScreen } from './detail-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
+const REPO_PACK_ROOT = join(process.cwd(), 'packs')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
     const path = String(input).replace(/^\/packs-dev\//, '')
     try {
-      const buffer = readFileSync(join(FIXTURE_ROOT, path))
+      const buffer = readFileSync(
+        join(path.startsWith('strokes/') ? REPO_PACK_ROOT : FIXTURE_ROOT, path),
+      )
       const body = path.endsWith('.json')
         ? buffer.toString('utf8')
         : new Uint8Array(buffer)
@@ -64,6 +67,14 @@ describe('DetailScreen', () => {
     expect(screen.getByText('Stroke count')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(
+      screen.getByRole('heading', { name: 'Radical and components' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No component decomposition is available in the installed stroke pack.',
+      ),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole('heading', { name: 'Example words' }),
     ).toBeInTheDocument()
     expect(
@@ -93,6 +104,13 @@ describe('DetailScreen', () => {
       expect(screen.getByRole('heading', { name: '国' })).toBeInTheDocument(),
     )
     expect(screen.getByText('country')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Radical and components' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('list', { name: 'Character elements' }).length,
+    ).toBeGreaterThan(0)
+    expect(screen.getAllByText('囗').length).toBeGreaterThan(0)
     expect(
       screen.getByRole('heading', { name: 'Example words' }),
     ).toBeInTheDocument()
