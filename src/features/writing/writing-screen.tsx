@@ -12,6 +12,7 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { matchStroke } from '@/core/stroke/match'
+import { nextStrokeIndexes } from '@/core/stroke/order'
 import { flattenSvgPath } from '@/core/stroke/resample'
 import {
   DEFAULT_WRITING_LENIENCY,
@@ -67,6 +68,9 @@ export function WritingScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [capturedStrokes, setCapturedStrokes] = useState<readonly Point[][]>([])
+  const [capturedStrokeIndexes, setCapturedStrokeIndexes] = useState<
+    readonly number[]
+  >([])
   const [draftStroke, setDraftStroke] = useState<readonly Point[]>([])
   const [validationEnabled, setValidationEnabled] = useState(true)
   const [leniency, setLeniency] = useState(DEFAULT_WRITING_LENIENCY)
@@ -156,13 +160,24 @@ export function WritingScreen(): React.ReactElement {
     activePointerId.current = null
     const stroke = draftStrokeRef.current
     if (stroke.length > 1) {
-      const expectedPath = paths?.[capturedStrokes.length]
-      const accepted =
-        !validationEnabled ||
-        !expectedPath ||
-        matchStroke(stroke, expectedPath, leniency).accepted
+      const expectedIndexes = nextStrokeIndexes(
+        content?.literal ?? '',
+        capturedStrokeIndexes,
+        paths?.length ?? 0,
+      )
+      const acceptedIndex = validationEnabled
+        ? expectedIndexes.find((index) => {
+            const expectedPath = paths?.[index]
+            return (
+              !expectedPath ||
+              matchStroke(stroke, expectedPath, leniency).accepted
+            )
+          })
+        : (expectedIndexes[0] ?? capturedStrokeIndexes.length)
+      const accepted = acceptedIndex !== undefined
       if (accepted) {
         setCapturedStrokes((current) => [...current, [...stroke]])
+        setCapturedStrokeIndexes((current) => [...current, acceptedIndex])
         setFailedAttempts(0)
         setFeedback(null)
       } else {
@@ -186,6 +201,7 @@ export function WritingScreen(): React.ReactElement {
     draftStrokeRef.current = []
     setDraftStroke([])
     setCapturedStrokes([])
+    setCapturedStrokeIndexes([])
     setFailedAttempts(0)
     setFeedback(null)
   }
@@ -216,6 +232,7 @@ export function WritingScreen(): React.ReactElement {
 
   function undoStroke(): void {
     setCapturedStrokes((current) => current.slice(0, -1))
+    setCapturedStrokeIndexes((current) => current.slice(0, -1))
     setFailedAttempts(0)
     setFeedback(null)
   }
@@ -271,6 +288,12 @@ export function WritingScreen(): React.ReactElement {
   const drillActive = drillAttempt > 0 && !drillComplete
   const repetitionComplete =
     Boolean(paths) && capturedStrokes.length >= (paths?.length ?? 0)
+  const expectedStrokeIndexes = nextStrokeIndexes(
+    content.literal,
+    capturedStrokeIndexes,
+    paths?.length ?? 0,
+  )
+  const expectedStrokeIndex = expectedStrokeIndexes[0]
 
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
@@ -430,11 +453,12 @@ export function WritingScreen(): React.ReactElement {
               </text>
             )}
             {validationEnabled &&
-              paths?.[capturedStrokes.length] &&
+              expectedStrokeIndex !== undefined &&
+              paths?.[expectedStrokeIndex] &&
               failedAttempts > 0 && (
                 <>
                   <path
-                    d={paths[capturedStrokes.length]}
+                    d={paths[expectedStrokeIndex]}
                     fill="var(--accent)"
                     opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
                     className={
@@ -446,7 +470,7 @@ export function WritingScreen(): React.ReactElement {
                   {failedAttempts >= 2 &&
                     (() => {
                       const start = flattenSvgPath(
-                        paths[capturedStrokes.length]!,
+                        paths[expectedStrokeIndex]!,
                       )[0]
                       return start ? (
                         <circle

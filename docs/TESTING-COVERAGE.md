@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 44 (313 test cases: 313 passing) |
+| Unit/integration test files | 46 (321 test cases: 321 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 98 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.16%** |
+| Overall statement coverage | **87.21%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,11 +27,11 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.46 / 86 / 100 / 93.46 · packs 98.77 / 82.46 / 100 / 98.77 · repo 97.61 / 89.34 / 100 / 97.61 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.46 / 86 / 100 / 93.46 · packs 98.77 / 82.54 / 100 / 98.77 · repo 97.65 / 89.76 / 100 / 97.65 | ✅ comfortable margin |
 | `src/features/**` | 70% | browse 89 / 74.77 / 86.48 / 89 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.53 / 84 / 84.84 / 96.53 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 80.7 / 74.82 / 80.73 / 80.7 | ✅ comfortable margin |
-| Global floor | 60% | 87.16 / 81.65 / 87.52 / 87.16 | ✅ comfortable margin |
+| Global floor | 60% | 87.21 / 81.54 / 87.75 / 87.21 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -160,7 +160,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/writing` — 6 cases
 
-**`writing-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline guide loading, pointer-stroke capture, undo, clear actions, offline persistence of the correct-strokes toggle and strict/normal/forgiving stroke-match tolerance, escalating start-dot and animated-stroke hints after rejected attempts, and a bounded standalone drill with repetition progress and completion. **`src/core/stroke/match.test.ts`** covers arc-length resampling, forward/reverse stroke order, curve similarity, and wrong-shape rejection.
+**`writing-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline guide loading, pointer-stroke capture, undo, clear actions, offline persistence of the correct-strokes toggle and strict/normal/forgiving stroke-match tolerance, escalating start-dot and animated-stroke hints after rejected attempts, and a bounded standalone drill with repetition progress and completion. **`src/core/stroke/match.test.ts`** covers arc-length resampling, forward/reverse stroke order, curve similarity, and wrong-shape rejection. **`src/core/stroke/order.test.ts`** covers interchangeable first-stroke selection, strict sequencing outside exceptions, and bounds against the loaded path set.
 
 ### `src/features/navigation` — 2 cases
 
