@@ -263,6 +263,22 @@ describe('data/packs', () => {
     })
   })
 
+  describe('getWordById', () => {
+    it('resolves an analyzed word by its stable dictionary id', async () => {
+      const { getWordById, searchDictionary } = await freshPacks()
+      const result = (await searchDictionary('お金')).find(
+        (entry) => entry.type === 'word',
+      )
+      if (!result || result.type !== 'word')
+        throw new Error('Word fixture missing')
+
+      await expect(getWordById(result.record.id)).resolves.toEqual(
+        result.record,
+      )
+      await expect(getWordById(-1)).resolves.toBeNull()
+    })
+  })
+
   describe('getExampleSentences', () => {
     it('returns ranked offline sentences with furigana and attribution', async () => {
       const { getExampleSentences } = await freshPacks()
@@ -425,6 +441,7 @@ describe('data/packs', () => {
         text: 'お金',
         type: 'word',
         reading: 'おかね',
+        contentRef: expect.stringMatching(/^word:\d+$/u),
       })
       expect(result.at(-1)).toEqual({
         text: '𠀁',

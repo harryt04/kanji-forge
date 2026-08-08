@@ -288,12 +288,27 @@ export function ShareTargetScreen(): React.ReactElement {
                     key={`${token.text}-${index}`}
                     className="bg-muted/40 rounded-md p-2"
                   >
-                    <ruby className="font-jp-ui text-xl" lang="ja">
-                      {token.text}
-                      {token.reading && (
-                        <rt className="text-sm">{token.reading}</rt>
-                      )}
-                    </ruby>
+                    {token.contentRef ? (
+                      <a
+                        className="text-primary rounded-sm underline underline-offset-4 focus-visible:ring-2"
+                        href={`/detail?contentRef=${encodeURIComponent(token.contentRef)}`}
+                        aria-label={`View details for ${token.text}`}
+                      >
+                        <ruby className="font-jp-ui text-xl" lang="ja">
+                          {token.text}
+                          {token.reading && (
+                            <rt className="text-sm">{token.reading}</rt>
+                          )}
+                        </ruby>
+                      </a>
+                    ) : (
+                      <ruby className="font-jp-ui text-xl" lang="ja">
+                        {token.text}
+                        {token.reading && (
+                          <rt className="text-sm">{token.reading}</rt>
+                        )}
+                      </ruby>
+                    )}
                     <span className="text-muted-foreground ml-3 text-sm">
                       {token.type === 'unknown'
                         ? 'Not in the installed dictionary'

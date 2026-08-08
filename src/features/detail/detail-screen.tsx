@@ -10,7 +10,9 @@ import {
   getKanjiByLiterals,
   getKanjiStrokes,
   getSimilarKanji,
+  getWordById,
   parseContentRef,
+  type WordRecord,
 } from '@/data/packs'
 import {
   createUserRepositories,
@@ -54,6 +56,110 @@ function parseTags(value: string): readonly string[] {
     })
 }
 
+interface WordDetailViewProps {
+  readonly word: WordRecord
+  readonly saveDecks: readonly Deck[]
+  readonly savedDeckIds: ReadonlySet<string>
+  readonly saving: boolean
+  readonly onSave: (deck: Deck) => void
+}
+
+function WordDetailView({
+  word,
+  saveDecks,
+  savedDeckIds,
+  saving,
+  onSave,
+}: WordDetailViewProps): React.ReactElement {
+  return (
+    <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6">
+      <Link className="text-primary w-fit text-sm underline" href="/analyze">
+        ← Back to text analyzer
+      </Link>
+      <Card data-testid="word-detail">
+        <CardHeader>
+          <p className="font-jp-ui text-muted-foreground text-sm">単語の詳細</p>
+          <CardTitle className="font-jp-ui text-4xl" lang="ja">
+            {word.forms.join('、') || word.readings.join('、')}
+          </CardTitle>
+          <p className="font-jp-ui text-muted-foreground" lang="ja">
+            {word.readings.join('、') || 'Reading unavailable'}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 w-fit"
+            disabled={savedDeckIds.has('saved') || saving}
+            onClick={() => {
+              const savedDeck = saveDecks.find(
+                (candidate) => candidate.id === 'saved',
+              )
+              if (savedDeck) onSave(savedDeck)
+            }}
+          >
+            {savedDeckIds.has('saved')
+              ? 'Saved'
+              : saving
+                ? 'Saving…'
+                : 'Save to Saved'}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted-foreground">Meanings</dt>
+              <dd className="mt-1">
+                {word.meanings.join('; ') || 'No English gloss'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Parts of speech</dt>
+              <dd className="mt-1">
+                {word.partsOfSpeech.join(', ') || 'Not listed'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Dictionary entry</dt>
+              <dd className="mt-1">#{word.id}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+      {saveDecks.some((candidate) => candidate.kind === 'custom') && (
+        <section aria-labelledby="custom-deck-save-heading">
+          <h2
+            id="custom-deck-save-heading"
+            className="font-jp-ui text-lg font-semibold"
+          >
+            Add to a custom deck
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {saveDecks
+              .filter((candidate) => candidate.kind === 'custom')
+              .map((candidate) => {
+                const alreadyAdded = savedDeckIds.has(candidate.id)
+                return (
+                  <Button
+                    key={candidate.id}
+                    type="button"
+                    variant={alreadyAdded ? 'secondary' : 'outline'}
+                    disabled={alreadyAdded || saving}
+                    onClick={() => onSave(candidate)}
+                  >
+                    {alreadyAdded
+                      ? `Added to ${candidate.name}`
+                      : `Add to ${candidate.name}`}
+                  </Button>
+                )
+              })}
+          </div>
+        </section>
+      )}
+    </main>
+  )
+}
+
 export function DetailScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
@@ -64,6 +170,7 @@ export function DetailScreen(): React.ReactElement {
     readonly content: StudyCard
     readonly state: LoadedDeck['cards'][number]['state']
   } | null>(null)
+  const [wordDetail, setWordDetail] = useState<WordRecord | null>(null)
   const [similarKanji, setSimilarKanji] = useState<readonly string[]>([])
   const [exampleWords, setExampleWords] = useState<
     Awaited<ReturnType<typeof getExampleWords>>
@@ -108,6 +215,7 @@ export function DetailScreen(): React.ReactElement {
     let active = true
     setDeck(null)
     setDetailCard(null)
+    setWordDetail(null)
     setSimilarKanji([])
     setExampleWords([])
     setExampleSentences([])
@@ -175,32 +283,47 @@ export function DetailScreen(): React.ReactElement {
         if (active) setDetailCard({ content: inDeck, state: inDeckCard?.state })
       } else {
         const parsed = parseContentRef(contentRef)
-        if (parsed.type !== 'kanji') throw new Error('Unsupported detail type.')
-        const record = (await getKanjiByLiterals([parsed.key])).get(parsed.key)
-        if (!record)
-          throw new Error('This card is not available in the installed pack.')
-        literal = record.literal
-        const state = await createUserRepositories(
-          runtime.database,
-        ).cardStates.get(loaded.deckId, contentRef)
-        if (active)
-          setDetailCard({
-            content: {
-              contentRef,
-              literal: record.literal,
-              radicalClassical: record.radicalClassical,
-              radicalNelson: record.radicalNelson,
-              strokeCount: record.strokeCount,
-              frequency: record.freq,
-              jlptLegacy: record.jlptLegacy,
-              grade: record.grade,
-              nanori: record.nanori,
-              meanings: record.meanings,
-              onReadings: record.onReadings,
-              kunReadings: record.kunReadings,
-            },
-            state,
-          })
+        if (parsed.type === 'kanji') {
+          const record = (await getKanjiByLiterals([parsed.key])).get(
+            parsed.key,
+          )
+          if (!record)
+            throw new Error('This card is not available in the installed pack.')
+          literal = record.literal
+          const state = await createUserRepositories(
+            runtime.database,
+          ).cardStates.get(loaded.deckId, contentRef)
+          if (active)
+            setDetailCard({
+              content: {
+                contentRef,
+                literal: record.literal,
+                radicalClassical: record.radicalClassical,
+                radicalNelson: record.radicalNelson,
+                strokeCount: record.strokeCount,
+                frequency: record.freq,
+                jlptLegacy: record.jlptLegacy,
+                grade: record.grade,
+                nanori: record.nanori,
+                meanings: record.meanings,
+                onReadings: record.onReadings,
+                kunReadings: record.kunReadings,
+              },
+              state,
+            })
+        } else if (parsed.type === 'word') {
+          const wordId = Number(parsed.key)
+          const word = Number.isInteger(wordId)
+            ? await getWordById(wordId)
+            : null
+          if (!word)
+            throw new Error(
+              'This word is not available in the installed dictionary pack.',
+            )
+          if (active) setWordDetail(word)
+        } else {
+          throw new Error('Unsupported detail type.')
+        }
       }
       if (!active) return
       setDeck(loaded)
@@ -239,7 +362,7 @@ export function DetailScreen(): React.ReactElement {
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to view details.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
-  if (!deck || !contentRef || !detailCard)
+  if (!deck || !contentRef || (!detailCard && !wordDetail))
     return (
       <main className="p-6" aria-busy="true">
         <p className="text-muted-foreground">
@@ -250,11 +373,22 @@ export function DetailScreen(): React.ReactElement {
       </main>
     )
 
-  const { content, state } = detailCard
+  const selectedContentRef = contentRef
+  if (wordDetail)
+    return (
+      <WordDetailView
+        word={wordDetail}
+        saveDecks={saveDecks}
+        savedDeckIds={savedDeckIds}
+        saving={saving}
+        onSave={(targetDeck) => void saveToDeck(targetDeck)}
+      />
+    )
+
+  const { content, state } = detailCard!
   const level = state?.level ?? 0
   const reading = [...content.onReadings, ...content.kunReadings]
   const audioText = reading[0] ?? content.nanori[0] ?? content.literal
-  const selectedContentRef = contentRef
   const navigableRefs = deck.cards
     .map((card) => card.contentRef)
     .filter((ref) => deck.content.has(ref))
@@ -302,7 +436,9 @@ export function DetailScreen(): React.ReactElement {
     if (
       targetDeck.id === 'saved' &&
       askBeforeSaving &&
-      !window.confirm(`Save ${content.literal} to your Saved deck?`)
+      !window.confirm(
+        `Save ${detailCard?.content.literal ?? wordDetail?.forms[0] ?? selectedContentRef} to your Saved deck?`,
+      )
     )
       return
     const now = Date.now()

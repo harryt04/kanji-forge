@@ -177,7 +177,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 |---|---|---|---|---|
 | 9.1 | Paste Japanese text → readings, furigana, English | ⚠️ Partial | 2026-08-08 | Authenticated `/analyze` provides offline longest-dictionary-match tokens with ruby readings, English meanings, and visible unknown-character fallback; a tokenizer pack remains the accuracy upgrade for grammatical segmentation |
 | 9.2 | Many display options for the analyzed output | 🔷 | — | (T3.0) |
-| 9.3 | Tap any word → detail → save to deck | 🔷 | — | (T3.0) |
+| 9.3 | Tap any word → detail → save to deck | 🔷 | 2026-08-08 | Analyzer word tokens open an authenticated offline word detail route with readings, meanings, parts of speech, and Saved/custom-deck membership actions; grammatical tokenization remains a future accuracy upgrade |
 | 9.4 | Live Japanese news feed, updated daily | ❌ as built | — | NHK Easy content is copyrighted |
 | 9.5 | Tap an article → broken into words + furigana | 🔷 | — | Applies to any user-supplied text (T3.0) |
 | — | Add all unknown words from a text in bulk | ➕ 🔷 | — | |

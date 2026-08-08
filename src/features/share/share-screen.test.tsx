@@ -102,6 +102,12 @@ describe('ShareTargetScreen', () => {
     expect(results).toHaveTextContent('お金')
     expect(results).toHaveTextContent('おかね')
     expect(results).toHaveTextContent('money')
+    expect(
+      screen.getByRole('link', { name: 'View details for お金' }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/detail\?contentRef=word%3A\d+$/u),
+    )
   })
 
   it('imports matched shared kanji to Saved atomically with sync mutations', async () => {

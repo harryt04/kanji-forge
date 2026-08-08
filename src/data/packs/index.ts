@@ -67,6 +67,7 @@ export interface TextAnalysisToken {
   readonly reading: string | null
   readonly meanings: readonly string[]
   readonly type: 'word' | 'kanji' | 'unknown'
+  readonly contentRef?: string
 }
 
 export type DictionaryResult =
@@ -558,6 +559,13 @@ function loadDictionaryWords(): Promise<readonly WordRecord[]> {
   return dictionaryWordsPromise
 }
 
+/** Looks up one offline dictionary word by its stable pack id. */
+export async function getWordById(id: number): Promise<WordRecord | null> {
+  if (!Number.isInteger(id) || id < 0) return null
+  const words = await loadDictionaryWords()
+  return words.find((word) => word.id === id) ?? null
+}
+
 /**
  * Performs a small, fully offline text analysis pass over the installed packs.
  *
@@ -605,6 +613,7 @@ export async function analyzeJapaneseText(
         reading: match.word.readings[0] ?? null,
         meanings: match.word.meanings.slice(0, 3),
         type: 'word',
+        contentRef: `word:${match.word.id}`,
       })
       index += [...match.form].length
       continue
@@ -619,6 +628,7 @@ export async function analyzeJapaneseText(
           kanjiRecord.onReadings[0] ?? kanjiRecord.kunReadings[0] ?? null,
         meanings: kanjiRecord.meanings.slice(0, 3),
         type: 'kanji',
+        contentRef: `kanji:${character}`,
       })
     } else {
       tokens.push({

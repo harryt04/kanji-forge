@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import { searchDictionary } from '@/data/packs'
 import { DetailScreen } from './detail-screen'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
@@ -254,6 +255,36 @@ describe('DetailScreen', () => {
     expect(
       (await createUserRepositories(runtime.database).outbox.pending())[0],
     ).toMatchObject({ mutType: 'deckMembership.upsert' })
+  })
+
+  it('opens an analyzed word detail and saves the word offline', async () => {
+    const result = (await searchDictionary('お金')).find(
+      (entry) => entry.type === 'word',
+    )
+    if (!result || result.type !== 'word')
+      throw new Error('Word fixture missing')
+    const runtime = bootstrapUserRuntime(`detail-${userId}`)
+    window.history.replaceState(
+      {},
+      '',
+      `/detail?contentRef=${encodeURIComponent(`word:${result.record.id}`)}`,
+    )
+    const user = userEvent.setup()
+    render(<DetailScreen />)
+
+    expect(await screen.findByTestId('word-detail')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'お金、御金' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('money')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save to Saved' }))
+
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeDisabled()
+    await expect(
+      createUserRepositories(runtime.database).deckMembership.list(),
+    ).resolves.toMatchObject([
+      { contentRef: `word:${result.record.id}`, deckId: 'saved' },
+    ])
   })
 
   it('adds the selected kanji to an existing custom deck', async () => {
