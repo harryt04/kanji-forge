@@ -101,7 +101,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 5.3 | "Correct pen strokes" — reject wrong strokes live | ✅ | 2026-08-07 | Persisted Check stroke order toggle rejects mismatched next strokes, highlights the expected stroke after failures, and keeps an unchecked free-draw mode |
 | 5.4 | Writing as the answer side of a study card | ✅ | — | (T6.0) |
 | — | Hint escalation after repeated failures | ➕ ✅ | 2026-08-08 | After two rejected strokes, the expected stroke gets a start dot; after three, it pulses as an animated hint, with reduced-motion support |
-| — | Leniency setting | ➕ ✅ | — | Accessibility (T6.0) |
+| — | Leniency setting | ➕ ✅ | 2026-08-08 | Writing practice persists strict, normal, or forgiving stroke-match tolerance per user and applies it while validating strokes |
 | — | Alternate-stroke-order exceptions table | ➕ ✅ | — | ARCHITECTURE §8 (T6.0) |
 | — | Standalone drill mode | ➕ 🔷 | 2026-08-07 | Detail-linked offline writing practice can run a selected kanji for 1–10 repetitions without changing study progress |
 

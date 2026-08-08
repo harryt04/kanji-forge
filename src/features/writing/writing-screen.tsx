@@ -14,6 +14,11 @@ import { Button } from '@/ui/button'
 import { matchStroke } from '@/core/stroke/match'
 import { flattenSvgPath } from '@/core/stroke/resample'
 import {
+  DEFAULT_WRITING_LENIENCY,
+  isWritingLeniency,
+  parseWritingLeniency,
+  WRITING_LENIENCY_OPTIONS,
+  WRITING_LENIENCY_SETTING,
   isWritingValidationEnabled,
   WRITING_VALIDATION_SETTING,
 } from './settings'
@@ -64,6 +69,7 @@ export function WritingScreen(): React.ReactElement {
   const [capturedStrokes, setCapturedStrokes] = useState<readonly Point[][]>([])
   const [draftStroke, setDraftStroke] = useState<readonly Point[]>([])
   const [validationEnabled, setValidationEnabled] = useState(true)
+  const [leniency, setLeniency] = useState(DEFAULT_WRITING_LENIENCY)
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [drillRepetitions, setDrillRepetitions] = useState(3)
@@ -90,11 +96,13 @@ export function WritingScreen(): React.ReactElement {
             'Writing practice is currently available for one kanji at a time.',
           )
         }
-        const [records, strokePaths, savedValidation] = await Promise.all([
-          getKanjiByLiterals([key]),
-          getKanjiStrokes(key),
-          repositories.settings.get(WRITING_VALIDATION_SETTING),
-        ])
+        const [records, strokePaths, savedValidation, savedLeniency] =
+          await Promise.all([
+            getKanjiByLiterals([key]),
+            getKanjiStrokes(key),
+            repositories.settings.get(WRITING_VALIDATION_SETTING),
+            repositories.settings.get(WRITING_LENIENCY_SETTING),
+          ])
         const record = records.get(key)
         if (!record)
           throw new Error(`Kanji ${key} was not found in the installed pack.`)
@@ -104,6 +112,7 @@ export function WritingScreen(): React.ReactElement {
           setValidationEnabled(
             isWritingValidationEnabled(savedValidation?.value),
           )
+          setLeniency(parseWritingLeniency(savedLeniency?.value))
         }
       } catch (reason) {
         if (active)
@@ -151,7 +160,7 @@ export function WritingScreen(): React.ReactElement {
       const accepted =
         !validationEnabled ||
         !expectedPath ||
-        matchStroke(stroke, expectedPath).accepted
+        matchStroke(stroke, expectedPath, leniency).accepted
       if (accepted) {
         setCapturedStrokes((current) => [...current, [...stroke]])
         setFailedAttempts(0)
@@ -221,6 +230,22 @@ export function WritingScreen(): React.ReactElement {
       createUserRepositories(runtime.database).settings.set({
         key: WRITING_VALIDATION_SETTING,
         value: String(enabled),
+        updatedAt: Date.now(),
+      }),
+    )
+  }
+
+  function changeLeniency(value: string): void {
+    if (!isWritingLeniency(value)) return
+    setLeniency(value)
+    setFailedAttempts(0)
+    setFeedback(null)
+    const runtime = getActiveUserRuntime()
+    if (!runtime) return
+    void runtime.database.ready.then(() =>
+      createUserRepositories(runtime.database).settings.set({
+        key: WRITING_LENIENCY_SETTING,
+        value,
         updatedAt: Date.now(),
       }),
     )
@@ -495,6 +520,25 @@ export function WritingScreen(): React.ReactElement {
             onChange={(event) => toggleValidation(event.target.checked)}
           />
           Check stroke order
+        </label>
+        <label
+          className="text-muted-foreground grid max-w-sm gap-2 text-sm"
+          htmlFor="writing-leniency"
+        >
+          <span>Stroke matching tolerance</span>
+          <select
+            id="writing-leniency"
+            value={leniency}
+            onChange={(event) => changeLeniency(event.target.value)}
+            disabled={!validationEnabled}
+            className="border-input bg-background focus-visible:ring-ring text-foreground h-10 rounded-md border px-3 outline-none focus-visible:ring-2"
+          >
+            {WRITING_LENIENCY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} — {option.description}
+              </option>
+            ))}
+          </select>
         </label>
         <p className="text-muted-foreground text-xs" role="status">
           {feedback ??

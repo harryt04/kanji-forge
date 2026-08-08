@@ -16,7 +16,10 @@ import {
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import { WritingScreen } from './writing-screen'
-import { WRITING_VALIDATION_SETTING } from './settings'
+import {
+  WRITING_LENIENCY_SETTING,
+  WRITING_VALIDATION_SETTING,
+} from './settings'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 const REPO_PACK_ROOT = join(process.cwd(), 'packs')
@@ -121,6 +124,34 @@ describe('WritingScreen', () => {
         ),
       ).toMatchObject({ value: 'false' }),
     )
+  })
+
+  it('persists and restores the stroke matching tolerance offline', async () => {
+    bootstrapUserRuntime('writing-leniency-user')
+    const user = userEvent.setup()
+    const { unmount } = render(<WritingScreen />)
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Stroke matching tolerance',
+    })
+    await user.selectOptions(select, 'forgiving')
+
+    const runtime = getActiveUserRuntime()
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime!.database).settings.get(
+          WRITING_LENIENCY_SETTING,
+        ),
+      ).toMatchObject({ value: 'forgiving' }),
+    )
+
+    unmount()
+    render(<WritingScreen />)
+    expect(
+      await screen.findByRole('combobox', {
+        name: 'Stroke matching tolerance',
+      }),
+    ).toHaveValue('forgiving')
   })
 
   it('escalates writing hints after repeated rejected strokes', async () => {
