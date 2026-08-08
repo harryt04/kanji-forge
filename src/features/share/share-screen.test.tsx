@@ -11,6 +11,7 @@ import { createUserRepositories } from '@/data/repo'
 import {
   ShareTargetScreen,
   getUnsavedAnalysisWords,
+  isExternalArticleUrl,
   readSharedDeckPayload,
   readSharedTextPayload,
 } from './share-screen'
@@ -93,6 +94,13 @@ describe('ShareTargetScreen', () => {
     })
   })
 
+  it('accepts only http(s) article URLs for external link-out', () => {
+    expect(isExternalArticleUrl('https://example.com/article')).toBe(true)
+    expect(isExternalArticleUrl('http://example.com/article')).toBe(true)
+    expect(isExternalArticleUrl('javascript:alert(1)')).toBe(false)
+    expect(isExternalArticleUrl('not a URL')).toBe(false)
+  })
+
   it('reads and validates a content-only deck share link', () => {
     const payload = encodeURIComponent(
       JSON.stringify({
@@ -144,6 +152,25 @@ describe('ShareTargetScreen', () => {
     expect(
       screen.getByRole('button', { name: 'Add 1 unsaved word to Saved' }),
     ).toBeInTheDocument()
+  })
+
+  it('automatically analyzes text shared from an article while preserving its source link', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/analyze?text=%E3%81%8A%E9%87%91%E3%82%92&title=Daily%20article&url=https%3A%2F%2Fexample.com%2Farticle',
+    )
+    render(<ShareTargetScreen />)
+
+    expect(
+      await screen.findByLabelText('Text analysis results'),
+    ).toHaveTextContent('お金')
+    expect(
+      screen.getByRole('link', { name: 'https://example.com/article' }),
+    ).toHaveAttribute('href', 'https://example.com/article')
+    expect(
+      screen.getByRole('link', { name: 'https://example.com/article' }),
+    ).toHaveAttribute('target', '_blank')
   })
 
   it('bulk-saves analyzed dictionary words atomically with sync mutations', async () => {

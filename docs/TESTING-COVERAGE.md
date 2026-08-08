@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 51 (363 test cases: 363 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 118 cases, included above) |
+| Unit/integration test files | 51 (368 test cases: 368 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 123 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **87.32%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -179,9 +179,9 @@ promotion, and pinned-search toggling.
 
 **`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
-### `src/features/share` — 9 cases
+### `src/features/share` — 11 cases
 
-**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, previewing shared Japanese text against the offline dictionary, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
+**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
 It also covers validating a content-only deck URL, previewing the shared deck name, and importing its matched cards.
 
 **`analyzer-settings.test.ts`** covers persisted furigana, rōmaji, and inline/on-tap gloss

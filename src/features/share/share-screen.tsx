@@ -45,6 +45,17 @@ export function readSharedTextPayload(search: string): SharedTextPayload {
   return { text, title, url }
 }
 
+/** Only expose shared article URLs as links when they cannot invoke a script URL. */
+export function isExternalArticleUrl(value: string | null): value is string {
+  if (!value) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 /** Reads a content-only deck payload from a copied KanjiForge share link. */
 export function readSharedDeckPayload(search: string): DeckSharePayload | null {
   const raw = new URLSearchParams(search).get('deck')
@@ -114,13 +125,33 @@ export function ShareTargetScreen(): React.ReactElement {
     setDraftText(nextPayload.text)
     setPayload(nextPayload)
     setSharedDeck(nextDeck)
+
+    // A shared article should be useful immediately: analyze its supplied text
+    // offline as soon as the share target opens. The user can still edit the
+    // text and run another analysis manually afterward.
+    let active = true
+    if (nextPayload.text) {
+      void analyzeJapaneseText(nextPayload.text)
+        .then((nextAnalysis) => {
+          if (active) setAnalysis(nextAnalysis)
+        })
+        .catch((reason: unknown) => {
+          if (active)
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : 'Could not analyze shared text.',
+            )
+        })
+    }
     const literals = nextDeck?.kanji ?? parseKanjiImportText(nextPayload.text)
     if (!runtime) {
       setLoading(false)
-      return
+      return () => {
+        active = false
+      }
     }
 
-    let active = true
     void (async () => {
       try {
         await runtime.database.ready
@@ -383,9 +414,18 @@ export function ShareTargetScreen(): React.ReactElement {
       {(payload.title || payload.url) && (
         <div className="bg-muted mt-5 rounded-md p-3 text-sm">
           {payload.title && <p className="font-medium">{payload.title}</p>}
-          {payload.url && (
+          {isExternalArticleUrl(payload.url) ? (
+            <a
+              className="text-primary mt-1 block break-all underline underline-offset-4"
+              href={payload.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {payload.url}
+            </a>
+          ) : payload.url ? (
             <p className="text-muted-foreground break-all">{payload.url}</p>
-          )}
+          ) : null}
         </div>
       )}
       {!sharedDeck && (
