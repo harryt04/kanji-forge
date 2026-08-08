@@ -12,9 +12,9 @@ async function createAccountAndWaitForSignOut(
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(password)
   const signedIn = page.getByRole('button', { name: 'Sign out' })
-  // Scoped to the auth-gate's own error text: a generic `role=alert` locator can also
-  // match unrelated live regions elsewhere in the page, causing false-positive "rate
-  // limited" detections on a submit that actually succeeded.
+  // Scoped to the auth form's own error text: a generic `role=alert` locator can
+  // also match unrelated live regions elsewhere in the page, causing false-positive
+  // "rate limited" detections on a submit that actually succeeded.
   const rateLimited = page.getByText('Unable to create that account.')
   for (let attempt = 0; ; attempt++) {
     // `force` skips Playwright's element-stability wait: on a successful submit the
@@ -35,6 +35,18 @@ async function createAccountAndWaitForSignOut(
   }
 }
 
+base.describe('landing page', () => {
+  base('renders publicly with no auth flash', async ({ page }) => {
+    await page.goto('/')
+    await expect(
+      page.getByRole('heading', { name: /wall of color/ }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Create a free account' }).first(),
+    ).toBeVisible()
+  })
+})
+
 base.describe('sign-in smoke', () => {
   base.skip(
     !API_URL,
@@ -42,12 +54,11 @@ base.describe('sign-in smoke', () => {
   )
 
   base('registers a new account through the sign-up form', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/sign-up')
     await expect(
-      page.getByRole('heading', { name: 'KanjiForge' }),
+      page.getByRole('heading', { name: 'Create your account' }),
     ).toBeVisible()
 
-    await page.getByText('New here? Create an account').click()
     const email = `e2e-form-${Date.now()}@kanjiforge.test`
     await createAccountAndWaitForSignOut(
       page,
@@ -55,12 +66,12 @@ base.describe('sign-in smoke', () => {
       'a-very-secure-password-123',
     )
 
+    await expect(page).toHaveURL(/\/home$/)
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
   })
 
   base('signs out and returns to the auth form', async ({ page }) => {
-    await page.goto('/')
-    await page.getByText('New here? Create an account').click()
+    await page.goto('/sign-up')
     const email = `e2e-signout-${Date.now()}@kanjiforge.test`
     await createAccountAndWaitForSignOut(
       page,
@@ -71,7 +82,7 @@ base.describe('sign-in smoke', () => {
 
     await page.getByRole('button', { name: 'Sign out' }).click({ force: true })
     await expect(
-      page.getByRole('heading', { name: 'KanjiForge' }),
+      page.getByRole('heading', { name: 'Welcome back' }),
     ).toBeVisible()
   })
 })

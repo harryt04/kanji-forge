@@ -67,7 +67,7 @@ async function waitForServiceWorkerControl(page: Page): Promise<void> {
 export const test = base.extend<{ authedUser: AuthedUser }>({
   authedUser: async ({ page }, use) => {
     const user = await registerUser(page)
-    await page.goto('/')
+    await page.goto('/home')
     await page.waitForSelector('text=Sign out')
     await waitForServiceWorkerControl(page)
     await use(user)

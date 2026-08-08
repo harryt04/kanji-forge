@@ -3,8 +3,6 @@
  * Companion to docs/BRAND-DESIGN-LANGUAGE.md.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Noto+Sans+JP:wght@400;500;700&family=Fraunces:wght@500;600;700;900&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=block');
-
 @import 'tailwindcss';
 
 @theme inline {
@@ -97,12 +95,11 @@
   --level-0-border: rgba(43, 38, 32, 0.35);
   --level-4-border: transparent; /* light theme: level 4 already contrasts against --background */
 
-  /* ---- typography ---- */
-  --font-jp-display: 'Klee One', sans-serif;
-  --font-jp-ui: 'Noto Sans JP', sans-serif;
-  --font-display: 'Fraunces', serif;
-  --font-body: 'Public Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* ---- typography ----
+     --font-jp-display/-jp-ui/-display/-body/-mono are defined by next/font
+     (src/app/layout.tsx) via matching CSS custom-property names on <html>,
+     not here — this keeps the `@theme inline` mapping above as the single
+     Tailwind-facing surface without a second, competing font-family source. */
 
   --text-display: 8.75rem; /* 140px, study-card kanji */
   --text-3xl: 2.5rem;
@@ -297,6 +294,40 @@
 }
 .history-heatmap-cell[data-activity-level='4'] {
   background: var(--primary);
+}
+
+/* Marketing hero — ambient tile-wall drift. Two independently-timed animations
+ * (opacity breathing + a brief bright flash on "answer") land on different tiles
+ * via each tile's own animation-delay, so the wall reads as being studied rather
+ * than as a uniform screensaver pulse. */
+@keyframes marketing-tile-breathe {
+  0%,
+  100% {
+    opacity: 0.82;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes marketing-tile-flash {
+  0%,
+  92%,
+  100% {
+    filter: brightness(1);
+  }
+  96% {
+    filter: brightness(1.18);
+  }
+}
+.marketing-tile {
+  animation:
+    marketing-tile-breathe 4200ms ease-in-out infinite,
+    marketing-tile-flash 9000ms ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-tile {
+    animation: none;
+  }
 }
 
 /* Base styles */

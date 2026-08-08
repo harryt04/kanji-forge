@@ -1,0 +1,48 @@
+import type { Metadata } from 'next'
+import { BeltRampExplainer } from '@/features/marketing/belt-ramp-explainer'
+import { FeatureHighlights } from '@/features/marketing/feature-highlights'
+import { Hero } from '@/features/marketing/hero'
+import { InstallPwa } from '@/features/marketing/install-pwa'
+import { LicensingHonesty } from '@/features/marketing/licensing-honesty'
+import { OfflineOwnership } from '@/features/marketing/offline-ownership'
+import { SignedInRedirect } from '@/features/marketing/signed-in-redirect'
+
+export const metadata: Metadata = {
+  title: 'KanjiForge — Your whole deck, as a wall of color',
+  description:
+    'A free, offline-first web app for studying kanji with the StickyStudy level-and-color SRS system. Open source, no ads, your data stays yours.',
+  alternates: { canonical: '/' },
+}
+
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'KanjiForge',
+  applicationCategory: 'EducationalApplication',
+  operatingSystem: 'Web',
+  description:
+    'A free, offline-first Japanese kanji study app using a level-and-color spaced-repetition system.',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+  },
+}
+
+export default function LandingPage(): React.ReactElement {
+  return (
+    <main>
+      <SignedInRedirect />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
+      <Hero />
+      <BeltRampExplainer />
+      <FeatureHighlights />
+      <OfflineOwnership />
+      <LicensingHonesty />
+      <InstallPwa />
+    </main>
+  )
+}
