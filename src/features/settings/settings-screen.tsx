@@ -17,7 +17,11 @@ import {
   isDailyReminderTime,
   isAppBadgePreference,
   requestDailyReminderPermission,
+  getStoragePersistenceStatus,
+  requestStoragePersistence,
+  STORAGE_PERSISTENCE_REQUESTED_SETTING,
   type AppBadgePreference,
+  type StoragePersistenceStatus,
 } from '@/pwa'
 import { Button } from '@/ui/button'
 import {
@@ -163,6 +167,8 @@ export function SettingsScreen(): React.ReactElement {
   const [notificationStatus, setNotificationStatus] = useState<
     NotificationPermission | 'unsupported' | null
   >(null)
+  const [storagePersistenceStatus, setStoragePersistenceStatus] =
+    useState<StoragePersistenceStatus | null>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -213,6 +219,7 @@ export function SettingsScreen(): React.ReactElement {
           ? 'unsupported'
           : Notification.permission,
       )
+      setStoragePersistenceStatus(await getStoragePersistenceStatus())
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
       setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
@@ -359,6 +366,29 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the daily reminder setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function protectStorage(): Promise<void> {
+    if (!runtime || saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      const status = await requestStoragePersistence()
+      await createUserRepositories(runtime.database).settings.set({
+        key: STORAGE_PERSISTENCE_REQUESTED_SETTING,
+        value: 'true',
+        updatedAt: Date.now(),
+      })
+      setStoragePersistenceStatus(status)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not protect local study storage.',
       )
     } finally {
       setSaving(false)
@@ -1187,6 +1217,46 @@ export function SettingsScreen(): React.ReactElement {
                 ? 'This browser does not provide notifications.'
                 : 'Notifications are off until you enable a reminder.'}
         </p>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Storage protection</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          KanjiForge asks your browser to protect local study data from
+          automatic eviction after your first completed study session.
+        </p>
+        {storagePersistenceStatus === 'granted' ? (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            This browser is protecting your local study data from automatic
+            eviction.
+          </p>
+        ) : storagePersistenceStatus === 'unsupported' ? (
+          <p className="text-muted-foreground mt-4 text-sm" role="alert">
+            This browser does not offer storage protection. Keep regular backups
+            so a browser cleanup cannot erase your progress.
+          </p>
+        ) : storagePersistenceStatus === 'denied' ? (
+          <div
+            className="border-destructive/40 bg-destructive/10 mt-4 rounded-md border p-4"
+            role="alert"
+          >
+            <p className="font-medium">
+              This browser may clear your local study data.
+            </p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Allow storage protection or keep regular backups to preserve your
+              progress.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={saving}
+              onClick={() => void protectStorage()}
+            >
+              Try storage protection again
+            </Button>
+          </div>
+        ) : null}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Deck name</h2>

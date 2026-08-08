@@ -43,6 +43,7 @@ function fixtureFetch(): typeof fetch {
 }
 
 let userId = 0
+const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fixtureFetch())
@@ -51,6 +52,11 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  if (originalStorage) {
+    Object.defineProperty(navigator, 'storage', originalStorage)
+  } else {
+    Reflect.deleteProperty(navigator, 'storage')
+  }
   vi.useRealTimers()
   cleanup()
   clearUserRuntime()
@@ -378,5 +384,31 @@ describe('StudyScreen', () => {
         (await repo.sessions.list('dev-kanji'))[0]?.endedAt,
       ).not.toBeNull(),
     )
+  })
+
+  it('requests durable storage after the first non-empty session finishes', async () => {
+    const persist = vi.fn().mockResolvedValue(true)
+    const persisted = vi.fn().mockResolvedValue(false)
+    Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: { persist, persisted },
+    })
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: /I know/ }))
+    await waitFor(() =>
+      expect(useStudyStore.getState().summary.seen).toBeGreaterThan(0),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Finish' }))
+
+    await waitFor(() => expect(persist).toHaveBeenCalledOnce())
+    await expect(
+      repo.settings.get('pwa.storagePersistenceRequested'),
+    ).resolves.toMatchObject({ value: 'true' })
   })
 })

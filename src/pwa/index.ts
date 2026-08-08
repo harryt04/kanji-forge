@@ -22,6 +22,13 @@ export {
   requestDailyReminderPermission,
   type DailyReminderPermission,
 } from './daily-reminder'
+export {
+  getStoragePersistenceStatus,
+  requestStoragePersistence,
+  requestStoragePersistenceAfterSession,
+  STORAGE_PERSISTENCE_REQUESTED_SETTING,
+  type StoragePersistenceStatus,
+} from './storage-persistence'
 
 /** Register the build-generated Serwist worker without making startup network-dependent. */
 export function PwaRegistration(): null {

@@ -49,12 +49,19 @@ function fixtureFetch(): typeof fetch {
 }
 
 describe('SettingsScreen', () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
+
   beforeEach(() => {
     vi.stubGlobal('fetch', fixtureFetch())
     bootstrapUserRuntime(`settings-test-${crypto.randomUUID()}`)
   })
 
   afterEach(() => {
+    if (originalStorage) {
+      Object.defineProperty(navigator, 'storage', originalStorage)
+    } else {
+      Reflect.deleteProperty(navigator, 'storage')
+    }
     vi.unstubAllGlobals()
     clearUserRuntime()
     document.documentElement.className = ''
@@ -299,6 +306,31 @@ describe('SettingsScreen', () => {
         ),
       ).toMatchObject({ value: 'total' }),
     )
+  })
+
+  it('warns when the browser can evict local data and supports retrying protection', async () => {
+    const user = userEvent.setup()
+    const persist = vi.fn().mockResolvedValue(true)
+    const persisted = vi.fn().mockResolvedValue(false)
+    Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: { persist, persisted },
+    })
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByText('This browser may clear your local study data.'),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'Try storage protection again' }),
+    )
+
+    expect(
+      await screen.findByText(
+        'This browser is protecting your local study data from automatic eviction.',
+      ),
+    ).toBeInTheDocument()
+    expect(persist).toHaveBeenCalledOnce()
   })
 
   it('persists the Saved deck confirmation preference offline', async () => {
@@ -576,7 +608,11 @@ describe('SettingsScreen', () => {
     expect(
       await screen.findByText('Your last backup is more than 30 days old.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Keep a copy of your progress in case this device clears local storage.',
+      ),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Back up now' }),
     ).toBeInTheDocument()

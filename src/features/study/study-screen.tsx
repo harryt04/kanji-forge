@@ -31,6 +31,7 @@ import {
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
 import { useStudyStore } from './store'
+import { requestStoragePersistenceAfterSession } from '@/pwa'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 export const GREY_STICKIES_SETTING = 'study.greyStickies'
@@ -161,6 +162,19 @@ export function StudyScreen({
   useEffect(() => {
     if (finished) endSession()
   }, [endSession, finished])
+
+  useEffect(() => {
+    if (!runtime || !finished || summary.seen === 0) return
+    void runtime.database.ready
+      .then(() =>
+        requestStoragePersistenceAfterSession(
+          createUserRepositories(runtime.database),
+        ),
+      )
+      .catch(() => {
+        // Storage protection is best effort and must never interrupt a finished session.
+      })
+  }, [finished, runtime, summary.seen])
 
   useEffect(() => {
     if (sessionStartedAt === null || !showTimer || finished) return
