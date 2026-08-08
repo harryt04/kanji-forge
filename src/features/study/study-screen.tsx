@@ -26,7 +26,7 @@ import {
   type StudyQuestion,
 } from './study-style'
 import {
-  speakJapanese,
+  playJapaneseAudio,
   supportsJapaneseSpeech,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
@@ -208,7 +208,7 @@ export function StudyScreen({
       studyCard.kunReadings[0] ??
       studyCard.nanori[0] ??
       studyCard.literal
-    speakJapanese(reading)
+    void playJapaneseAudio(studyCard.literal, reading)
   }, [studyCard])
 
   const handleReveal = useCallback(() => {

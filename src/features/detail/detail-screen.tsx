@@ -32,7 +32,11 @@ import {
   STROKE_ANIMATION_SETTING,
   StrokeAnimation,
 } from './stroke-animation'
-import { speakJapanese, supportsJapaneseSpeech } from '@/features/study/audio'
+import {
+  playJapaneseAudio,
+  supportsJapaneseSpeech,
+} from '@/features/study/audio'
+import { listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -185,6 +189,7 @@ export function DetailScreen(): React.ReactElement {
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [askBeforeSaving, setAskBeforeSaving] = useState(false)
   const [canSpeak, setCanSpeak] = useState(false)
+  const [hasAudioPack, setHasAudioPack] = useState(false)
   const [saveDecks, setSaveDecks] = useState<readonly Deck[]>([])
   const [savedDeckIds, setSavedDeckIds] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -357,6 +362,7 @@ export function DetailScreen(): React.ReactElement {
 
   useEffect(() => {
     setCanSpeak(supportsJapaneseSpeech())
+    void listAudioPacks().then((packs) => setHasAudioPack(packs.length > 0))
   }, [])
 
   if (!runtime)
@@ -580,13 +586,15 @@ export function DetailScreen(): React.ReactElement {
             Level {level} · {LEVEL_NAMES[level]}
             {state?.flagged ? ' · Flagged' : ''}
           </p>
-          {canSpeak && (
+          {(canSpeak || hasAudioPack) && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => speakJapanese(audioText)}
+                onClick={() =>
+                  void playJapaneseAudio(content.literal, audioText)
+                }
                 aria-label={`Play synthesized Japanese audio for ${content.literal}`}
               >
                 Play audio

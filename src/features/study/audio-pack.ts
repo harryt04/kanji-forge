@@ -1,0 +1,193 @@
+import { unzipSync } from 'fflate'
+
+export interface AudioPackManifest {
+  readonly id: string
+  readonly name: string
+  readonly version: string
+  readonly license: string
+  readonly attribution: string
+  /** Keys are `writing|reading`; values are paths inside the ZIP archive. */
+  readonly files: Readonly<Record<string, string>>
+}
+
+export interface InstalledAudioPack {
+  readonly manifest: AudioPackManifest
+  readonly files: Readonly<Record<string, Uint8Array>>
+}
+
+const AUDIO_PACK_DB = 'kanjiforge-audio-packs-v1'
+const AUDIO_PACK_STORE = 'packs'
+const memoryPacks = new Map<string, InstalledAudioPack>()
+let databasePromise: Promise<IDBDatabase | null> | undefined
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function isSafeArchivePath(value: string): boolean {
+  return value.length > 0 && !value.startsWith('/') && !value.includes('..')
+}
+
+function normalizeFiles(value: unknown): Readonly<Record<string, string>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const files: Record<string, string> = {}
+  for (const [key, path] of Object.entries(value)) {
+    if (
+      !key.includes('|') ||
+      typeof path !== 'string' ||
+      !isSafeArchivePath(path)
+    )
+      continue
+    const [writing, reading] = key.split('|')
+    if (!writing || !reading || files[key]) continue
+    files[key] = path
+  }
+  return files
+}
+
+export function parseAudioPackManifest(value: unknown): AudioPackManifest {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('Audio pack manifest must be an object.')
+  const source = value as Record<string, unknown>
+  const id = text(source.id)
+  const name = text(source.name)
+  const version = text(source.version)
+  const license = text(source.license)
+  const attribution = text(source.attribution)
+  const files = normalizeFiles(source.files)
+  if (!id || !/^[a-z0-9][a-z0-9._-]{0,63}$/u.test(id))
+    throw new Error(
+      'Audio pack id must use lowercase letters, numbers, dots, underscores, or hyphens.',
+    )
+  if (!name || !version || !license || !attribution)
+    throw new Error(
+      'Audio pack manifest requires name, version, license, and attribution.',
+    )
+  if (Object.keys(files).length === 0)
+    throw new Error(
+      'Audio pack manifest must contain at least one writing|reading file.',
+    )
+  return { id, name, version, license, attribution, files }
+}
+
+export function parseAudioPackArchive(bytes: Uint8Array): InstalledAudioPack {
+  let archive: Record<string, Uint8Array>
+  try {
+    archive = unzipSync(bytes)
+  } catch {
+    throw new Error('Could not read the audio pack ZIP archive.')
+  }
+  const manifestBytes = archive['manifest.json']
+  if (!manifestBytes) throw new Error('Audio pack is missing manifest.json.')
+  let manifestValue: unknown
+  try {
+    manifestValue = JSON.parse(new TextDecoder().decode(manifestBytes))
+  } catch {
+    throw new Error('Audio pack manifest.json is not valid JSON.')
+  }
+  const manifest = parseAudioPackManifest(manifestValue)
+  const files: Record<string, Uint8Array> = {}
+  for (const [key, path] of Object.entries(manifest.files)) {
+    const audio = archive[path]
+    if (!audio) throw new Error(`Audio pack is missing ${path}.`)
+    if (audio.byteLength === 0)
+      throw new Error(`Audio pack file ${path} is empty.`)
+    files[key] = audio
+  }
+  return { manifest, files }
+}
+
+function openDatabase(): Promise<IDBDatabase | null> {
+  databasePromise ??= new Promise((resolve) => {
+    if (typeof indexedDB === 'undefined') {
+      resolve(null)
+      return
+    }
+    const request = indexedDB.open(AUDIO_PACK_DB, 1)
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(AUDIO_PACK_STORE, {
+        keyPath: 'manifest.id',
+      })
+    }
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => resolve(null)
+  })
+  return databasePromise
+}
+
+async function writePack(pack: InstalledAudioPack): Promise<void> {
+  memoryPacks.set(pack.manifest.id, pack)
+  const database = await openDatabase()
+  if (!database) return
+  await new Promise<void>((resolve, reject) => {
+    const request = database
+      .transaction(AUDIO_PACK_STORE, 'readwrite')
+      .objectStore(AUDIO_PACK_STORE)
+      .put(pack)
+    request.onsuccess = () => resolve()
+    request.onerror = () =>
+      reject(request.error ?? new Error('Could not save audio pack.'))
+  })
+}
+
+export async function installAudioPack(
+  bytes: Uint8Array,
+): Promise<AudioPackManifest> {
+  const pack = parseAudioPackArchive(bytes)
+  await writePack(pack)
+  return pack.manifest
+}
+
+export async function listAudioPacks(): Promise<readonly AudioPackManifest[]> {
+  const database = await openDatabase()
+  if (database) {
+    await new Promise<void>((resolve) => {
+      const request = database
+        .transaction(AUDIO_PACK_STORE, 'readonly')
+        .objectStore(AUDIO_PACK_STORE)
+        .getAll()
+      request.onsuccess = () => {
+        for (const value of request.result as InstalledAudioPack[]) {
+          memoryPacks.set(value.manifest.id, value)
+        }
+        resolve()
+      }
+      request.onerror = () => resolve()
+    })
+  }
+  return [...memoryPacks.values()]
+    .map((pack) => pack.manifest)
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+export async function removeAudioPack(id: string): Promise<void> {
+  memoryPacks.delete(id)
+  const database = await openDatabase()
+  if (!database) return
+  await new Promise<void>((resolve, reject) => {
+    const request = database
+      .transaction(AUDIO_PACK_STORE, 'readwrite')
+      .objectStore(AUDIO_PACK_STORE)
+      .delete(id)
+    request.onsuccess = () => resolve()
+    request.onerror = () =>
+      reject(request.error ?? new Error('Could not remove audio pack.'))
+  })
+}
+
+export async function getAudioPackFile(
+  writing: string,
+  reading: string,
+): Promise<Blob | null> {
+  const key = `${writing}|${reading}`
+  await listAudioPacks()
+  for (const pack of memoryPacks.values()) {
+    const bytes = pack.files[key]
+    if (bytes) {
+      const copy = new ArrayBuffer(bytes.byteLength)
+      new Uint8Array(copy).set(bytes)
+      return new Blob([copy], { type: 'audio/mpeg' })
+    }
+  }
+  return null
+}

@@ -8,6 +8,12 @@ import { getDeviceId } from '@/lib/device-id'
 import { loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
+  installAudioPack,
+  listAudioPacks,
+  removeAudioPack,
+  type AudioPackManifest,
+} from '@/features/study/audio-pack'
+import {
   APP_BADGE_PREFERENCES,
   APP_BADGE_SETTING,
   APP_BADGE_SETTING_CHANGED_EVENT,
@@ -179,6 +185,8 @@ export function SettingsScreen(): React.ReactElement {
   )
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [audioPacks, setAudioPacks] = useState<readonly AudioPackManifest[]>([])
+  const [audioPackBusy, setAudioPackBusy] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [rssFeeds, setRssFeeds] = useState<readonly RssFeed[]>([])
@@ -390,6 +398,10 @@ export function SettingsScreen(): React.ReactElement {
       cancelled = true
     }
   }, [runtime])
+
+  useEffect(() => {
+    void listAudioPacks().then(setAudioPacks)
+  }, [])
 
   useEffect(() => {
     applyTheme(resolveTheme(preference, new Date(), systemDark))
@@ -680,6 +692,44 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleAudioPackFile(file: File | undefined): Promise<void> {
+    if (!file) return
+    setAudioPackBusy(true)
+    setError(null)
+    try {
+      const manifest = await installAudioPack(
+        new Uint8Array(await file.arrayBuffer()),
+      )
+      setAudioPacks(await listAudioPacks())
+      setError(`Installed ${manifest.name} ${manifest.version}.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not install audio pack.',
+      )
+    } finally {
+      setAudioPackBusy(false)
+    }
+  }
+
+  async function handleRemoveAudioPack(pack: AudioPackManifest): Promise<void> {
+    setAudioPackBusy(true)
+    setError(null)
+    try {
+      await removeAudioPack(pack.id)
+      setAudioPacks(await listAudioPacks())
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not remove audio pack.',
+      )
+    } finally {
+      setAudioPackBusy(false)
     }
   }
 
@@ -1943,7 +1993,7 @@ export function SettingsScreen(): React.ReactElement {
         <h2 className="text-lg font-semibold">Study audio</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Use your device&apos;s Japanese speech synthesis after revealing a
-          card. The voice is generated on your device; no audio is downloaded.
+          card, or install a licensed community recording pack below.
         </p>
         <Button
           type="button"
@@ -1963,6 +2013,64 @@ export function SettingsScreen(): React.ReactElement {
             </span>
           </span>
         </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Community audio packs</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Install a ZIP containing a manifest.json and recordings. Packs are
+          stored only in this browser and must include their own license and
+          attribution.
+        </p>
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="audio-pack-file"
+        >
+          Install audio pack
+        </label>
+        <input
+          id="audio-pack-file"
+          type="file"
+          accept=".zip,application/zip"
+          disabled={audioPackBusy}
+          className="mt-2 block w-full text-sm"
+          onChange={(event) => {
+            void handleAudioPackFile(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
+        {audioPacks.length > 0 ? (
+          <ul className="mt-4 grid gap-2" aria-label="Installed audio packs">
+            {audioPacks.map((pack) => (
+              <li
+                key={pack.id}
+                className="border-border flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm"
+              >
+                <span>
+                  <span className="block font-medium">
+                    {pack.name} {pack.version}
+                  </span>
+                  <span className="text-muted-foreground block">
+                    {pack.license} · {pack.attribution}
+                  </span>
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={audioPackBusy}
+                  onClick={() => void handleRemoveAudioPack(pack)}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground mt-4 text-sm">
+            No community recordings installed. Device speech synthesis remains
+            available when supported.
+          </p>
+        )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Stroke animation</h2>

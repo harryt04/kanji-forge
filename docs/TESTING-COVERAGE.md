@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 51 (368 test cases: 368 passing) |
+| Unit/integration test files | 52 (371 test cases: 371 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 123 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.32%** |
+| Overall statement coverage | **86.58%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -28,10 +28,10 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
 | `src/data/**` | 85% | db 93.89 / 86 / 100 / 93.89 · packs 96.81 / 82.5 / 100 / 96.81 · repo 97.97 / 90.47 / 100 / 97.97 | ✅ comfortable margin |
-| `src/features/**` | 70% | browse 91.66 / 78.38 / 83.01 / 91.66 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · settings 82.68 / 74.15 / 83.72 / 82.68 · study 90.36 / 85.37 / 72.5 / 90.36 | ✅ comfortable margin |
+| `src/features/**` | 70% | browse 91.7 / 78.18 / 83.01 / 91.7 · history 100 / 100 / 87.5 / 100 · home 97.21 / 85.59 / 93.75 / 97.21 · settings 82.6 / 74.53 / 84.61 / 82.6 · study 86.6 / 83.07 / 72.41 / 86.6 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 84.18 / 75 / 86 / 84.18 | ✅ comfortable margin |
-| Global floor | 60% | 87.31 / 81.6 / 87.23 / 87.31 | ✅ comfortable margin |
+| Global floor | 60% | 86.58 / 80.89 / 86.48 / 86.58 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -77,7 +77,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
   sentence-alignment fallback/normalization, and offline KanjiVG stroke-path loading.
 
-### `src/features/study` — 51 cases across 6 files
+### `src/features/study` — 54 cases across 7 files
 
 - **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
@@ -102,6 +102,8 @@ Locked at 100% by the CI gate; this directory should never regress.
   two-tap staged reveal behavior.
 - **`audio.test.ts`** (2) — browser capability detection plus Japanese utterance configuration and
   cancellation before replay.
+- **`audio-pack.test.ts`** (3) — licensed manifest validation, ZIP extraction with missing-file
+  rejection, and offline install/list/resolve/remove behavior.
 - **`study-style.test.ts`** (3) — default answer fields, malformed/duplicate value parsing, and
   stable answer-field serialization.
 
@@ -159,7 +161,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/detail` — 13 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level/school grade/JLPT/frequency/name readings, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, opening an analyzed dictionary word in the shared detail route and saving it offline, adding it to an existing custom deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level/school grade/JLPT/frequency/name readings, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, opening an analyzed dictionary word in the shared detail route and saving it offline, adding it to an existing custom deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe. Community-pack playback is covered by the pure `audio-pack.test.ts` suite and shares this fallback path.
 
 ### `src/features/writing` — 6 cases
 
