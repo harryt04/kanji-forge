@@ -374,7 +374,7 @@ export function HomeScreen(): React.ReactElement {
                     key={level}
                     aria-hidden="true"
                     data-level={level}
-                    className="level-swatch h-full"
+                    className={`level-swatch sticky-shape l${level} h-full`}
                     style={{ width: `${(count / data.cardCount) * 100}%` }}
                   />
                 ) : null,
@@ -390,7 +390,7 @@ export function HomeScreen(): React.ReactElement {
                     <span
                       aria-hidden="true"
                       data-level={level}
-                      className="level-swatch h-3 w-3 shrink-0 rounded-sm"
+                      className={`level-swatch sticky-shape l${level} h-3 w-3 shrink-0 rounded-sm`}
                     />
                     <span>
                       Level {level}, {BELT_NAMES[level]}

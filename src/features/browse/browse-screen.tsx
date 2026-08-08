@@ -1157,7 +1157,7 @@ export function BrowseScreen({
                         />
                       </label>
                       <div
-                        className="level-swatch grid h-14 w-14 shrink-0 place-items-center rounded-md text-3xl"
+                        className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} grid h-14 w-14 shrink-0 place-items-center rounded-md text-3xl`}
                         data-level={level}
                         aria-hidden="true"
                       >

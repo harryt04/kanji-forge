@@ -120,7 +120,8 @@ leaving local-only mutation types queued until their server contract exists.
 ### `src/features/home` — 14 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
-with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
+with no goal set and its accessible belt-rank label, shape-coded level distribution swatches,
+progress bar reflects a real recorded grade
 (via `recordGrade()` against a real local DB), level-distribution bar and counts include untouched
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against

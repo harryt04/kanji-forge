@@ -73,6 +73,23 @@ describe('HomeScreen', () => {
     expect(screen.getByText('No goal date set yet.')).toBeInTheDocument()
   })
 
+  it('keeps level distribution swatches shape-coded for color-independent reading', async () => {
+    bootstrapUserRuntime(`home-${userId}`)
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('level-distribution')).toBeInTheDocument(),
+    )
+
+    const distribution = screen.getByTestId('level-distribution')
+    for (const level of [0, 1, 2, 3, 4]) {
+      expect(distribution.querySelector(`[data-level="${level}"]`)).toHaveClass(
+        'sticky-shape',
+        `l${level}`,
+      )
+    }
+  })
+
   it('shows custom decks with offline study and browse links', async () => {
     const runtime = bootstrapUserRuntime(`home-${userId}`)
     await runtime.database.ready
