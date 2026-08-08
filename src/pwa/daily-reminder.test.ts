@@ -4,6 +4,7 @@ import {
   isDailyReminderTime,
   nextDailyReminderAt,
   openStudyFromDailyReminder,
+  showDailyReminderNotification,
 } from './daily-reminder'
 
 describe('daily study reminders', () => {
@@ -45,5 +46,23 @@ describe('daily study reminders', () => {
     openStudyFromDailyReminder(navigate)
 
     expect(navigate).toHaveBeenCalledWith('/study')
+  })
+
+  it('uses the service worker notification path for installed PWAs', async () => {
+    const showNotification = vi.fn(async () => undefined)
+    vi.stubGlobal('Notification', { permission: 'granted' })
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { ready: Promise.resolve({ showNotification }) },
+    })
+
+    await expect(showDailyReminderNotification(2)).resolves.toBe(
+      'service-worker',
+    )
+    expect(showNotification).toHaveBeenCalledWith('KanjiForge study reminder', {
+      body: '2 cards ready to study.',
+      tag: 'kanjiforge-daily-reminder',
+      data: { url: '/study' },
+    })
   })
 })

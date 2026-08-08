@@ -13,6 +13,7 @@ nextEnv.loadEnvConfig(process.cwd())
 const webServerCommand = process.env.NEXT_PUBLIC_API_URL
   ? 'pnpm build && pnpm start'
   : 'pnpm build && pnpm exec next start'
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
 
 export default defineConfig({
   testDir: './e2e',
@@ -24,7 +25,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -45,7 +46,7 @@ export default defineConfig({
     // `pnpm start` so migrations are applied; offline/public runs use `next start` so
     // they do not require a Postgres instance.
     command: webServerCommand,
-    url: 'http://localhost:3000',
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

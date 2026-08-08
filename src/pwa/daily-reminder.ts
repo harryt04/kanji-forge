@@ -77,6 +77,38 @@ function canNotify(): boolean {
   )
 }
 
+/**
+ * Shows a reminder through the service worker when possible. Installed PWAs
+ * can receive service-worker notifications even when the page is backgrounded;
+ * the window-owned fallback keeps ordinary browser tabs working as well.
+ */
+export async function showDailyReminderNotification(
+  due: number,
+): Promise<'service-worker' | 'window' | 'unsupported'> {
+  if (!canNotify()) return 'unsupported'
+  const body = `${due} card${due === 1 ? '' : 's'} ready to study.`
+  const options = {
+    body,
+    tag: 'kanjiforge-daily-reminder',
+    data: { url: '/study' },
+  }
+
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      await registration.showNotification('KanjiForge study reminder', options)
+      return 'service-worker'
+    } catch {
+      // Fall back to a page-owned notification if the worker is unavailable.
+    }
+  }
+
+  if (typeof Notification !== 'function') return 'unsupported'
+  const notification = new Notification('KanjiForge study reminder', options)
+  notification.onclick = () => openStudyFromDailyReminder()
+  return 'window'
+}
+
 async function scheduleReminder(
   userId: string,
   onReminderFired: () => void,
@@ -107,13 +139,7 @@ async function scheduleReminder(
           if (!currentRuntime || currentRuntime.userId !== userId) return
           const deck = await loadStarterDeck(currentRuntime.database)
           const due = countDueReminderCards(deck.cards, Date.now())
-          if (due > 0 && canNotify()) {
-            const notification = new Notification('KanjiForge study reminder', {
-              body: `${due} card${due === 1 ? '' : 's'} ready to study.`,
-              tag: 'kanjiforge-daily-reminder',
-            })
-            notification.onclick = () => openStudyFromDailyReminder()
-          }
+          if (due > 0) await showDailyReminderNotification(due)
         } catch {
           // A reminder must never affect the study loop if the local pack is unavailable.
         } finally {
