@@ -230,7 +230,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Request persistent browser storage + warn when eviction protection is denied | ➕ ✅ | 2026-08-07 | After the first non-empty completed study session, KanjiForge requests durable storage; Settings reports unsupported/denied browsers, points users to backups, and gives non-standalone iPhone/iPad Safari users Add to Home Screen instructions |
 | — | Installable to home screen, all platforms | ➕ ✅ | 2026-08-07 | Manifest and build-generated Serwist service worker are registered on the client; the app shell and visited pages can load offline after the first visit |
 | — | Works in a plain browser with no install | ➕ ✅ | 2026-08-06 | |
-| — | Tablet / laptop / desktop layouts | ➕ ✅ | — | Two-pane above `md` |
+| — | Tablet / laptop / desktop layouts | ➕ 🔷 | 2026-08-08 | Authenticated screens now use a persistent left sidebar above `md` and a compact horizontal header on smaller screens; Browse/Detail and Dictionary/Detail two-pane views remain a follow-up slice |
 | — | Full keyboard operability | ➕ ✅ | 2026-08-06 | |
 | — | CVD-safe alternate color ramp | ➕ ✅ | 2026-08-08 | The belt ramp uses luminance and always-on fold shapes so Home distribution, Browse cards, tiles, and deck chips remain distinguishable without hue perception; the red→green default is avoided |
 | — | Screen reader support | ➕ ✅ | 2026-08-08 | Study announces card position, reveal state, and grading prompt through a polite live region; the focused flashcard also supports Enter activation |

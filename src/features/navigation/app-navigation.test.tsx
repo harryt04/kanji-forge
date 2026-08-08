@@ -74,4 +74,22 @@ describe('AppNavigation', () => {
     expect(screen.queryByTestId('browse-count-badge')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Browse' })).toBeInTheDocument()
   })
+
+  it('supports the persistent desktop sidebar orientation', async () => {
+    const id = `navigation-${userId}`
+    bootstrapUserRuntime(id)
+
+    render(<AppNavigation userId={id} orientation="vertical" />)
+
+    expect(screen.getByRole('navigation', { name: 'Primary' })).toHaveAttribute(
+      'data-orientation',
+      'vertical',
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('200'),
+    )
+    expect(screen.getByRole('link', { name: 'Dictionary' })).toHaveClass(
+      'w-full',
+    )
+  })
 })

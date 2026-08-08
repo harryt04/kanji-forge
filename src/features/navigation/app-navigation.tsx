@@ -7,6 +7,7 @@ import { loadStarterDeck } from '@/features/study/deck-loader'
 
 interface AppNavigationProps {
   readonly userId: string
+  readonly orientation?: 'horizontal' | 'vertical'
 }
 
 /**
@@ -20,6 +21,7 @@ interface AppNavigationProps {
  */
 export function AppNavigation({
   userId,
+  orientation = 'horizontal',
 }: AppNavigationProps): React.ReactElement {
   const [browseCount, setBrowseCount] = useState<number | null>(null)
 
@@ -45,13 +47,26 @@ export function AppNavigation({
 
   return (
     <nav
-      className="flex min-w-0 items-center gap-1 overflow-x-auto"
+      className={
+        orientation === 'vertical'
+          ? 'grid w-full gap-1'
+          : 'flex min-w-0 items-center gap-1 overflow-x-auto'
+      }
       aria-label="Primary"
+      data-orientation={orientation}
     >
-      <NavLink href="/home">Home</NavLink>
-      <NavLink href="/study">Study</NavLink>
+      <NavLink href="/home" orientation={orientation}>
+        Home
+      </NavLink>
+      <NavLink href="/study" orientation={orientation}>
+        Study
+      </NavLink>
       <Link
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring relative inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+        className={
+          orientation === 'vertical'
+            ? 'text-muted-foreground hover:text-foreground focus-visible:ring-ring relative inline-flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none'
+            : 'text-muted-foreground hover:text-foreground focus-visible:ring-ring relative inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none'
+        }
         href="/browse"
         aria-label={
           browseCount === null ? 'Browse' : `Browse, ${browseCount} stickies`
@@ -68,10 +83,18 @@ export function AppNavigation({
           </span>
         )}
       </Link>
-      <NavLink href="/history">History</NavLink>
-      <NavLink href="/dictionary">Dictionary</NavLink>
-      <NavLink href="/writing">Writing</NavLink>
-      <NavLink href="/help">Help</NavLink>
+      <NavLink href="/history" orientation={orientation}>
+        History
+      </NavLink>
+      <NavLink href="/dictionary" orientation={orientation}>
+        Dictionary
+      </NavLink>
+      <NavLink href="/writing" orientation={orientation}>
+        Writing
+      </NavLink>
+      <NavLink href="/help" orientation={orientation}>
+        Help
+      </NavLink>
     </nav>
   )
 }
@@ -79,13 +102,19 @@ export function AppNavigation({
 function NavLink({
   href,
   children,
+  orientation,
 }: {
   readonly href: string
   readonly children: React.ReactNode
+  readonly orientation: 'horizontal' | 'vertical'
 }): React.ReactElement {
   return (
     <Link
-      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+      className={
+        orientation === 'vertical'
+          ? 'text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex min-h-11 w-full items-center rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none'
+          : 'text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none'
+      }
       href={href}
     >
       {children}
