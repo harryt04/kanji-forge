@@ -541,6 +541,33 @@ describe('data/packs', () => {
     })
   })
 
+  describe('findDictionaryEntriesInText', () => {
+    it('resolves unique dictionary cards from a phrase with no exact entry', async () => {
+      const { findDictionaryEntriesInText } = await freshPacks()
+      const result = await findDictionaryEntriesInText('お金を本')
+
+      expect(result.map(({ text }) => text)).toEqual(['お金', '本'])
+      expect(result.map(({ result: entry }) => entry.type)).toEqual([
+        'word',
+        'kanji',
+      ])
+    })
+
+    it('ignores grammar and unknown tokens while preserving dictionary order', async () => {
+      const { findDictionaryEntriesInText } = await freshPacks()
+      const result = await findDictionaryEntriesInText('お金を𠀁')
+
+      expect(result.map(({ text }) => text)).toEqual(['お金'])
+    })
+
+    it('deduplicates repeated dictionary cards from a phrase', async () => {
+      const { findDictionaryEntriesInText } = await freshPacks()
+      const result = await findDictionaryEntriesInText('お金お金')
+
+      expect(result.map(({ text }) => text)).toEqual(['お金'])
+    })
+  })
+
   it('finds exact kanji and word entries for offline imports', async () => {
     const { findDictionaryEntry } = await freshPacks()
 

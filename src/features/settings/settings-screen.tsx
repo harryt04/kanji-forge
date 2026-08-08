@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState, type Deck } from '@/data/repo'
 import {
+  findDictionaryEntriesInText,
   findDictionaryEntry,
   getKanjiByLiterals,
   getWordById,
@@ -1565,23 +1566,24 @@ export function SettingsScreen(): React.ReactElement {
       tags: readonly string[] = [],
     ): Promise<void> {
       const match = await findDictionaryEntry(value)
-      const entry: ImportEntry = match
-        ? {
-            label: value,
-            contentRef:
-              match.type === 'kanji'
-                ? `kanji:${match.record.literal}`
-                : `${match.type}:${match.record.id}`,
-            kind: match.type,
-            ...(tags.length > 0 ? { tags } : {}),
-          }
-        : {
-            label: value,
-            contentRef: null,
-            kind: 'unknown',
-            ...(tags.length > 0 ? { tags } : {}),
-          }
-      entries.push(entry)
+      if (!match) {
+        entries.push({
+          label: value,
+          contentRef: null,
+          kind: 'unknown',
+          ...(tags.length > 0 ? { tags } : {}),
+        })
+        return
+      }
+      entries.push({
+        label: value,
+        contentRef:
+          match.type === 'kanji'
+            ? `kanji:${match.record.literal}`
+            : `${match.type}:${match.record.id}`,
+        kind: match.type,
+        ...(tags.length > 0 ? { tags } : {}),
+      })
     }
 
     for (const imported of values) {
@@ -1598,7 +1600,22 @@ export function SettingsScreen(): React.ReactElement {
       if (characters.every((character) => isKanjiLiteral(character))) {
         for (const character of characters) await add(character, tags)
       } else {
-        await add(value, tags)
+        const segmented = await findDictionaryEntriesInText(value)
+        if (segmented.length === 0) {
+          await add(value, tags)
+        } else {
+          for (const { text, result } of segmented) {
+            entries.push({
+              label: text,
+              contentRef:
+                result.type === 'kanji'
+                  ? `kanji:${result.record.literal}`
+                  : `${result.type}:${result.record.id}`,
+              kind: result.type,
+              ...(tags.length > 0 ? { tags } : {}),
+            })
+          }
+        }
       }
     }
     return deduplicateImportEntries(entries)

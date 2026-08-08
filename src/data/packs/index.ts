@@ -94,6 +94,11 @@ export type DictionaryResult =
       readonly record: NameRecord
     }
 
+export interface DictionaryTextMatch {
+  readonly text: string
+  readonly result: Exclude<DictionaryResult, { readonly type: 'name' }>
+}
+
 let sqlJsPromise: ReturnType<typeof initSqlJs> | undefined
 function loadSqlJs(): ReturnType<typeof initSqlJs> {
   sqlJsPromise ??= initSqlJs()
@@ -732,6 +737,49 @@ export async function analyzeJapaneseText(
   return segments
     ? analyzeTextWithSegments(text, segments, words, kanji, maxTokens)
     : analyzeText(text, words, kanji, maxTokens)
+}
+
+/**
+ * Resolves dictionary-backed tokens from an offline Japanese phrase. This is
+ * intentionally separate from `findDictionaryEntry`: imports can contain a
+ * sentence or a run of words that has no single exact dictionary entry.
+ */
+export async function findDictionaryEntriesInText(
+  text: string,
+  maxTokens = 500,
+): Promise<readonly DictionaryTextMatch[]> {
+  const [tokens, words, kanji] = await Promise.all([
+    analyzeJapaneseText(text, maxTokens),
+    loadDictionaryWords(),
+    loadDictionaryKanji(),
+  ])
+  const wordsById = new Map(words.map((record) => [record.id, record]))
+  const kanjiByLiteral = new Map(
+    kanji.map((record) => [record.literal, record]),
+  )
+  const seen = new Set<string>()
+  const matches: DictionaryTextMatch[] = []
+
+  for (const token of tokens) {
+    if (!token.contentRef || seen.has(token.contentRef)) continue
+    const { type, key } = parseContentRef(token.contentRef)
+    // The analyzer emits only `word:` and `kanji:` refs. The record maps are
+    // built from the same arrays used by that analyzer, so these lookups are
+    // guaranteed for a valid token ref.
+    const result =
+      type === 'word'
+        ? ({
+            type: 'word',
+            record: wordsById.get(Number(key))!,
+          } as const)
+        : ({
+            type: 'kanji',
+            record: kanjiByLiteral.get(key)!,
+          } as const)
+    seen.add(token.contentRef)
+    matches.push({ text: token.text, result })
+  }
+  return matches
 }
 
 function matchScore(
