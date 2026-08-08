@@ -70,7 +70,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.9 | Searching within a deck | ✅ | 2026-08-07 | Offline search matches kanji, kana readings, and English meanings; multiple terms are ANDed |
 | 3.10 | Sticky count badge on the Browse icon | ✅ | 2026-08-07 | Authenticated primary navigation shows the installed starter-deck sticky count on Browse and remains usable offline |
 | 3.11 | Set current deck's browse settings as the default for all decks | ✅ | 2026-08-07 | Browse saves view, tile content, and tile zoom as validated offline defaults; deck-specific preferences take precedence when available |
-| — | Multi-select + bulk actions | ➕ ✅ | — | |
+| — | Multi-select + bulk actions | ➕ ✅ | 2026-08-07 | Browse selects visible cards in list or tile view and atomically flags/unflags them or assigns a manual level while preserving review totals |
 
 ## 4. Detail view
 

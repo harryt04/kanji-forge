@@ -183,6 +183,14 @@ export interface UserRepositories {
     nextState: CardState
     mutation: OutboxMutation
   }): Promise<void>
+  /** Persists several manual level assignments without counting them as study reviews. */
+  recordManualOverrides(
+    inputs: readonly {
+      review: Review
+      nextState: CardState
+      mutation: OutboxMutation
+    }[],
+  ): Promise<void>
   /** Persists the MVP Saved deck, membership, and sync mutation atomically. */
   recordDeckMembership(input: {
     deck: Deck
@@ -306,6 +314,39 @@ export function createUserRepositories(
     'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, updated_at=excluded.updated_at'
   const putAnnotation =
     'INSERT INTO sticky_annotations(user_id, deck_id, content_ref, note, tags_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET note=excluded.note, tags_json=excluded.tags_json, updated_at=excluded.updated_at, updated_by=excluded.updated_by'
+  const persistManualOverrides = async (
+    inputs: readonly {
+      review: Review
+      nextState: CardState
+      mutation: OutboxMutation
+    }[],
+  ): Promise<void> => {
+    for (const { review, mutation } of inputs) {
+      if (review.id !== mutation.id)
+        throw new Error(
+          'A manual override mutation id must equal its review id.',
+        )
+      if (review.source !== 'manual')
+        throw new Error('Manual override reviews must use the manual source.')
+    }
+    await database.transaction(
+      inputs.flatMap(({ review, nextState, mutation }) => [
+        { sql: putReview, parameters: reviewParams(review) },
+        { sql: putState, parameters: stateParams(nextState) },
+        {
+          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ]),
+    )
+  }
 
   return {
     decks: {
@@ -776,28 +817,11 @@ export function createUserRepositories(
         },
       ])
     },
-    async recordManualOverride({ review, nextState, mutation }) {
-      if (review.id !== mutation.id)
-        throw new Error(
-          'A manual override mutation id must equal its review id.',
-        )
-      if (review.source !== 'manual')
-        throw new Error('Manual override reviews must use the manual source.')
-      await database.transaction([
-        { sql: putReview, parameters: reviewParams(review) },
-        { sql: putState, parameters: stateParams(nextState) },
-        {
-          sql: 'INSERT INTO outbox(id, user_id, mut_type, payload, created_at, attempts) VALUES (?, ?, ?, ?, ?, ?)',
-          parameters: [
-            mutation.id,
-            userId,
-            mutation.mutType,
-            mutation.payload,
-            mutation.createdAt,
-            mutation.attempts,
-          ],
-        },
-      ])
+    async recordManualOverride(input) {
+      await persistManualOverrides([input])
+    },
+    async recordManualOverrides(inputs) {
+      await persistManualOverrides(inputs)
     },
     async recordDeckMembership({ deck, membership, mutation }) {
       if (deck.id !== 'saved' || deck.kind !== 'saved')

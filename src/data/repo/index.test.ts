@@ -330,6 +330,68 @@ describe('recordCardState atomicity', () => {
     ])
   })
 
+  it('persists several manual level overrides atomically', async () => {
+    const repos = await freshRepo()
+    const firstReview = review({
+      id: 'manual-batch-1',
+      contentRef: 'kanji:未',
+      source: 'manual',
+      levelBefore: 1,
+      levelAfter: 3,
+    })
+    const secondReview = review({
+      id: 'manual-batch-2',
+      contentRef: 'kanji:日',
+      source: 'manual',
+      levelBefore: 0,
+      levelAfter: 4,
+    })
+    await repos.recordManualOverrides([
+      {
+        review: firstReview,
+        nextState: state({
+          contentRef: firstReview.contentRef,
+          level: 3,
+          manualOverride: true,
+        }),
+        mutation: {
+          id: firstReview.id,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: firstReview.at,
+          attempts: 0,
+        },
+      },
+      {
+        review: secondReview,
+        nextState: state({
+          contentRef: secondReview.contentRef,
+          level: 4,
+          manualOverride: true,
+        }),
+        mutation: {
+          id: secondReview.id,
+          mutType: 'review.append',
+          payload: '{}',
+          createdAt: secondReview.at,
+          attempts: 0,
+        },
+      },
+    ])
+
+    expect(await repos.reviews.list()).toHaveLength(2)
+    expect(await repos.cardStates.get('jlpt-n5', 'kanji:未')).toMatchObject({
+      level: 3,
+      manualOverride: true,
+    })
+    expect(await repos.cardStates.get('jlpt-n5', 'kanji:日')).toMatchObject({
+      level: 4,
+      manualOverride: true,
+    })
+    expect(await repos.dailyStats.list()).toEqual([])
+    expect(await repos.outbox.pending()).toHaveLength(2)
+  })
+
   it('rejects a manual override with a mismatched mutation id', async () => {
     const repos = await freshRepo()
     const manualReview = review({ id: 'manual-level-2', source: 'manual' })

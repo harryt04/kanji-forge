@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 39 (278 test cases: 278 passing) |
-| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 86 cases, included above) |
+| Unit/integration test files | 39 (281 test cases: 281 passing) |
+| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 88 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.22%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -64,7 +64,7 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (25, up from 1) — derived-deck projection, deck-scoped state listing,
+- **`repo/index.test.ts`** (26, up from 1) — derived-deck projection, deck-scoped state listing,
   atomic multi-card reset persistence, atomic statistics reset with history/session clearing, deck metadata plus outbox persistence, and `recordGrade()` atomicity,
   manual level override atomicity and validation, and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
@@ -127,15 +127,16 @@ breakdown and pressed state.
 **`help-screen.test.tsx`** (Testing Library) — bundled offline documentation sections and links,
 plus the anonymous-access message when rendered outside the authenticated app shell.
 
-### `src/features/browse` — 24 cases
+### `src/features/browse` — 26 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
 loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
 wall, tile links to the selected card's offline detail route, persisted tile-content selection (kanji/reading/meaning), persisted tile zoom density, rendering persisted local level and flag state, filtering
 by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
 sorting by local level with stable deck-order ties, and manually assigning a card level while
-preserving review totals and omitting the manual adjustment from daily review statistics, and
-saving the current Browse view, tile content, and zoom as validated defaults for future decks.
+preserving review totals and omitting the manual adjustment from daily review statistics, saving
+the current Browse view, tile content, and zoom as validated defaults for future decks, selecting
+multiple cards in either view, and atomically bulk flagging or assigning manual levels.
 
 `browse-filter.test.ts` covers untouched cards as level zero, inclusive stroke ranges, flagged and
 level combinations, JLPT matching, and missing JLPT metadata.

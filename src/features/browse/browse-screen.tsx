@@ -16,6 +16,7 @@ import {
   filterBrowseCards,
   type BrowseFilters,
 } from './browse-filter'
+import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -171,6 +172,12 @@ export function BrowseScreen({
   const [tileContent, setTileContent] = useState<BrowseTileContent>('kanji')
   const [tileZoom, setTileZoom] = useState<BrowseTileZoom>(1)
   const [savingContentRef, setSavingContentRef] = useState<string | null>(null)
+  const [selectedContentRefs, setSelectedContentRefs] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkLevel, setBulkLevel] = useState<CardState['level'] | 'all'>('all')
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [viewError, setViewError] = useState<string | null>(null)
   const [tileContentError, setTileContentError] = useState<string | null>(null)
@@ -225,6 +232,7 @@ export function BrowseScreen({
         setTileContent(selectedTileContent)
       if (active && isBrowseTileZoom(selectedTileZoom))
         setTileZoom(Number(selectedTileZoom) as BrowseTileZoom)
+      if (active) setSelectedContentRefs(new Set())
     })().catch((reason: unknown) => {
       if (active)
         setError(
@@ -245,6 +253,13 @@ export function BrowseScreen({
     () => sortBrowseCards(filteredCards, sort),
     [filteredCards, sort],
   )
+  const selectedCards = useMemo(
+    () => cards.filter((card) => selectedContentRefs.has(card.contentRef)),
+    [cards, selectedContentRefs],
+  )
+  const selectedVisibleCount = sortedCards.filter((card) =>
+    selectedContentRefs.has(card.contentRef),
+  ).length
   const hasFilters =
     filters.level !== null ||
     filters.flagged ||
@@ -268,7 +283,7 @@ export function BrowseScreen({
     card: BrowseCard,
     level: CardState['level'],
   ): Promise<void> {
-    if (!runtime || !deck || savingContentRef !== null) return
+    if (!runtime || !deck || savingContentRef !== null || bulkBusy) return
 
     const now = Date.now()
     const deviceId = getDeviceId()
@@ -348,6 +363,102 @@ export function BrowseScreen({
       )
     } finally {
       setSavingContentRef(null)
+    }
+  }
+
+  function toggleSelection(contentRef: string): void {
+    setSelectedContentRefs((current) => {
+      const next = new Set(current)
+      if (next.has(contentRef)) next.delete(contentRef)
+      else next.add(contentRef)
+      return next
+    })
+  }
+
+  function selectVisibleCards(): void {
+    setSelectedContentRefs((current) => {
+      const next = new Set(current)
+      for (const card of sortedCards) next.add(card.contentRef)
+      return next
+    })
+  }
+
+  function clearSelection(): void {
+    setSelectedContentRefs(new Set())
+    setBulkMessage(null)
+  }
+
+  function applyStateUpdates(updates: readonly { state: CardState }[]): void {
+    const states = new Map(
+      updates.map((update) => [update.state.contentRef, update.state]),
+    )
+    setDeck((current) =>
+      current
+        ? {
+            ...current,
+            cards: current.cards.map((card) => ({
+              ...card,
+              state: states.get(card.contentRef) ?? card.state,
+            })),
+          }
+        : current,
+    )
+  }
+
+  async function bulkSetFlagged(flagged: boolean): Promise<void> {
+    if (!runtime || !deck || selectedCards.length === 0 || bulkBusy) return
+    const now = Date.now()
+    setBulkBusy(true)
+    setBulkMessage(null)
+    try {
+      const updates = buildBulkFlagUpdates(selectedCards, flagged, {
+        deckId: deck.deckId,
+        now,
+        deviceId: getDeviceId(),
+        idFactory: () => crypto.randomUUID(),
+      })
+      await createUserRepositories(runtime.database).recordCardStates(updates)
+      applyStateUpdates(updates)
+      setSelectedContentRefs(new Set())
+      setBulkMessage(
+        `${updates.length} card${updates.length === 1 ? '' : 's'} ${flagged ? 'flagged' : 'unflagged'}.`,
+      )
+    } catch (reason: unknown) {
+      setBulkMessage(
+        reason instanceof Error ? reason.message : 'Could not update cards.',
+      )
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function bulkSetLevel(level: CardState['level']): Promise<void> {
+    if (!runtime || !deck || selectedCards.length === 0 || bulkBusy) return
+    const now = Date.now()
+    setBulkBusy(true)
+    setBulkMessage(null)
+    try {
+      const updates = buildBulkLevelOverrides(selectedCards, level, {
+        deckId: deck.deckId,
+        now,
+        deviceId: getDeviceId(),
+        idFactory: () => crypto.randomUUID(),
+      })
+      await createUserRepositories(runtime.database).recordManualOverrides(
+        updates,
+      )
+      applyStateUpdates(updates.map(({ nextState }) => ({ state: nextState })))
+      setSelectedContentRefs(new Set())
+      setBulkLevel('all')
+      setBulkMessage(
+        `${updates.length} card${updates.length === 1 ? '' : 's'} set to Level ${level} · ${LEVEL_NAMES[level]}.`,
+      )
+    } catch (reason: unknown) {
+      setBulkMessage(
+        reason instanceof Error ? reason.message : 'Could not update cards.',
+      )
+    } finally {
+      setBulkBusy(false)
     }
   }
 
@@ -608,6 +719,12 @@ export function BrowseScreen({
         </p>
       )}
 
+      {bulkMessage && (
+        <p className="text-muted-foreground" role="status">
+          {bulkMessage}
+        </p>
+      )}
+
       <label className="grid gap-2" htmlFor="browse-search">
         <span className="text-sm font-semibold">Search this deck</span>
         <input
@@ -785,6 +902,88 @@ export function BrowseScreen({
         </div>
       </section>
 
+      <section
+        className="border-border grid gap-3 rounded-lg border p-4"
+        aria-label="Bulk card actions"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Select cards</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {selectedContentRefs.size === 0
+                ? 'Select cards to flag or set their level together.'
+                : `${selectedContentRefs.size} selected${selectedVisibleCount < selectedContentRefs.size ? ` · ${selectedVisibleCount} visible` : ''}.`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={selectVisibleCards}
+              disabled={bulkBusy}
+            >
+              Select visible
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={clearSelection}
+              disabled={selectedContentRefs.size === 0 || bulkBusy}
+            >
+              Clear selection
+            </Button>
+          </div>
+        </div>
+        {selectedContentRefs.size > 0 && (
+          <div className="flex flex-wrap items-end gap-3">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void bulkSetFlagged(true)}
+              disabled={bulkBusy}
+            >
+              Flag selected
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void bulkSetFlagged(false)}
+              disabled={bulkBusy}
+            >
+              Unflag selected
+            </Button>
+            <label className="grid gap-1" htmlFor="browse-bulk-level">
+              <span className="text-muted-foreground text-xs">
+                Set selected level
+              </span>
+              <select
+                id="browse-bulk-level"
+                value={bulkLevel}
+                disabled={bulkBusy}
+                onChange={(event) => {
+                  const value = event.target.value
+                  if (value !== 'all')
+                    void bulkSetLevel(Number(value) as CardState['level'])
+                }}
+                aria-label="Set selected level"
+                className="border-input bg-background focus-visible:ring-ring h-10 min-w-32 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
+              >
+                <option value="all">Choose level…</option>
+                {LEVEL_NAMES.map((name, candidateLevel) => (
+                  <option key={name} value={candidateLevel}>
+                    {candidateLevel} · {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+      </section>
+
       {cards.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground py-8 text-center">
@@ -821,31 +1020,46 @@ export function BrowseScreen({
                 ? `${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
                 : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
             return (
-              <Link
-                href={`/detail?contentRef=${encodeURIComponent(card.contentRef)}`}
+              <div
                 key={card.contentRef}
-                className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none`}
-                data-level={level}
-                data-content-ref={card.contentRef}
-                data-testid="browse-tile"
-                role="gridcell"
-                aria-label={accessibleLabel}
+                className="relative min-w-0"
+                data-testid="browse-tile-shell"
               >
-                <span
-                  className={japanese ? 'font-jp-display' : undefined}
-                  lang={japanese ? 'ja' : undefined}
+                <label className="bg-background/90 absolute top-1 left-1 z-10 rounded p-1 shadow-sm">
+                  <span className="sr-only">Select {card.literal}</span>
+                  <input
+                    type="checkbox"
+                    checked={selectedContentRefs.has(card.contentRef)}
+                    onChange={() => toggleSelection(card.contentRef)}
+                    aria-label={`Select ${card.literal}`}
+                    className="accent-primary h-4 w-4"
+                  />
+                </label>
+                <Link
+                  href={`/detail?contentRef=${encodeURIComponent(card.contentRef)}`}
+                  className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none`}
+                  data-level={level}
+                  data-content-ref={card.contentRef}
+                  data-testid="browse-tile"
+                  role="gridcell"
+                  aria-label={accessibleLabel}
                 >
-                  {text}
-                </span>
-                {flagged && (
                   <span
-                    className="text-primary absolute right-1 bottom-0 text-xs"
-                    aria-hidden="true"
+                    className={japanese ? 'font-jp-display' : undefined}
+                    lang={japanese ? 'ja' : undefined}
                   >
-                    ⚑
+                    {text}
                   </span>
-                )}
-              </Link>
+                  {flagged && (
+                    <span
+                      className="text-primary absolute right-1 bottom-0 text-xs"
+                      aria-hidden="true"
+                    >
+                      ⚑
+                    </span>
+                  )}
+                </Link>
+              </div>
             )
           })}
         </div>
@@ -870,6 +1084,16 @@ export function BrowseScreen({
                   aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
                 >
                   <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+                    <label className="shrink-0">
+                      <span className="sr-only">Select {card.literal}</span>
+                      <input
+                        type="checkbox"
+                        checked={selectedContentRefs.has(card.contentRef)}
+                        onChange={() => toggleSelection(card.contentRef)}
+                        aria-label={`Select ${card.literal}`}
+                        className="accent-primary h-5 w-5"
+                      />
+                    </label>
                     <div
                       className="level-swatch grid h-14 w-14 shrink-0 place-items-center rounded-md text-3xl"
                       data-level={level}

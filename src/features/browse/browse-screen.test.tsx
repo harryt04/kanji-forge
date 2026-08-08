@@ -457,4 +457,69 @@ describe('BrowseScreen', () => {
     expect(await repo.reviews.list('dev-kanji', 'kanji:日')).toHaveLength(1)
     expect(await repo.outbox.pending()).toHaveLength(1)
   })
+
+  it('flags multiple selected cards in one local operation', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
+    )
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+      flagged: true,
+    })
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+      flagged: true,
+    })
+    expect(await repo.outbox.pending()).toHaveLength(2)
+  })
+
+  it('sets multiple selected levels with manual-review history', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Set selected level' }),
+      {
+        target: { value: '4' },
+      },
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '2 cards set to Level 4 · Mastered.',
+      ),
+    )
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+      level: 4,
+      manualOverride: true,
+      totalReviews: 0,
+    })
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+      level: 4,
+      manualOverride: true,
+      totalReviews: 0,
+    })
+    expect(await repo.reviews.list('dev-kanji')).toHaveLength(2)
+    expect(await repo.dailyStats.list()).toEqual([])
+    expect(await repo.outbox.pending()).toHaveLength(2)
+  })
 })
