@@ -108,11 +108,25 @@ async function updateAppBadge(
   updateBrowserBadgeIcon(faviconLink, originalFaviconHref, 0)
   if (count === 0) {
     if (typeof badgeNavigator.clearAppBadge === 'function') {
-      await badgeNavigator.clearAppBadge()
+      try {
+        await badgeNavigator.clearAppBadge()
+      } catch {
+        // Some browsers expose the API but reject it for the current display
+        // mode or permission state. Keep the browser-only fallback visible.
+        document.title = fallbackTitle
+        updateBrowserBadgeIcon(faviconLink, originalFaviconHref, 0)
+      }
     }
     return
   }
-  await badgeNavigator.setAppBadge!(count)
+  try {
+    await badgeNavigator.setAppBadge!(count)
+  } catch {
+    // The Badging API is optional and can fail at runtime even when present.
+    // Title/favicon badges still provide useful feedback in that case.
+    document.title = `${fallbackTitle} (${count})`
+    updateBrowserBadgeIcon(faviconLink, originalFaviconHref, count)
+  }
 }
 
 /** Keeps the install icon's optional badge aligned with local study state. */

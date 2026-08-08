@@ -121,4 +121,32 @@ describe('app icon badges', () => {
     })
     unmount()
   })
+
+  it('falls back to the browser tab when the Badging API rejects', async () => {
+    const setAppBadge = vi.fn(async () => {
+      throw new Error('badge unavailable')
+    })
+    Object.defineProperty(navigator, 'setAppBadge', {
+      configurable: true,
+      value: setAppBadge,
+    })
+
+    const userId = `badge-reject-${crypto.randomUUID()}`
+    const runtime = bootstrapUserRuntime(userId)
+    await createUserRepositories(runtime.database).settings.set({
+      key: APP_BADGE_SETTING,
+      value: 'total',
+      updatedAt: Date.now(),
+    })
+
+    const { unmount } = render(<AppBadgeController userId={userId} />)
+    await waitFor(() => {
+      expect(setAppBadge).toHaveBeenCalledWith(4)
+      expect(document.title).toBe('KanjiForge (4)')
+      expect(
+        document.head.querySelector('link[rel="icon"]')?.getAttribute('href'),
+      ).toBe(createBrowserBadgeIconDataUrl(4))
+    })
+    unmount()
+  })
 })
