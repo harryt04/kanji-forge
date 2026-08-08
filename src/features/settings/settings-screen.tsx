@@ -76,6 +76,7 @@ import {
   formatDeckAsJson,
   formatDeckAsText,
 } from './deck-export'
+import { createDeckShareUrl } from './deck-share'
 import {
   guessKanjiColumn,
   parseCsvImport,
@@ -694,6 +695,34 @@ export function SettingsScreen(): React.ReactElement {
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not export deck.',
+      )
+    } finally {
+      setDeckExportBusy(false)
+    }
+  }
+
+  async function shareDeckByLink(): Promise<void> {
+    if (!runtime || deckExportBusy) return
+    setDeckExportBusy(true)
+    setDeckExportMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard access is unavailable in this browser.')
+      const deck = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      const link = createDeckShareUrl(window.location.origin, deck)
+      if (link.length > 8_000)
+        throw new Error(
+          'This deck is too large for a reliable share link. Use JSON export instead.',
+        )
+      await navigator.clipboard.writeText(link)
+      setDeckExportMessage(
+        `Copied a share link for “${deck.name}”. It contains card content only, not study progress.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not share deck.',
       )
     } finally {
       setDeckExportBusy(false)
@@ -1711,6 +1740,14 @@ export function SettingsScreen(): React.ReactElement {
               onClick={() => void downloadDeck('json')}
             >
               Download JSON
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deckExportBusy}
+              onClick={() => void shareDeckByLink()}
+            >
+              Copy share link
             </Button>
           </div>
           {deckExportMessage && (

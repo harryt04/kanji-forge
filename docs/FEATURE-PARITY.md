@@ -129,7 +129,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 6.18 | Remove duplicates (same question + reading) | ✅ | — | |
 | 6.19 | Transfer progress between decks sharing stickies | ✅ | — | |
 | — | Deck folders / grouping | ➕ 🔷 | — | |
-| — | Deck sharing by file or URL | ➕ 🔶 | — | |
+| — | Deck sharing by file or URL | ➕ 🔶 | 2026-08-08 | Settings copies a content-only URL for the built-in deck; the authenticated `/analyze` route previews dictionary matches and imports them into Saved without sharing private SRS progress |
 | — | Kanji Kentei level decks | ➕ 🔶 | — | If an openly-licensed list is found |
 
 ## 7. Goal scheduler, history & statistics

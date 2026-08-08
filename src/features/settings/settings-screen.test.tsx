@@ -591,6 +591,30 @@ describe('SettingsScreen', () => {
     expect(writeText.mock.calls[0]?.[0]).toContain('\n')
   })
 
+  it('copies a content-only starter-deck share link', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.click(screen.getByRole('button', { name: 'Copy share link' }))
+
+    expect(
+      await screen.findByText(
+        /Copied a share link for “Development Kanji”\. It contains card content only/u,
+      ),
+    ).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledOnce()
+    expect(writeText.mock.calls[0]?.[0]).toMatch(
+      /^http:\/\/localhost(?::\d+)?\/analyze\?deck=/u,
+    )
+    expect(writeText.mock.calls[0]?.[0]).not.toContain('totalReviews')
+  })
+
   it('previews and then imports matched kanji while reporting existing and unknown input', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!

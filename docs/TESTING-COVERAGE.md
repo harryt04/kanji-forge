@@ -174,9 +174,12 @@ promotion, and pinned-search toggling.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 
-### `src/features/share` — 3 cases
+### `src/features/share` — 5 cases
 
 **`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, previewing shared Japanese text against the offline dictionary, and importing matched kanji into Saved with atomic membership and outbox mutations.
+It also covers validating a content-only deck URL, previewing the shared deck name, and importing its matched cards.
+
+**`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL payloads, omission of SRS progress, and malformed/empty payload rejection.
 
 **`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 

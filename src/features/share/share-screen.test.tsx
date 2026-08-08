@@ -8,7 +8,11 @@ import {
   getActiveUserRuntime,
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
-import { ShareTargetScreen, readSharedTextPayload } from './share-screen'
+import {
+  ShareTargetScreen,
+  readSharedDeckPayload,
+  readSharedTextPayload,
+} from './share-screen'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -56,6 +60,23 @@ describe('ShareTargetScreen', () => {
     })
   })
 
+  it('reads and validates a content-only deck share link', () => {
+    const payload = encodeURIComponent(
+      JSON.stringify({
+        format: 'kanjiforge-deck-share',
+        version: 1,
+        name: 'Travel kanji',
+        kanji: ['日', '本', '日', 'english'],
+      }),
+    )
+    expect(readSharedDeckPayload(`?deck=${payload}`)).toEqual({
+      format: 'kanjiforge-deck-share',
+      version: 1,
+      name: 'Travel kanji',
+      kanji: ['日', '本'],
+    })
+  })
+
   it('previews shared kanji against the offline dictionary', async () => {
     render(<ShareTargetScreen />)
 
@@ -94,6 +115,41 @@ describe('ShareTargetScreen', () => {
     ).toHaveLength(2)
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Added 2 kanji to Saved.',
+    )
+  })
+
+  it('previews and imports a shared deck link', async () => {
+    const payload = encodeURIComponent(
+      JSON.stringify({
+        format: 'kanjiforge-deck-share',
+        version: 1,
+        name: 'Travel kanji',
+        kanji: ['日', '本'],
+      }),
+    )
+    window.history.replaceState({}, '', `/analyze?deck=${payload}`)
+    render(<ShareTargetScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Import shared deck' }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByRole('region', { name: 'Shared deck import preview' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Travel kanji/u)).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import shared deck to Saved' }),
+    )
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).deckMembership.list(),
+      ).toHaveLength(2)
+    })
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Added 2 kanji from “Travel kanji” to Saved.',
     )
   })
 })

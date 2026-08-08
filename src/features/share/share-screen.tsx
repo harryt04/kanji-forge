@@ -11,6 +11,10 @@ import {
   previewKanjiImport,
   type KanjiImportPreviewItem,
 } from '@/features/settings/deck-import'
+import {
+  parseDeckSharePayload,
+  type DeckSharePayload,
+} from '@/features/settings/deck-share'
 
 export interface SharedTextPayload {
   readonly text: string
@@ -27,6 +31,12 @@ export function readSharedTextPayload(search: string): SharedTextPayload {
   return { text, title, url }
 }
 
+/** Reads a content-only deck payload from a copied KanjiForge share link. */
+export function readSharedDeckPayload(search: string): DeckSharePayload | null {
+  const raw = new URLSearchParams(search).get('deck')
+  return raw ? parseDeckSharePayload(raw) : null
+}
+
 export function ShareTargetScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [payload, setPayload] = useState<SharedTextPayload>({
@@ -34,6 +44,7 @@ export function ShareTargetScreen(): React.ReactElement {
     title: null,
     url: null,
   })
+  const [sharedDeck, setSharedDeck] = useState<DeckSharePayload | null>(null)
   const [preview, setPreview] = useState<
     readonly KanjiImportPreviewItem[] | null
   >(null)
@@ -43,9 +54,20 @@ export function ShareTargetScreen(): React.ReactElement {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let nextDeck: DeckSharePayload | null
+    try {
+      nextDeck = readSharedDeckPayload(window.location.search)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'This deck link is invalid.',
+      )
+      setLoading(false)
+      return
+    }
     const nextPayload = readSharedTextPayload(window.location.search)
     setPayload(nextPayload)
-    const literals = parseKanjiImportText(nextPayload.text)
+    setSharedDeck(nextDeck)
+    const literals = nextDeck?.kanji ?? parseKanjiImportText(nextPayload.text)
     if (!runtime) {
       setLoading(false)
       return
@@ -73,7 +95,7 @@ export function ShareTargetScreen(): React.ReactElement {
           setError(
             reason instanceof Error
               ? reason.message
-              : 'Could not prepare the shared text.',
+              : 'Could not prepare the shared content.',
           )
       } finally {
         if (active) setLoading(false)
@@ -155,7 +177,7 @@ export function ShareTargetScreen(): React.ReactElement {
         ),
       )
       setMessage(
-        `Added ${imported} kanji to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${imported} kanji${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
@@ -166,7 +188,7 @@ export function ShareTargetScreen(): React.ReactElement {
     }
   }
 
-  if (!payload.text && !payload.title && !payload.url)
+  if (!sharedDeck && !payload.text && !payload.title && !payload.url && !error)
     return (
       <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
         <h1 className="font-display text-3xl font-bold">Import shared text</h1>
@@ -185,13 +207,16 @@ export function ShareTargetScreen(): React.ReactElement {
 
   return (
     <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
-      <p className="font-jp-ui text-muted-foreground text-sm">共有された文章</p>
+      <p className="font-jp-ui text-muted-foreground text-sm">
+        {sharedDeck ? '共有されたデッキ' : '共有された文章'}
+      </p>
       <h1 className="font-display mt-2 text-3xl font-bold">
-        Import shared text
+        {sharedDeck ? 'Import shared deck' : 'Import shared text'}
       </h1>
       <p className="text-muted-foreground mt-3">
-        KanjiForge found dictionary-backed kanji offline. Review the preview,
-        then add new cards to Saved without changing study progress.
+        {sharedDeck
+          ? `Review “${sharedDeck.name}” and add its dictionary-backed kanji to Saved without changing study progress.`
+          : 'KanjiForge found dictionary-backed kanji offline. Review the preview, then add new cards to Saved without changing study progress.'}
       </p>
       {(payload.title || payload.url) && (
         <div className="bg-muted mt-5 rounded-md p-3 text-sm">
@@ -201,9 +226,11 @@ export function ShareTargetScreen(): React.ReactElement {
           )}
         </div>
       )}
-      <blockquote className="border-primary bg-card mt-5 max-h-48 overflow-auto rounded-md border-l-4 p-4 text-lg whitespace-pre-wrap">
-        {payload.text || 'No text field was included.'}
-      </blockquote>
+      {!sharedDeck && (
+        <blockquote className="border-primary bg-card mt-5 max-h-48 overflow-auto rounded-md border-l-4 p-4 text-lg whitespace-pre-wrap">
+          {payload.text || 'No text field was included.'}
+        </blockquote>
+      )}
       {loading && (
         <p className="text-muted-foreground mt-5">Preparing preview…</p>
       )}
@@ -218,8 +245,17 @@ export function ShareTargetScreen(): React.ReactElement {
         </p>
       )}
       {preview && preview.length > 0 && (
-        <section aria-label="Shared text import preview" className="mt-6">
-          <h2 className="font-display text-xl font-semibold">Import preview</h2>
+        <section
+          aria-label={
+            sharedDeck
+              ? 'Shared deck import preview'
+              : 'Shared text import preview'
+          }
+          className="mt-6"
+        >
+          <h2 className="font-display text-xl font-semibold">
+            {sharedDeck ? 'Deck preview' : 'Import preview'}
+          </h2>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {preview.map((item) => (
               <li
@@ -244,7 +280,11 @@ export function ShareTargetScreen(): React.ReactElement {
             }
             onClick={() => void importMatchedKanji()}
           >
-            {importing ? 'Importing…' : 'Import matched kanji to Saved'}
+            {importing
+              ? 'Importing…'
+              : sharedDeck
+                ? 'Import shared deck to Saved'
+                : 'Import matched kanji to Saved'}
           </Button>
         </section>
       )}
