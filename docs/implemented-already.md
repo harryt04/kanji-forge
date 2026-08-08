@@ -66,7 +66,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 | Text processing | `src/core/text/{detect,furigana,romaji}.ts` | Each exports a single `*_STUB` constant. | `furigana.ts` → T1.1; `detect.ts`/`romaji.ts` → T3.0 (dictionary search) |
 | Stroke processing | `src/core/stroke/{match,resample}.ts` | Each exports a single `*_STUB` constant. | T6.0 (writing trainer) |
 | Import/enrichment | `src/core/import/{parse,enrich}.ts` | Each exports a single `*_STUB` constant. | T8.0 (v2, deferred with custom decks) |
-| PWA registration | `src/pwa/index.ts` | Exports `PWA_STUB`; no Serwist registration or precache strategy wired despite `serwist` being a dependency and a `public/manifest.json` existing. | T5.0 |
+| PWA registration | `src/pwa/index.ts`, `src/pwa/sw.ts`, `next.config.js` | Registers the build-generated Serwist worker in the browser; the worker precaches build assets and caches visited navigations for offline reloads. Updated workers wait rather than interrupting an active study session. | T5.0 |
 | Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Route + feature-module placeholders; no real UI or data wiring. | Phases 2–3, or Deferred for Writing per TRD |
 
 ---
@@ -84,7 +84,7 @@ this snapshot:
 | Atomic local grade transaction | "not yet called by a study screen" | Now called on every grade via `useStudyStore.grade()` → `repo.recordGrade()` | `8475b74` |
 
 All other rows in `MVP-STATUS.md` — outbox stub, Electric stub, mutation-API 501, pack-manager stub,
-Browse inline-edit follow-up, Detail/Settings/Writing placeholders, and PWA stub — remain accurate as of this
+Browse inline-edit follow-up, Detail/Settings/Writing placeholders — remain accurate as of this
 snapshot and are restated in the "Stubs and explicit seams" table above for a single source of truth.
 
 ---

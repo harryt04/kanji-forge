@@ -12,7 +12,8 @@ declare const self: ServiceWorkerGlobalScope
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
-  skipWaiting: true,
+  // Leave updated workers waiting so a study session is never hot-swapped.
+  // The next navigation can activate the new shell safely.
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [

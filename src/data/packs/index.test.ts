@@ -62,6 +62,18 @@ describe('data/packs', () => {
       expect(first).toBe(second)
       expect(fetch).toHaveBeenCalledTimes(1)
     })
+
+    it('reports a failed deck-definition response', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response('unavailable', { status: 503 })),
+      )
+      const { loadDeckDefinitions } = await freshPacks()
+
+      await expect(loadDeckDefinitions()).rejects.toThrow(
+        'Failed to load deck definitions (503)',
+      )
+    })
   })
 
   describe('getKanjiByLiterals', () => {

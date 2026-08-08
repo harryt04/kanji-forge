@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthGate } from '@/auth/auth-gate'
+import { PwaRegistration } from '@/pwa'
 
 export const metadata: Metadata = {
   title: 'KanjiForge — Japanese kanji study',
@@ -42,6 +43,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="KanjiForge" />
       </head>
       <body>
+        <PwaRegistration />
         <AuthGate>{children}</AuthGate>
       </body>
     </html>

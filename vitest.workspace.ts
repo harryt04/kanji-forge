@@ -41,6 +41,7 @@ export default defineWorkspace([
         'src/auth/**/*.test.{ts,tsx}',
         'src/lib/**/*.test.{ts,tsx}',
         'src/ui/**/*.test.{ts,tsx}',
+        'src/pwa/**/*.test.{ts,tsx}',
       ],
     },
   },
