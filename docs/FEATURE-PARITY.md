@@ -98,7 +98,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 5.1 | Writing trainer with stroke input | ✅ | 2026-08-07 | Offline practice surface captures finger, stylus, and mouse strokes over a KanjiVG/grid guide |
-| 5.2 | 6,500+ kanji stroke animations | ✅ | — | KanjiVG (T6.0) |
+| 5.2 | 6,500+ kanji stroke animations | ✅ | 2026-08-08 | KanjiVG (T6.0); committed chunk sizes and checksums are now regression-tested so offline stroke playback cannot silently drift from its manifest |
 | 5.3 | "Correct pen strokes" — reject wrong strokes live | ✅ | 2026-08-07 | Persisted Check stroke order toggle rejects mismatched next strokes, highlights the expected stroke after failures, and keeps an unchecked free-draw mode |
 | 5.4 | Writing as the answer side of a study card | ✅ | 2026-08-08 | Study answer settings can opt into an ephemeral offline writing pad with KanjiVG guidance; the learner grades the result with the normal answer buttons and no stroke data enters SRS history |
 | — | Hint escalation after repeated failures | ➕ ✅ | 2026-08-08 | After two rejected strokes, the expected stroke gets a start dot; after three, it pulses as an animated hint, with reduced-motion support |

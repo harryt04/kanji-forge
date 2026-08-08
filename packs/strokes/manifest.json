@@ -2,8 +2,8 @@
   "id": "strokes-v1",
   "version": "1.0.0",
   "schemaVersion": "1.0",
-  "sha256": "9300f579b42a9e3fb23fac63505d5dc0412be20c637fde36b2966abaf7261e23",
-  "sizeBytes": 9744046,
+  "sha256": "b197b291746778057455c639e5735e0847367c7523b15c0c86029cc8568f2b0b",
+  "sizeBytes": 12516890,
   "license": "CC BY-SA 3.0",
   "attribution": "Stroke data derived from KanjiVG by Ulrich Apel, CC BY-SA 3.0. Paths normalized and re-encoded.",
   "sources": [
@@ -19,38 +19,38 @@
   "chunks": [
     {
       "filename": "strokes-4E00-4FFF.json",
-      "sha256": "83f6a2bcb8aee0ff7b2c61f93960334321765e218ff4346a1f989f41462384a2",
-      "sizeBytes": 181224,
+      "sha256": "eb42e12a82811ac9f26f3a7a8c76ecacffcb1698f7cb4c724e1179cef46923c0",
+      "sizeBytes": 232588,
       "unicodeRange": "4E00-4FFF"
     },
     {
       "filename": "strokes-5000-5FFF.json",
-      "sha256": "d16f8144cf31c699b5533ec591ae3a552d085309aa9da72d0f3c3dc81beff9ce",
-      "sizeBytes": 1785600,
+      "sha256": "9eca239034f796a70867b7ad6c2736552829fb50c3be78826109b2e830e4ea77",
+      "sizeBytes": 2293932,
       "unicodeRange": "5000-5FFF"
     },
     {
       "filename": "strokes-6000-6FFF.json",
-      "sha256": "00bae16112cc54356fc276230370bcbdbb48785a56c53208993253efc2f53110",
-      "sizeBytes": 1976373,
+      "sha256": "956310c38d2994f4990a173e22ba1ae13b6aa535e9a1c491cf523cf67566d61c",
+      "sizeBytes": 2559403,
       "unicodeRange": "6000-6FFF"
     },
     {
       "filename": "strokes-7000-7FFF.json",
-      "sha256": "efd55673660f4ce46166c56f74bca74c321ff5f469a3f66e32920f6f44f5c220",
-      "sizeBytes": 1871748,
+      "sha256": "a9b9ba2c47aeafb2761bdd23a31a1fe186131ac1706304d60dd474b823d0bcab",
+      "sizeBytes": 2398397,
       "unicodeRange": "7000-7FFF"
     },
     {
       "filename": "strokes-8000-9FFF.json",
-      "sha256": "0718cec290d3f09805de5ee39729f3882c782928b970fc66697d3427926b9995",
-      "sizeBytes": 3803622,
+      "sha256": "08167f3fa6f73a93716500ade9d964e014260f7b38f551c47c4c8ca19734d46c",
+      "sizeBytes": 4876321,
       "unicodeRange": "8000-9FFF"
     },
     {
       "filename": "strokes-CJK_Extended.json",
-      "sha256": "f7fc06dda25155872ae94b78a6b8ed9f49dd0213aa5e4e0d2614deeaca72aeac",
-      "sizeBytes": 125479,
+      "sha256": "7a14ef2fdb7974614ffb81aa26f31c8ab628451be421df68ddaef63e8c21ef24",
+      "sizeBytes": 156249,
       "unicodeRange": "CJK_Extended"
     }
   ]

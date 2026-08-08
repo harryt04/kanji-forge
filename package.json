@@ -22,7 +22,7 @@
     "packs:full": "node scripts/build-packs/pipeline.mjs --mode full",
     "packs:refresh": "pnpm fetch:sources -- --refresh && pnpm build:kanji && pnpm build:words-core && pnpm build:strokes-pack && pnpm build:sentences-pack && pnpm build:similar && pnpm build:decks && pnpm packs:full",
     "packs:repro": "node scripts/build-packs/reproducibility.mjs",
-    "packs:test": "vitest run scripts/build-packs/pipeline.test.mjs scripts/build-packs/fetch-sources.test.ts",
+    "packs:test": "vitest run scripts/build-packs/pipeline.test.mjs scripts/build-packs/fetch-sources.test.ts scripts/build-packs/strokes-pack.test.ts",
     "packs:verify": "node scripts/build-packs/pipeline.mjs --mode ci",
     "postinstall": "node scripts/copy-sql-wasm.mjs && node scripts/copy-dev-packs.mjs && node scripts/copy-tokenizer-dict.mjs",
     "prebuild": "node scripts/copy-sql-wasm.mjs && node scripts/copy-dev-packs.mjs && node scripts/copy-tokenizer-dict.mjs",
