@@ -162,4 +162,20 @@ describe('analyzeText', () => {
       }),
     ])
   })
+
+  it('resolves potential forms to their dictionary lemmas', () => {
+    expect(analyzeText('読める。食べられない', words, kanji)).toEqual([
+      expect.objectContaining({
+        text: '読める',
+        contentRef: 'word:5',
+        reading: 'よめる',
+      }),
+      expect.objectContaining({ text: '。', type: 'unknown' }),
+      expect.objectContaining({
+        text: '食べられない',
+        contentRef: 'word:4',
+        reading: 'たべられない',
+      }),
+    ])
+  })
 })

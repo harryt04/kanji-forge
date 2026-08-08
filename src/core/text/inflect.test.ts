@@ -44,6 +44,21 @@ describe('inflectedSurfaces', () => {
     )
   })
 
+  it('covers common ichidan and godan potential forms', () => {
+    expect(inflectedSurfaces('食べる', 'たべる')).toEqual(
+      expect.arrayContaining([
+        { text: '食べられる', reading: 'たべられる' },
+        { text: '食べられなかった', reading: 'たべられなかった' },
+      ]),
+    )
+    expect(inflectedSurfaces('読む', 'よむ')).toEqual(
+      expect.arrayContaining([
+        { text: '読める', reading: 'よめる' },
+        { text: '読めなかった', reading: 'よめなかった' },
+      ]),
+    )
+  })
+
   it('does not invent godan forms for ordinary ichidan verbs', () => {
     expect(inflectedSurfaces('食べる', 'たべる')).not.toContainEqual({
       text: '食べりました',

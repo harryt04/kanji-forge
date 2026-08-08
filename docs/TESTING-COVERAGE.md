@@ -198,7 +198,10 @@ promotion, and pinned-search toggling.
 It also covers validating a content-only deck URL, previewing the shared deck name, and importing its matched cards.
 
 **`analyzer-settings.test.ts`** covers persisted furigana, rōmaji, and inline/on-tap gloss
-preferences, malformed-value defaults, and reading romanization. The share-screen suite verifies
+preferences, malformed-value defaults, and reading romanization. **`src/core/text/inflect.test.ts`**
+and **`src/core/text/analyzer.test.ts`** cover potential, imperative, prohibitive, and progressive
+verb-form recognition in addition to the existing polite, negative, conditional, and adjective
+forms. The share-screen suite verifies
 that these preferences load offline and that tap-to-reveal glosses remain hidden until requested.
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL and readable share-file payloads, omission of SRS progress, and malformed/empty payload rejection.
