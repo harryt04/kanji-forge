@@ -21,6 +21,9 @@ export interface InstalledAudioRecording {
   readonly bytes: Uint8Array
 }
 
+/** Keep accidental downloads from exhausting browser storage before ZIP validation. */
+export const MAX_AUDIO_PACK_BYTES = 100 * 1024 * 1024
+
 /** Returns the number of writing/reading recordings declared by a pack. */
 export function countAudioPackRecordings(pack: AudioPackManifest): number {
   return Object.keys(pack.files).length
@@ -134,6 +137,40 @@ export function parseAudioPackArchive(bytes: Uint8Array): InstalledAudioPack {
     files[key] = audio
   }
   return { manifest, files }
+}
+
+/**
+ * Fetches a licensed pack from a user-supplied web URL before installing it.
+ * Credentials are never sent, and only HTTP(S) URLs are accepted.
+ */
+export async function fetchAudioPack(url: string): Promise<AudioPackManifest> {
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(url.trim())
+  } catch {
+    throw new Error('Audio pack URL must be a valid HTTP(S) URL.')
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('Audio pack URL must be a valid HTTP(S) URL.')
+  }
+
+  let response: Response
+  try {
+    response = await fetch(parsedUrl.href, { credentials: 'omit' })
+  } catch {
+    throw new Error('Could not download the audio pack URL.')
+  }
+  if (!response.ok) {
+    throw new Error(`Could not download the audio pack (${response.status}).`)
+  }
+  const declaredLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_AUDIO_PACK_BYTES)
+    throw new Error('Audio pack is larger than the 100 MB browser limit.')
+
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  if (bytes.byteLength > MAX_AUDIO_PACK_BYTES)
+    throw new Error('Audio pack is larger than the 100 MB browser limit.')
+  return installAudioPack(bytes)
 }
 
 function openDatabase(): Promise<IDBDatabase | null> {

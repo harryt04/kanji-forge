@@ -16,6 +16,7 @@ import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
   countAudioPackRecordings,
+  fetchAudioPack,
   installAudioPack,
   listAudioPacks,
   removeAudioPack,
@@ -321,6 +322,7 @@ export function SettingsScreen(): React.ReactElement {
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [audioPacks, setAudioPacks] = useState<readonly AudioPackManifest[]>([])
   const [audioPackBusy, setAudioPackBusy] = useState(false)
+  const [audioPackUrl, setAudioPackUrl] = useState('')
   const [namesPack, setNamesPack] = useState<NamesPackManifest | null>(null)
   const [namesPackBusy, setNamesPackBusy] = useState(false)
   const [wordsPack, setWordsPack] = useState<WordsPackManifest | null>(null)
@@ -976,6 +978,26 @@ export function SettingsScreen(): React.ReactElement {
         new Uint8Array(await file.arrayBuffer()),
       )
       setAudioPacks(await listAudioPacks())
+      setError(`Installed ${manifest.name} ${manifest.version}.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not install audio pack.',
+      )
+    } finally {
+      setAudioPackBusy(false)
+    }
+  }
+
+  async function handleAudioPackUrl(): Promise<void> {
+    if (!audioPackUrl.trim()) return
+    setAudioPackBusy(true)
+    setError(null)
+    try {
+      const manifest = await fetchAudioPack(audioPackUrl)
+      setAudioPacks(await listAudioPacks())
+      setAudioPackUrl('')
       setError(`Installed ${manifest.name} ${manifest.version}.`)
     } catch (reason: unknown) {
       setError(
@@ -2652,6 +2674,36 @@ export function SettingsScreen(): React.ReactElement {
             event.target.value = ''
           }}
         />
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="audio-pack-url"
+        >
+          Or install from a URL
+        </label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <input
+            id="audio-pack-url"
+            type="url"
+            value={audioPackUrl}
+            onChange={(event) => setAudioPackUrl(event.target.value)}
+            placeholder="https://example.org/japanese-audio.zip"
+            autoComplete="url"
+            disabled={audioPackBusy}
+            className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={audioPackBusy || !audioPackUrl.trim()}
+            onClick={() => void handleAudioPackUrl()}
+          >
+            Install URL
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          The host must allow browser downloads (CORS). Only HTTP(S) URLs are
+          accepted; credentials are not sent.
+        </p>
         {namesPack ? (
           <div className="border-border mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
             <span>

@@ -37,6 +37,7 @@ import { deckFolderSettingKey } from './deck-folders'
 import { JAPANESE_WIKINEWS_FEED, RSS_FEEDS_SETTING } from './rss-feeds'
 import { removeNamesPack } from './names-pack'
 import { removeWordsPack } from './words-pack'
+import { removeAudioPack } from '@/features/study/audio-pack'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -57,6 +58,7 @@ function fixtureFetch(): typeof fetch {
 }
 
 describe('SettingsScreen', () => {
+  const installedAudioPacks: string[] = []
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
   const originalUserAgent = Object.getOwnPropertyDescriptor(
     navigator,
@@ -69,6 +71,7 @@ describe('SettingsScreen', () => {
   })
 
   afterEach(async () => {
+    for (const id of installedAudioPacks.splice(0)) await removeAudioPack(id)
     await removeNamesPack()
     await removeWordsPack()
     if (originalStorage) {
@@ -471,6 +474,49 @@ describe('SettingsScreen', () => {
         ),
       ).toMatchObject({ value: 'true' }),
     )
+  })
+
+  it('installs a community audio pack from a URL', async () => {
+    const user = userEvent.setup()
+    const id = `settings-remote-audio-${crypto.randomUUID()}`
+    installedAudioPacks.push(id)
+    const previousFetch = globalThis.fetch
+    const remoteUrl = 'https://audio.example.test/community.zip'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === remoteUrl) {
+          expect(init?.credentials).toBe('omit')
+          return new Response(
+            zipSync({
+              'manifest.json': new TextEncoder().encode(
+                JSON.stringify({
+                  id,
+                  name: 'Remote community voice',
+                  version: '1.0.0',
+                  license: 'CC BY 4.0',
+                  attribution: 'A Japanese speaker',
+                  files: { '日|ひ': 'audio/hi.mp3' },
+                }),
+              ),
+              'audio/hi.mp3': new Uint8Array([1, 2, 3]),
+            }),
+            { status: 200 },
+          )
+        }
+        return previousFetch(input, init)
+      }),
+    )
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Study audio' })
+    await user.type(screen.getByLabelText('Or install from a URL'), remoteUrl)
+    await user.click(screen.getByRole('button', { name: 'Install URL' }))
+
+    expect(
+      (await screen.findByRole('list', { name: 'Installed audio packs' }))
+        .textContent,
+    ).toContain('Remote community voice')
   })
 
   it('persists two-tap study mode offline', async () => {

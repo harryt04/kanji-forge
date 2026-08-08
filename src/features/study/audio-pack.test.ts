@@ -1,9 +1,10 @@
 import { zipSync } from 'fflate'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getAudioPackFile,
   getAudioPackRecording,
   countAudioPackRecordings,
+  fetchAudioPack,
   installAudioPack,
   listAudioPacks,
   parseAudioPackArchive,
@@ -32,6 +33,7 @@ describe('community audio packs', () => {
 
   afterEach(async () => {
     for (const id of installed.splice(0)) await removeAudioPack(id)
+    vi.unstubAllGlobals()
   })
 
   it('validates the licensed manifest and rejects unsafe or empty entries', () => {
@@ -97,6 +99,36 @@ describe('community audio packs', () => {
     expect((await listAudioPacks()).some((pack) => pack.id === id)).toBe(false)
     installed.splice(installed.indexOf(id), 1)
     expect(await getAudioPackFile('日', 'ひ')).toBeNull()
+  })
+
+  it('downloads and installs a pack from an HTTP(S) URL without credentials', async () => {
+    const id = `remote-${crypto.randomUUID()}`
+    installed.push(id)
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.credentials).toBe('omit')
+        return new Response(archive(id), { status: 200 })
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      fetchAudioPack('https://cdn.example.test/voice.zip'),
+    ).resolves.toMatchObject({ id })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cdn.example.test/voice.zip',
+      { credentials: 'omit' },
+    )
+  })
+
+  it('rejects non-HTTP URLs before making a request', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      fetchAudioPack('data:application/zip;base64,abc'),
+    ).rejects.toThrow(/HTTP\(S\)/)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('preserves a non-MP3 recording type for browser playback', async () => {
