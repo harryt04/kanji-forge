@@ -30,7 +30,9 @@ function requestedContentRef(): string | null {
 export function DetailScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
-  const [contentRef, setContentRef] = useState<string | null>(null)
+  const [contentRef, setContentRef] = useState<string | null>(
+    requestedContentRef,
+  )
   const [detailCard, setDetailCard] = useState<{
     readonly content: StudyCard
     readonly state: LoadedDeck['cards'][number]['state']
@@ -45,38 +47,48 @@ export function DetailScreen(): React.ReactElement {
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null)
 
   useEffect(() => {
     if (!runtime) return
+    function handlePopState(): void {
+      setContentRef(requestedContentRef())
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [runtime])
+
+  useEffect(() => {
+    if (!runtime || !contentRef) return
     let active = true
-    setContentRef(requestedContentRef())
+    setDeck(null)
+    setDetailCard(null)
+    setSimilarKanji([])
+    setExampleWords([])
+    setExampleSentences([])
+    setError(null)
     void (async () => {
       await runtime.database.ready
       const loaded = await loadStarterDeck(runtime.database)
       const savedMembership = await createUserRepositories(
         runtime.database,
       ).deckMembership.list()
-      const requestedRef = requestedContentRef()
-      if (active && requestedRef) {
-        setSaved(
-          savedMembership.some(
-            (membership) => membership.contentRef === requestedRef,
-          ),
-        )
-      }
-      if (!requestedRef) {
-        if (active) setDeck(loaded)
-        return
-      }
-      const inDeck = loaded.content.get(requestedRef)
+      setSaved(
+        savedMembership.some(
+          (membership) => membership.contentRef === contentRef,
+        ),
+      )
+      const inDeck = loaded.content.get(contentRef)
       const inDeckCard = loaded.cards.find(
-        (candidate) => candidate.contentRef === requestedRef,
+        (candidate) => candidate.contentRef === contentRef,
       )
       let literal = inDeck?.literal
       if (inDeck) {
         if (active) setDetailCard({ content: inDeck, state: inDeckCard?.state })
       } else {
-        const parsed = parseContentRef(requestedRef)
+        const parsed = parseContentRef(contentRef)
         if (parsed.type !== 'kanji') throw new Error('Unsupported detail type.')
         const record = (await getKanjiByLiterals([parsed.key])).get(parsed.key)
         if (!record)
@@ -84,11 +96,11 @@ export function DetailScreen(): React.ReactElement {
         literal = record.literal
         const state = await createUserRepositories(
           runtime.database,
-        ).cardStates.get(loaded.deckId, requestedRef)
+        ).cardStates.get(loaded.deckId, contentRef)
         if (active)
           setDetailCard({
             content: {
-              contentRef: requestedRef,
+              contentRef,
               literal: record.literal,
               strokeCount: record.strokeCount,
               frequency: record.freq,
@@ -102,14 +114,15 @@ export function DetailScreen(): React.ReactElement {
             state,
           })
       }
-      if (active) {
-        setDeck(loaded)
-        if (literal) {
-          const [similar, examples, sentences] = await Promise.all([
-            getSimilarKanji(literal),
-            getExampleWords(literal),
-            getExampleSentences(literal),
-          ])
+      if (!active) return
+      setDeck(loaded)
+      if (literal) {
+        const [similar, examples, sentences] = await Promise.all([
+          getSimilarKanji(literal),
+          getExampleWords(literal),
+          getExampleSentences(literal),
+        ])
+        if (active) {
           setSimilarKanji(similar)
           setExampleWords(examples)
           setExampleSentences(sentences)
@@ -124,7 +137,7 @@ export function DetailScreen(): React.ReactElement {
     return () => {
       active = false
     }
-  }, [runtime])
+  }, [contentRef, runtime])
 
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to view details.</p>
@@ -144,6 +157,31 @@ export function DetailScreen(): React.ReactElement {
   const level = state?.level ?? 0
   const reading = [...content.onReadings, ...content.kunReadings]
   const selectedContentRef = contentRef
+  const navigableRefs = deck.cards
+    .map((card) => card.contentRef)
+    .filter((ref) => deck.content.has(ref))
+  const currentIndex = navigableRefs.indexOf(selectedContentRef)
+  const previousContentRef =
+    currentIndex > 0 ? navigableRefs[currentIndex - 1] : null
+  const nextContentRef =
+    currentIndex >= 0 && currentIndex < navigableRefs.length - 1
+      ? navigableRefs[currentIndex + 1]
+      : null
+
+  function navigateTo(nextContentRef: string): void {
+    const nextUrl = `/detail?contentRef=${encodeURIComponent(nextContentRef)}`
+    window.history.pushState({}, '', nextUrl)
+    setContentRef(nextContentRef)
+  }
+
+  function finishTouchSwipe(endX: number | undefined): void {
+    if (touchStartX === null || endX === undefined) return
+    const deltaX = endX - touchStartX
+    setTouchStartX(null)
+    if (Math.abs(deltaX) < 60) return
+    if (deltaX < 0 && nextContentRef) navigateTo(nextContentRef)
+    if (deltaX > 0 && previousContentRef) navigateTo(previousContentRef)
+  }
 
   async function saveToSaved(): Promise<void> {
     if (!runtime || saved || saving) return
@@ -192,10 +230,46 @@ export function DetailScreen(): React.ReactElement {
   }
 
   return (
-    <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6">
+    <main
+      className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6"
+      onTouchStart={(event) =>
+        setTouchStartX(event.touches[0]?.clientX ?? null)
+      }
+      onTouchEnd={(event) => finishTouchSwipe(event.changedTouches[0]?.clientX)}
+    >
       <Link className="text-primary w-fit text-sm underline" href="/browse">
         ← Back to Browse
       </Link>
+      {currentIndex >= 0 && (
+        <nav
+          className="flex items-center justify-between gap-3"
+          aria-label="Detail navigation"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!previousContentRef}
+            onClick={() => {
+              if (previousContentRef) navigateTo(previousContentRef)
+            }}
+          >
+            ← Previous
+          </Button>
+          <span className="text-muted-foreground text-sm tabular-nums">
+            {currentIndex + 1} of {navigableRefs.length}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!nextContentRef}
+            onClick={() => {
+              if (nextContentRef) navigateTo(nextContentRef)
+            }}
+          >
+            Next →
+          </Button>
+        </nav>
+      )}
       <Card
         className={`sticky-shape ${LEVEL_SHAPES[level]}`}
         data-level={level}

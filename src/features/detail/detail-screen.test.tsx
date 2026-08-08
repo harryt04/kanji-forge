@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
@@ -97,6 +103,45 @@ describe('DetailScreen', () => {
     expect(
       screen.getByRole('link', { name: 'View details for 固' }),
     ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E5%9B%BA')
+  })
+
+  it('moves through deck cards with detail navigation controls', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument(),
+    )
+    expect(screen.getByText('1 of 200')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Previous/ })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: /Next/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '一' })).toBeInTheDocument(),
+    )
+    expect(window.location.search).toBe('?contentRef=kanji%3A%E4%B8%80')
+    expect(screen.getByText('2 of 200')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Previous/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument(),
+    )
+  })
+
+  it('moves to the adjacent sticky after a horizontal touch swipe', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument(),
+    )
+    const main = screen.getByRole('main')
+    fireEvent.touchStart(main, { touches: [{ clientX: 240 }] })
+    fireEvent.touchEnd(main, { changedTouches: [{ clientX: 150 }] })
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '一' })).toBeInTheDocument(),
+    )
   })
 
   it('renders offline sentence breakdowns with highlighted kanji and attribution', async () => {
