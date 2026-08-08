@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 37 (270 test cases: 270 passing) |
-| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 84 cases, included above) |
+| Unit/integration test files | 39 (278 test cases: 278 passing) |
+| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 86 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.92%** |
+| Overall statement coverage | **86.22%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -28,7 +28,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
 | `src/data/**` | 85% | db 93.46 / 86 / 100 / 93.46 · packs 98.77 / 82.46 / 100 / 98.77 · repo 97.61 / 89.34 / 100 / 97.61 | ✅ comfortable margin |
-| `src/features/**` | 70% | browse 90.37 / 81.21 / 84.84 / 90.37 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.53 / 84 / 84.84 / 96.53 | ✅ comfortable margin |
+| `src/features/**` | 70% | browse 89 / 74.77 / 86.48 / 89 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.53 / 84 / 84.84 / 96.53 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 85.12 / 74.4 / 88.67 / 85.12 | ✅ comfortable margin |
 | Global floor | 60% | 87.84 / 83.18 / 89.91 / 87.84 | ✅ comfortable margin |
@@ -127,14 +127,15 @@ breakdown and pressed state.
 **`help-screen.test.tsx`** (Testing Library) — bundled offline documentation sections and links,
 plus the anonymous-access message when rendered outside the authenticated app shell.
 
-### `src/features/browse` — 23 cases
+### `src/features/browse` — 24 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
 loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
 wall, tile links to the selected card's offline detail route, persisted tile-content selection (kanji/reading/meaning), persisted tile zoom density, rendering persisted local level and flag state, filtering
- by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
- sorting by local level with stable deck-order ties, and manually assigning a card level while
- preserving review totals and omitting the manual adjustment from daily review statistics.
+by kanji/readings/English meanings, applying level/flag/stroke-count/JLPT filters, clearing filters,
+sorting by local level with stable deck-order ties, and manually assigning a card level while
+preserving review totals and omitting the manual adjustment from daily review statistics, and
+saving the current Browse view, tile content, and zoom as validated defaults for future decks.
 
 `browse-filter.test.ts` covers untouched cards as level zero, inclusive stroke ranges, flagged and
 level combinations, JLPT matching, and missing JLPT metadata.

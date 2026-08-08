@@ -23,6 +23,13 @@ const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 export const BROWSE_VIEW_SETTING = 'browse.view'
 export const BROWSE_TILE_CONTENT_SETTING = 'browse.tile-content'
 export const BROWSE_TILE_ZOOM_SETTING = 'browse.tile-zoom'
+export const BROWSE_DEFAULTS_SETTING = 'browse.defaults'
+
+export interface BrowseDefaults {
+  readonly view: 'list' | 'tiles'
+  readonly tileContent: 'kanji' | 'reading' | 'meaning'
+  readonly tileZoom: 0.75 | 1 | 1.5
+}
 
 type BrowseView = 'list' | 'tiles'
 type BrowseTileContent = 'kanji' | 'reading' | 'meaning'
@@ -46,6 +53,37 @@ function isBrowseTileZoom(
 
 function browseTileZoomValue(value: BrowseTileZoom): string {
   return String(value)
+}
+
+function deckBrowseSettingKey(setting: string, deckId: string): string {
+  return `${setting}:${deckId}`
+}
+
+export function parseBrowseDefaults(
+  value: string | undefined,
+): BrowseDefaults | null {
+  if (!value) return null
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!parsed || typeof parsed !== 'object') return null
+    const candidate = parsed as Record<string, unknown>
+    if (
+      typeof candidate.view !== 'string' ||
+      !isBrowseView(candidate.view) ||
+      typeof candidate.tileContent !== 'string' ||
+      !isBrowseTileContent(candidate.tileContent) ||
+      typeof candidate.tileZoom !== 'number' ||
+      ![0.75, 1, 1.5].includes(candidate.tileZoom)
+    )
+      return null
+    return {
+      view: candidate.view,
+      tileContent: candidate.tileContent,
+      tileZoom: candidate.tileZoom as BrowseTileZoom,
+    }
+  } catch {
+    return null
+  }
 }
 
 interface BrowseCard {
@@ -137,6 +175,7 @@ export function BrowseScreen({
   const [viewError, setViewError] = useState<string | null>(null)
   const [tileContentError, setTileContentError] = useState<string | null>(null)
   const [tileZoomError, setTileZoomError] = useState<string | null>(null)
+  const [defaultsMessage, setDefaultsMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -146,21 +185,46 @@ export function BrowseScreen({
     void (async () => {
       await runtime.database.ready
       const loaded = await loadStarterDeck(runtime.database, deckDefinitionId)
-      const savedView = await createUserRepositories(
-        runtime.database,
-      ).settings.get(BROWSE_VIEW_SETTING)
-      const savedTileContent = await createUserRepositories(
-        runtime.database,
-      ).settings.get(BROWSE_TILE_CONTENT_SETTING)
-      const savedTileZoom = await createUserRepositories(
-        runtime.database,
-      ).settings.get(BROWSE_TILE_ZOOM_SETTING)
+      const repositories = createUserRepositories(runtime.database)
+      const [
+        savedView,
+        savedTileContent,
+        savedTileZoom,
+        savedDeckView,
+        savedDeckTileContent,
+        savedDeckTileZoom,
+        savedDefaults,
+      ] = await Promise.all([
+        repositories.settings.get(BROWSE_VIEW_SETTING),
+        repositories.settings.get(BROWSE_TILE_CONTENT_SETTING),
+        repositories.settings.get(BROWSE_TILE_ZOOM_SETTING),
+        repositories.settings.get(
+          deckBrowseSettingKey(BROWSE_VIEW_SETTING, loaded.deckId),
+        ),
+        repositories.settings.get(
+          deckBrowseSettingKey(BROWSE_TILE_CONTENT_SETTING, loaded.deckId),
+        ),
+        repositories.settings.get(
+          deckBrowseSettingKey(BROWSE_TILE_ZOOM_SETTING, loaded.deckId),
+        ),
+        repositories.settings.get(BROWSE_DEFAULTS_SETTING),
+      ])
+      const defaults = parseBrowseDefaults(savedDefaults?.value)
+      const selectedView =
+        savedDeckView?.value ?? defaults?.view ?? savedView?.value
+      const selectedTileContent =
+        savedDeckTileContent?.value ??
+        defaults?.tileContent ??
+        savedTileContent?.value
+      const selectedTileZoom =
+        savedDeckTileZoom?.value ??
+        (defaults ? String(defaults.tileZoom) : savedTileZoom?.value)
       if (active) setDeck(loaded)
-      if (active && isBrowseView(savedView?.value)) setView(savedView.value)
-      if (active && isBrowseTileContent(savedTileContent?.value))
-        setTileContent(savedTileContent.value)
-      if (active && isBrowseTileZoom(savedTileZoom?.value))
-        setTileZoom(Number(savedTileZoom.value) as BrowseTileZoom)
+      if (active && isBrowseView(selectedView)) setView(selectedView)
+      if (active && isBrowseTileContent(selectedTileContent))
+        setTileContent(selectedTileContent)
+      if (active && isBrowseTileZoom(selectedTileZoom))
+        setTileZoom(Number(selectedTileZoom) as BrowseTileZoom)
     })().catch((reason: unknown) => {
       if (active)
         setError(
@@ -293,11 +357,20 @@ export function BrowseScreen({
     setView(next)
     setViewError(null)
     try {
-      await createUserRepositories(runtime.database).settings.set({
-        key: BROWSE_VIEW_SETTING,
-        value: next,
-        updatedAt: Date.now(),
-      })
+      const repositories = createUserRepositories(runtime.database)
+      const updatedAt = Date.now()
+      await Promise.all([
+        repositories.settings.set({
+          key: BROWSE_VIEW_SETTING,
+          value: next,
+          updatedAt,
+        }),
+        repositories.settings.set({
+          key: deckBrowseSettingKey(BROWSE_VIEW_SETTING, deck?.deckId ?? ''),
+          value: next,
+          updatedAt,
+        }),
+      ])
     } catch (reason: unknown) {
       setView(previous)
       setViewError(
@@ -314,11 +387,23 @@ export function BrowseScreen({
     setTileContent(next)
     setTileContentError(null)
     try {
-      await createUserRepositories(runtime.database).settings.set({
-        key: BROWSE_TILE_CONTENT_SETTING,
-        value: next,
-        updatedAt: Date.now(),
-      })
+      const repositories = createUserRepositories(runtime.database)
+      const updatedAt = Date.now()
+      await Promise.all([
+        repositories.settings.set({
+          key: BROWSE_TILE_CONTENT_SETTING,
+          value: next,
+          updatedAt,
+        }),
+        repositories.settings.set({
+          key: deckBrowseSettingKey(
+            BROWSE_TILE_CONTENT_SETTING,
+            deck?.deckId ?? '',
+          ),
+          value: next,
+          updatedAt,
+        }),
+      ])
     } catch (reason: unknown) {
       setTileContent(previous)
       setTileContentError(
@@ -335,15 +420,48 @@ export function BrowseScreen({
     setTileZoom(next)
     setTileZoomError(null)
     try {
-      await createUserRepositories(runtime.database).settings.set({
-        key: BROWSE_TILE_ZOOM_SETTING,
-        value: browseTileZoomValue(next),
-        updatedAt: Date.now(),
-      })
+      const repositories = createUserRepositories(runtime.database)
+      const updatedAt = Date.now()
+      await Promise.all([
+        repositories.settings.set({
+          key: BROWSE_TILE_ZOOM_SETTING,
+          value: browseTileZoomValue(next),
+          updatedAt,
+        }),
+        repositories.settings.set({
+          key: deckBrowseSettingKey(
+            BROWSE_TILE_ZOOM_SETTING,
+            deck?.deckId ?? '',
+          ),
+          value: browseTileZoomValue(next),
+          updatedAt,
+        }),
+      ])
     } catch (reason: unknown) {
       setTileZoom(previous)
       setTileZoomError(
         reason instanceof Error ? reason.message : 'Could not save tile zoom.',
+      )
+    }
+  }
+
+  async function saveBrowseDefaults(): Promise<void> {
+    if (!runtime) return
+    setDefaultsMessage(null)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: BROWSE_DEFAULTS_SETTING,
+        value: JSON.stringify({ view, tileContent, tileZoom }),
+        updatedAt: Date.now(),
+      })
+      setDefaultsMessage(
+        'These Browse settings are now the default for all decks.',
+      )
+    } catch (reason: unknown) {
+      setDefaultsMessage(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save Browse defaults.',
       )
     }
   }
@@ -446,6 +564,25 @@ export function BrowseScreen({
           </div>
         </div>
       </div>
+
+      <div className="border-border flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+        <p className="text-muted-foreground text-sm">
+          Choose the same view, tile content, and zoom automatically for future
+          decks.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => void saveBrowseDefaults()}
+        >
+          Use these settings for all decks
+        </Button>
+      </div>
+      {defaultsMessage && (
+        <p className="text-muted-foreground text-sm" role="status">
+          {defaultsMessage}
+        </p>
+      )}
 
       {viewError && (
         <p className="text-destructive" role="alert">

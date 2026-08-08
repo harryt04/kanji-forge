@@ -13,6 +13,7 @@ import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import {
   BROWSE_TILE_CONTENT_SETTING,
+  BROWSE_DEFAULTS_SETTING,
   BROWSE_VIEW_SETTING,
   BrowseScreen,
   BROWSE_TILE_ZOOM_SETTING,
@@ -188,6 +189,71 @@ describe('BrowseScreen', () => {
     )
     expect(wall).toHaveStyle(
       'grid-template-columns: repeat(auto-fill, minmax(84px, 1fr))',
+    )
+  })
+
+  it('saves the current Browse preferences as defaults for all decks', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.settings.set({
+      key: BROWSE_VIEW_SETTING,
+      value: 'tiles',
+      updatedAt: Date.now(),
+    })
+    await repo.settings.set({
+      key: BROWSE_TILE_CONTENT_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    await repo.settings.set({
+      key: BROWSE_TILE_ZOOM_SETTING,
+      value: '1.5',
+      updatedAt: Date.now(),
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Use these settings for all decks' }),
+    )
+
+    await waitFor(async () => {
+      expect(await repo.settings.get(BROWSE_DEFAULTS_SETTING)).toMatchObject({
+        value: JSON.stringify({
+          view: 'tiles',
+          tileContent: 'meaning',
+          tileZoom: 1.5,
+        }),
+      })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'default for all decks',
+    )
+
+    cleanup()
+    await repo.settings.set({
+      key: BROWSE_VIEW_SETTING,
+      value: 'list',
+      updatedAt: Date.now(),
+    })
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    cleanup()
+    await repo.settings.set({
+      key: `${BROWSE_VIEW_SETTING}:dev-kanji`,
+      value: 'list',
+      updatedAt: Date.now(),
+    })
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
   })
 

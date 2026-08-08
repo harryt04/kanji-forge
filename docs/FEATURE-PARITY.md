@@ -69,7 +69,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.8 | Filtering | ✅ | 2026-08-07 | Browse filters offline by level/color, flagged state, inclusive stroke-count range, and JLPT level; filters combine with text search and can be cleared together |
 | 3.9 | Searching within a deck | ✅ | 2026-08-07 | Offline search matches kanji, kana readings, and English meanings; multiple terms are ANDed |
 | 3.10 | Sticky count badge on the Browse icon | ✅ | 2026-08-07 | Authenticated primary navigation shows the installed starter-deck sticky count on Browse and remains usable offline |
-| 3.11 | Set current deck's browse settings as the default for all decks | ✅ | — | |
+| 3.11 | Set current deck's browse settings as the default for all decks | ✅ | 2026-08-07 | Browse saves view, tile content, and tile zoom as validated offline defaults; deck-specific preferences take precedence when available |
 | — | Multi-select + bulk actions | ➕ ✅ | — | |
 
 ## 4. Detail view
