@@ -256,6 +256,46 @@ describe('DetailScreen', () => {
     ).toMatchObject({ mutType: 'deckMembership.upsert' })
   })
 
+  it('adds the selected kanji to an existing custom deck', async () => {
+    const runtime = bootstrapUserRuntime(`detail-${userId}`)
+    const repositories = createUserRepositories(runtime.database)
+    const now = Date.now()
+    await repositories.recordDeck({
+      deck: {
+        id: 'custom-travel',
+        name: 'Travel',
+        kind: 'custom',
+        definitionId: null,
+        updatedAt: now,
+      },
+      mutation: {
+        id: crypto.randomUUID(),
+        mutType: 'deck.upsert',
+        payload: JSON.stringify({ id: 'custom-travel' }),
+        createdAt: now,
+        attempts: 0,
+      },
+    })
+    const user = userEvent.setup()
+    render(<DetailScreen />)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add to Travel' }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'Added to Travel' }),
+    ).toBeDisabled()
+    await expect(
+      repositories.deckMembership.list('custom-travel'),
+    ).resolves.toMatchObject([
+      { deckId: 'custom-travel', contentRef: 'kanji:日', sortOrder: 0 },
+    ])
+    expect((await repositories.outbox.pending()).at(-1)).toMatchObject({
+      mutType: 'deckMembership.upsert',
+    })
+  })
+
   it('asks before saving when the preference is enabled', async () => {
     const runtime = bootstrapUserRuntime(`detail-${userId}`)
     await createUserRepositories(runtime.database).settings.set({

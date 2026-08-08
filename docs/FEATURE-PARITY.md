@@ -85,7 +85,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.7 | Example sentences with breakdown | ✅ | 2026-08-07 | Detail loads ranked offline Tatoeba sentences with furigana, English translation, target-kanji highlighting, and author attribution |
 | 4.8 | Everything hyperlinked | ✅ | — | Navigation stack |
 | 4.9 | Swipe between stickies in detail view | ✅ | 2026-08-07 | Detail provides previous/next controls and horizontal touch swiping through the loaded deck order |
-| 4.10 | Save sticky to a deck | ✅ | 2026-08-07 | Kanji detail saves the selected card offline to the per-user Saved deck and queues the membership mutation for sync |
+| 4.10 | Save sticky to a deck | ✅ | 2026-08-07 | Kanji detail saves the selected card offline to the per-user Saved deck or an existing custom deck and queues the membership mutation for sync |
 | 4.11 | "Save to Saved deck" vs. always-ask setting | ✅ | 2026-08-07 | Settings persists direct-save vs. ask-every-time behavior offline; Detail and Dictionary honor the confirmation preference before saving to the per-user Saved deck |
 | 4.12 | Inline stroke animations instead of static glyph | ✅ | 2026-08-07 | Kanji detail loads ordered KanjiVG paths offline with play, pause, restart, and step controls; Settings persists the global visibility toggle |
 | 4.13 | Night mode with auto 21:00–06:00 | ✅ | — | Plus a full theme system |
@@ -130,6 +130,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 6.19 | Transfer progress between decks sharing stickies | ✅ | 2026-08-08 | Settings can copy studied SRS progress from the built-in starter deck to matching Saved cards offline; destination flags and annotations are preserved |
 | — | Deck folders / grouping | ➕ 🔷 | 2026-08-08 | Settings assigns the built-in and Saved decks to named offline folders; empty labels remain in an Unfiled group |
 | — | Deck sharing by file or URL | ➕ 🔶 | 2026-08-08 | Settings copies a content-only URL for the built-in deck; the authenticated `/analyze` route previews dictionary matches and imports them into Saved without sharing private SRS progress |
+| — | Save a Detail card to a custom deck | ➕ ✅ | 2026-08-08 | Detail lists existing user-owned custom decks and adds the selected kanji offline with an idempotent membership action and sync outbox mutation |
 | — | Kanji Kentei level decks | ➕ 🔶 | — | If an openly-licensed list is found |
 
 ## 7. Goal scheduler, history & statistics

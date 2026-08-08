@@ -12,7 +12,11 @@ import {
   getSimilarKanji,
   parseContentRef,
 } from '@/data/packs'
-import { createUserRepositories, type OutboxMutation } from '@/data/repo'
+import {
+  createUserRepositories,
+  type Deck,
+  type OutboxMutation,
+} from '@/data/repo'
 import { getDeviceId } from '@/lib/device-id'
 import {
   loadStarterDeck,
@@ -74,7 +78,10 @@ export function DetailScreen(): React.ReactElement {
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [askBeforeSaving, setAskBeforeSaving] = useState(false)
   const [canSpeak, setCanSpeak] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saveDecks, setSaveDecks] = useState<readonly Deck[]>([])
+  const [savedDeckIds, setSavedDeckIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   const [saving, setSaving] = useState(false)
   const [note, setNote] = useState('')
   const [tagsInput, setTagsInput] = useState('')
@@ -108,26 +115,47 @@ export function DetailScreen(): React.ReactElement {
     setStrokes(null)
     setNote('')
     setTagsInput('')
+    setSaveDecks([])
+    setSavedDeckIds(new Set())
     setAnnotationMessage(null)
     setError(null)
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database)
-      const [
-        savedMembership,
-        savedStrokeSetting,
-        savedSaveBehavior,
-        savedAnnotation,
-      ] = await Promise.all([
-        repositories.deckMembership.list(),
-        repositories.settings.get(STROKE_ANIMATION_SETTING),
-        repositories.settings.get(SAVE_BEHAVIOR_SETTING),
-        repositories.annotations.get(loaded.deckId, contentRef),
-      ])
-      setSaved(
-        savedMembership.some(
-          (membership) => membership.contentRef === contentRef,
+      const [decks, savedStrokeSetting, savedSaveBehavior, savedAnnotation] =
+        await Promise.all([
+          repositories.decks.list(),
+          repositories.settings.get(STROKE_ANIMATION_SETTING),
+          repositories.settings.get(SAVE_BEHAVIOR_SETTING),
+          repositories.annotations.get(loaded.deckId, contentRef),
+        ])
+      const saveDecksForUser: readonly Deck[] = [
+        {
+          id: 'saved',
+          name: 'Saved',
+          kind: 'saved',
+          definitionId: null,
+          updatedAt: 0,
+        },
+        ...decks.filter((candidate) => candidate.kind === 'custom'),
+      ]
+      const memberships = await Promise.all(
+        saveDecksForUser.map(async (candidate) => ({
+          deckId: candidate.id,
+          membership: await repositories.deckMembership.list(candidate.id),
+        })),
+      )
+      setSaveDecks(saveDecksForUser)
+      setSavedDeckIds(
+        new Set(
+          memberships
+            .filter(({ membership }) =>
+              membership.some(
+                (candidate) => candidate.contentRef === contentRef,
+              ),
+            )
+            .map(({ deckId }) => deckId),
         ),
       )
       setShowStrokeAnimation(
@@ -269,9 +297,10 @@ export function DetailScreen(): React.ReactElement {
     if (deltaX > 0 && previousContentRef) navigateTo(previousContentRef)
   }
 
-  async function saveToSaved(): Promise<void> {
-    if (!runtime || saved || saving) return
+  async function saveToDeck(targetDeck: Deck): Promise<void> {
+    if (!runtime || savedDeckIds.has(targetDeck.id) || saving) return
     if (
+      targetDeck.id === 'saved' &&
       askBeforeSaving &&
       !window.confirm(`Save ${content.literal} to your Saved deck?`)
     )
@@ -281,7 +310,7 @@ export function DetailScreen(): React.ReactElement {
       id: crypto.randomUUID(),
       mutType: 'deckMembership.upsert',
       payload: JSON.stringify({
-        deckId: 'saved',
+        deckId: targetDeck.id,
         contentRef: selectedContentRef,
         updatedAt: now,
       }),
@@ -292,17 +321,14 @@ export function DetailScreen(): React.ReactElement {
     setError(null)
     try {
       const repo = createUserRepositories(runtime.database)
-      const memberships = await repo.deckMembership.list()
+      const memberships = await repo.deckMembership.list(targetDeck.id)
       await repo.recordDeckMembership({
-        deck: {
-          id: 'saved',
-          name: 'Saved',
-          kind: 'saved',
-          definitionId: null,
-          updatedAt: now,
-        },
+        deck:
+          targetDeck.id === 'saved'
+            ? { ...targetDeck, updatedAt: now }
+            : targetDeck,
         membership: {
-          deckId: 'saved',
+          deckId: targetDeck.id,
           contentRef: selectedContentRef,
           sortOrder: memberships.length,
           addedAt: now,
@@ -310,7 +336,7 @@ export function DetailScreen(): React.ReactElement {
         },
         mutation,
       })
-      setSaved(true)
+      setSavedDeckIds((current) => new Set(current).add(targetDeck.id))
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : 'Could not save card.',
@@ -439,10 +465,19 @@ export function DetailScreen(): React.ReactElement {
             variant="outline"
             size="sm"
             className="mt-3 w-fit"
-            disabled={saved || saving}
-            onClick={() => void saveToSaved()}
+            disabled={savedDeckIds.has('saved') || saving}
+            onClick={() => {
+              const savedDeck = saveDecks.find(
+                (candidate) => candidate.id === 'saved',
+              )
+              if (savedDeck) void saveToDeck(savedDeck)
+            }}
           >
-            {saved ? 'Saved' : saving ? 'Saving…' : 'Save to Saved'}
+            {savedDeckIds.has('saved')
+              ? 'Saved'
+              : saving
+                ? 'Saving…'
+                : 'Save to Saved'}
           </Button>
         </CardHeader>
         <CardContent>
@@ -496,6 +531,40 @@ export function DetailScreen(): React.ReactElement {
           </dl>
         </CardContent>
       </Card>
+      {saveDecks.some((candidate) => candidate.kind === 'custom') && (
+        <section aria-labelledby="custom-deck-save-heading">
+          <h2
+            id="custom-deck-save-heading"
+            className="font-jp-ui text-lg font-semibold"
+          >
+            Add to a custom deck
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Keep this card in another deck for focused study. The membership is
+            saved locally and queued for sync.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {saveDecks
+              .filter((candidate) => candidate.kind === 'custom')
+              .map((candidate) => {
+                const alreadyAdded = savedDeckIds.has(candidate.id)
+                return (
+                  <Button
+                    key={candidate.id}
+                    type="button"
+                    variant={alreadyAdded ? 'secondary' : 'outline'}
+                    disabled={alreadyAdded || saving}
+                    onClick={() => void saveToDeck(candidate)}
+                  >
+                    {alreadyAdded
+                      ? `Added to ${candidate.name}`
+                      : `Add to ${candidate.name}`}
+                  </Button>
+                )
+              })}
+          </div>
+        </section>
+      )}
       <section aria-labelledby="notes-tags-heading">
         <h2
           id="notes-tags-heading"
