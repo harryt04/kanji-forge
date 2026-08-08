@@ -400,7 +400,7 @@ This matches Electric’s documented pattern of “read-path sync + your existin
 - **better-auth** on Postgres (Drizzle adapter). Sign-in required; no anonymous routes that create study data.
 - Write API verifies session/JWT and **forces `user_id` from the token** (never trust body `user_id`).
 - Electric shapes are filtered so a client only receives **that user’s** rows.
-- The API exposes an authenticated `/api/electric/shape` proxy for the four sync projections. It
+- The API exposes an authenticated `/api/electric/shape` proxy for the five sync projections. It
   validates the better-auth session, allow-lists the table, replaces any client `where` clause with
   a parameterized `user_id = $1` predicate, and keeps the Electric secret server-side. The
   authenticated `/api/sync` snapshot remains the client's transport-compatible fallback while the

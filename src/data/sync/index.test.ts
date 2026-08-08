@@ -52,6 +52,16 @@ function snapshot() {
         updatedAt: 1_700_000_000_000,
       },
     ],
+    annotations: [
+      {
+        deckId: 'custom-remote',
+        contentRef: 'kanji:日',
+        note: 'Review the radical.',
+        tags: ['radical'],
+        updatedAt: 1_700_000_000_000,
+        updatedBy: 'remote-device',
+      },
+    ],
   }
 }
 
@@ -88,6 +98,9 @@ describe('authenticated read synchronization', () => {
     await expect(
       repositories.deckMembership.list('custom-remote'),
     ).resolves.toEqual([expect.objectContaining({ contentRef: 'kanji:日' })])
+    await expect(
+      repositories.annotations.get('custom-remote', 'kanji:日'),
+    ).resolves.toEqual(expect.objectContaining({ note: 'Review the radical.' }))
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.example.test/api/sync',
       expect.objectContaining({ credentials: 'include', method: 'GET' }),

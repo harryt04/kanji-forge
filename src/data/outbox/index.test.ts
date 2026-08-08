@@ -81,6 +81,55 @@ describe('outbox flusher', () => {
     else process.env.NEXT_PUBLIC_API_URL = previousApiUrl
   })
 
+  it('flushes sticky annotation mutations through the authenticated API', async () => {
+    const outbox = store([
+      mutation({
+        id: 'annotation-1',
+        mutType: 'annotation.upsert',
+        payload: JSON.stringify({
+          deckId: 'dev-kanji',
+          contentRef: 'kanji:日',
+          note: 'Review the radical.',
+          tags: ['radical'],
+          updatedAt: 1,
+          updatedBy: 'device-1',
+        }),
+      }),
+    ])
+    const fetchImpl = vi.fn<typeof globalThis.fetch>(async (_url, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({
+        mutations: [
+          {
+            id: 'annotation-1',
+            mutType: 'annotation.upsert',
+            payload: {
+              deckId: 'dev-kanji',
+              contentRef: 'kanji:日',
+              note: 'Review the radical.',
+              tags: ['radical'],
+              updatedAt: 1,
+              updatedBy: 'device-1',
+            },
+          },
+        ],
+      })
+      return new Response(
+        JSON.stringify({ applied: ['annotation-1'], rejected: [] }),
+        { status: 200 },
+      )
+    })
+
+    const flusher = startOutboxFlusher(
+      'user-1',
+      undefined,
+      options(outbox, fetchImpl),
+    )
+    await flusher.flush()
+    flusher.stop()
+
+    expect(outbox.rows).toEqual(new Map())
+  })
+
   it('keeps rows queued after a network failure and backs off', async () => {
     vi.useFakeTimers()
     const outbox = store([mutation()])

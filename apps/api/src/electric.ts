@@ -3,6 +3,7 @@ const ELECTRIC_TABLES = [
   'decks',
   'settings',
   'deck_membership',
+  'sticky_annotations',
 ] as const
 
 export type ElectricTable = (typeof ELECTRIC_TABLES)[number]

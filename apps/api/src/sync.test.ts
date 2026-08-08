@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { deckMembership, decks, reviews, settings } from './db/schema.js'
+import {
+  deckMembership,
+  decks,
+  reviews,
+  settings,
+  stickyAnnotations,
+} from './db/schema.js'
 import { readSyncSnapshot } from './sync.js'
 
 describe('sync snapshot projection', () => {
@@ -65,6 +71,19 @@ describe('sync snapshot projection', () => {
           },
         ],
       ],
+      [
+        stickyAnnotations,
+        [
+          {
+            deckId: 'custom-1',
+            contentRef: 'kanji:日',
+            note: 'Review the radical.',
+            tags: ['radical'],
+            updatedAt: new Date(1_700_000_000_000),
+            updatedBy: 'device-1',
+          },
+        ],
+      ],
     ])
     const database = {
       select() {
@@ -90,6 +109,13 @@ describe('sync snapshot projection', () => {
       settings: [{ key: 'theme', value: 'dark', updatedAt: 1_700_000_000_000 }],
       deckMembership: [
         expect.objectContaining({ deckId: 'custom-1', contentRef: 'kanji:日' }),
+      ],
+      annotations: [
+        expect.objectContaining({
+          deckId: 'custom-1',
+          note: 'Review the radical.',
+          tags: ['radical'],
+        }),
       ],
     })
   })

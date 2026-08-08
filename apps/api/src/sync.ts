@@ -1,6 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { createDatabase } from './db/client.js'
-import { deckMembership, decks, reviews, settings } from './db/schema.js'
+import {
+  deckMembership,
+  decks,
+  reviews,
+  settings,
+  stickyAnnotations,
+} from './db/schema.js'
 
 export interface SyncReview {
   readonly id: string
@@ -39,11 +45,21 @@ export interface SyncMembership {
   readonly updatedAt: number
 }
 
+export interface SyncAnnotation {
+  readonly deckId: string
+  readonly contentRef: string
+  readonly note: string
+  readonly tags: readonly string[]
+  readonly updatedAt: number
+  readonly updatedBy: string
+}
+
 export interface SyncSnapshot {
   readonly reviews: readonly SyncReview[]
   readonly decks: readonly SyncDeck[]
   readonly settings: readonly SyncSetting[]
   readonly deckMembership: readonly SyncMembership[]
+  readonly annotations: readonly SyncAnnotation[]
 }
 
 type ApiDatabase = ReturnType<typeof createDatabase>
@@ -76,8 +92,8 @@ export async function readSyncSnapshot(
   database: ApiDatabase,
   userId: string,
 ): Promise<SyncSnapshot> {
-  const [reviewRows, deckRows, settingRows, membershipRows] = await Promise.all(
-    [
+  const [reviewRows, deckRows, settingRows, membershipRows, annotationRows] =
+    await Promise.all([
       database.select().from(reviews).where(eq(reviews.userId, userId)),
       database.select().from(decks).where(eq(decks.userId, userId)),
       database.select().from(settings).where(eq(settings.userId, userId)),
@@ -85,8 +101,11 @@ export async function readSyncSnapshot(
         .select()
         .from(deckMembership)
         .where(eq(deckMembership.userId, userId)),
-    ],
-  )
+      database
+        .select()
+        .from(stickyAnnotations)
+        .where(eq(stickyAnnotations.userId, userId)),
+    ])
 
   return {
     reviews: reviewRows.map((row) => ({
@@ -125,6 +144,16 @@ export async function readSyncSnapshot(
       sortOrder: row.order,
       addedAt: row.addedAt.getTime(),
       updatedAt: row.updatedAt.getTime(),
+    })),
+    annotations: annotationRows.map((row) => ({
+      deckId: row.deckId,
+      contentRef: row.contentRef,
+      note: row.note,
+      tags: Array.isArray(row.tags)
+        ? row.tags.filter((tag): tag is string => typeof tag === 'string')
+        : [],
+      updatedAt: row.updatedAt.getTime(),
+      updatedBy: row.updatedBy,
     })),
   }
 }

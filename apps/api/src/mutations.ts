@@ -1,12 +1,19 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { createDatabase } from './db/client.js'
-import { deckMembership, decks, reviews, settings } from './db/schema.js'
+import {
+  deckMembership,
+  decks,
+  reviews,
+  settings,
+  stickyAnnotations,
+} from './db/schema.js'
 
 export const MUTATION_TYPES = [
   'review.append',
   'deck.upsert',
   'settings.upsert',
   'deckMembership.upsert',
+  'annotation.upsert',
 ] as const
 
 export type MutationType = (typeof MUTATION_TYPES)[number]
@@ -54,6 +61,15 @@ interface MembershipPayload {
   readonly updatedAt: number
 }
 
+interface AnnotationPayload {
+  readonly deckId: string
+  readonly contentRef: string
+  readonly note: string
+  readonly tags: readonly string[]
+  readonly updatedAt: number
+  readonly updatedBy: string
+}
+
 export type ValidatedMutation =
   | {
       readonly id: string
@@ -74,6 +90,11 @@ export type ValidatedMutation =
       readonly id: string
       readonly mutType: 'deckMembership.upsert'
       readonly payload: MembershipPayload
+    }
+  | {
+      readonly id: string
+      readonly mutType: 'annotation.upsert'
+      readonly payload: AnnotationPayload
     }
 
 export class MutationValidationError extends Error {
@@ -174,6 +195,23 @@ function membershipPayload(value: unknown): MembershipPayload {
   }
 }
 
+function annotationPayload(value: unknown): AnnotationPayload {
+  const payload = object(value, 'Annotation payload')
+  if (
+    !Array.isArray(payload.tags) ||
+    payload.tags.some((tag) => typeof tag !== 'string')
+  )
+    throw new MutationValidationError('Annotation tags must be strings.')
+  return {
+    deckId: text(payload.deckId, 'Annotation deckId'),
+    contentRef: text(payload.contentRef, 'Annotation contentRef'),
+    note: typeof payload.note === 'string' ? payload.note : '',
+    tags: payload.tags,
+    updatedAt: integer(payload.updatedAt, 'Annotation updatedAt'),
+    updatedBy: text(payload.updatedBy, 'Annotation updatedBy'),
+  }
+}
+
 export function validateMutation(value: unknown): ValidatedMutation {
   const mutation = object(value, 'Mutation')
   const id = text(mutation.id, 'Mutation id')
@@ -187,6 +225,8 @@ export function validateMutation(value: unknown): ValidatedMutation {
       return { id, mutType, payload: settingPayload(mutation.payload) }
     case 'deckMembership.upsert':
       return { id, mutType, payload: membershipPayload(mutation.payload) }
+    case 'annotation.upsert':
+      return { id, mutType, payload: annotationPayload(mutation.payload) }
   }
 }
 
@@ -313,6 +353,35 @@ export async function applyMutation(
               updatedAt: new Date(payload.updatedAt),
             },
             where: sql`${deckMembership.updatedAt} < excluded.updated_at`,
+          })
+        return
+      }
+      case 'annotation.upsert': {
+        const payload = mutation.payload
+        await tx
+          .insert(stickyAnnotations)
+          .values({
+            userId,
+            deckId: payload.deckId,
+            contentRef: payload.contentRef,
+            note: payload.note,
+            tags: payload.tags,
+            updatedAt: new Date(payload.updatedAt),
+            updatedBy: payload.updatedBy,
+          })
+          .onConflictDoUpdate({
+            target: [
+              stickyAnnotations.userId,
+              stickyAnnotations.deckId,
+              stickyAnnotations.contentRef,
+            ],
+            set: {
+              note: payload.note,
+              tags: payload.tags,
+              updatedAt: new Date(payload.updatedAt),
+              updatedBy: payload.updatedBy,
+            },
+            where: sql`${stickyAnnotations.updatedAt} < excluded.updated_at`,
           })
         return
       }

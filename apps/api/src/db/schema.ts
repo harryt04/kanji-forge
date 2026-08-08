@@ -169,6 +169,25 @@ export const deckMembership = pgTable(
   ],
 )
 
+export const stickyAnnotations = pgTable(
+  'sticky_annotations',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    deckId: text('deck_id').notNull(),
+    contentRef: text('content_ref').notNull(),
+    note: text('note').notNull(),
+    tags: jsonb('tags').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+    updatedBy: text('updated_by').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.deckId, table.contentRef] }),
+    index('sticky_annotations_user_id_idx').on(table.userId),
+  ],
+)
+
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),

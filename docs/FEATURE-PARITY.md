@@ -91,7 +91,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.13 | Night mode with auto 21:00–06:00 | ✅ | — | Plus a full theme system |
 | 4.14 | Native-speaker audio per word | ⚠️ Partial | 2026-08-07 | Detail exposes device-synthesized Japanese audio when supported; human-recorded community packs remain 🔷 — DATA-SOURCES §8 |
 | — | Installable community audio packs | ➕ ✅ | 2026-08-08 | Settings installs a licensed ZIP manifest with `writing|reading` recordings into browser-local storage; Study and Detail prefer an installed recording and fall back to labeled device speech synthesis |
-| — | Per-sticky notes and tags | ➕ 🔷 | 2026-08-07 | Detail view persists personal notes and comma-separated tags offline, includes them in backups, and queues annotation mutations for sync |
+| — | Per-sticky notes and tags | ➕ ✅ | 2026-08-08 | Detail view persists personal notes and comma-separated tags offline, includes them in backups, and syncs annotation mutations with authenticated last-write-wins storage |
 
 ## 5. Writing
 

@@ -66,9 +66,38 @@ describe('mutation validation', () => {
               updatedAt: 1,
             },
           },
+          {
+            id: 'annotation-1',
+            mutType: 'annotation.upsert',
+            payload: {
+              deckId: 'saved',
+              contentRef: 'kanji:日',
+              note: 'Review the radical.',
+              tags: ['radical'],
+              updatedAt: 1,
+              updatedBy: 'device-1',
+            },
+          },
         ],
       }),
-    ).toHaveLength(3)
+    ).toHaveLength(4)
+  })
+
+  it('rejects annotation tags that are not strings', () => {
+    expect(() =>
+      validateMutation({
+        id: 'annotation-1',
+        mutType: 'annotation.upsert',
+        payload: {
+          deckId: 'saved',
+          contentRef: 'kanji:日',
+          note: '',
+          tags: ['ok', 3],
+          updatedAt: 1,
+          updatedBy: 'device-1',
+        },
+      }),
+    ).toThrowError(/Annotation tags must be strings/)
   })
 
   it('rejects a review whose mutation id does not match the review id', () => {

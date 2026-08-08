@@ -4,6 +4,7 @@ import {
   type DeckMembership,
   type Review,
   type Setting,
+  type StickyAnnotation,
 } from '@/data/repo'
 import type { LocalUserDatabase } from '@/data/db'
 
@@ -20,6 +21,7 @@ export interface SyncSnapshot {
   readonly decks: readonly Deck[]
   readonly settings: readonly Setting[]
   readonly deckMembership: readonly DeckMembership[]
+  readonly annotations: readonly StickyAnnotation[]
 }
 
 export interface ShapeSubscription {

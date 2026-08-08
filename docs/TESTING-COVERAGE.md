@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 58 (404 test cases: 404 passing) |
+| Unit/integration test files | 60 (412 test cases: 412 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 124 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.6%** |
+| Overall statement coverage | **86.69%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -60,7 +60,7 @@ Locked at 100% by the CI gate; this directory should never regress.
 
 ### `src/data` — 86 cases across 6 files
 
-**`outbox/index.test.ts`** (5) — supported mutation batching and acknowledgement removal,
+**`outbox/index.test.ts`** (9) — supported mutation batching—including annotation upserts—and acknowledgement removal,
 network backoff with queue preservation, auth-expiry pause/resume, rejected-row quarantine, and
 leaving local-only mutation types queued until their server contract exists.
 
@@ -222,7 +222,7 @@ existing id, safe `'server'` placeholder without `window`, generation via `crypt
 
 ### `apps/api` — 10 cases across 5 files
 
-`mutations.test.ts` covers complete review and metadata mutation validation, removal of
+`mutations.test.ts` covers complete review, metadata, and sticky-annotation mutation validation, removal of
 body-supplied user identity, review/mutation id matching, supported-type handling, and the
 batch-size limit. `env.test.ts` and `schema.contract.test.ts` continue to cover backend
 configuration and the server projection schema. `sync.test.ts` covers the authenticated snapshot

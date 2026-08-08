@@ -13,6 +13,7 @@ const SYNCABLE_MUTATION_TYPES = new Set<OutboxMutation['mutType']>([
   'deck.upsert',
   'settings.upsert',
   'deckMembership.upsert',
+  'annotation.upsert',
 ])
 
 type OutboxStore = Pick<
