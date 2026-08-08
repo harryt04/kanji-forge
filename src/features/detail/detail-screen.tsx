@@ -38,11 +38,12 @@ import {
   playJapaneseAudio,
   supportsJapaneseSpeech,
 } from '@/features/study/audio'
-import { listAudioPacks } from '@/features/study/audio-pack'
+import { getAudioPackFile, listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
+type AudioSource = Awaited<ReturnType<typeof playJapaneseAudio>>
 
 function requestedContentRef(): string | null {
   if (typeof window === 'undefined') return null
@@ -64,14 +65,83 @@ function parseTags(value: string): readonly string[] {
 
 interface WordDetailViewProps {
   readonly word: WordRecord | NameRecord
+  readonly canSpeak: boolean
+  readonly hasAudioPack: boolean
   readonly saveDecks: readonly Deck[]
   readonly savedDeckIds: ReadonlySet<string>
   readonly saving: boolean
   readonly onSave: (deck: Deck) => void
 }
 
+interface AudioControlProps {
+  readonly writing: string
+  readonly reading: string
+  readonly canSpeak: boolean
+  readonly hasAudioPack: boolean
+}
+
+function AudioControl({
+  writing,
+  reading,
+  canSpeak,
+  hasAudioPack,
+}: AudioControlProps): React.ReactElement | null {
+  const [source, setSource] = useState<AudioSource | null>(null)
+  const [hasRecording, setHasRecording] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    if (!hasAudioPack) {
+      setHasRecording(false)
+      return () => {
+        active = false
+      }
+    }
+    void getAudioPackFile(writing, reading).then((file) => {
+      if (active) setHasRecording(Boolean(file))
+    })
+    return () => {
+      active = false
+    }
+  }, [hasAudioPack, reading, writing])
+
+  if (!canSpeak && !hasRecording) return null
+
+  const displayedSource: AudioSource =
+    source ?? (hasRecording ? 'pack' : 'synthesized')
+  const sourceLabel =
+    displayedSource === 'pack'
+      ? 'Community recording'
+      : displayedSource === 'synthesized'
+        ? 'Synthesized voice'
+        : 'Audio unavailable'
+  const actionLabel =
+    displayedSource === 'pack'
+      ? `Play community recording for ${writing}`
+      : `Play synthesized Japanese audio for ${writing}`
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          void playJapaneseAudio(writing, reading).then(setSource)
+        }}
+        aria-label={actionLabel}
+      >
+        Play audio
+      </Button>
+      <span className="text-muted-foreground text-xs">{sourceLabel}</span>
+    </div>
+  )
+}
+
 function WordDetailView({
   word,
+  canSpeak,
+  hasAudioPack,
   saveDecks,
   savedDeckIds,
   saving,
@@ -91,6 +161,12 @@ function WordDetailView({
           <p className="font-jp-ui text-muted-foreground" lang="ja">
             {word.readings.join('、') || 'Reading unavailable'}
           </p>
+          <AudioControl
+            writing={word.forms[0] ?? word.readings[0] ?? ''}
+            reading={word.readings[0] ?? word.forms[0] ?? ''}
+            canSpeak={canSpeak}
+            hasAudioPack={hasAudioPack}
+          />
           <Button
             type="button"
             variant="outline"
@@ -394,6 +470,8 @@ export function DetailScreen(): React.ReactElement {
     return (
       <WordDetailView
         word={wordDetail}
+        canSpeak={canSpeak}
+        hasAudioPack={hasAudioPack}
         saveDecks={saveDecks}
         savedDeckIds={savedDeckIds}
         saving={saving}
@@ -596,24 +674,12 @@ export function DetailScreen(): React.ReactElement {
             Level {level} · {LEVEL_NAMES[level]}
             {state?.flagged ? ' · Flagged' : ''}
           </p>
-          {(canSpeak || hasAudioPack) && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  void playJapaneseAudio(content.literal, audioText)
-                }
-                aria-label={`Play synthesized Japanese audio for ${content.literal}`}
-              >
-                Play audio
-              </Button>
-              <span className="text-muted-foreground text-xs">
-                Synthesized voice
-              </span>
-            </div>
-          )}
+          <AudioControl
+            writing={content.literal}
+            reading={audioText}
+            canSpeak={canSpeak}
+            hasAudioPack={hasAudioPack}
+          />
           <Button
             type="button"
             variant="outline"

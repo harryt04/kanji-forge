@@ -14,6 +14,8 @@ import { createUserRepositories } from '@/data/repo'
 import { searchDictionary } from '@/data/packs'
 import { DetailScreen } from './detail-screen'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
+import { installAudioPack, removeAudioPack } from '@/features/study/audio-pack'
+import { zipSync } from 'fflate'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 const REPO_PACK_ROOT = join(process.cwd(), 'packs')
@@ -285,6 +287,71 @@ describe('DetailScreen', () => {
     ).resolves.toMatchObject([
       { contentRef: `word:${result.record.id}`, deckId: 'saved' },
     ])
+  })
+
+  it('plays an installed community recording from word detail', async () => {
+    const result = (await searchDictionary('お金')).find(
+      (entry) => entry.type === 'word',
+    )
+    if (!result || result.type !== 'word')
+      throw new Error('Word fixture missing')
+    const packId = `detail-audio-${crypto.randomUUID()}`
+    await installAudioPack(
+      zipSync({
+        'manifest.json': new TextEncoder().encode(
+          JSON.stringify({
+            id: packId,
+            name: 'Detail voice',
+            version: '1.0.0',
+            license: 'CC BY 4.0',
+            attribution: 'A Japanese speaker',
+            files: { 'お金|おかね': 'audio/okane.mp3' },
+          }),
+        ),
+        'audio/okane.mp3': new Uint8Array([1, 2, 3]),
+      }),
+    )
+    const createObjectUrl = Object.getOwnPropertyDescriptor(
+      URL,
+      'createObjectURL',
+    )
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: () => 'blob:detail-audio',
+    })
+
+    try {
+      class FakeAudio {
+        static instances: FakeAudio[] = []
+        constructor(readonly src: string) {
+          FakeAudio.instances.push(this)
+        }
+        addEventListener(): void {}
+        async play(): Promise<void> {}
+      }
+      vi.stubGlobal('Audio', FakeAudio)
+      bootstrapUserRuntime(`detail-${userId}`)
+      window.history.replaceState(
+        {},
+        '',
+        `/detail?contentRef=${encodeURIComponent(`word:${result.record.id}`)}`,
+      )
+      render(<DetailScreen />)
+
+      const button = await screen.findByRole('button', {
+        name: 'Play community recording for お金',
+      })
+      expect(screen.getByText('Community recording')).toBeInTheDocument()
+      await userEvent.click(button)
+      await waitFor(() => expect(FakeAudio.instances).toHaveLength(1))
+    } finally {
+      await removeAudioPack(packId)
+      if (createObjectUrl) {
+        Object.defineProperty(URL, 'createObjectURL', createObjectUrl)
+      } else {
+        Reflect.deleteProperty(URL, 'createObjectURL')
+      }
+    }
   })
 
   it('adds the selected kanji to an existing custom deck', async () => {
