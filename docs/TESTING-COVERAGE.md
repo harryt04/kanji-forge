@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 37 (269 test cases: 269 passing) |
+| Unit/integration test files | 37 (270 test cases: 270 passing) |
 | Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 84 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.84%** |
+| Overall statement coverage | **87.92%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -53,7 +53,8 @@ any directory gate above):
 
 `srs.test.ts` — the 15 `SRS-SPEC.md` §10 transition cases plus 3 property/edge-case tests (replay
 idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a fuzz-bounds case,
-the progress-to-belt-rank mapping, and retention-by-level aggregation.
+the progress-to-belt-rank mapping, retention-by-level aggregation with the 80%-of-stage threshold,
+and leech/forecast edge cases.
 Locked at 100% by the CI gate; this directory should never regress.
 
 ### `src/data` — 60 cases across 4 files
@@ -110,7 +111,7 @@ with no goal set and its accessible belt-rank label, progress bar reflects a rea
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
 the goal date, and an unrealistic goal shows an accessible warning with an inline suggested-date action,
-and retention by starting level excludes manual adjustments and flags low retention, leech
+and retention by starting level excludes manual adjustments and early-interval reviews and flags low retention, leech
 identification surfaces cards at six or more lapses while ignoring cards below the threshold, and
 the 30-day scheduled review forecast buckets overdue and future due cards.
 
