@@ -415,4 +415,30 @@ describe('data/packs', () => {
       ).toHaveLength(1)
     })
   })
+
+  describe('analyzeJapaneseText', () => {
+    it('uses the longest offline dictionary match and preserves unknown text', async () => {
+      const { analyzeJapaneseText } = await freshPacks()
+      const result = await analyzeJapaneseText('お金を𠀁')
+
+      expect(result[0]).toMatchObject({
+        text: 'お金',
+        type: 'word',
+        reading: 'おかね',
+      })
+      expect(result.at(-1)).toEqual({
+        text: '𠀁',
+        reading: null,
+        meanings: [],
+        type: 'unknown',
+      })
+    })
+
+    it('returns no tokens for blank input or a non-positive token limit', async () => {
+      const { analyzeJapaneseText } = await freshPacks()
+
+      await expect(analyzeJapaneseText('  ')).resolves.toEqual([])
+      await expect(analyzeJapaneseText('日本', 0)).resolves.toEqual([])
+    })
+  })
 })

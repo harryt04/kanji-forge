@@ -62,6 +62,13 @@ export interface SentenceRecord {
   readonly readabilityScore: number
 }
 
+export interface TextAnalysisToken {
+  readonly text: string
+  readonly reading: string | null
+  readonly meanings: readonly string[]
+  readonly type: 'word' | 'kanji' | 'unknown'
+}
+
 export type DictionaryResult =
   | {
       readonly type: 'kanji'
@@ -549,6 +556,82 @@ function loadDictionaryWords(): Promise<readonly WordRecord[]> {
     },
   )
   return dictionaryWordsPromise
+}
+
+/**
+ * Performs a small, fully offline text analysis pass over the installed packs.
+ *
+ * The optional tokenizer pack will eventually improve segmentation, but a
+ * longest dictionary-form match is already useful for pasted study material
+ * and keeps this route functional without a network request or a large new
+ * dependency. Unmatched characters remain visible as unknown tokens rather
+ * than being silently discarded.
+ */
+export async function analyzeJapaneseText(
+  text: string,
+  maxTokens = 500,
+): Promise<readonly TextAnalysisToken[]> {
+  const normalizedText = text.normalize('NFC')
+  if (!normalizedText.trim() || maxTokens <= 0) return []
+
+  const [words, kanji] = await Promise.all([
+    loadDictionaryWords(),
+    loadDictionaryKanji(),
+  ])
+  const wordForms = words.flatMap((word) =>
+    word.forms.map((form) => ({ form, word })),
+  )
+  const characters = [...normalizedText]
+  const tokens: TextAnalysisToken[] = []
+
+  for (let index = 0; index < characters.length && tokens.length < maxTokens;) {
+    const matches = wordForms.filter(({ form }) => {
+      const formCharacters = [...form]
+      return (
+        formCharacters.length > 1 &&
+        characters.slice(index, index + formCharacters.length).join('') === form
+      )
+    })
+    const match = matches.sort(
+      (left, right) =>
+        [...right.form].length - [...left.form].length ||
+        right.word.commonScore - left.word.commonScore ||
+        left.word.id - right.word.id,
+    )[0]
+
+    if (match) {
+      tokens.push({
+        text: match.form,
+        reading: match.word.readings[0] ?? null,
+        meanings: match.word.meanings.slice(0, 3),
+        type: 'word',
+      })
+      index += [...match.form].length
+      continue
+    }
+
+    const character = characters[index] ?? ''
+    const kanjiRecord = kanji.find((record) => record.literal === character)
+    if (kanjiRecord) {
+      tokens.push({
+        text: character,
+        reading:
+          kanjiRecord.onReadings[0] ?? kanjiRecord.kunReadings[0] ?? null,
+        meanings: kanjiRecord.meanings.slice(0, 3),
+        type: 'kanji',
+      })
+    } else {
+      tokens.push({
+        text: character,
+        reading: null,
+        meanings: [],
+        type: 'unknown',
+      })
+    }
+    index += 1
+  }
+
+  return tokens
 }
 
 function matchScore(

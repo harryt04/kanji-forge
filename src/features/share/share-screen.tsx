@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { getKanjiByLiterals } from '@/data/packs'
+import {
+  analyzeJapaneseText,
+  getKanjiByLiterals,
+  type TextAnalysisToken,
+} from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import {
@@ -48,6 +52,11 @@ export function ShareTargetScreen(): React.ReactElement {
   const [preview, setPreview] = useState<
     readonly KanjiImportPreviewItem[] | null
   >(null)
+  const [draftText, setDraftText] = useState('')
+  const [analysis, setAnalysis] = useState<readonly TextAnalysisToken[] | null>(
+    null,
+  )
+  const [analyzing, setAnalyzing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -65,6 +74,7 @@ export function ShareTargetScreen(): React.ReactElement {
       return
     }
     const nextPayload = readSharedTextPayload(window.location.search)
+    setDraftText(nextPayload.text)
     setPayload(nextPayload)
     setSharedDeck(nextDeck)
     const literals = nextDeck?.kanji ?? parseKanjiImportText(nextPayload.text)
@@ -105,6 +115,21 @@ export function ShareTargetScreen(): React.ReactElement {
       active = false
     }
   }, [runtime])
+
+  async function analyzeText(): Promise<void> {
+    if (!draftText.trim() || analyzing) return
+    setAnalyzing(true)
+    setError(null)
+    try {
+      setAnalysis(await analyzeJapaneseText(draftText))
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not analyze text.',
+      )
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   async function importMatchedKanji(): Promise<void> {
     if (!runtime || !preview || importing) return
@@ -188,23 +213,6 @@ export function ShareTargetScreen(): React.ReactElement {
     }
   }
 
-  if (!sharedDeck && !payload.text && !payload.title && !payload.url && !error)
-    return (
-      <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
-        <h1 className="font-display text-3xl font-bold">Import shared text</h1>
-        <p className="text-muted-foreground mt-3">
-          No shared text was provided. Share Japanese text from another app to
-          preview its kanji here.
-        </p>
-        <Link
-          className="text-primary mt-5 inline-block underline"
-          href="/settings"
-        >
-          Open Settings
-        </Link>
-      </main>
-    )
-
   return (
     <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
       <p className="font-jp-ui text-muted-foreground text-sm">
@@ -231,6 +239,73 @@ export function ShareTargetScreen(): React.ReactElement {
           {payload.text || 'No text field was included.'}
         </blockquote>
       )}
+      <section
+        aria-label="Japanese text analyzer"
+        className="bg-card mt-6 grid gap-3 rounded-lg border p-4"
+      >
+        <div>
+          <h2 className="font-display text-xl font-semibold">
+            Analyze Japanese text
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Paste text to see offline dictionary-backed readings and meanings.
+          </p>
+        </div>
+        <label htmlFor="analyze-text" className="text-sm font-medium">
+          Japanese text
+        </label>
+        <textarea
+          id="analyze-text"
+          value={draftText}
+          onChange={(event) => {
+            setDraftText(event.target.value)
+            setAnalysis(null)
+          }}
+          rows={5}
+          placeholder="日本語の文章を貼り付けてください"
+          className="border-input bg-background rounded-md border p-3 text-base"
+        />
+        <Button
+          className="w-fit"
+          disabled={analyzing || !draftText.trim()}
+          onClick={() => void analyzeText()}
+        >
+          {analyzing ? 'Analyzing…' : 'Analyze text'}
+        </Button>
+        {analysis && (
+          <div
+            aria-label="Text analysis results"
+            className="border-border grid gap-3 rounded-md border p-3"
+          >
+            {analysis.length === 0 ? (
+              <p className="text-muted-foreground" role="status">
+                No text to analyze.
+              </p>
+            ) : (
+              <ol className="grid gap-2">
+                {analysis.map((token, index) => (
+                  <li
+                    key={`${token.text}-${index}`}
+                    className="bg-muted/40 rounded-md p-2"
+                  >
+                    <ruby className="font-jp-ui text-xl" lang="ja">
+                      {token.text}
+                      {token.reading && (
+                        <rt className="text-sm">{token.reading}</rt>
+                      )}
+                    </ruby>
+                    <span className="text-muted-foreground ml-3 text-sm">
+                      {token.type === 'unknown'
+                        ? 'Not in the installed dictionary'
+                        : token.meanings.join('; ') || 'No English meaning'}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )}
+      </section>
       {loading && (
         <p className="text-muted-foreground mt-5">Preparing preview…</p>
       )}

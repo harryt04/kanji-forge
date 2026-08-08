@@ -175,7 +175,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 9.1 | Paste Japanese text → readings, furigana, English | 🔷 | — | Requires the tokenizer pack (T3.0) |
+| 9.1 | Paste Japanese text → readings, furigana, English | ⚠️ Partial | 2026-08-08 | Authenticated `/analyze` provides offline longest-dictionary-match tokens with ruby readings, English meanings, and visible unknown-character fallback; a tokenizer pack remains the accuracy upgrade for grammatical segmentation |
 | 9.2 | Many display options for the analyzed output | 🔷 | — | (T3.0) |
 | 9.3 | Tap any word → detail → save to deck | 🔷 | — | (T3.0) |
 | 9.4 | Live Japanese news feed, updated daily | ❌ as built | — | NHK Easy content is copyrighted |

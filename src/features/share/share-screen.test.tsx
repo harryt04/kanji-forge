@@ -89,6 +89,21 @@ describe('ShareTargetScreen', () => {
     expect(screen.getAllByText('matched')).toHaveLength(2)
   })
 
+  it('analyzes pasted Japanese text with readings and meanings offline', async () => {
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    fireEvent.change(screen.getByLabelText('Japanese text'), {
+      target: { value: 'お金を' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze text' }))
+
+    const results = await screen.findByLabelText('Text analysis results')
+    expect(results).toHaveTextContent('お金')
+    expect(results).toHaveTextContent('おかね')
+    expect(results).toHaveTextContent('money')
+  })
+
   it('imports matched shared kanji to Saved atomically with sync mutations', async () => {
     render(<ShareTargetScreen />)
     await screen.findByRole('button', { name: 'Import matched kanji to Saved' })

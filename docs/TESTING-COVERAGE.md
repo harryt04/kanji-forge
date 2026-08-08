@@ -10,8 +10,8 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 49 (344 test cases: 344 passing) |
-| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 112 cases, included above) |
+| Unit/integration test files | 49 (347 test cases: 347 passing) |
+| Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 113 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **87.31%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
@@ -72,7 +72,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
   `reviews.list()` filtering by deck and content ref independently, and atomic sticky annotation persistence.
-- **`packs/index.test.ts`** (30) — `parseContentRef` valid/malformed, deck-definition loading and
+- **`packs/index.test.ts`** (32) — `parseContentRef` valid/malformed, deck-definition loading and
   caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching, ranked
   example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
   sentence-alignment fallback/normalization, and offline KanjiVG stroke-path loading.
@@ -179,9 +179,9 @@ promotion, and pinned-search toggling.
 
 **`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
-### `src/features/share` — 5 cases
+### `src/features/share` — 6 cases
 
-**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, previewing shared Japanese text against the offline dictionary, and importing matched kanji into Saved with atomic membership and outbox mutations.
+**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, previewing shared Japanese text against the offline dictionary, analyzing pasted Japanese text with offline readings/meanings, and importing matched kanji into Saved with atomic membership and outbox mutations.
 It also covers validating a content-only deck URL, previewing the shared deck name, and importing its matched cards.
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic content-only URL payloads, omission of SRS progress, and malformed/empty payload rejection.
