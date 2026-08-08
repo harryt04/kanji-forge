@@ -60,6 +60,17 @@ describe('DictionaryScreen', () => {
     )
   })
 
+  it('shows the detected input type while entering a dictionary query', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), 'okane')
+
+    expect(screen.getByTestId('dictionary-input-type')).toHaveTextContent(
+      'Detected input: Romaji',
+    )
+  })
+
   it('keeps dictionary results visible beside the selected offline detail', async () => {
     const user = userEvent.setup()
     render(<DictionaryScreen />)

@@ -161,7 +161,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-07 | Offline search over the installed KANJIDIC2/JMdict fixture packs |
+| 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-08 | Offline search over the installed KANJIDIC2/JMdict fixture packs detects kanji, kana, romaji, English, and mixed-script input while typing |
 | 8.2 | Rōmaji input | ✅ | 2026-08-07 | Dictionary search normalizes romaji to hiragana before matching |
 | 8.3 | ~700,000 entries including names and places | ✅ | 2026-08-08 | `npm run build:names` reproducibly builds the optional JMnedict SQLite pack; Settings installs a raw SQLite file or manifest-bearing ZIP into browser-local storage, and Dictionary searches and links names offline without forcing the default install to carry the optional pack |
 | 8.4 | Details for 6,355 kanji | ✅ | 2026-08-07 | Offline results expose KANJIDIC2 readings, meanings, stroke count, school grade, JLPT, frequency rank, and name readings; KANJIDIC2 covers 13,108 |

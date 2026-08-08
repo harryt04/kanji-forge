@@ -12,6 +12,7 @@ import {
 } from '@/data/packs'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
+import { detectInputType, INPUT_TYPE_LABELS } from '@/core/text/detect'
 import {
   DICTIONARY_HISTORY_SETTING,
   DICTIONARY_PINNED_SETTING,
@@ -320,9 +321,21 @@ export function DictionaryScreen(): React.ReactElement {
             </Button>
           </div>
           {searchMode === 'text' && (
-            <p className="text-muted-foreground text-sm">
-              Use * for any number of characters or ? for exactly one character.
-            </p>
+            <div className="grid gap-1">
+              {query.trim() && (
+                <p
+                  className="text-muted-foreground text-sm"
+                  data-testid="dictionary-input-type"
+                  aria-live="polite"
+                >
+                  Detected input: {INPUT_TYPE_LABELS[detectInputType(query)]}
+                </p>
+              )}
+              <p className="text-muted-foreground text-sm">
+                Use * for any number of characters or ? for exactly one
+                character.
+              </p>
+            </div>
           )}
         </form>
 
