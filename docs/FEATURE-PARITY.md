@@ -82,7 +82,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.4 | SKIP code display | ❌ | — | Not licensable — DATA-SOURCES §6 |
 | 4.5 | Similar-looking kanji | ✅ | 2026-08-07 | Detail shows ranked generated matches from the offline derived pack; each match links to its own kanji detail |
 | 4.6 | Example words containing this kanji | ✅ | 2026-08-07 | Detail loads up to 12 matching JMdict words from the offline pack, ranked by pack frequency |
-| 4.7 | Example sentences with breakdown | ✅ | — | Tatoeba |
+| 4.7 | Example sentences with breakdown | ✅ | 2026-08-07 | Detail loads ranked offline Tatoeba sentences with furigana, English translation, target-kanji highlighting, and author attribution |
 | 4.8 | Everything hyperlinked | ✅ | — | Navigation stack |
 | 4.9 | Swipe between stickies in detail view | ✅ | — | |
 | 4.10 | Save sticky to a deck | ✅ | 2026-08-07 | Kanji detail saves the selected card offline to the per-user Saved deck and queues the membership mutation for sync |

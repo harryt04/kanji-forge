@@ -138,6 +138,70 @@ describe('data/packs', () => {
     })
   })
 
+  describe('getExampleSentences', () => {
+    it('returns ranked offline sentences with furigana and attribution', async () => {
+      const { getExampleSentences } = await freshPacks()
+      const result = await getExampleSentences('僕')
+
+      expect(result[0]).toMatchObject({
+        japanese: '僕がやります。',
+        english: 'I will.',
+        japaneseAuthor: 'tommy_san',
+        englishAuthor: 'magnificentgoddess',
+      })
+      expect(result[0]?.furigana).toEqual([
+        { text: '僕', furigana: 'ぼく' },
+        { text: 'が', furigana: '' },
+        { text: 'やります', furigana: '' },
+        { text: '。', furigana: '' },
+      ])
+      expect(result.every((sentence) => sentence.japanese.includes('僕'))).toBe(
+        true,
+      )
+
+      const missingFurigana = await getExampleSentences('悲', 1)
+      expect(missingFurigana[0]?.furigana[0]).toEqual({
+        text: '悲',
+        furigana: 'かな',
+      })
+      expect(missingFurigana[0]?.furigana[1]).toEqual({
+        text: 'しい',
+        furigana: '',
+      })
+    })
+
+    it('returns no examples for an empty literal or exhausted limit', async () => {
+      const { getExampleSentences } = await freshPacks()
+
+      await expect(getExampleSentences('僕', 0)).resolves.toEqual([])
+      await expect(getExampleSentences('')).resolves.toEqual([])
+    })
+  })
+
+  describe('parseSentenceTokens', () => {
+    it('falls back to a plain sentence for malformed or empty alignment data', async () => {
+      const { parseSentenceTokens } = await freshPacks()
+
+      expect(parseSentenceTokens('not-json', '安全')).toEqual([
+        { text: '安全', furigana: '' },
+      ])
+      expect(parseSentenceTokens('{}', '安全')).toEqual([
+        { text: '安全', furigana: '' },
+      ])
+      expect(
+        parseSentenceTokens('[null,{"text":1},{"furigana":"あ"}]', '安全'),
+      ).toEqual([{ text: '安全', furigana: '' }])
+    })
+
+    it('normalizes non-string furigana values while retaining valid text', async () => {
+      const { parseSentenceTokens } = await freshPacks()
+
+      expect(parseSentenceTokens('[{"text":"学","furigana":4}]', '学')).toEqual(
+        [{ text: '学', furigana: '' }],
+      )
+    })
+  })
+
   describe('searchDictionary', () => {
     it('searches kanji and words by Japanese text, romaji, and English', async () => {
       const { searchDictionary } = await freshPacks()

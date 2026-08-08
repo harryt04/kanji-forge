@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import {
+  getExampleSentences,
   getExampleWords,
   getKanjiByLiterals,
   getSimilarKanji,
@@ -37,6 +38,9 @@ export function DetailScreen(): React.ReactElement {
   const [similarKanji, setSimilarKanji] = useState<readonly string[]>([])
   const [exampleWords, setExampleWords] = useState<
     Awaited<ReturnType<typeof getExampleWords>>
+  >([])
+  const [exampleSentences, setExampleSentences] = useState<
+    Awaited<ReturnType<typeof getExampleSentences>>
   >([])
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -101,12 +105,14 @@ export function DetailScreen(): React.ReactElement {
       if (active) {
         setDeck(loaded)
         if (literal) {
-          const [similar, examples] = await Promise.all([
+          const [similar, examples, sentences] = await Promise.all([
             getSimilarKanji(literal),
             getExampleWords(literal),
+            getExampleSentences(literal),
           ])
           setSimilarKanji(similar)
           setExampleWords(examples)
+          setExampleSentences(sentences)
         }
       }
     })().catch((reason: unknown) => {
@@ -292,6 +298,70 @@ export function DetailScreen(): React.ReactElement {
         ) : (
           <p className="text-muted-foreground mt-2 text-sm">
             No example words are available in the installed dictionary pack.
+          </p>
+        )}
+      </section>
+      <section aria-labelledby="example-sentences-heading">
+        <h2
+          id="example-sentences-heading"
+          className="font-jp-ui text-lg font-semibold"
+        >
+          Example sentences
+        </h2>
+        {exampleSentences.length > 0 ? (
+          <ul className="mt-3 grid gap-3">
+            {exampleSentences.map((sentence) => (
+              <li
+                key={sentence.id}
+                className="border-border bg-card rounded-md border p-3"
+              >
+                <p
+                  className="font-jp-ui text-lg leading-loose"
+                  lang="ja"
+                  aria-label={sentence.japanese}
+                >
+                  {sentence.furigana.map((token, index) => {
+                    const text = token.text.includes(content.literal) ? (
+                      <>
+                        {token.text
+                          .split(content.literal)
+                          .map((part, partIndex) => (
+                            <span key={`${partIndex}-${part}`}>
+                              {part}
+                              {partIndex <
+                                token.text.split(content.literal).length -
+                                  1 && (
+                                <mark className="bg-primary/20 text-inherit">
+                                  {content.literal}
+                                </mark>
+                              )}
+                            </span>
+                          ))}
+                      </>
+                    ) : (
+                      token.text
+                    )
+                    return token.furigana ? (
+                      <ruby key={`${sentence.id}-${index}`}>
+                        {text}
+                        <rt className="text-sm">{token.furigana}</rt>
+                      </ruby>
+                    ) : (
+                      <span key={`${sentence.id}-${index}`}>{text}</span>
+                    )
+                  })}
+                </p>
+                <p className="mt-1 text-sm">{sentence.english}</p>
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Tatoeba · Japanese by {sentence.japaneseAuthor} · English by{' '}
+                  {sentence.englishAuthor}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground mt-2 text-sm">
+            No example sentences are available in the installed sentence pack.
           </p>
         )}
       </section>

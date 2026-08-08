@@ -67,7 +67,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 | Stroke processing | `src/core/stroke/{match,resample}.ts` | Each exports a single `*_STUB` constant. | T6.0 (writing trainer) |
 | Import/enrichment | `src/core/import/{parse,enrich}.ts` | Each exports a single `*_STUB` constant. | T8.0 (v2, deferred with custom decks) |
 | PWA registration | `src/pwa/index.ts`, `src/pwa/sw.ts`, `next.config.js` | Registers the build-generated Serwist worker in the browser; the worker precaches build assets and caches visited navigations for offline reloads. Updated workers wait rather than interrupting an active study session. | T5.0 |
-| Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Detail and Settings are real authenticated offline screens; Detail includes kanji metadata, ranked similar-kanji links, and ranked example words from the installed words pack. Writing remains a placeholder. | Phases 2–3, or Deferred for Writing per TRD |
+| Detail / Settings / Writing routes | `src/app/{detail,settings,writing}/…`, `src/features/{detail,settings,writing}/index.ts` | Detail and Settings are real authenticated offline screens; Detail includes kanji metadata, ranked similar-kanji links, ranked example words, and ranked Tatoeba example sentences with furigana breakdown from the installed packs. Writing remains a placeholder. | Phases 2–3, or Deferred for Writing per TRD |
 
 ---
 
@@ -98,10 +98,11 @@ Consistent with the code above, not aspirational:
   date and see days-left / cards-needed-today / on-pace feedback.
 - Open Browse to inspect and filter the installed deck as a local-first list of colored cards with
   readings, meanings, levels, flags, and metadata filters.
+- Open a kanji Detail view to see offline metadata, example words, example sentences with furigana,
+  English translations, and source attribution.
 - Start a study session on the `dev-kanji` starter deck, reveal cards by tap/click/Space, grade by
   keyboard/swipe/button, undo the last grade, and see a session summary.
 - Have every grade persisted locally (SQLite-WASM/OPFS) atomically, surviving a reload.
 
-What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), Browse
-inline color editing, Detail, Settings, backup/export, and offline
-installability (no service worker registered yet).
+What still does not work end-to-end: multi-device sync (outbox + Electric are stubs), writing
+validation/stroke playback, backup/export, and full pack management.

@@ -66,6 +66,14 @@ describe('DetailScreen', () => {
       ),
     ).toBeInTheDocument()
     expect(
+      screen.getByRole('heading', { name: 'Example sentences' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'No example sentences are available in the installed sentence pack.',
+      ),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole('link', { name: '← Back to Browse' }),
     ).toHaveAttribute('href', '/browse')
   })
@@ -89,6 +97,29 @@ describe('DetailScreen', () => {
     expect(
       screen.getByRole('link', { name: 'View details for 固' }),
     ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E5%9B%BA')
+  })
+
+  it('renders offline sentence breakdowns with highlighted kanji and attribution', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    window.history.replaceState({}, '', '/detail?contentRef=kanji%3A%E7%AB%8B')
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '立' })).toBeInTheDocument(),
+    )
+
+    expect(screen.getByText('Example sentences')).toBeInTheDocument()
+    expect(screen.getByLabelText('立ちなさい。')).toBeInTheDocument()
+    expect(screen.getByText('Stand up!')).toBeInTheDocument()
+    expect(
+      screen.getByText('Tatoeba · Japanese by mookeee · English by CK'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('ぼく')).not.toBeInTheDocument()
+    expect(
+      screen
+        .getAllByText('立')
+        .some((element) => element.classList.contains('bg-primary/20')),
+    ).toBe(true)
   })
 
   it('saves the selected kanji to the offline Saved deck', async () => {

@@ -34,6 +34,22 @@ export interface WordRecord {
   readonly meanings: readonly string[]
 }
 
+export interface SentenceToken {
+  readonly text: string
+  readonly furigana: string
+}
+
+export interface SentenceRecord {
+  readonly id: number
+  readonly japanese: string
+  readonly japaneseAuthor: string
+  readonly englishSentenceId: number
+  readonly english: string
+  readonly englishAuthor: string
+  readonly furigana: readonly SentenceToken[]
+  readonly readabilityScore: number
+}
+
 export type DictionaryResult =
   | {
       readonly type: 'kanji'
@@ -111,6 +127,68 @@ export async function getExampleWords(
         right.commonScore - left.commonScore || left.id - right.id,
     )
     .slice(0, limit)
+}
+
+export function parseSentenceTokens(
+  raw: unknown,
+  japanese: string,
+): readonly SentenceToken[] {
+  try {
+    const parsed = JSON.parse(String(raw)) as unknown
+    if (Array.isArray(parsed)) {
+      const tokens = parsed.flatMap((token): SentenceToken[] => {
+        if (!token || typeof token !== 'object' || !('text' in token)) return []
+        const text = token.text
+        if (typeof text !== 'string' || !text) return []
+        const furigana = 'furigana' in token ? token.furigana : ''
+        return [
+          {
+            text,
+            furigana: typeof furigana === 'string' ? furigana : '',
+          },
+        ]
+      })
+      if (tokens.length > 0) return tokens
+    }
+  } catch {
+    // Fall through to a plain sentence when a future pack has malformed alignment data.
+  }
+  return [{ text: japanese, furigana: '' }]
+}
+
+/** Returns ranked offline Tatoeba sentences containing the supplied kanji. */
+export async function getExampleSentences(
+  literal: string,
+  limit = 6,
+): Promise<readonly SentenceRecord[]> {
+  if (!literal || limit <= 0) return []
+  const database = await openPack('sentences-v1.sqlite')
+  const statement = database.prepare(
+    `SELECT id, ja, ja_author, en_sentence_id, en, en_author,
+      furigana_json, readability_score
+     FROM sentences
+     WHERE instr(ja, ?) > 0
+     ORDER BY readability_score DESC, id ASC
+     LIMIT ?`,
+    [literal, limit],
+  )
+  const records: SentenceRecord[] = []
+  while (statement.step()) {
+    const row = statement.getAsObject()
+    const japanese = String(row.ja)
+    records.push({
+      id: Number(row.id),
+      japanese,
+      japaneseAuthor: String(row.ja_author),
+      englishSentenceId: Number(row.en_sentence_id),
+      english: String(row.en),
+      englishAuthor: String(row.en_author),
+      furigana: parseSentenceTokens(row.furigana_json, japanese),
+      readabilityScore: Number(row.readability_score),
+    })
+  }
+  statement.free()
+  return records
 }
 
 const packHandles = new Map<string, Promise<SqlJsDatabase>>()

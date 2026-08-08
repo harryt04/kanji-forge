@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 31 (200 test cases: 200 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 50 cases, included above) |
+| Unit/integration test files | 31 (205 test cases: 205 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 51 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **85.76%** |
+| Overall statement coverage | **85.98%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -56,7 +56,7 @@ idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a f
 the progress-to-belt-rank mapping, and retention-by-level aggregation.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 39 cases across 4 files
+### `src/data` — 43 cases across 4 files
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v1 creates all 9 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
@@ -69,9 +69,10 @@ Locked at 100% by the CI gate; this directory should never regress.
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
   `reviews.list()` filtering by deck and content ref independently.
-- **`packs/index.test.ts`** (14) — `parseContentRef` valid/malformed, deck-definition loading and
-  caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching, and
-  ranked example-word lookup with empty-input limits.
+- **`packs/index.test.ts`** (18) — `parseContentRef` valid/malformed, deck-definition loading and
+  caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching, ranked
+  example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
+  sentence-alignment fallback/normalization.
 
 ### `src/features/study` — 32 cases across 4 files
 
@@ -137,9 +138,9 @@ user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
 
-### `src/features/detail` — 3 cases
+### `src/features/detail` — 4 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked example words (or the pack-empty state), rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, and saving the selected kanji to the offline Saved deck with an outbox mutation.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, and saving the selected kanji to the offline Saved deck with an outbox mutation.
 
 ### `src/features/navigation` — 2 cases
 
