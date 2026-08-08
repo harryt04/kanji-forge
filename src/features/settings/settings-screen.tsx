@@ -70,7 +70,11 @@ import {
   THEME_SETTING,
   type ThemePreference,
 } from './theme'
-import { formatDeckAsText } from './deck-export'
+import {
+  formatDeckAsCsv,
+  formatDeckAsJson,
+  formatDeckAsText,
+} from './deck-export'
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -661,6 +665,45 @@ export function SettingsScreen(): React.ReactElement {
       await navigator.clipboard.writeText(formatDeckAsText(deck))
       setDeckExportMessage(
         `Copied ${deck.cards.filter((card) => deck.content.has(card.contentRef)).length} cards from “${deck.name}” as text.`,
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not export deck.',
+      )
+    } finally {
+      setDeckExportBusy(false)
+    }
+  }
+
+  async function downloadDeck(format: 'csv' | 'json'): Promise<void> {
+    if (!runtime || deckExportBusy) return
+    setDeckExportBusy(true)
+    setDeckExportMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const deck = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
+      const content =
+        format === 'csv' ? formatDeckAsCsv(deck) : formatDeckAsJson(deck)
+      const blob = new Blob([content], {
+        type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${
+        deck.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/giu, '-')
+          .replace(/^-|-$/gu, '') || 'kanjiforge-deck'
+      }.${format}`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      const count = deck.cards.filter((card) =>
+        deck.content.has(card.contentRef),
+      ).length
+      setDeckExportMessage(
+        `Downloaded ${count} cards from “${deck.name}” as ${format.toUpperCase()}.`,
       )
     } catch (reason: unknown) {
       setError(
@@ -1449,20 +1492,38 @@ export function SettingsScreen(): React.ReactElement {
           )}
         </div>
         <div className="border-border mt-5 border-t pt-5">
-          <h3 className="font-semibold">Export this deck as text</h3>
+          <h3 className="font-semibold">Export this deck</h3>
           <p className="text-muted-foreground mt-1 text-sm">
             Copy the current starter deck as tab-separated kanji, readings, and
-            meanings for pasting into another app or spreadsheet.
+            meanings for pasting into another app or spreadsheet, or download
+            the deck with its content and study progress.
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3"
-            disabled={deckExportBusy}
-            onClick={() => void exportDeckToClipboard()}
-          >
-            {deckExportBusy ? 'Copying deck…' : 'Copy deck as text'}
-          </Button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deckExportBusy}
+              onClick={() => void exportDeckToClipboard()}
+            >
+              {deckExportBusy ? 'Exporting deck…' : 'Copy deck as text'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deckExportBusy}
+              onClick={() => void downloadDeck('csv')}
+            >
+              Download CSV
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deckExportBusy}
+              onClick={() => void downloadDeck('json')}
+            >
+              Download JSON
+            </Button>
+          </div>
           {deckExportMessage && (
             <p className="text-muted-foreground mt-4 text-sm" role="status">
               {deckExportMessage}

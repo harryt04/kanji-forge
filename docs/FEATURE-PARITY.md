@@ -194,7 +194,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 10.5 | Export deck to clipboard as text | ✅ | 2026-08-07 | Settings copies the current starter deck as tab-separated kanji, readings, and meanings for pasting into another app or spreadsheet |
 | — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | — | ARCHITECTURE §9 (T8.0) |
 | — | Import preview with matched/ambiguous/not-found | ➕ ✅ | — | (T8.0) |
-| — | Export to CSV and JSON files | ➕ ✅ | — | (T8.0) |
+| — | Export to CSV and JSON files | ➕ ✅ | 2026-08-07 | Settings downloads the current deck's content and local study progress as versioned CSV or JSON files |
 | — | Full backup export/restore incl. review history | ➕ ✅ | 2026-08-07 | Settings downloads/restores the locked v1 JSON format; restore unions records and replays the review log |
 | — | Anki .apkg import | ➕ 🔷 | — | Best-effort (T8.0) |
 
