@@ -13,6 +13,7 @@ import {
   parseContentRef,
 } from '@/data/packs'
 import { createUserRepositories, type OutboxMutation } from '@/data/repo'
+import { getDeviceId } from '@/lib/device-id'
 import {
   loadStarterDeck,
   type LoadedDeck,
@@ -33,6 +34,19 @@ const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 function requestedContentRef(): string | null {
   if (typeof window === 'undefined') return null
   return new URL(window.location.href).searchParams.get('contentRef')
+}
+
+function parseTags(value: string): readonly string[] {
+  const seen = new Set<string>()
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => {
+      const key = tag.toLocaleLowerCase()
+      if (!tag || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
 }
 
 export function DetailScreen(): React.ReactElement {
@@ -60,6 +74,12 @@ export function DetailScreen(): React.ReactElement {
   const [canSpeak, setCanSpeak] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [note, setNote] = useState('')
+  const [tagsInput, setTagsInput] = useState('')
+  const [annotationSaving, setAnnotationSaving] = useState(false)
+  const [annotationMessage, setAnnotationMessage] = useState<string | null>(
+    null,
+  )
   const [error, setError] = useState<string | null>(null)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
 
@@ -84,16 +104,20 @@ export function DetailScreen(): React.ReactElement {
     setExampleSentences([])
     setComponents(null)
     setStrokes(null)
+    setNote('')
+    setTagsInput('')
+    setAnnotationMessage(null)
     setError(null)
     void (async () => {
       await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database)
-      const savedMembership = await createUserRepositories(
-        runtime.database,
-      ).deckMembership.list()
-      const savedStrokeSetting = await createUserRepositories(
-        runtime.database,
-      ).settings.get(STROKE_ANIMATION_SETTING)
+      const [savedMembership, savedStrokeSetting, savedAnnotation] =
+        await Promise.all([
+          repositories.deckMembership.list(),
+          repositories.settings.get(STROKE_ANIMATION_SETTING),
+          repositories.annotations.get(loaded.deckId, contentRef),
+        ])
       setSaved(
         savedMembership.some(
           (membership) => membership.contentRef === contentRef,
@@ -102,6 +126,10 @@ export function DetailScreen(): React.ReactElement {
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeSetting?.value),
       )
+      if (active) {
+        setNote(savedAnnotation?.note ?? '')
+        setTagsInput(savedAnnotation?.tags.join(', ') ?? '')
+      }
       const inDeck = loaded.content.get(contentRef)
       const inDeckCard = loaded.cards.find(
         (candidate) => candidate.contentRef === contentRef,
@@ -279,6 +307,49 @@ export function DetailScreen(): React.ReactElement {
     }
   }
 
+  async function saveAnnotation(): Promise<void> {
+    if (!runtime || !deck || annotationSaving) return
+    const now = Date.now()
+    const tags = parseTags(tagsInput)
+    const mutation: OutboxMutation = {
+      id: crypto.randomUUID(),
+      mutType: 'annotation.upsert',
+      payload: JSON.stringify({
+        deckId: deck.deckId,
+        contentRef: selectedContentRef,
+        note,
+        tags,
+        updatedAt: now,
+        updatedBy: getDeviceId(),
+      }),
+      createdAt: now,
+      attempts: 0,
+    }
+    setAnnotationSaving(true)
+    setAnnotationMessage(null)
+    try {
+      await createUserRepositories(runtime.database).annotations.upsert(
+        {
+          deckId: deck.deckId,
+          contentRef: selectedContentRef,
+          note,
+          tags,
+          updatedAt: now,
+          updatedBy: getDeviceId(),
+        },
+        mutation,
+      )
+      setTagsInput(tags.join(', '))
+      setAnnotationMessage('Saved locally and queued for sync.')
+    } catch (reason) {
+      setAnnotationMessage(
+        reason instanceof Error ? reason.message : 'Could not save notes.',
+      )
+    } finally {
+      setAnnotationSaving(false)
+    }
+  }
+
   return (
     <main
       className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6"
@@ -412,6 +483,58 @@ export function DetailScreen(): React.ReactElement {
           </dl>
         </CardContent>
       </Card>
+      <section aria-labelledby="notes-tags-heading">
+        <h2
+          id="notes-tags-heading"
+          className="font-jp-ui text-lg font-semibold"
+        >
+          Notes and tags
+        </h2>
+        <div className="mt-3 grid gap-4">
+          <div className="grid gap-2">
+            <label htmlFor="sticky-note" className="text-sm font-medium">
+              Personal note
+            </label>
+            <textarea
+              id="sticky-note"
+              className="border-input bg-background min-h-24 rounded-md border px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Add a memory hint or study note…"
+            />
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="sticky-tags" className="text-sm font-medium">
+              Tags
+            </label>
+            <input
+              id="sticky-tags"
+              className="border-input bg-background h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+              value={tagsInput}
+              onChange={(event) => setTagsInput(event.target.value)}
+              placeholder="e.g. tricky, radical"
+            />
+            <p className="text-muted-foreground text-xs">
+              Separate tags with commas. Duplicate tags are removed when saved.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void saveAnnotation()}
+              disabled={annotationSaving}
+            >
+              {annotationSaving ? 'Saving…' : 'Save notes and tags'}
+            </Button>
+            {annotationMessage && (
+              <p className="text-muted-foreground text-sm" aria-live="polite">
+                {annotationMessage}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
       <section aria-labelledby="stroke-animation-heading">
         <h2
           id="stroke-animation-heading"

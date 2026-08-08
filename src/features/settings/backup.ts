@@ -3,6 +3,7 @@ import type {
   DeckMembership,
   Review,
   Setting,
+  StickyAnnotation,
   UserRepositories,
 } from '@/data/repo'
 
@@ -31,6 +32,7 @@ export interface KanjiForgeBackup {
   readonly settings: readonly Setting[]
   readonly deckMembership: readonly DeckMembership[]
   readonly reviews: readonly Review[]
+  readonly annotations: readonly StickyAnnotation[]
 }
 
 export async function createBackup(
@@ -38,12 +40,14 @@ export async function createBackup(
   userId: string,
   exportedAt = Date.now(),
 ): Promise<KanjiForgeBackup> {
-  const [decks, settings, deckMembership, reviews] = await Promise.all([
-    repositories.decks.list(),
-    repositories.settings.list(),
-    repositories.deckMembership.list(),
-    repositories.reviews.list(),
-  ])
+  const [decks, settings, deckMembership, reviews, annotations] =
+    await Promise.all([
+      repositories.decks.list(),
+      repositories.settings.list(),
+      repositories.deckMembership.list(),
+      repositories.reviews.list(),
+      repositories.annotations.list(),
+    ])
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -53,6 +57,7 @@ export async function createBackup(
     settings,
     deckMembership,
     reviews,
+    annotations,
   }
 }
 
@@ -74,10 +79,13 @@ export function parseBackup(raw: string, userId: string): KanjiForgeBackup {
     !Array.isArray(value.settings) ||
     !Array.isArray(value.deckMembership) ||
     !Array.isArray(value.reviews) ||
+    (value.annotations !== undefined && !Array.isArray(value.annotations)) ||
     !value.decks.every(isDeck) ||
     !value.settings.every(isSetting) ||
     !value.deckMembership.every(isDeckMembership) ||
-    !value.reviews.every(isReview)
+    !value.reviews.every(isReview) ||
+    (value.annotations !== undefined &&
+      !value.annotations.every(isStickyAnnotation))
   )
     throw new Error('Backup file is incomplete or belongs to another account.')
 
@@ -90,6 +98,7 @@ export function parseBackup(raw: string, userId: string): KanjiForgeBackup {
     settings: value.settings,
     deckMembership: value.deckMembership,
     reviews: value.reviews,
+    annotations: value.annotations === undefined ? [] : value.annotations,
   }
 }
 
@@ -158,5 +167,18 @@ function isReview(value: unknown): value is Review {
       value.source === 'import' ||
       value.source === 'transfer') &&
     typeof value.deviceId === 'string'
+  )
+}
+
+function isStickyAnnotation(value: unknown): value is StickyAnnotation {
+  return (
+    isRecord(value) &&
+    typeof value.deckId === 'string' &&
+    typeof value.contentRef === 'string' &&
+    typeof value.note === 'string' &&
+    Array.isArray(value.tags) &&
+    value.tags.every((tag): tag is string => typeof tag === 'string') &&
+    isFiniteNumber(value.updatedAt) &&
+    typeof value.updatedBy === 'string'
   )
 }

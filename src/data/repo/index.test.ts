@@ -425,6 +425,36 @@ describe('settings round-trip', () => {
   })
 })
 
+describe('sticky annotations', () => {
+  it('round-trips notes and tags with an atomic sync mutation', async () => {
+    const repos = await freshRepo()
+    const annotation = {
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      note: 'Remember the sun radical.',
+      tags: ['review', 'radical'],
+      updatedAt: 42,
+      updatedBy: 'device-1',
+    } as const
+
+    await repos.annotations.upsert(annotation, {
+      id: 'annotation-1',
+      mutType: 'annotation.upsert',
+      payload: JSON.stringify(annotation),
+      createdAt: 42,
+      attempts: 0,
+    })
+
+    expect(await repos.annotations.get('dev-kanji', 'kanji:日')).toEqual(
+      annotation,
+    )
+    expect(await repos.annotations.list()).toEqual([annotation])
+    expect(await repos.outbox.pending()).toMatchObject([
+      { id: 'annotation-1', mutType: 'annotation.upsert' },
+    ])
+  })
+})
+
 describe('deckMembership', () => {
   it('saves, lists in sort order, and removes a saved-deck card', async () => {
     const repos = await freshRepo()

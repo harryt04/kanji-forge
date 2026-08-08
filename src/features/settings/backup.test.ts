@@ -51,6 +51,23 @@ describe('KanjiForge backups', () => {
       updatedAt: 11,
     })
     await repositories.reviews.append(review)
+    await repositories.annotations.upsert(
+      {
+        deckId: 'jlpt-n5',
+        contentRef: 'kanji:日',
+        note: 'Sun radical',
+        tags: ['radical'],
+        updatedAt: 13,
+        updatedBy: 'device',
+      },
+      {
+        id: 'annotation-backup-1',
+        mutType: 'annotation.upsert',
+        payload: '{}',
+        createdAt: 13,
+        attempts: 0,
+      },
+    )
 
     await expect(
       createBackup(repositories, 'backup-export-user', 12),
@@ -62,6 +79,7 @@ describe('KanjiForge backups', () => {
       decks: [{ id: 'jlpt-n5' }],
       settings: [{ key: 'theme', value: 'dark' }],
       reviews: [review],
+      annotations: [{ contentRef: 'kanji:日', note: 'Sun radical' }],
     })
   })
 
@@ -110,6 +128,16 @@ describe('KanjiForge backups', () => {
         settings: [{ key: 'theme', value: 'dark', updatedAt: 11 }],
         deckMembership: [],
         reviews: [review],
+        annotations: [
+          {
+            deckId: 'jlpt-n5',
+            contentRef: 'kanji:日',
+            note: 'Sun radical',
+            tags: ['radical'],
+            updatedAt: 12,
+            updatedBy: 'device',
+          },
+        ],
       }),
       'backup-restore-user',
     )
@@ -126,5 +154,8 @@ describe('KanjiForge backups', () => {
     await expect(repositories.settings.get('theme')).resolves.toMatchObject({
       value: 'light',
     })
+    expect(
+      await repositories.annotations.get('jlpt-n5', 'kanji:日'),
+    ).toMatchObject({ note: 'Sun radical', tags: ['radical'] })
   })
 })

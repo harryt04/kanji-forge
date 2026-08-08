@@ -60,6 +60,14 @@ export interface Setting {
   value: string
   updatedAt: number
 }
+export interface StickyAnnotation {
+  deckId: string
+  contentRef: string
+  note: string
+  tags: readonly string[]
+  updatedAt: number
+  updatedBy: string
+}
 export interface DailyStat {
   day: string
   reviews: number
@@ -75,6 +83,7 @@ export interface OutboxMutation {
     | 'deck.upsert'
     | 'settings.upsert'
     | 'deckMembership.upsert'
+    | 'annotation.upsert'
   payload: string
   createdAt: number
   attempts: number
@@ -125,6 +134,17 @@ export interface UserRepositories {
     get(key: string): Promise<Setting | undefined>
     list(): Promise<readonly Setting[]>
   }
+  readonly annotations: {
+    get(
+      deckId: string,
+      contentRef: string,
+    ): Promise<StickyAnnotation | undefined>
+    list(): Promise<readonly StickyAnnotation[]>
+    upsert(
+      annotation: StickyAnnotation,
+      mutation: OutboxMutation,
+    ): Promise<void>
+  }
   readonly dailyStats: {
     get(day: string): Promise<DailyStat | undefined>
     list(): Promise<readonly DailyStat[]>
@@ -168,6 +188,7 @@ export interface UserRepositories {
     settings: readonly Setting[]
     deckMembership: readonly DeckMembership[]
     reviews: readonly Review[]
+    annotations?: readonly StickyAnnotation[]
   }): Promise<void>
 }
 
@@ -220,6 +241,17 @@ function cardState(row: SqlRow): CardState {
   }
 }
 
+function annotationTags(row: SqlRow): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(text(row, 'tags_json'))
+    return Array.isArray(parsed)
+      ? parsed.filter((tag): tag is string => typeof tag === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
 /** Creates repositories bound to precisely one T1.1-authenticated local database. */
 export function createUserRepositories(
   database: LocalUserDatabase,
@@ -265,6 +297,8 @@ export function createUserRepositories(
     'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at'
   const putMembership =
     'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, updated_at=excluded.updated_at'
+  const putAnnotation =
+    'INSERT INTO sticky_annotations(user_id, deck_id, content_ref, note, tags_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET note=excluded.note, tags_json=excluded.tags_json, updated_at=excluded.updated_at, updated_by=excluded.updated_by'
 
   return {
     decks: {
@@ -503,6 +537,66 @@ export function createUserRepositories(
         }))
       },
     },
+    annotations: {
+      async get(deckId, contentRef) {
+        const row = (
+          await database.read(
+            'SELECT deck_id, content_ref, note, tags_json, updated_at, updated_by FROM sticky_annotations WHERE user_id = ? AND deck_id = ? AND content_ref = ?',
+            [userId, deckId, contentRef],
+          )
+        )[0]
+        if (!row) return undefined
+        return {
+          deckId: text(row, 'deck_id'),
+          contentRef: text(row, 'content_ref'),
+          note: text(row, 'note'),
+          tags: annotationTags(row),
+          updatedAt: numberValue(row, 'updated_at'),
+          updatedBy: text(row, 'updated_by'),
+        }
+      },
+      async list() {
+        const rows = await database.read(
+          'SELECT deck_id, content_ref, note, tags_json, updated_at, updated_by FROM sticky_annotations WHERE user_id = ? ORDER BY deck_id, content_ref',
+          [userId],
+        )
+        return rows.map((row) => ({
+          deckId: text(row, 'deck_id'),
+          contentRef: text(row, 'content_ref'),
+          note: text(row, 'note'),
+          tags: annotationTags(row),
+          updatedAt: numberValue(row, 'updated_at'),
+          updatedBy: text(row, 'updated_by'),
+        }))
+      },
+      async upsert(annotation, mutation) {
+        await database.transaction([
+          {
+            sql: putAnnotation,
+            parameters: [
+              userId,
+              annotation.deckId,
+              annotation.contentRef,
+              annotation.note,
+              JSON.stringify(annotation.tags),
+              annotation.updatedAt,
+              annotation.updatedBy,
+            ],
+          },
+          {
+            sql: putOutbox,
+            parameters: [
+              mutation.id,
+              userId,
+              mutation.mutType,
+              mutation.payload,
+              mutation.createdAt,
+              mutation.attempts,
+            ],
+          },
+        ])
+      },
+    },
     dailyStats: {
       async get(day) {
         const row = (
@@ -678,7 +772,13 @@ export function createUserRepositories(
         },
       ])
     },
-    async restoreBackup({ decks, settings, deckMembership, reviews }) {
+    async restoreBackup({
+      decks,
+      settings,
+      deckMembership,
+      reviews,
+      annotations = [],
+    }) {
       const existingReviews = await this.reviews.list()
       const mergedReviews = new Map<string, Review>()
       for (const review of existingReviews) mergedReviews.set(review.id, review)
@@ -725,6 +825,18 @@ export function createUserRepositories(
         ...reviews.map((review) => ({
           sql: putReview.replace('INSERT INTO', 'INSERT OR IGNORE INTO'),
           parameters: reviewParams(review),
+        })),
+        ...annotations.map((annotation) => ({
+          sql: `${putAnnotation} WHERE excluded.updated_at >= sticky_annotations.updated_at`,
+          parameters: [
+            userId,
+            annotation.deckId,
+            annotation.contentRef,
+            annotation.note,
+            JSON.stringify(annotation.tags),
+            annotation.updatedAt,
+            annotation.updatedBy,
+          ] as readonly SqlValue[],
         })),
         ...[...projectedStates.values()].map((state) => ({
           sql: putState,

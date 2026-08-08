@@ -243,6 +243,42 @@ describe('DetailScreen', () => {
     ).toMatchObject({ mutType: 'deckMembership.upsert' })
   })
 
+  it('saves per-sticky notes and normalized tags offline', async () => {
+    const runtime = bootstrapUserRuntime(`detail-${userId}`)
+    const user = userEvent.setup()
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Notes and tags' }),
+      ).toBeInTheDocument(),
+    )
+    await user.type(
+      screen.getByLabelText('Personal note'),
+      'Use this in a sentence.',
+    )
+    await user.type(screen.getByLabelText('Tags'), ' tricky, radical, tricky ')
+    await user.click(
+      screen.getByRole('button', { name: 'Save notes and tags' }),
+    )
+
+    expect(
+      await screen.findByText('Saved locally and queued for sync.'),
+    ).toBeInTheDocument()
+    expect(
+      await createUserRepositories(runtime.database).annotations.get(
+        'dev-kanji',
+        'kanji:日',
+      ),
+    ).toMatchObject({
+      note: 'Use this in a sentence.',
+      tags: ['tricky', 'radical'],
+    })
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending()).at(-1),
+    ).toMatchObject({ mutType: 'annotation.upsert' })
+  })
+
   it('steps through stroke order controls offline', async () => {
     bootstrapUserRuntime(`detail-${userId}`)
     render(<DetailScreen />)

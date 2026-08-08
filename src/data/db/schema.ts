@@ -1,5 +1,5 @@
 /** SQLite-WASM schema for one authenticated user's local database. */
-export const USER_DATABASE_SCHEMA_VERSION = 1
+export const USER_DATABASE_SCHEMA_VERSION = 2
 
 export const USER_DATABASE_MIGRATIONS: readonly {
   readonly version: number
@@ -19,6 +19,14 @@ export const USER_DATABASE_MIGRATIONS: readonly {
       'CREATE TABLE IF NOT EXISTS daily_stats (user_id TEXT NOT NULL, day TEXT NOT NULL, reviews INTEGER NOT NULL DEFAULT 0, correct INTEGER NOT NULL DEFAULT 0, again INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (user_id, day))',
       'CREATE TABLE IF NOT EXISTS outbox (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, mut_type TEXT NOT NULL, payload TEXT NOT NULL, created_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0)',
       'CREATE INDEX IF NOT EXISTS outbox_pending ON outbox(created_at)',
+    ],
+  },
+  {
+    version: 2,
+    sql: [
+      '-- migration 2: per-sticky notes and tags',
+      "CREATE TABLE IF NOT EXISTS sticky_annotations (user_id TEXT NOT NULL, deck_id TEXT NOT NULL, content_ref TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', tags_json TEXT NOT NULL DEFAULT '[]', updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL, PRIMARY KEY (deck_id, content_ref))",
+      'CREATE INDEX IF NOT EXISTS sticky_annotations_by_user ON sticky_annotations(user_id, deck_id)',
     ],
   },
 ]

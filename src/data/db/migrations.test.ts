@@ -13,6 +13,7 @@ const EXPECTED_TABLES = [
   'settings',
   'daily_stats',
   'outbox',
+  'sticky_annotations',
 ]
 
 let database: SqlJsDatabase
@@ -80,7 +81,10 @@ describe('migrateUserDatabase', () => {
         },
       )
     statement.free()
-    expect(rows).toEqual([{ version: 1, applied_at: appliedAt }])
+    expect(rows).toEqual([
+      { version: 1, applied_at: appliedAt },
+      { version: 2, applied_at: appliedAt },
+    ])
   })
 
   it('is idempotent: a second run does not re-apply or throw', () => {
@@ -90,12 +94,12 @@ describe('migrateUserDatabase', () => {
       'SELECT COUNT(*) AS n FROM schema_migrations',
     )
     statement.step()
-    expect(statement.getAsObject().n).toBe(1)
+    expect(statement.getAsObject().n).toBe(2)
     statement.free()
     expect(tableNames()).toEqual([...EXPECTED_TABLES].sort())
   })
 
   it('matches the declared schema version against the last migration', () => {
-    expect(USER_DATABASE_MIGRATIONS.at(-1)?.version).toBe(1)
+    expect(USER_DATABASE_MIGRATIONS.at(-1)?.version).toBe(2)
   })
 })
