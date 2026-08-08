@@ -308,6 +308,23 @@ describe('SettingsScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('explains that iOS reminders require an installed PWA', async () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    })
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByText('Install KanjiForge for iOS reminders'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /cannot deliver reminders reliably from an ordinary tab/u,
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('persists the selected study answer fields offline', async () => {
     const user = userEvent.setup()
     render(<SettingsScreen />)

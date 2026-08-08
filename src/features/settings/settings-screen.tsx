@@ -2727,6 +2727,16 @@ export function SettingsScreen(): React.ReactElement {
                 ? 'This browser does not provide notifications.'
                 : 'Notifications are off until you enable a reminder.'}
         </p>
+        {showIosInstallGuidance && notificationStatus !== 'granted' ? (
+          <div className="border-border bg-muted mt-4 rounded-md border p-4">
+            <p className="font-medium">Install KanjiForge for iOS reminders</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              iPhone and iPad Safari cannot deliver reminders reliably from an
+              ordinary tab. Install KanjiForge from Safari’s Share menu, then
+              reopen it from the Home Screen before enabling notifications.
+            </p>
+          </div>
+        ) : null}
         <p className="text-muted-foreground mt-2 text-sm" role="status">
           {backgroundPushStatus === 'subscribed'
             ? 'Background Web Push is enabled for this device.'
