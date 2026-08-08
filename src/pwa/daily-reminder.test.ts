@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   countDueReminderCards,
   isDailyReminderTime,
   nextDailyReminderAt,
+  openStudyFromDailyReminder,
 } from './daily-reminder'
 
 describe('daily study reminders', () => {
@@ -36,5 +37,13 @@ describe('daily study reminders', () => {
         now,
       ),
     ).toBe(2)
+  })
+
+  it('opens Study when the foreground reminder is activated', () => {
+    const navigate = vi.fn()
+
+    openStudyFromDailyReminder(navigate)
+
+    expect(navigate).toHaveBeenCalledWith('/study')
   })
 })

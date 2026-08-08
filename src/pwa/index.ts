@@ -21,6 +21,7 @@ export {
   countDueReminderCards,
   isDailyReminderTime,
   nextDailyReminderAt,
+  openStudyFromDailyReminder,
   requestDailyReminderPermission,
   type DailyReminderPermission,
 } from './daily-reminder'

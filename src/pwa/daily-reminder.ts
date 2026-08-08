@@ -54,6 +54,14 @@ export function countDueReminderCards(
   ).length
 }
 
+/** Opens the study queue when a foreground reminder is activated. */
+export function openStudyFromDailyReminder(
+  navigate: (url: string) => void = (url) => window.location.assign(url),
+): void {
+  if (typeof window === 'undefined') return
+  navigate('/study')
+}
+
 export type DailyReminderPermission = NotificationPermission | 'unsupported'
 
 export async function requestDailyReminderPermission(): Promise<DailyReminderPermission> {
@@ -100,10 +108,11 @@ async function scheduleReminder(
           const deck = await loadStarterDeck(currentRuntime.database)
           const due = countDueReminderCards(deck.cards, Date.now())
           if (due > 0 && canNotify()) {
-            new Notification('KanjiForge study reminder', {
+            const notification = new Notification('KanjiForge study reminder', {
               body: `${due} card${due === 1 ? '' : 's'} ready to study.`,
               tag: 'kanjiforge-daily-reminder',
             })
+            notification.onclick = () => openStudyFromDailyReminder()
           }
         } catch {
           // A reminder must never affect the study loop if the local pack is unavailable.
