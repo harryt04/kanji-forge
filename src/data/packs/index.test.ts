@@ -59,6 +59,11 @@ describe('data/packs', () => {
       expect(decks.find((deck) => deck.id === 'dev-kanji')).toMatchObject({
         contentType: 'kanji',
       })
+      expect(decks.find((deck) => deck.id === 'kanken-10')).toMatchObject({
+        name: 'Kanji Kentei 10',
+        contentType: 'kanji',
+        contentRefs: expect.arrayContaining(['kanji:一']),
+      })
     })
 
     it('caches the deck definitions across calls', async () => {

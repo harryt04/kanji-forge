@@ -328,5 +328,97 @@
         "deferredReason": "Entries require a later full/JLPT word pack; they are not represented by the bundled words-core pack."
       }
     }
+  },
+  "kanken": {
+    "1": {
+      "sourceCount": 3436,
+      "resolvedCount": 3421,
+      "deferredUnresolvedCount": 15,
+      "deferredUnresolvedLiterals": [
+        "俞",
+        "删",
+        "埳",
+        "孶",
+        "拋",
+        "榆",
+        "槔",
+        "筓",
+        "篡",
+        "糱",
+        "繈",
+        "腁",
+        "衮",
+        "騈",
+        "鴥"
+      ],
+      "deferredReason": "The KANJIDIC2 pack does not contain every rare character in the source level list."
+    },
+    "2": {
+      "sourceCount": 199,
+      "resolvedCount": 199,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "3": {
+      "sourceCount": 285,
+      "resolvedCount": 285,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "4": {
+      "sourceCount": 316,
+      "resolvedCount": 316,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "5": {
+      "sourceCount": 181,
+      "resolvedCount": 181,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "6": {
+      "sourceCount": 185,
+      "resolvedCount": 185,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "7": {
+      "sourceCount": 200,
+      "resolvedCount": 200,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "8": {
+      "sourceCount": 200,
+      "resolvedCount": 200,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "9": {
+      "sourceCount": 160,
+      "resolvedCount": 160,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "10": {
+      "sourceCount": 80,
+      "resolvedCount": 80,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "pre-2": {
+      "sourceCount": 333,
+      "resolvedCount": 333,
+      "deferredUnresolvedCount": 0,
+      "deferredUnresolvedLiterals": []
+    },
+    "pre-1": {
+      "sourceCount": 1036,
+      "resolvedCount": 1034,
+      "deferredUnresolvedCount": 2,
+      "deferredUnresolvedLiterals": ["荆", "㵎"],
+      "deferredReason": "The KANJIDIC2 pack does not contain every rare character in the source level list."
+    }
   }
 }

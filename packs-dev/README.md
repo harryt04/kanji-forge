@@ -2,7 +2,8 @@
 
 This directory is the committed, offline development fixture for `pnpm dev`.
 It contains 200 KANJIDIC2 kanji records, 500 JMdict entries, 100 Tatoeba
-Japanese–English sentence pairs, and two small deck definitions. The SQLite
+Japanese–English sentence pairs, and eight small deck definitions, including
+development subsets of the Kanji Kentei 10–5 levels. The SQLite
 schemas and `kanji:...` / `word:...` references match the full packs.
 
 ## Provenance and licensing

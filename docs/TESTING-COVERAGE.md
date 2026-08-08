@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 62 (430 test cases: 430 passing) |
+| Unit/integration test files | 62 (432 test cases: 432 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 131 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **86.51%** |
@@ -238,7 +238,7 @@ available in CI.
 ### `scripts/build-packs`
 
 `fetch-sources.test.ts` (1), `build-names-pack.test.ts` (2), `build-decks.test.ts`
-(5), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
+(6, including all 12 Kanji Kentei levels and unresolved-source coverage), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
 [Known issues](#known-issues).
 
 `src/core/text/analyzer.test.ts` (6) covers the offline analyzer's indexed written-form and kana

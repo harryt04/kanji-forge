@@ -23,6 +23,21 @@ const exclusionsPath = path.join(
 )
 const levels = ['N5', 'N4', 'N3', 'N2', 'N1'] as const
 type Level = (typeof levels)[number]
+const kankenLevels = [
+  { id: '10', label: '10', file: 'kanken.lv10.json' },
+  { id: '9', label: '9', file: 'kanken.lv09.json' },
+  { id: '8', label: '8', file: 'kanken.lv08.json' },
+  { id: '7', label: '7', file: 'kanken.lv07.json' },
+  { id: '6', label: '6', file: 'kanken.lv06.json' },
+  { id: '5', label: '5', file: 'kanken.lv05.json' },
+  { id: '4', label: '4', file: 'kanken.lv04.json' },
+  { id: '3', label: '3', file: 'kanken.lv03.json' },
+  { id: 'pre-2', label: 'Pre-2', file: 'kanken.lv02pre.json' },
+  { id: '2', label: '2', file: 'kanken.lv02.json' },
+  { id: 'pre-1', label: 'Pre-1', file: 'kanken.lv01pre.json' },
+  { id: '1', label: '1', file: 'kanken.lv01.json' },
+] as const
+const kankenDataDir = path.join(root, 'node_modules/kanji/data')
 type Deck = {
   id: string
   schemaVersion: 1
@@ -67,6 +82,7 @@ type CoverageReport = {
     'jlpt-kanji-data' | 'jlpt-vocab-yomitan',
     Record<Level, CoverageLevel>
   >
+  kanken: Record<string, CoverageLevel>
 }
 const deferredVocabularyReason =
   'Entries require a later full/JLPT word pack; they are not represented by the bundled words-core pack.'
@@ -83,6 +99,19 @@ function readJson(file: string): unknown {
   } catch (error) {
     fail(`malformed JSON at ${file}: ${String(error)}`)
   }
+}
+/** Keep generated JSON byte-stable with the repository's Prettier formatting. */
+function serializeJson(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(
+    /(\n[ \t]*"[^"\n]+": )\[\n\s+((?:"(?:\\.|[^"])*"(?:,\n\s*)?)+)\n\s*\]/g,
+    (match, prefix: string, values: string) => {
+      const compact = values.replace(/,\n\s*/g, ', ')
+      const lineLengthBeforeArray = prefix.length - 1
+      return lineLengthBeforeArray + compact.length + 2 <= 80
+        ? `${prefix}[${compact}]`
+        : match
+    },
+  )
 }
 function isRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -276,6 +305,18 @@ function sortedJoyo(rows: Kanji[]): Kanji[] {
       a.literal.localeCompare(b.literal, 'ja'),
   )
 }
+function kankenMembers(file: string): string[] {
+  const value = readJson(path.join(kankenDataDir, file))
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some(
+      (literal) => typeof literal !== 'string' || [...literal].length !== 1,
+    )
+  )
+    fail(`Kanji Kentei source ${file} is not a non-empty one-character array`)
+  return [...new Set(value as string[])]
+}
 function exclusionKey(source: string, level: string, entry: string) {
   return `${source}\u0000${level}\u0000${entry}`
 }
@@ -396,6 +437,7 @@ function main() {
     if (kanji.length < 2136)
       fail('kanji pack is malformed: fewer than 2,136 records')
     const kanjiSet = new Set(kanji.map((row) => row.literal))
+    const kanjiByLiteral = new Map(kanji.map((row) => [row.literal, row]))
     const wordByForm = new Map<string, number>()
     for (const row of wdb
       .prepare('SELECT form, MIN(entry_id) AS id FROM forms GROUP BY form')
@@ -539,6 +581,14 @@ function main() {
       source,
       generatedFrom: ['kanji-v1.sqlite', 'words-core-v1.sqlite'],
     })
+    const kankenProvenance = {
+      license: 'CC BY 4.0',
+      source: 'kanji npm package',
+      pinned: '0.9.1',
+      url: 'https://github.com/echamudi/kanji',
+      generatedFrom: ['日本漢字能力検定級別漢字表'],
+    }
+    const kankenCoverage: Record<string, CoverageLevel> = {}
     const decks: Deck[] = []
     for (const level of levels) {
       decks.push(
@@ -577,6 +627,38 @@ function main() {
           provenance('kanjidic2'),
         ),
       )
+    for (const level of kankenLevels) {
+      const members = kankenMembers(level.file)
+      const missing = members.filter((literal) => !kanjiSet.has(literal))
+      const resolved = members.filter((literal) => kanjiSet.has(literal))
+      kankenCoverage[level.id] = {
+        sourceCount: members.length,
+        resolvedCount: resolved.length,
+        deferredUnresolvedCount: missing.length,
+        deferredUnresolvedLiterals: missing,
+        ...(missing.length
+          ? {
+              deferredReason:
+                'The KANJIDIC2 pack does not contain every rare character in the source level list.',
+            }
+          : {}),
+      }
+      decks.push(
+        deck(
+          `kanken-${level.id}`,
+          `Kanji Kentei ${level.label}`,
+          `Kanji Kentei ${level.label} level, ordered by KANJIDIC2 frequency. The level list is derived from the official 日本漢字能力検定級別漢字表 via the pinned kanji package.${missing.length ? ` ${missing.length} rare source character${missing.length === 1 ? '' : 's'} are unavailable in KANJIDIC2 and are recorded in the catalog coverage report.` : ''}`,
+          'kanji',
+          sortedKanji(
+            resolved.flatMap((literal) => {
+              const row = kanjiByLiteral.get(literal)
+              return row ? [row] : []
+            }),
+          ).map((row) => `kanji:${row.literal}`),
+          kankenProvenance,
+        ),
+      )
+    }
     const secondary = sortedKanji(kanji.filter((row) => row.grade === 8))
     const tierSize = secondary.length / 3
     if (!Number.isInteger(tierSize))
@@ -644,12 +726,14 @@ function main() {
         'jlpt-kanji-data': kanjiCoverage,
         'jlpt-vocab-yomitan': vocabularyCoverage,
       },
+      kanken: kankenCoverage,
     }
     writeCatalogAtomically(
       decks,
       { kanji: kanjiManifest, words: wordsManifest },
       { kanji: kanjiInput.source, vocab: vocabInput.source },
       coverageReport,
+      kankenProvenance,
     )
     console.log(
       `✓ Generated ${decks.length} deterministic deck definitions and manifest in packs/decks`,
@@ -667,6 +751,7 @@ function writeCatalogAtomically(
   packs: Record<string, any>,
   sources: { kanji: Source; vocab: Source },
   coverageReport: CoverageReport,
+  kankenProvenance: Record<string, unknown>,
 ) {
   const stage = path.join(path.dirname(outDir), `.decks-staging-${process.pid}`)
   const backup = path.join(path.dirname(outDir), `.decks-backup-${process.pid}`)
@@ -677,7 +762,7 @@ function writeCatalogAtomically(
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((definition) => {
         const file = `${definition.id}.json`
-        const bytes = Buffer.from(JSON.stringify(definition, null, 2) + '\n')
+        const bytes = Buffer.from(serializeJson(definition) + '\n')
         fs.writeFileSync(path.join(stage, file), bytes)
         return {
           file,
@@ -685,9 +770,7 @@ function writeCatalogAtomically(
           sizeBytes: bytes.length,
         }
       })
-    const coverageBytes = Buffer.from(
-      JSON.stringify(coverageReport, null, 2) + '\n',
-    )
+    const coverageBytes = Buffer.from(serializeJson(coverageReport) + '\n')
     fs.writeFileSync(path.join(stage, coverageReportFile), coverageBytes)
     const coverage = {
       file: coverageReportFile,
@@ -725,7 +808,7 @@ function writeCatalogAtomically(
       schemaVersion: 1,
       license: 'CC BY-SA 4.0',
       attribution:
-        'Deck definitions generated by KanjiForge from KANJIDIC2/JMdict backing packs and the pinned community JLPT sources. Deck definitions are licensed CC BY-SA 4.0.',
+        'Deck definitions generated by KanjiForge from KANJIDIC2/JMdict backing packs, the pinned community JLPT sources, and the pinned Kanji Kentei level lists. Deck definitions are licensed CC BY-SA 4.0.',
       catalogSha256: crypto
         .createHash('sha256')
         .update(catalogBytes)
@@ -741,10 +824,11 @@ function writeCatalogAtomically(
         kanji: sourceProvenance(sources.kanji),
         vocabulary: sourceProvenance(sources.vocab),
       },
+      kankenSource: kankenProvenance,
     }
     fs.writeFileSync(
       path.join(stage, 'manifest.json'),
-      JSON.stringify(manifest, null, 2) + '\n',
+      serializeJson(manifest) + '\n',
     )
     fs.rmSync(backup, { recursive: true, force: true })
     if (fs.existsSync(outDir)) fs.renameSync(outDir, backup)

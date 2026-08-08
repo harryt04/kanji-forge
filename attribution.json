@@ -12,6 +12,12 @@
       "url": "https://creativecommons.org/licenses/by-sa/4.0/"
     },
     {
+      "id": "cc-by-4.0",
+      "name": "Creative Commons Attribution 4.0 International",
+      "spdx": "CC-BY-4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
       "id": "cc-by-sa-3.0",
       "name": "Creative Commons Attribution-ShareAlike 3.0 Unported",
       "spdx": "CC-BY-SA-3.0",
@@ -178,6 +184,17 @@
       "licenseHash": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
       "use": "Pinned generator-only font for deterministic similar-kanji rasterization.",
       "modification": "A glyph raster is used by the generator; the font itself is not part of the similar JSON pack."
+    },
+    {
+      "id": "kanji-kanken",
+      "name": "Kanji Kentei level lists (kanji npm package)",
+      "copyright": "Ezzat Chamudi; level lists derived from 日本漢字能力検定級別漢字表",
+      "license": "cc-by-4.0",
+      "licenseName": "CC BY 4.0",
+      "url": "https://github.com/echamudi/kanji",
+      "pinned": "0.9.1",
+      "use": "Kanji Kentei 10 through 1 and pre-level deck membership.",
+      "modification": "Resolved against KANJIDIC2, ordered by frequency, and reported with unresolved rare characters."
     }
   ],
   "packs": [
@@ -238,14 +255,15 @@
       "manifest": "packs/decks/manifest.json",
       "version": "v1",
       "license": "cc-by-sa-4.0",
-      "catalogSha256": "d98cded60ce506ce825c6101a7e072af84468de46cff2fd9c6a2574437f07384",
+      "catalogSha256": "929a1f2ab0ced434719969fd2d741430ae8ac192dbeb435f610b8c830318b41b",
       "sources": [
         "kanjidic2",
         "jmdict",
         "jlpt-kanji-data",
-        "jlpt-vocab-yomitan"
+        "jlpt-vocab-yomitan",
+        "kanji-kanken"
       ],
-      "details": "CC BY-SA 4.0 derived deck definitions and coverage report; 25 deck JSON files plus jlpt-coverage.json. JLPT descriptions state that levels are unofficial community estimates. Jōyō 1981 uses the reviewed 196-added/5-removed diff; Jōyō 2010 contains 2,136 characters; school grades 7-9 are frequency tiers; kana decks use words-core.",
+      "details": "CC BY-SA 4.0 derived deck definitions and coverage report; 37 deck JSON files plus jlpt-coverage.json. JLPT descriptions state that levels are unofficial community estimates. Jōyō 1981 uses the reviewed 196-added/5-removed diff; Jōyō 2010 contains 2,136 characters; school grades 7-9 are frequency tiers; kana decks use words-core; Kanji Kentei 10 through 1 and pre-level decks use the pinned official level-list derivative.",
       "files": [
         "hiragana.json",
         "katakana.json",
@@ -272,6 +290,18 @@
         "joyo-1981.json",
         "joyo-2010.json",
         "top-500-kanji.json",
+        "kanken-10.json",
+        "kanken-9.json",
+        "kanken-8.json",
+        "kanken-7.json",
+        "kanken-6.json",
+        "kanken-5.json",
+        "kanken-4.json",
+        "kanken-3.json",
+        "kanken-pre-2.json",
+        "kanken-2.json",
+        "kanken-pre-1.json",
+        "kanken-1.json",
         "jlpt-coverage.json"
       ]
     }
