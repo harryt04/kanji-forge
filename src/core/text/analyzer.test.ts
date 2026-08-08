@@ -40,6 +40,20 @@ const words: readonly AnalyzerWord[] = [
     readings: ['です'],
     meanings: ['be'],
   },
+  {
+    id: 4,
+    commonScore: 80,
+    forms: ['食べる'],
+    readings: ['たべる'],
+    meanings: ['to eat'],
+  },
+  {
+    id: 5,
+    commonScore: 70,
+    forms: ['読む'],
+    readings: ['よむ'],
+    meanings: ['to read'],
+  },
 ]
 
 describe('analyzeText', () => {
@@ -73,5 +87,24 @@ describe('analyzeText', () => {
     expect(analyzeText('日本です', words, kanji, 1)[0]).toEqual(
       expect.objectContaining({ text: '日本', contentRef: 'word:1' }),
     )
+  })
+
+  it('resolves common inflected forms to dictionary lemmas with surface readings', () => {
+    expect(analyzeText('食べました。読んで', words, kanji)).toEqual([
+      expect.objectContaining({
+        text: '食べました',
+        contentRef: 'word:4',
+        reading: 'たべました',
+      }),
+      expect.objectContaining({
+        text: '。',
+        type: 'unknown',
+      }),
+      expect.objectContaining({
+        text: '読んで',
+        contentRef: 'word:5',
+        reading: 'よんで',
+      }),
+    ])
   })
 })

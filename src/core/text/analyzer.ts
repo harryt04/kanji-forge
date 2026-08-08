@@ -1,3 +1,5 @@
+import { inflectedSurfaces } from './inflect'
+
 export interface AnalyzerWord {
   readonly id: number
   readonly commonScore: number
@@ -26,6 +28,7 @@ export interface TextAnalysisToken {
 interface WordCandidate {
   readonly text: string
   readonly word: AnalyzerWord
+  readonly reading?: string
 }
 
 interface Plan {
@@ -47,6 +50,17 @@ function candidateIndex(
       candidates.push({ text, word })
       index.set(first, candidates)
     }
+    const reading = word.readings[0]
+    for (const form of word.forms) {
+      if (!reading || form === reading) continue
+      for (const surface of inflectedSurfaces(form, reading)) {
+        const first = [...surface.text][0]
+        if (!first) continue
+        const candidates = index.get(first) ?? []
+        candidates.push({ text: surface.text, word, reading: surface.reading })
+        index.set(first, candidates)
+      }
+    }
   }
   return index
 }
@@ -55,6 +69,7 @@ function wordToken(
   text: string,
   word: AnalyzerWord,
   kanjiByLiteral: ReadonlyMap<string, AnalyzerKanji>,
+  reading = word.readings[0] ?? null,
 ): TextAnalysisToken {
   const hasNonN5Kanji = [...text].some((literal) => {
     const record = kanjiByLiteral.get(literal)
@@ -62,7 +77,7 @@ function wordToken(
   })
   return {
     text,
-    reading: word.readings[0] ?? null,
+    reading,
     meanings: word.meanings.slice(0, 3),
     type: 'word',
     contentRef: `word:${word.id}`,
@@ -157,7 +172,12 @@ export function analyzeText(
         score:
           tail.score + 1_000_000 + length * 1_000 + candidate.word.commonScore,
         tokens: [
-          wordToken(candidate.text, candidate.word, kanjiByLiteral),
+          wordToken(
+            candidate.text,
+            candidate.word,
+            kanjiByLiteral,
+            candidate.reading ?? candidate.word.readings[0] ?? null,
+          ),
           ...tail.tokens,
         ],
       }
