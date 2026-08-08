@@ -345,6 +345,9 @@ describe('DetailScreen', () => {
         name: 'Play community recording for お金',
       })
       expect(screen.getByText('Community recording')).toBeInTheDocument()
+      expect(
+        screen.getByText('Detail voice 1.0.0 · CC BY 4.0 · A Japanese speaker'),
+      ).toBeInTheDocument()
       await userEvent.click(button)
       await waitFor(() => expect(FakeAudio.instances).toHaveLength(1))
     } finally {

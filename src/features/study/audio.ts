@@ -1,4 +1,8 @@
-import { getAudioPackFile, getAudioPackRecording } from './audio-pack'
+import {
+  getAudioPackFile,
+  getAudioPackRecording,
+  type InstalledAudioRecording,
+} from './audio-pack'
 
 export const STUDY_AUTO_PLAY_AUDIO_SETTING = 'study.autoPlayAudio'
 
@@ -35,9 +39,22 @@ export async function findInstalledJapaneseAudioReading(
   writing: string,
   readings: readonly string[],
 ): Promise<string | null> {
+  const match = await findInstalledJapaneseAudioMatch(writing, readings)
+  return match?.reading ?? null
+}
+
+/** Returns the first installed recording and its pack metadata across valid readings. */
+export async function findInstalledJapaneseAudioMatch(
+  writing: string,
+  readings: readonly string[],
+): Promise<{
+  readonly reading: string
+  readonly recording: InstalledAudioRecording
+} | null> {
   const candidates = [...new Set([...readings, writing].filter(Boolean))]
   for (const reading of candidates) {
-    if (await hasInstalledJapaneseAudioFor(writing, reading)) return reading
+    const recording = await getAudioPackRecording(writing, reading)
+    if (recording) return { reading, recording }
   }
   return null
 }

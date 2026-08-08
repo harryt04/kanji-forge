@@ -37,7 +37,7 @@ import {
 import {
   playJapaneseAudioForReadings,
   supportsJapaneseSpeech,
-  findInstalledJapaneseAudioReading,
+  findInstalledJapaneseAudioMatch,
 } from '@/features/study/audio'
 import { listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
@@ -91,33 +91,34 @@ function AudioControl({
   hasAudioPack,
 }: AudioControlProps): React.ReactElement | null {
   const [source, setSource] = useState<AudioSource | null>(null)
-  const [hasRecording, setHasRecording] = useState(false)
+  const [recordingPack, setRecordingPack] =
+    useState<Awaited<ReturnType<typeof findInstalledJapaneseAudioMatch>>>(null)
   const readingKey = readings.join('\u0000')
 
   useEffect(() => {
     let active = true
     if (!hasAudioPack) {
-      setHasRecording(false)
+      setRecordingPack(null)
       return () => {
         active = false
       }
     }
     setSource(null)
-    void findInstalledJapaneseAudioReading(
+    void findInstalledJapaneseAudioMatch(
       writing,
       readingKey ? readingKey.split('\u0000') : [],
-    ).then((reading) => {
-      if (active) setHasRecording(Boolean(reading))
+    ).then((match) => {
+      if (active) setRecordingPack(match)
     })
     return () => {
       active = false
     }
   }, [hasAudioPack, readingKey, writing])
 
-  if (!canSpeak && !hasRecording) return null
+  if (!canSpeak && !recordingPack) return null
 
   const displayedSource: AudioSource =
-    source ?? (hasRecording ? 'pack' : 'synthesized')
+    source ?? (recordingPack ? 'pack' : 'synthesized')
   const sourceLabel =
     displayedSource === 'pack'
       ? 'Community recording'
@@ -143,6 +144,17 @@ function AudioControl({
         Play audio
       </Button>
       <span className="text-muted-foreground text-xs">{sourceLabel}</span>
+      {recordingPack && displayedSource === 'pack' ? (
+        <span
+          className="text-muted-foreground text-xs"
+          aria-label={`Recording source: ${recordingPack.recording.manifest.name}, ${recordingPack.recording.manifest.license}, ${recordingPack.recording.manifest.attribution}`}
+        >
+          {recordingPack.recording.manifest.name}{' '}
+          {recordingPack.recording.manifest.version} ·{' '}
+          {recordingPack.recording.manifest.license} ·{' '}
+          {recordingPack.recording.manifest.attribution}
+        </span>
+      ) : null}
     </div>
   )
 }
