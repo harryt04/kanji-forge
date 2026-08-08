@@ -114,7 +114,7 @@ leaving local-only mutation types queued until their server contract exists.
 - **`study-style.test.ts`** (3) — default answer fields, malformed/duplicate value parsing, and
   stable answer-field serialization.
 
-### `src/features/home` — 13 cases
+### `src/features/home` — 14 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
 with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
@@ -125,7 +125,8 @@ the goal date, and an unrealistic goal shows an accessible warning with an inlin
 and retention by starting level excludes manual adjustments and early-interval reviews and flags low retention, leech
 identification surfaces cards at six or more lapses while ignoring cards below the threshold, and
 the 30-day scheduled review forecast buckets overdue and future due cards. It also verifies that
-user-owned custom decks appear with offline Study and Browse links.
+user-owned custom decks appear with offline Study and Browse links, and
+custom decks are grouped on the shelf using their persisted folder labels.
 
 ### `src/features/history` — 3 cases
 

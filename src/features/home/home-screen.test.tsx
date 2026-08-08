@@ -117,6 +117,52 @@ describe('HomeScreen', () => {
     ).toHaveAttribute('href', '/browse?deckId=custom-travel')
   })
 
+  it('groups custom decks by their persisted folder on the deck shelf', async () => {
+    const runtime = bootstrapUserRuntime(`home-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.recordDeckMembership({
+      deck: {
+        id: 'custom-travel',
+        name: 'Travel kanji',
+        kind: 'custom',
+        definitionId: null,
+        updatedAt: 1,
+      },
+      membership: {
+        deckId: 'custom-travel',
+        contentRef: 'kanji:日',
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'custom-travel-membership-folder',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({
+          deckId: 'custom-travel',
+          contentRef: 'kanji:日',
+        }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+    await repo.settings.set({
+      key: 'deck-folder:custom-travel',
+      value: 'Travel',
+      updatedAt: 2,
+    })
+
+    render(<HomeScreen />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Travel' }),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByText('Travel kanji')).toBeInTheDocument()
+  })
+
   it('shows the total duration of completed study sessions', async () => {
     const runtime = bootstrapUserRuntime(`home-${userId}`)
     await runtime.database.ready

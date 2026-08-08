@@ -1,5 +1,3 @@
-import type { Deck } from '@/data/repo'
-
 export const DECK_FOLDER_SETTING_PREFIX = 'deck-folder:'
 
 export function deckFolderSettingKey(deckId: string): string {
@@ -10,17 +8,22 @@ export function normalizeDeckFolder(value: string | null | undefined): string {
   return (value ?? '').trim().replace(/\s+/gu, ' ').slice(0, 40)
 }
 
-export interface DeckFolderGroup {
+interface FolderableDeck {
+  readonly id: string
   readonly name: string
-  readonly decks: readonly Deck[]
+}
+
+export interface DeckFolderGroup<T extends FolderableDeck = FolderableDeck> {
+  readonly name: string
+  readonly decks: readonly T[]
 }
 
 /** Groups deck metadata for the deck shelf; unnamed decks remain in Unfiled. */
-export function groupDecksByFolder(
-  decks: readonly Deck[],
+export function groupDecksByFolder<T extends FolderableDeck>(
+  decks: readonly T[],
   folders: Readonly<Record<string, string | undefined>>,
-): readonly DeckFolderGroup[] {
-  const groups = new Map<string, Deck[]>()
+): readonly DeckFolderGroup<T>[] {
+  const groups = new Map<string, T[]>()
   for (const deck of decks) {
     const folder = normalizeDeckFolder(folders[deck.id]) || 'Unfiled'
     const group = groups.get(folder) ?? []
