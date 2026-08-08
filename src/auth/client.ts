@@ -57,7 +57,12 @@ export async function getSession(): Promise<AuthUser | null> {
     return readCachedSession()
   }
   if (!response.ok) return null
-  const body = (await response.json()) as SessionResponse | null
+  let body: SessionResponse | null
+  try {
+    body = (await response.json()) as SessionResponse | null
+  } catch {
+    return readCachedSession()
+  }
   const user = body?.user?.id ? body.user : null
   if (user) cacheSession(user)
   else clearCachedSession()
