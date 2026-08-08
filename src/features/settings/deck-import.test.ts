@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isKanjiLiteral, parseKanjiImportText } from './deck-import'
+import {
+  isKanjiLiteral,
+  parseKanjiImportText,
+  previewKanjiImport,
+} from './deck-import'
 
 describe('parseKanjiImportText', () => {
   it('parses one-per-line and compact kanji lists in stable order', () => {
@@ -22,5 +26,24 @@ describe('isKanjiLiteral', () => {
     expect(isKanjiLiteral('日')).toBe(true)
     expect(isKanjiLiteral('あ')).toBe(false)
     expect(isKanjiLiteral('日本')).toBe(false)
+  })
+})
+
+describe('previewKanjiImport', () => {
+  it('classifies new, existing, and missing kanji without changing input order', () => {
+    expect(
+      previewKanjiImport(
+        ['日', '本', '𠮷'],
+        new Map([
+          ['日', {}],
+          ['本', {}],
+        ]),
+        new Set(['kanji:本']),
+      ),
+    ).toEqual([
+      { literal: '日', status: 'matched' },
+      { literal: '本', status: 'already-saved' },
+      { literal: '𠮷', status: 'not-found' },
+    ])
   })
 })

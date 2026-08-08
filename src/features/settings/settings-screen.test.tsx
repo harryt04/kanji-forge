@@ -591,23 +591,49 @@ describe('SettingsScreen', () => {
     expect(writeText.mock.calls[0]?.[0]).toContain('\n')
   })
 
-  it('imports matched kanji into the Saved deck while reporting unknown input', async () => {
+  it('previews and then imports matched kanji while reporting existing and unknown input', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).deckMembership.save({
+      deckId: 'saved',
+      contentRef: 'kanji:本',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
     render(<SettingsScreen />)
 
     await screen.findByRole('heading', { name: 'Backup & restore' })
-    await user.type(screen.getByLabelText('Kanji to import'), '日\n𠮷')
-    await user.click(screen.getByRole('button', { name: 'Import to Saved' }))
+    await user.type(screen.getByLabelText('Kanji to import'), '日\n本\n𠮷')
+    await user.click(screen.getByRole('button', { name: 'Preview import' }))
+
+    expect(await screen.findByLabelText('Import preview')).toHaveTextContent(
+      '日 matched — will be added',
+    )
+    expect(screen.getByLabelText('Import preview')).toHaveTextContent(
+      '本 already in Saved',
+    )
+    expect(screen.getByLabelText('Import preview')).toHaveTextContent(
+      '𠮷 not found in the installed dictionary',
+    )
+    await expect(
+      createUserRepositories(runtime.database).deckMembership.list(),
+    ).resolves.toMatchObject([{ contentRef: 'kanji:本' }])
+    await user.click(
+      screen.getByRole('button', { name: 'Import matched kanji' }),
+    )
 
     expect(
       await screen.findByText(
-        'Added 1 kanji to Saved. 1 were not found in the installed dictionary.',
+        'Added 1 kanji to Saved. 1 already in Saved. 1 were not found in the installed dictionary.',
       ),
     ).toBeInTheDocument()
     await expect(
       createUserRepositories(runtime.database).deckMembership.list(),
-    ).resolves.toMatchObject([{ contentRef: 'kanji:日' }])
+    ).resolves.toMatchObject([
+      { contentRef: 'kanji:本' },
+      { contentRef: 'kanji:日' },
+    ])
     await expect(
       createUserRepositories(runtime.database).outbox.pending(),
     ).resolves.toMatchObject([{ mutType: 'deckMembership.upsert' }])

@@ -193,7 +193,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 10.4 | Append imported stickies to the current deck | ✅ | — | (T8.0) |
 | 10.5 | Export deck to clipboard as text | ✅ | 2026-08-07 | Settings copies the current starter deck as tab-separated kanji, readings, and meanings for pasting into another app or spreadsheet |
 | — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | 2026-08-07 | Bare kanji imports are matched against the installed offline KANJIDIC2 pack before being added to Saved; word enrichment remains future work |
-| — | Import preview with matched/ambiguous/not-found | ➕ ✅ | — | (T8.0) |
+| — | Import preview with matched/already-saved/not-found results | ➕ ✅ | 2026-08-07 | Bare-kanji preview classifies dictionary matches, existing Saved cards, and missing entries before confirmation; ambiguous word/CSV imports remain future work |
 | — | Export to CSV and JSON files | ➕ ✅ | 2026-08-07 | Settings downloads the current deck's content and local study progress as versioned CSV or JSON files |
 | — | Full backup export/restore incl. review history | ➕ ✅ | 2026-08-07 | Settings downloads/restores the locked v1 JSON format; restore unions records and replays the review log |
 | — | Anki .apkg import | ➕ 🔷 | — | Best-effort (T8.0) |

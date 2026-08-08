@@ -25,3 +25,27 @@ export function isKanjiLiteral(value: string): boolean {
       (codePoint >= 0x20000 && codePoint <= 0x2fa1f))
   )
 }
+
+export type KanjiImportPreviewStatus = 'matched' | 'already-saved' | 'not-found'
+
+export interface KanjiImportPreviewItem {
+  readonly literal: string
+  readonly status: KanjiImportPreviewStatus
+}
+
+/** Classifies a parsed import without changing local deck membership. */
+export function previewKanjiImport(
+  literals: readonly string[],
+  records: ReadonlyMap<string, unknown>,
+  existingContentRefs: ReadonlySet<string>,
+): readonly KanjiImportPreviewItem[] {
+  return literals.map((literal) => {
+    const contentRef = `kanji:${literal}`
+    const status: KanjiImportPreviewStatus = !records.has(literal)
+      ? 'not-found'
+      : existingContentRefs.has(contentRef)
+        ? 'already-saved'
+        : 'matched'
+    return { literal, status }
+  })
+}

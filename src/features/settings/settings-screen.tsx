@@ -76,7 +76,11 @@ import {
   formatDeckAsJson,
   formatDeckAsText,
 } from './deck-export'
-import { parseKanjiImportText } from './deck-import'
+import {
+  parseKanjiImportText,
+  previewKanjiImport,
+  type KanjiImportPreviewItem,
+} from './deck-import'
 
 const THEME_OPTIONS: ReadonlyArray<{
   value: ThemePreference
@@ -175,6 +179,9 @@ export function SettingsScreen(): React.ReactElement {
   const [deckImportMessage, setDeckImportMessage] = useState<string | null>(
     null,
   )
+  const [deckImportPreview, setDeckImportPreview] = useState<
+    readonly KanjiImportPreviewItem[] | null
+  >(null)
   const [notificationStatus, setNotificationStatus] = useState<
     NotificationPermission | 'unsupported' | null
   >(null)
@@ -721,7 +728,7 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
-  async function importKanjiList(): Promise<void> {
+  async function previewKanjiList(): Promise<void> {
     if (!runtime || deckImportBusy) return
     const literals = parseKanjiImportText(deckImportText)
     if (literals.length === 0) {
@@ -737,6 +744,45 @@ export function SettingsScreen(): React.ReactElement {
       const repositories = createUserRepositories(runtime.database)
       const records = await getKanjiByLiterals(literals)
       const existing = await repositories.deckMembership.list()
+      setDeckImportPreview(
+        previewKanjiImport(
+          literals,
+          records,
+          new Set(existing.map((membership) => membership.contentRef)),
+        ),
+      )
+      setDeckImportMessage('Review the import preview before adding cards.')
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not preview kanji import.',
+      )
+    } finally {
+      setDeckImportBusy(false)
+    }
+  }
+
+  async function importKanjiList(): Promise<void> {
+    if (!runtime || deckImportBusy || !deckImportPreview) return
+    const matched = deckImportPreview.filter(
+      (item) => item.status === 'matched',
+    )
+    if (matched.length === 0) {
+      setDeckImportMessage('There are no new matched kanji to add.')
+      return
+    }
+
+    setDeckImportBusy(true)
+    setDeckImportMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const records = await getKanjiByLiterals(
+        deckImportPreview.map((item) => item.literal),
+      )
+      const existing = await repositories.deckMembership.list()
       const existingRefs = new Set(
         existing.map((membership) => membership.contentRef),
       )
@@ -744,7 +790,7 @@ export function SettingsScreen(): React.ReactElement {
       let sortOrder = existing.length
       let imported = 0
 
-      for (const literal of literals) {
+      for (const { literal } of matched) {
         const contentRef = `kanji:${literal}`
         if (!records.has(literal) || existingRefs.has(contentRef)) continue
         const membership = {
@@ -776,12 +822,16 @@ export function SettingsScreen(): React.ReactElement {
         imported += 1
       }
 
-      const unknown = literals.length - records.size
+      const alreadySaved = deckImportPreview.filter(
+        (item) => item.status === 'already-saved',
+      ).length
+      const unknown = deckImportPreview.filter(
+        (item) => item.status === 'not-found',
+      ).length
       setDeckImportText('')
+      setDeckImportPreview(null)
       setDeckImportMessage(
-        imported === 0
-          ? `No new kanji were added. ${unknown > 0 ? `${unknown} were not found in the installed dictionary.` : 'They may already be in Saved.'}`
-          : `Added ${imported} kanji to Saved.${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${imported} kanji to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
@@ -1619,7 +1669,11 @@ export function SettingsScreen(): React.ReactElement {
             aria-label="Kanji to import"
             className="border-input bg-background focus-visible:ring-ring font-jp-ui mt-3 min-h-28 w-full rounded-md border p-3 outline-none focus-visible:ring-2"
             value={deckImportText}
-            onChange={(event) => setDeckImportText(event.target.value)}
+            onChange={(event) => {
+              setDeckImportText(event.target.value)
+              setDeckImportPreview(null)
+              setDeckImportMessage(null)
+            }}
             placeholder={'日\n本\n語'}
             disabled={deckImportBusy}
           />
@@ -1628,12 +1682,46 @@ export function SettingsScreen(): React.ReactElement {
             className="mt-3"
             disabled={
               deckImportBusy ||
+              deckImportPreview !== null ||
               parseKanjiImportText(deckImportText).length === 0
             }
-            onClick={() => void importKanjiList()}
+            onClick={() => void previewKanjiList()}
           >
-            {deckImportBusy ? 'Importing…' : 'Import to Saved'}
+            {deckImportBusy ? 'Previewing…' : 'Preview import'}
           </Button>
+          {deckImportPreview && (
+            <div
+              aria-label="Import preview"
+              className="border-border mt-4 rounded-md border p-3"
+            >
+              <p className="font-medium">Import preview</p>
+              <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
+                {deckImportPreview.map((item) => (
+                  <li key={item.literal}>
+                    <span className="font-jp-ui text-foreground">
+                      {item.literal}
+                    </span>{' '}
+                    {item.status === 'matched'
+                      ? 'matched — will be added'
+                      : item.status === 'already-saved'
+                        ? 'already in Saved'
+                        : 'not found in the installed dictionary'}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                type="button"
+                className="mt-3"
+                disabled={
+                  deckImportBusy ||
+                  !deckImportPreview.some((item) => item.status === 'matched')
+                }
+                onClick={() => void importKanjiList()}
+              >
+                {deckImportBusy ? 'Importing…' : 'Import matched kanji'}
+              </Button>
+            </div>
+          )}
           {deckImportMessage && (
             <p className="text-muted-foreground mt-4 text-sm" role="status">
               {deckImportMessage}
