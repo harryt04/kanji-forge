@@ -4,6 +4,7 @@
 import initSqlJs, { type Database as SqlJsDatabase } from 'sql.js'
 import { romajiToHiragana } from '@/core/text/romaji'
 import { analyzeText, type TextAnalysisToken } from '@/core/text/analyzer'
+import { parseFuriganaTokens, type FuriganaToken } from '@/core/text/furigana'
 import { getInstalledNamesPackBytes } from '@/features/settings/names-pack'
 
 export type { TextAnalysisToken } from '@/core/text/analyzer'
@@ -60,10 +61,7 @@ export interface NameRecord {
   readonly meanings: readonly string[]
 }
 
-export interface SentenceToken {
-  readonly text: string
-  readonly furigana: string
-}
+export type SentenceToken = FuriganaToken
 
 export interface SentenceRecord {
   readonly id: number
@@ -258,27 +256,7 @@ export function parseSentenceTokens(
   raw: unknown,
   japanese: string,
 ): readonly SentenceToken[] {
-  try {
-    const parsed = JSON.parse(String(raw)) as unknown
-    if (Array.isArray(parsed)) {
-      const tokens = parsed.flatMap((token): SentenceToken[] => {
-        if (!token || typeof token !== 'object' || !('text' in token)) return []
-        const text = token.text
-        if (typeof text !== 'string' || !text) return []
-        const furigana = 'furigana' in token ? token.furigana : ''
-        return [
-          {
-            text,
-            furigana: typeof furigana === 'string' ? furigana : '',
-          },
-        ]
-      })
-      if (tokens.length > 0) return tokens
-    }
-  } catch {
-    // Fall through to a plain sentence when a future pack has malformed alignment data.
-  }
-  return [{ text: japanese, furigana: '' }]
+  return parseFuriganaTokens(raw, japanese)
 }
 
 /** Returns ranked offline Tatoeba sentences containing the supplied kanji. */
