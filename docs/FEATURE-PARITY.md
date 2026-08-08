@@ -217,7 +217,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 12.2 | App icon badge with configurable info | ⚠️ Partial | 2026-08-07 | Settings choose Cards to study, All cards, or Off; the optional Badging API is used when supported and remains unavailable on iOS Safari |
 | 12.3 | Notifications | 🔷 | — | Web Push, installed-only on iOS (T1.1) |
 | 12.4 | Extensive options | ✅ | — | PRD §4.14 |
-| 12.5 | Full in-app documentation | ✅ | — | Bundled offline help |
+| 12.5 | Full in-app documentation | ✅ | 2026-08-07 | Authenticated `/help` route bundles offline guidance for study controls, levels, Browse/Dictionary, backup, and privacy |
 | — | Installable to home screen, all platforms | ➕ ✅ | 2026-08-07 | Manifest and build-generated Serwist service worker are registered on the client; the app shell and visited pages can load offline after the first visit |
 | — | Works in a plain browser with no install | ➕ ✅ | 2026-08-06 | |
 | — | Tablet / laptop / desktop layouts | ➕ ✅ | — | Two-pane above `md` |

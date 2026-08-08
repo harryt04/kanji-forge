@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 34 (238 test cases: 238 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 65 cases, included above) |
+| Unit/integration test files | 35 (240 test cases: 240 passing) |
+| Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 67 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.61%** |
+| Overall statement coverage | **86.88%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -116,6 +116,11 @@ the 30-day scheduled review forecast buckets overdue and future due cards.
 heatmap for a new learner, recorded daily activity plotted with review/correct/again totals and
 intensity-scaled heatmap cells, and selecting either chart or heatmap day reveals shared daily
 breakdown and pressed state.
+
+### `src/features/help` — 2 cases
+
+**`help-screen.test.tsx`** (Testing Library) — bundled offline documentation sections and links,
+plus the anonymous-access message when rendered outside the authenticated app shell.
 
 ### `src/features/browse` — 23 cases
 

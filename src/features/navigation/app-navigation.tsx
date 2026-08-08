@@ -15,7 +15,8 @@ interface AppNavigationProps {
  * The Browse badge is deliberately sourced from the installed deck rather than
  * hard-coded. This keeps the count useful when a content pack or deck
  * definition changes, and it remains available offline with the same local
- * source of truth as Browse itself.
+ * source of truth as Browse itself. Help is a bundled route so it remains
+ * available alongside the study surfaces when the network is unavailable.
  */
 export function AppNavigation({
   userId,
@@ -69,6 +70,7 @@ export function AppNavigation({
       </Link>
       <NavLink href="/history">History</NavLink>
       <NavLink href="/dictionary">Dictionary</NavLink>
+      <NavLink href="/help">Help</NavLink>
     </nav>
   )
 }

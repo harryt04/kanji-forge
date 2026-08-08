@@ -58,6 +58,10 @@ describe('AppNavigation', () => {
       'href',
       '/history',
     )
+    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute(
+      'href',
+      '/help',
+    )
   })
 
   it('does not show a stale badge for an unavailable runtime', () => {
