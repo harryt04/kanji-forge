@@ -88,6 +88,9 @@ const APP_BADGE_OPTIONS: ReadonlyArray<{
   },
 ]
 
+const STARTER_DECK_ID = 'dev-kanji'
+const DEFAULT_STARTER_DECK_NAME = 'Development Kanji'
+
 function getSystemPreference(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -108,6 +111,7 @@ export function SettingsScreen(): React.ReactElement {
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
+  const [deckName, setDeckName] = useState(DEFAULT_STARTER_DECK_NAME)
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -117,6 +121,7 @@ export function SettingsScreen(): React.ReactElement {
   const [backupReminder, setBackupReminder] = useState<BackupReminder>(null)
   const [resetBusy, setResetBusy] = useState(false)
   const [resetMessage, setResetMessage] = useState<string | null>(null)
+  const [deckMessage, setDeckMessage] = useState<string | null>(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -135,6 +140,7 @@ export function SettingsScreen(): React.ReactElement {
         savedAutoPlayAudio,
         savedStrokeAnimation,
         savedBackup,
+        savedDeck,
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
@@ -144,6 +150,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
+        repositories.decks.get(STARTER_DECK_ID),
       ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
@@ -158,6 +165,7 @@ export function SettingsScreen(): React.ReactElement {
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeAnimation?.value),
       )
+      setDeckName(savedDeck?.name ?? DEFAULT_STARTER_DECK_NAME)
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
         : undefined
@@ -393,6 +401,55 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not restore the default study style.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveDeckName(
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault()
+    if (!runtime || saving) return
+    const nextName = deckName.trim()
+    if (!nextName) {
+      setError('Deck name cannot be empty.')
+      return
+    }
+
+    const repositories = createUserRepositories(runtime.database)
+    setError(null)
+    setDeckMessage(null)
+    setSaving(true)
+    try {
+      const existingDeck = await repositories.decks.get(STARTER_DECK_ID)
+      const deck = {
+        id: STARTER_DECK_ID,
+        name: nextName,
+        kind: existingDeck?.kind ?? ('derived' as const),
+        definitionId: existingDeck?.definitionId ?? STARTER_DECK_ID,
+        updatedAt: Date.now(),
+      }
+      const mutationId = crypto.randomUUID()
+      await repositories.recordDeck({
+        deck,
+        mutation: {
+          id: mutationId,
+          mutType: 'deck.upsert',
+          payload: JSON.stringify({
+            id: deck.id,
+            name: deck.name,
+            updatedAt: deck.updatedAt,
+          }),
+          createdAt: deck.updatedAt,
+          attempts: 0,
+        },
+      })
+      setDeckMessage(`Renamed deck to “${nextName}”.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not rename deck.',
       )
     } finally {
       setSaving(false)
@@ -748,6 +805,40 @@ export function SettingsScreen(): React.ReactElement {
             </Button>
           ))}
         </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Deck name</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Give the built-in starter deck a name that makes sense to you. The
+          name is saved locally and works offline.
+        </p>
+        <form
+          className="mt-5 flex flex-wrap items-end gap-3"
+          onSubmit={(event) => void saveDeckName(event)}
+        >
+          <label
+            className="grid min-w-60 flex-1 gap-2 text-sm font-medium"
+            htmlFor="starter-deck-name"
+          >
+            Current deck name
+            <input
+              id="starter-deck-name"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 py-2 font-normal outline-none focus-visible:ring-2"
+              value={deckName}
+              onChange={(event) => setDeckName(event.target.value)}
+              maxLength={80}
+              disabled={saving}
+            />
+          </label>
+          <Button type="submit" disabled={saving || !deckName.trim()}>
+            {saving ? 'Saving…' : 'Save deck name'}
+          </Button>
+        </form>
+        {deckMessage && (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            {deckMessage}
+          </p>
+        )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Reset colors</h2>

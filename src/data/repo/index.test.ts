@@ -164,6 +164,32 @@ describe('recordGrade atomicity', () => {
 })
 
 describe('recordCardState atomicity', () => {
+  it('persists deck metadata together with its outbox mutation', async () => {
+    const repos = await freshRepo()
+    const deck = {
+      id: 'dev-kanji',
+      name: 'N5 commute deck',
+      kind: 'derived' as const,
+      definitionId: 'dev-kanji',
+      updatedAt: 12,
+    }
+    await repos.recordDeck({
+      deck,
+      mutation: {
+        id: 'deck-rename-1',
+        mutType: 'deck.upsert',
+        payload: JSON.stringify(deck),
+        createdAt: 12,
+        attempts: 0,
+      },
+    })
+
+    await expect(repos.decks.get('dev-kanji')).resolves.toEqual(deck)
+    await expect(repos.outbox.pending()).resolves.toMatchObject([
+      { id: 'deck-rename-1', mutType: 'deck.upsert' },
+    ])
+  })
+
   it('persists a manual flag change together with its outbox mutation', async () => {
     const repos = await freshRepo()
     const nextState = state({ flagged: true })

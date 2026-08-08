@@ -13,7 +13,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 | Unit/integration test files | 36 (257 test cases: 257 passing) |
 | Component test files | 9 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx` — 75 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **87.53%** |
+| Overall statement coverage | **87.65%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -27,11 +27,11 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |
 |---|---|---|---|
 | `src/core/srs/**` | 100% | 100 / 100 / 100 / 100 | ✅ at the floor, mandated by `ARCHITECTURE.md` §12 |
-| `src/data/**` | 85% | db 93.46 / 86 / 100 / 93.46 · packs 98.77 / 82.46 / 100 / 98.77 · repo 97.39 / 89.07 / 100 / 97.39 | ✅ comfortable margin |
+| `src/data/**` | 85% | db 93.46 / 86 / 100 / 93.46 · packs 98.77 / 82.46 / 100 / 98.77 · repo 97.49 / 89.16 / 100 / 97.49 | ✅ comfortable margin |
 | `src/features/**` | 70% | browse 90.37 / 81.21 / 84.84 / 90.37 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.51 / 83.85 / 84.84 / 96.51 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
-| `src/features/settings/**` | 70% | 82.56 / 75 / 85.36 / 82.56 | ✅ comfortable margin |
-| Global floor | 60% | 87.21 / 83.54 / 89.17 / 87.21 | ✅ comfortable margin |
+| `src/features/settings/**` | 70% | 83.71 / 75.27 / 86.66 / 83.71 | ✅ comfortable margin |
+| Global floor | 60% | 87.65 / 83.39 / 89.63 / 87.65 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -63,8 +63,8 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (23, up from 1) — derived-deck projection, deck-scoped state listing,
-  atomic multi-card reset persistence and `recordGrade()` atomicity,
+- **`repo/index.test.ts`** (24, up from 1) — derived-deck projection, deck-scoped state listing,
+  atomic multi-card reset persistence, deck metadata plus outbox persistence, and `recordGrade()` atomicity,
   manual level override atomicity and validation, and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
@@ -85,7 +85,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   prior snapshot, undo writes a compensating manual-source review, undo no-op with nothing to undo,
   and flag/unflag persistence for the current card.
 - **`adapters.test.ts`** (2) — `contentRef`↔`stickyId` round-trip in both directions.
-- **`deck-loader.test.ts`** (4) — lazy deck registration against real `packs-dev` fixtures, no
+- **`deck-loader.test.ts`** (5) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack.
 - **`study-screen.test.tsx`** (18, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
@@ -158,9 +158,9 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 21 cases
+### `src/features/settings` — 22 cases
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, resetting starter-deck colors while preserving review totals, backup restore, and the stale-backup warning with its recovery action.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, renaming the starter deck with an outbox mutation, resetting starter-deck colors while preserving review totals, backup restore, and the stale-backup warning with its recovery action.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 

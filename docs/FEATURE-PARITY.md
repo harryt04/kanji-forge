@@ -110,7 +110,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 6.1 | Deck chooser with progress %, color, last studied | ✅ | 2026-08-06 | |
-| 6.2 | Rename deck | ✅ | — | |
+| 6.2 | Rename deck | ✅ | 2026-08-07 | Settings renames the built-in starter deck offline and queues its metadata mutation for sync |
 | 6.3 | Delete deck (swipe) | ✅ | — | |
 | 6.4 | Create new deck | ✅ | — | |
 | 6.5 | Combine multiple decks into a new deck | ✅ | — | |

@@ -170,6 +170,8 @@ export interface UserRepositories {
   recordCardStates(
     inputs: readonly { state: CardState; mutation: OutboxMutation }[],
   ): Promise<void>
+  /** Persists deck metadata and its sync mutation atomically. */
+  recordDeck(input: { deck: Deck; mutation: OutboxMutation }): Promise<void>
   /** Persists a manual level assignment without counting it as a study review. */
   recordManualOverride(input: {
     review: Review
@@ -707,6 +709,32 @@ export function createUserRepositories(
           },
         ]),
       )
+    },
+    async recordDeck({ deck, mutation }) {
+      await database.transaction([
+        {
+          sql: putDeck,
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ],
+        },
+        {
+          sql: putOutbox,
+          parameters: [
+            mutation.id,
+            userId,
+            mutation.mutType,
+            mutation.payload,
+            mutation.createdAt,
+            mutation.attempts,
+          ],
+        },
+      ])
     },
     async recordManualOverride({ review, nextState, mutation }) {
       if (review.id !== mutation.id)

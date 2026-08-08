@@ -59,6 +59,24 @@ describe('loadStarterDeck', () => {
     expect(vi.mocked(fetch).mock.calls.length).toBe(fetchesAfterFirst)
   })
 
+  it('uses a locally renamed deck in the loaded deck projection', async () => {
+    const database = await freshDatabase()
+    const repo = (await import('@/data/repo')).createUserRepositories(database)
+    await repo.decks.upsert({
+      id: 'dev-kanji',
+      name: 'N5 commute deck',
+      kind: 'derived',
+      definitionId: 'dev-kanji',
+      updatedAt: Date.now(),
+    })
+
+    await expect(loadStarterDeck(database, 'dev-kanji')).resolves.toMatchObject(
+      {
+        name: 'N5 commute deck',
+      },
+    )
+  })
+
   it('throws for an unknown deck definition id', async () => {
     const database = await freshDatabase()
     await expect(loadStarterDeck(database, 'no-such-deck')).rejects.toThrow(

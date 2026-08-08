@@ -238,6 +238,38 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('renames the starter deck offline and queues the metadata mutation', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).decks.upsert({
+      id: 'dev-kanji',
+      name: 'Development Kanji',
+      kind: 'derived',
+      definitionId: 'dev-kanji',
+      updatedAt: 1,
+    })
+    render(<SettingsScreen />)
+
+    const name = await screen.findByRole('textbox', {
+      name: 'Current deck name',
+    })
+    await user.clear(name)
+    await user.type(name, 'N5 commute deck')
+    await user.click(screen.getByRole('button', { name: 'Save deck name' }))
+
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).decks.get('dev-kanji'),
+      ).toMatchObject({ name: 'N5 commute deck' }),
+    )
+    expect(
+      (await createUserRepositories(runtime.database).outbox.pending())[0],
+    ).toMatchObject({ mutType: 'deck.upsert' })
+    expect(
+      await screen.findByText('Renamed deck to “N5 commute deck”.'),
+    ).toBeInTheDocument()
+  })
+
   it('resets starter-deck colors without deleting review totals or history', async () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!

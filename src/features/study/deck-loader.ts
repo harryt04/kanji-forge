@@ -85,5 +85,10 @@ export async function loadStarterDeck(
     })
   }
 
-  return { deckId: definition.id, name: definition.name, cards, content }
+  return {
+    deckId: definition.id,
+    name: existingDeck?.name ?? definition.name,
+    cards,
+    content,
+  }
 }
