@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -9,7 +9,11 @@ import {
   getActiveUserRuntime,
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
-import { APP_BADGE_SETTING } from '@/pwa'
+import {
+  APP_BADGE_SETTING,
+  DAILY_REMINDER_ENABLED_SETTING,
+  DAILY_REMINDER_TIME_SETTING,
+} from '@/pwa'
 import { THEME_SETTING } from './theme'
 import {
   BACKUP_FORMAT,
@@ -110,6 +114,43 @@ describe('SettingsScreen', () => {
         ),
       ).toMatchObject({ value: 'meaning' }),
     )
+  })
+
+  it('persists a permissioned daily reminder and its local time offline', async () => {
+    const user = userEvent.setup()
+    const requestPermission = vi.fn().mockResolvedValue('granted')
+    vi.stubGlobal('Notification', {
+      permission: 'default',
+      requestPermission,
+    })
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study reminder' }),
+    ).toBeInTheDocument()
+    const time = screen.getByLabelText('Reminder time')
+    fireEvent.change(time, { target: { value: '07:30' } })
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Enable daily reminder' }),
+    )
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          DAILY_REMINDER_TIME_SETTING,
+        ),
+      ).toMatchObject({ value: '07:30' })
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          DAILY_REMINDER_ENABLED_SETTING,
+        ),
+      ).toMatchObject({ value: 'true' })
+    })
+    expect(requestPermission).toHaveBeenCalledOnce()
+    expect(
+      screen.getByRole('checkbox', { name: 'Daily reminder on' }),
+    ).toHaveAttribute('aria-checked', 'true')
   })
 
   it('persists the selected study answer fields offline', async () => {

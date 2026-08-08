@@ -10,6 +10,18 @@ export {
   isAppBadgePreference,
   type AppBadgePreference,
 } from './app-badge'
+export {
+  DAILY_REMINDER_ENABLED_SETTING,
+  DAILY_REMINDER_SETTING_CHANGED_EVENT,
+  DAILY_REMINDER_TIME_SETTING,
+  DEFAULT_DAILY_REMINDER_TIME,
+  DailyReminderController,
+  countDueReminderCards,
+  isDailyReminderTime,
+  nextDailyReminderAt,
+  requestDailyReminderPermission,
+  type DailyReminderPermission,
+} from './daily-reminder'
 
 /** Register the build-generated Serwist worker without making startup network-dependent. */
 export function PwaRegistration(): null {

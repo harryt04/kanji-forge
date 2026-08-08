@@ -160,15 +160,17 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 18 cases
+### `src/features/settings` — 19 cases
 
 **`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields, two-tap study mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, the Saved deck direct-vs-confirm preference, renaming and restoring the starter deck name with an outbox mutation, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, backup restore, and the stale-backup warning with its recovery action.
 
 **`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata including sticky annotations, non-destructive restore with review-log replay, and the 30-day backup-reminder threshold. The Settings component test covers restoring a same-account JSON file through the file picker and showing the stale-backup warning.
 
-### `src/pwa` — 4 cases
+**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. The Settings component test covers saving a permissioned daily reminder and its local time offline.
 
-**`index.test.tsx`** covers client registration of the build-generated `/sw.js` worker and the browser-safe fallback when service-worker registration is unavailable or rejected. **`app-badge.test.tsx`** covers due/new versus total/off count semantics and the supported-browser badge update/clear lifecycle.
+### `src/pwa` — 7 cases
+
+**`index.test.tsx`** covers client registration of the build-generated `/sw.js` worker and the browser-safe fallback when service-worker registration is unavailable or rejected. **`app-badge.test.tsx`** covers due/new versus total/off count semantics and the supported-browser badge update/clear lifecycle. **`daily-reminder.test.ts`** covers reminder time validation, next-occurrence rollover, and due-card counting; the Settings component test covers permissioned offline persistence.
 
 ### `src/auth` — 11 cases across 3 files
 

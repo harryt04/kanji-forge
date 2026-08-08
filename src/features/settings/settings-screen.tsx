@@ -10,7 +10,13 @@ import {
   APP_BADGE_PREFERENCES,
   APP_BADGE_SETTING,
   APP_BADGE_SETTING_CHANGED_EVENT,
+  DAILY_REMINDER_ENABLED_SETTING,
+  DAILY_REMINDER_SETTING_CHANGED_EVENT,
+  DAILY_REMINDER_TIME_SETTING,
+  DEFAULT_DAILY_REMINDER_TIME,
+  isDailyReminderTime,
   isAppBadgePreference,
+  requestDailyReminderPermission,
   type AppBadgePreference,
 } from '@/pwa'
 import { Button } from '@/ui/button'
@@ -112,6 +118,10 @@ export function SettingsScreen(): React.ReactElement {
   const [preference, setPreference] = useState<ThemePreference>('light')
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
+  const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false)
+  const [dailyReminderTime, setDailyReminderTime] = useState(
+    DEFAULT_DAILY_REMINDER_TIME,
+  )
   const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
   const [studyAnswer, setStudyAnswer] = useState<readonly StudyAnswer[]>(
     parseStudyAnswer(undefined),
@@ -139,6 +149,9 @@ export function SettingsScreen(): React.ReactElement {
   const [deckExportMessage, setDeckExportMessage] = useState<string | null>(
     null,
   )
+  const [notificationStatus, setNotificationStatus] = useState<
+    NotificationPermission | 'unsupported' | null
+  >(null)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -151,6 +164,8 @@ export function SettingsScreen(): React.ReactElement {
       const [
         saved,
         savedBadge,
+        savedReminderEnabled,
+        savedReminderTime,
         savedQuestion,
         savedAnswer,
         savedTwoTap,
@@ -162,6 +177,8 @@ export function SettingsScreen(): React.ReactElement {
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
+        repositories.settings.get(DAILY_REMINDER_ENABLED_SETTING),
+        repositories.settings.get(DAILY_REMINDER_TIME_SETTING),
         repositories.settings.get(STUDY_QUESTION_SETTING),
         repositories.settings.get(STUDY_ANSWER_SETTING),
         repositories.settings.get(STUDY_TWO_TAP_SETTING),
@@ -176,6 +193,14 @@ export function SettingsScreen(): React.ReactElement {
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
+      setDailyReminderEnabled(savedReminderEnabled?.value === 'true')
+      if (isDailyReminderTime(savedReminderTime?.value ?? ''))
+        setDailyReminderTime(savedReminderTime!.value)
+      setNotificationStatus(
+        typeof Notification === 'undefined'
+          ? 'unsupported'
+          : Notification.permission,
+      )
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
       setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
@@ -253,6 +278,70 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save app badge setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseDailyReminderTime(next: string): Promise<void> {
+    if (!runtime || !isDailyReminderTime(next) || next === dailyReminderTime)
+      return
+    const previous = dailyReminderTime
+    setDailyReminderTime(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: DAILY_REMINDER_TIME_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+      window.dispatchEvent(new Event(DAILY_REMINDER_SETTING_CHANGED_EVENT))
+    } catch (reason: unknown) {
+      setDailyReminderTime(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the reminder time.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleDailyReminder(): Promise<void> {
+    if (!runtime || saving) return
+    const previous = dailyReminderEnabled
+    setError(null)
+    if (!previous) {
+      const permission = await requestDailyReminderPermission()
+      setNotificationStatus(permission)
+      if (permission !== 'granted') {
+        setError(
+          permission === 'unsupported'
+            ? 'This browser does not support study notifications.'
+            : 'Allow notifications in your browser to enable the daily reminder.',
+        )
+        return
+      }
+    }
+    const next = !previous
+    setDailyReminderEnabled(next)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: DAILY_REMINDER_ENABLED_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+      window.dispatchEvent(new Event(DAILY_REMINDER_SETTING_CHANGED_EVENT))
+    } catch (reason: unknown) {
+      setDailyReminderEnabled(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the daily reminder setting.',
       )
     } finally {
       setSaving(false)
@@ -982,6 +1071,53 @@ export function SettingsScreen(): React.ReactElement {
             </Button>
           ))}
         </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Study reminder</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Ask this browser to remind you once a day when cards are due. The
+          offline fallback runs while KanjiForge is open; background Web Push
+          delivery needs a push server and is not enabled yet.
+        </p>
+        <div className="mt-5 flex flex-wrap items-end gap-4">
+          <label
+            className="grid gap-2 text-sm font-medium"
+            htmlFor="daily-reminder-time"
+          >
+            Reminder time
+            <input
+              id="daily-reminder-time"
+              type="time"
+              value={dailyReminderTime}
+              onChange={(event) =>
+                void chooseDailyReminderTime(event.target.value)
+              }
+              disabled={saving}
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 font-normal outline-none focus-visible:ring-2"
+            />
+          </label>
+          <Button
+            type="button"
+            variant={dailyReminderEnabled ? 'secondary' : 'outline'}
+            aria-checked={dailyReminderEnabled}
+            role="checkbox"
+            disabled={saving}
+            onClick={() => void toggleDailyReminder()}
+          >
+            {dailyReminderEnabled
+              ? 'Daily reminder on'
+              : 'Enable daily reminder'}
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-4 text-sm">
+          {notificationStatus === 'granted'
+            ? 'Browser notifications are allowed.'
+            : notificationStatus === 'denied'
+              ? 'Notifications are blocked. Allow them in browser settings to enable reminders.'
+              : notificationStatus === 'unsupported'
+                ? 'This browser does not provide notifications.'
+                : 'Notifications are off until you enable a reminder.'}
+        </p>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Deck name</h2>
