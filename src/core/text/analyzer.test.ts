@@ -107,4 +107,25 @@ describe('analyzeText', () => {
       }),
     ])
   })
+
+  it('resolves negative, conditional, and volitional forms', () => {
+    expect(analyzeText('読まなかった。読めば読もう', words, kanji)).toEqual([
+      expect.objectContaining({
+        text: '読まなかった',
+        contentRef: 'word:5',
+        reading: 'よまなかった',
+      }),
+      expect.objectContaining({ text: '。', type: 'unknown' }),
+      expect.objectContaining({
+        text: '読めば',
+        contentRef: 'word:5',
+        reading: 'よめば',
+      }),
+      expect.objectContaining({
+        text: '読もう',
+        contentRef: 'word:5',
+        reading: 'よもう',
+      }),
+    ])
+  })
 })

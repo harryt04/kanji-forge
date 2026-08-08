@@ -16,6 +16,10 @@ describe('inflectedSurfaces', () => {
       expect.arrayContaining([
         { text: '読みます', reading: 'よみます' },
         { text: '読んで', reading: 'よんで' },
+        { text: '読みませんでした', reading: 'よみませんでした' },
+        { text: '読まなかった', reading: 'よまなかった' },
+        { text: '読めば', reading: 'よめば' },
+        { text: '読もう', reading: 'よもう' },
       ]),
     )
   })
@@ -32,9 +36,12 @@ describe('inflectedSurfaces', () => {
   })
 
   it('covers i-adjective forms without changing the lemma', () => {
-    expect(inflectedSurfaces('高い', 'たかい')).toContainEqual({
-      text: '高かった',
-      reading: 'たかかった',
-    })
+    expect(inflectedSurfaces('高い', 'たかい')).toEqual(
+      expect.arrayContaining([
+        { text: '高かった', reading: 'たかかった' },
+        { text: '高くなかった', reading: 'たかくなかった' },
+        { text: '高ければ', reading: 'たかければ' },
+      ]),
+    )
   })
 })

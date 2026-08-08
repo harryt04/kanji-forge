@@ -238,11 +238,13 @@ available in CI.
 (5), `build-similar-pack.test.ts` (3) all pass. `pipeline.test.mjs` (7 cases, 5 failing) — see
 [Known issues](#known-issues).
 
-`src/core/text/analyzer.test.ts` (4) covers the offline analyzer's indexed written-form and kana
+`src/core/text/analyzer.test.ts` (5) covers the offline analyzer's indexed written-form and kana
 reading matches, longest-word preference, unknown-text preservation, token limits, and common
-inflected surfaces resolving to dictionary lemmas with surface readings. `inflect.test.ts` (3)
-covers ichidan, godan, and i-adjective surface generation. A full IPADIC/UniDic morphological
-tokenizer remains a separate optional-pack follow-up.
+inflected surfaces resolving to dictionary lemmas with surface readings, including negative,
+conditional, and volitional forms. `inflect.test.ts` (3) covers ichidan, godan, and i-adjective
+surface generation, including the expanded polite-negative, past-negative, conditional, and
+volitional forms. A full IPADIC/UniDic morphological tokenizer remains a separate optional-pack
+follow-up.
 
 ---
 
