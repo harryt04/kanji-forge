@@ -342,6 +342,46 @@ describe('data/packs', () => {
       expect(await searchDictionary('money', 0)).toEqual([])
     })
 
+    it('supports * and ? wildcards across normalized dictionary values', async () => {
+      const { searchDictionary } = await freshPacks()
+
+      const prefixResults = await searchDictionary('お*')
+      expect(
+        prefixResults.some(
+          (result) =>
+            result.type === 'word' && result.record.forms.includes('お金'),
+        ),
+      ).toBe(true)
+
+      const singleCharacterResults = await searchDictionary('?金')
+      expect(
+        singleCharacterResults.some(
+          (result) =>
+            result.type === 'word' && result.record.forms.includes('お金'),
+        ),
+      ).toBe(true)
+
+      const englishResults = await searchDictionary('*money*')
+      expect(
+        englishResults.some(
+          (result) =>
+            result.type === 'word' && result.record.forms.includes('お金'),
+        ),
+      ).toBe(true)
+    })
+
+    it('requires wildcard patterns to match the complete value', async () => {
+      const { searchDictionary } = await freshPacks()
+
+      const results = await searchDictionary('?金')
+      expect(
+        results.every(
+          (result) =>
+            result.type !== 'word' || result.record.forms.includes('お金'),
+        ),
+      ).toBe(true)
+    })
+
     it('returns no results for a blank query and caches dictionary packs', async () => {
       const { searchDictionary } = await freshPacks()
       expect(await searchDictionary('   ')).toEqual([])

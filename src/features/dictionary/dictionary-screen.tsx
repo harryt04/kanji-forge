@@ -272,7 +272,7 @@ export function DictionaryScreen(): React.ReactElement {
                 ? 'e.g. 75 (grass radical)'
                 : searchMode === 'stroke-count'
                   ? 'e.g. 4'
-                  : 'e.g. 日本, nihongo, or Japan'
+                  : 'e.g. 日本, お*, or *Japan*'
             }
             autoComplete="off"
             className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
@@ -281,6 +281,11 @@ export function DictionaryScreen(): React.ReactElement {
             {loading ? 'Searching…' : 'Search'}
           </Button>
         </div>
+        {searchMode === 'text' && (
+          <p className="text-muted-foreground text-sm">
+            Use * for any number of characters or ? for exactly one character.
+          </p>
+        )}
       </form>
 
       {(pinned.length > 0 || history.length > 0) && (

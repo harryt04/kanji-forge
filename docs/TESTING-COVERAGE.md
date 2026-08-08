@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 34 (235 test cases: 235 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 64 cases, included above) |
+| Unit/integration test files | 34 (238 test cases: 238 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 65 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.58%** |
+| Overall statement coverage | **86.61%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -31,7 +31,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/features/**` | 70% | browse 90.37 / 81.21 / 84.84 / 90.37 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 96.44 / 83.42 / 83.87 / 96.44 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.02 / 79.68 / 89.28 / 94.02 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | 80 / 78.29 / 81.81 / 80 | ✅ comfortable margin |
-| Global floor | 60% | 86.37 / 84.04 / 89.16 / 86.37 | ✅ comfortable margin |
+| Global floor | 60% | 86.61 / 84.3 / 89.38 / 86.61 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -56,7 +56,7 @@ idempotency, level-domain invariants, schedule/queue/goal boundary helpers), a f
 the progress-to-belt-rank mapping, and retention-by-level aggregation.
 Locked at 100% by the CI gate; this directory should never regress.
 
-### `src/data` — 43 cases across 4 files
+### `src/data` — 59 cases across 4 files
 
 - **`db/migrations.test.ts`** (4) — fresh v0→v1 creates all 9 tables, records `applied_at`,
   idempotent re-run, declared-version consistency.
@@ -69,7 +69,7 @@ Locked at 100% by the CI gate; this directory should never regress.
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
   last-write-wins, deck membership save/list/remove, deck upsert/list-by-user, unknown-deck error,
   `reviews.list()` filtering by deck and content ref independently.
-- **`packs/index.test.ts`** (18) — `parseContentRef` valid/malformed, deck-definition loading and
+- **`packs/index.test.ts`** (28) — `parseContentRef` valid/malformed, deck-definition loading and
   caching against the real `packs-dev` fixture, kanji lookup hit/miss, pack-handle caching, ranked
   example-word lookup, ranked sentence lookup with furigana/attribution and empty-input limits, and
   sentence-alignment fallback/normalization.
@@ -132,11 +132,11 @@ level combinations, JLPT matching, and missing JLPT metadata.
 **`browse-sort.test.ts`** (Vitest) — all metadata sort modes, missing metadata placement, implicit
 level-zero cards, stable deck-order ties, and non-mutating deck-order output.
 
-### `src/features/dictionary` — 8 cases
+### `src/features/dictionary` — 10 cases
 
-**`dictionary-screen.test.tsx`** (6, Testing Library) — offline text, classical-radical, and exact
-stroke-count search from the visible form, complete KANJIDIC2 metadata for kanji results, and
-user-scoped recent-search persistence with pinning, reuse, and clear behavior.
+**`dictionary-screen.test.tsx`** (7, Testing Library) — offline text, wildcard, classical-radical,
+and exact stroke-count search from the visible form, complete KANJIDIC2 metadata for kanji results,
+and user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.

@@ -321,6 +321,17 @@ function lower(value: string): string {
   return value.toLocaleLowerCase()
 }
 
+function wildcardRegex(pattern: string): RegExp {
+  const escaped = [...pattern]
+    .map((character) => {
+      if (character === '*') return '.*'
+      if (character === '?') return '.'
+      return character.replace(/[\\^$.*+()[\]{}|]/gu, '\\$&')
+    })
+    .join('')
+  return new RegExp(`^${escaped}$`, 'u')
+}
+
 /** Looks up kanji by their bare literal (a `contentRef` of the form `kanji:<literal>`). */
 export async function getKanjiByLiterals(
   literals: readonly string[],
@@ -520,10 +531,14 @@ function matchScore(
   english = false,
 ): number {
   const normalizedQuery = english ? lower(query) : normalizeQuery(query)
+  const hasWildcard = /[*?]/u.test(normalizedQuery)
+  const wildcard = hasWildcard ? wildcardRegex(normalizedQuery) : null
   let best = 0
   for (const value of values) {
     const normalizedValue = english ? lower(value) : normalizeQuery(value)
-    if (normalizedValue === normalizedQuery) best = Math.max(best, 3)
+    if (wildcard?.test(normalizedValue)) best = Math.max(best, 3)
+    else if (hasWildcard) continue
+    else if (normalizedValue === normalizedQuery) best = Math.max(best, 3)
     else if (normalizedValue.startsWith(normalizedQuery))
       best = Math.max(best, 2)
     else if (normalizedValue.includes(normalizedQuery)) best = Math.max(best, 1)

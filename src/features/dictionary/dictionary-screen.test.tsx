@@ -53,6 +53,21 @@ describe('DictionaryScreen', () => {
     expect(screen.getByText('money')).toBeInTheDocument()
   })
 
+  it('searches the visible form with wildcards', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), 'お*')
+    expect(
+      screen.getByText(
+        'Use * for any number of characters or ? for exactly one character.',
+      ),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    expect(await screen.findByText('お金')).toBeInTheDocument()
+  })
+
   it('shows the available KANJIDIC2 metadata for kanji results', async () => {
     const user = userEvent.setup()
     render(<DictionaryScreen />)
