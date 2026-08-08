@@ -180,6 +180,25 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('persists the writing pad as an answer field offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study answer' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /Writing pad/ }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_ANSWER_SETTING,
+        ),
+      ).toMatchObject({ value: 'kanji,reading,meaning,writing' }),
+    )
+  })
+
   it('persists the synthesized voice autoplay preference offline', async () => {
     const user = userEvent.setup()
     render(<SettingsScreen />)

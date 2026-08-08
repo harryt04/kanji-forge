@@ -31,6 +31,7 @@ import {
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
 import { useStudyStore } from './store'
+import { StudyWritingAnswer } from './study-writing-answer'
 import { requestStoragePersistenceAfterSession } from '@/pwa'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -470,6 +471,10 @@ export function StudyScreen({
               Level {level} — {LEVEL_LABELS[level]}
             </p>
           </div>
+
+          {revealed && answerShows('writing') && (
+            <StudyWritingAnswer literal={studyCard.literal} />
+          )}
 
           {!revealed ? (
             <Button size="lg" onClick={handleReveal}>

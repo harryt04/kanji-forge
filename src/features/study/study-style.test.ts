@@ -26,6 +26,8 @@ describe('study answer settings', () => {
 
   it('serializes fields in the stable option order', () => {
     expect(serializeStudyAnswer(['meaning', 'kanji'])).toBe('kanji,meaning')
+    expect(serializeStudyAnswer(['writing'])).toBe('writing')
+    expect(parseStudyAnswer('writing,writing')).toEqual(['writing'])
   })
 
   it('only enables two-tap study for the explicit persisted value', () => {

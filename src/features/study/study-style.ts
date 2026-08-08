@@ -44,12 +44,20 @@ export const STUDY_ANSWER_OPTIONS = [
     label: 'Meaning',
     description: 'Show the English meanings after reveal.',
   },
+  {
+    value: 'writing',
+    label: 'Writing pad',
+    description: 'Practice writing the kanji after reveal.',
+  },
 ] as const
 
 export type StudyAnswer = (typeof STUDY_ANSWER_OPTIONS)[number]['value']
 
-export const DEFAULT_STUDY_ANSWER: readonly StudyAnswer[] =
-  STUDY_ANSWER_OPTIONS.map(({ value }) => value)
+export const DEFAULT_STUDY_ANSWER: readonly StudyAnswer[] = [
+  'kanji',
+  'reading',
+  'meaning',
+]
 
 export function isStudyAnswer(value: string): value is StudyAnswer {
   return STUDY_ANSWER_OPTIONS.some((option) => option.value === value)

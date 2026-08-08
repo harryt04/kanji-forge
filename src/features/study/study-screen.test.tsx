@@ -244,6 +244,30 @@ describe('StudyScreen', () => {
     expect(answer).not.toHaveTextContent('日')
   })
 
+  it('renders the opt-in writing pad on the answer side', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'writing',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Writing answer' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('application', { name: /Writing answer canvas/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Clear writing' }),
+    ).toBeInTheDocument()
+  })
+
   it('reveals readings first and all card details on the second tap', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({
