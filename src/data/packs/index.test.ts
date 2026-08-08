@@ -158,6 +158,23 @@ describe('data/packs', () => {
     })
   })
 
+  describe('getKanjiStrokes', () => {
+    it('loads ordered offline KanjiVG paths for a kanji', async () => {
+      const { getKanjiStrokes } = await freshPacks()
+      await expect(getKanjiStrokes('日')).resolves.toEqual([
+        expect.stringContaining('M31.5,24.5'),
+        expect.stringContaining('M33.48,26'),
+        expect.stringContaining('M34.22,55.25'),
+        expect.stringContaining('M34.23,86.5'),
+      ])
+    })
+
+    it('returns null for content without an available stroke path pack', async () => {
+      const { getKanjiStrokes } = await freshPacks()
+      await expect(getKanjiStrokes('あ')).resolves.toBeNull()
+    })
+  })
+
   describe('getSimilarKanji', () => {
     it('loads ranked similar-looking kanji from the offline derived pack', async () => {
       const { getSimilarKanji } = await freshPacks()

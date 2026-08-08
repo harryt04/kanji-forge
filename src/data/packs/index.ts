@@ -32,6 +32,11 @@ export interface ComponentNode {
   readonly children: readonly ComponentNode[]
 }
 
+export interface StrokeRecord {
+  readonly paths: readonly string[]
+  readonly components: ComponentNode | null
+}
+
 export interface WordRecord {
   readonly id: number
   readonly commonScore: number
@@ -90,7 +95,7 @@ let similarKanjiPromise:
 
 const strokeChunkPromises = new Map<
   string,
-  Promise<Readonly<Record<string, ComponentNode>>>
+  Promise<Readonly<Record<string, StrokeRecord>>>
 >()
 
 function strokeChunkFor(literal: string): string | null {
@@ -122,7 +127,7 @@ function parseComponentNode(value: unknown): ComponentNode | null {
 
 function loadStrokeChunk(
   chunk: string,
-): Promise<Readonly<Record<string, ComponentNode>>> {
+): Promise<Readonly<Record<string, StrokeRecord>>> {
   let promise = strokeChunkPromises.get(chunk)
   if (!promise) {
     promise = fetch(`/packs-dev/strokes/strokes-${chunk}.json`)
@@ -134,13 +139,20 @@ function loadStrokeChunk(
         return response.json() as Promise<Record<string, unknown>>
       })
       .then((body) => {
-        const result: Record<string, ComponentNode> = {}
+        const result: Record<string, StrokeRecord> = {}
         for (const [codePoint, value] of Object.entries(body)) {
-          const parsed =
-            value && typeof value === 'object' && 'components' in value
-              ? parseComponentNode(value.components)
-              : null
-          if (parsed) result[codePoint] = parsed
+          if (!value || typeof value !== 'object') continue
+          const paths =
+            'paths' in value && Array.isArray(value.paths)
+              ? value.paths.filter(
+                  (path): path is string => typeof path === 'string',
+                )
+              : []
+          const components =
+            'components' in value ? parseComponentNode(value.components) : null
+          if (paths.length > 0 || components) {
+            result[codePoint] = { paths, components }
+          }
         }
         return result
       })
@@ -159,7 +171,21 @@ export async function getKanjiComponents(
   if (codePoint === undefined) return null
   const key = codePoint.toString(16).padStart(5, '0').toLowerCase()
   const records = await loadStrokeChunk(chunk)
-  return records[key] ?? null
+  return records[key]?.components ?? null
+}
+
+/** Returns offline KanjiVG stroke paths for a kanji when the stroke pack includes it. */
+export async function getKanjiStrokes(
+  literal: string,
+): Promise<readonly string[] | null> {
+  const chunk = strokeChunkFor(literal)
+  if (!chunk) return null
+  const codePoint = literal.codePointAt(0)
+  if (codePoint === undefined) return null
+  const key = codePoint.toString(16).padStart(5, '0').toLowerCase()
+  const records = await loadStrokeChunk(chunk)
+  const paths = records[key]?.paths
+  return paths && paths.length > 0 ? paths : null
 }
 
 function loadSimilarKanji(): Promise<

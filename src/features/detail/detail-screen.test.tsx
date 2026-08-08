@@ -67,6 +67,14 @@ describe('DetailScreen', () => {
     expect(screen.getByText('Stroke count')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
     expect(
+      screen.getByRole('heading', { name: 'Stroke order' }),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('stroke-animation')).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: 'Stroke order animation for 日' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('0 of 4 strokes')).toBeInTheDocument()
+    expect(
       screen.getByRole('heading', { name: 'Radical and components' }),
     ).toBeInTheDocument()
     expect(
@@ -133,7 +141,7 @@ describe('DetailScreen', () => {
     expect(screen.getByText('1 of 200')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Previous/ })).toBeDisabled()
 
-    await userEvent.click(screen.getByRole('button', { name: /Next/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Next →' }))
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: '一' })).toBeInTheDocument(),
     )
@@ -204,5 +212,18 @@ describe('DetailScreen', () => {
     expect(
       (await createUserRepositories(runtime.database).outbox.pending())[0],
     ).toMatchObject({ mutType: 'deckMembership.upsert' })
+  })
+
+  it('steps through stroke order controls offline', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('stroke-animation')).toBeInTheDocument(),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Next stroke' }))
+    expect(screen.getByText('1 of 4 strokes')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Restart' }))
+    expect(screen.getByText('0 of 4 strokes')).toBeInTheDocument()
   })
 })

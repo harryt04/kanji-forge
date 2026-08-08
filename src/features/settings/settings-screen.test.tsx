@@ -20,6 +20,7 @@ import {
   STUDY_QUESTION_SETTING,
 } from '@/features/study/study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
+import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -124,6 +125,27 @@ describe('SettingsScreen', () => {
           STUDY_AUTO_PLAY_AUDIO_SETTING,
         ),
       ).toMatchObject({ value: 'true' }),
+    )
+  })
+
+  it('persists the inline stroke animation preference offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Stroke animation' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('checkbox', { name: /Show inline stroke animation/ }),
+    )
+
+    const runtime = getActiveUserRuntime()
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime!.database).settings.get(
+          STROKE_ANIMATION_SETTING,
+        ),
+      ).toMatchObject({ value: 'false' }),
     )
   })
 

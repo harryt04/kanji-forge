@@ -8,6 +8,7 @@ import {
   getExampleWords,
   getKanjiComponents,
   getKanjiByLiterals,
+  getKanjiStrokes,
   getSimilarKanji,
   parseContentRef,
 } from '@/data/packs'
@@ -19,6 +20,11 @@ import {
 } from '@/features/study/deck-loader'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
+import {
+  isStrokeAnimationEnabled,
+  STROKE_ANIMATION_SETTING,
+  StrokeAnimation,
+} from './stroke-animation'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
@@ -47,6 +53,9 @@ export function DetailScreen(): React.ReactElement {
   >([])
   const [components, setComponents] =
     useState<Awaited<ReturnType<typeof getKanjiComponents>>>(null)
+  const [strokes, setStrokes] =
+    useState<Awaited<ReturnType<typeof getKanjiStrokes>>>(null)
+  const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,6 +81,7 @@ export function DetailScreen(): React.ReactElement {
     setExampleWords([])
     setExampleSentences([])
     setComponents(null)
+    setStrokes(null)
     setError(null)
     void (async () => {
       await runtime.database.ready
@@ -79,10 +89,16 @@ export function DetailScreen(): React.ReactElement {
       const savedMembership = await createUserRepositories(
         runtime.database,
       ).deckMembership.list()
+      const savedStrokeSetting = await createUserRepositories(
+        runtime.database,
+      ).settings.get(STROKE_ANIMATION_SETTING)
       setSaved(
         savedMembership.some(
           (membership) => membership.contentRef === contentRef,
         ),
+      )
+      setShowStrokeAnimation(
+        isStrokeAnimationEnabled(savedStrokeSetting?.value),
       )
       const inDeck = loaded.content.get(contentRef)
       const inDeckCard = loaded.cards.find(
@@ -123,19 +139,20 @@ export function DetailScreen(): React.ReactElement {
       if (!active) return
       setDeck(loaded)
       if (literal) {
-        const [similar, examples, sentences, componentTree] = await Promise.all(
-          [
+        const [similar, examples, sentences, componentTree, strokePaths] =
+          await Promise.all([
             getSimilarKanji(literal),
             getExampleWords(literal),
             getExampleSentences(literal),
             getKanjiComponents(literal),
-          ],
-        )
+            getKanjiStrokes(literal),
+          ])
         if (active) {
           setSimilarKanji(similar)
           setExampleWords(examples)
           setExampleSentences(sentences)
           setComponents(componentTree)
+          setStrokes(strokePaths)
         }
       }
     })().catch((reason: unknown) => {
@@ -372,6 +389,25 @@ export function DetailScreen(): React.ReactElement {
           </dl>
         </CardContent>
       </Card>
+      <section aria-labelledby="stroke-animation-heading">
+        <h2
+          id="stroke-animation-heading"
+          className="font-jp-ui text-lg font-semibold"
+        >
+          Stroke order
+        </h2>
+        {showStrokeAnimation && strokes ? (
+          <div className="mt-3">
+            <StrokeAnimation character={content.literal} paths={strokes} />
+          </div>
+        ) : (
+          <p className="text-muted-foreground mt-2 text-sm">
+            {showStrokeAnimation
+              ? 'No stroke animation is available in the installed pack.'
+              : 'Stroke animation is disabled in Settings.'}
+          </p>
+        )}
+      </section>
       <section aria-labelledby="components-heading">
         <h2
           id="components-heading"

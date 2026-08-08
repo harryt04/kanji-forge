@@ -33,6 +33,10 @@ import {
   type BackupReminder,
 } from './backup'
 import {
+  isStrokeAnimationEnabled,
+  STROKE_ANIMATION_SETTING,
+} from '@/features/detail/stroke-animation'
+import {
   applyTheme,
   isThemePreference,
   resolveTheme,
@@ -100,6 +104,7 @@ export function SettingsScreen(): React.ReactElement {
     parseStudyAnswer(undefined),
   )
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -122,6 +127,7 @@ export function SettingsScreen(): React.ReactElement {
         savedQuestion,
         savedAnswer,
         savedAutoPlayAudio,
+        savedStrokeAnimation,
         savedBackup,
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
@@ -129,6 +135,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_QUESTION_SETTING),
         repositories.settings.get(STUDY_ANSWER_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
       ])
       if (cancelled) return
@@ -140,6 +147,9 @@ export function SettingsScreen(): React.ReactElement {
         setStudyQuestion(savedQuestion.value as StudyQuestion)
       setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
       setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
+      setShowStrokeAnimation(
+        isStrokeAnimationEnabled(savedStrokeAnimation?.value),
+      )
       const lastBackupAt = savedBackup?.value
         ? Number(savedBackup.value)
         : undefined
@@ -283,6 +293,31 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the audio setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleStrokeAnimation(): Promise<void> {
+    if (!runtime || saving) return
+    const previous = showStrokeAnimation
+    const next = !previous
+    setShowStrokeAnimation(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: STROKE_ANIMATION_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setShowStrokeAnimation(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the stroke animation setting.',
       )
     } finally {
       setSaving(false)
@@ -529,6 +564,30 @@ export function SettingsScreen(): React.ReactElement {
             </span>
             <span className="text-muted-foreground block text-sm font-normal">
               Speak the first Japanese reading when the answer is revealed.
+            </span>
+          </span>
+        </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Stroke animation</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Show the offline KanjiVG stroke-order player on kanji detail pages.
+        </p>
+        <Button
+          type="button"
+          variant={showStrokeAnimation ? 'secondary' : 'outline'}
+          aria-checked={showStrokeAnimation}
+          role="checkbox"
+          disabled={saving}
+          className="mt-5 h-auto min-h-14 justify-start px-4 py-3 text-left"
+          onClick={() => void toggleStrokeAnimation()}
+        >
+          <span>
+            <span className="block font-semibold">
+              Show inline stroke animation
+            </span>
+            <span className="text-muted-foreground block text-sm font-normal">
+              Play, pause, restart, or step through each stroke.
             </span>
           </span>
         </Button>
