@@ -47,7 +47,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 |---|---|---|---|---|
 | 2.1 | Choose what appears before the tap | ✅ | 2026-08-07 | Settings persistently chooses kanji, reading, or first meaning for the starter-deck question face |
 | 2.2 | Choose what appears after the tap | ✅ | 2026-08-07 | Settings independently persists kanji, reading, and meaning answer fields; at least one answer field remains selected |
-| 2.3 | 2-tap study (word → readings → everything) | ✅ | — | Overrides field config |
+| 2.3 | 2-tap study (word → readings → everything) | ✅ | 2026-08-07 | Settings toggle; overrides question and answer field choices while enabled |
 | 2.4 | Word + writing cannot both be the question | ✅ | — | Enforced in the UI |
 | 2.5 | Audio setting ignored for kanji-only decks | ✅ | — | |
 | 2.6 | Writing setting ignored for word-only decks | ✅ | — | |

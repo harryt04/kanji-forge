@@ -3,6 +3,7 @@ import {
   DEFAULT_STUDY_ANSWER,
   DEFAULT_STUDY_QUESTION,
   parseStudyAnswer,
+  parseStudyTwoTap,
   serializeStudyAnswer,
 } from './study-style'
 
@@ -25,5 +26,11 @@ describe('study answer settings', () => {
 
   it('serializes fields in the stable option order', () => {
     expect(serializeStudyAnswer(['meaning', 'kanji'])).toBe('kanji,meaning')
+  })
+
+  it('only enables two-tap study for the explicit persisted value', () => {
+    expect(parseStudyTwoTap(undefined)).toBe(false)
+    expect(parseStudyTwoTap('false')).toBe(false)
+    expect(parseStudyTwoTap('true')).toBe(true)
   })
 })

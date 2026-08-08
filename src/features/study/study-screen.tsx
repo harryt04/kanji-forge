@@ -18,8 +18,10 @@ import {
   DEFAULT_STUDY_ANSWER,
   isStudyQuestion,
   parseStudyAnswer,
+  parseStudyTwoTap,
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
+  STUDY_TWO_TAP_SETTING,
   type StudyAnswer,
   type StudyQuestion,
 } from './study-style'
@@ -54,6 +56,8 @@ export function StudyScreen({
   const [studyQuestion, setStudyQuestion] = useState<StudyQuestion>('kanji')
   const [studyAnswer, setStudyAnswer] =
     useState<readonly StudyAnswer[]>(DEFAULT_STUDY_ANSWER)
+  const [twoTapStudy, setTwoTapStudy] = useState(false)
+  const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
@@ -100,11 +104,13 @@ export function StudyScreen({
         greyStickiesSetting,
         studyQuestionSetting,
         studyAnswerSetting,
+        twoTapSetting,
         autoPlayAudioSetting,
       ] = await Promise.all([
         repoForSession.settings.get(GREY_STICKIES_SETTING),
         repoForSession.settings.get(STUDY_QUESTION_SETTING),
         repoForSession.settings.get(STUDY_ANSWER_SETTING),
+        repoForSession.settings.get(STUDY_TWO_TAP_SETTING),
         repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
       ])
       const startedAt = Date.now()
@@ -132,6 +138,8 @@ export function StudyScreen({
           isStudyQuestion(savedQuestion) ? savedQuestion : 'kanji',
         )
         setStudyAnswer(parseStudyAnswer(studyAnswerSetting?.value))
+        setTwoTapStudy(parseStudyTwoTap(twoTapSetting?.value))
+        setTwoTapStage(0)
         setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
         setPreferenceError(null)
         setLoading(false)
@@ -182,14 +190,28 @@ export function StudyScreen({
   }, [studyCard])
 
   const handleReveal = useCallback(() => {
+    if (twoTapStudy && !revealed) {
+      if (twoTapStage === 0) {
+        setTwoTapStage(1)
+        return
+      }
+      setTwoTapStage(2)
+    }
     reveal()
     if (autoPlayAudio) speakCurrentCard()
-  }, [autoPlayAudio, reveal, speakCurrentCard])
+  }, [
+    autoPlayAudio,
+    reveal,
+    revealed,
+    speakCurrentCard,
+    twoTapStage,
+    twoTapStudy,
+  ])
 
   const handleGrade = useCallback(
     (value: 'again' | 'good' | 'easy') => {
       if (!repo || !revealed) return
-      void grade(repo, value)
+      void grade(repo, value).then(() => setTwoTapStage(0))
     },
     [repo, revealed, grade],
   )
@@ -268,19 +290,26 @@ export function StudyScreen({
     studyCard?.onReadings[0] ??
     studyCard?.kunReadings[0] ??
     studyCard?.nanori[0]
-  const questionText =
-    studyQuestion === 'reading'
+  const questionText = twoTapStudy
+    ? (studyCard?.literal ?? '')
+    : studyQuestion === 'reading'
       ? (reading ?? studyCard?.literal ?? '')
       : studyQuestion === 'meaning'
         ? (studyCard?.meanings[0] ?? studyCard?.literal ?? '')
         : (studyCard?.literal ?? '')
-  const questionIsJapanese = studyQuestion !== 'meaning'
+  const questionIsJapanese = twoTapStudy || studyQuestion !== 'meaning'
   const canSpeak = supportsJapaneseSpeech()
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`
   const answerShows = (field: StudyAnswer): boolean =>
-    studyAnswer.includes(field)
+    twoTapStudy || studyAnswer.includes(field)
+  const showingTwoTapReadings = twoTapStudy && !revealed && twoTapStage === 1
+  const revealLabel = twoTapStudy
+    ? showingTwoTapReadings
+      ? 'Show everything (Space)'
+      : 'Show readings (Space)'
+    : 'Reveal (Space)'
 
   return (
     <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
@@ -359,7 +388,13 @@ export function StudyScreen({
             onClick={() => !revealed && handleReveal()}
             role="button"
             tabIndex={0}
-            aria-label={revealed ? undefined : 'Reveal answer'}
+            aria-label={
+              revealed
+                ? undefined
+                : twoTapStudy
+                  ? revealLabel.replace(' (Space)', '')
+                  : 'Reveal answer'
+            }
           >
             <p
               className={
@@ -368,11 +403,28 @@ export function StudyScreen({
                   : 'text-3xl font-semibold'
               }
               data-testid="study-question"
-              data-study-question={studyQuestion}
+              data-study-question={twoTapStudy ? 'kanji' : studyQuestion}
               lang={questionIsJapanese ? 'ja' : undefined}
             >
               {questionText}
             </p>
+            {showingTwoTapReadings && (
+              <div
+                className="mt-6 space-y-2 text-left"
+                data-testid="study-two-tap-readings"
+              >
+                {studyCard.onReadings.length > 0 && (
+                  <p className="font-jp-ui text-lg">
+                    音: {studyCard.onReadings.join('、')}
+                  </p>
+                )}
+                {studyCard.kunReadings.length > 0 && (
+                  <p className="font-jp-ui text-lg">
+                    訓: {studyCard.kunReadings.join('、')}
+                  </p>
+                )}
+              </div>
+            )}
             {revealed && (
               <div
                 className="mt-6 space-y-2 text-left"
@@ -407,7 +459,7 @@ export function StudyScreen({
 
           {!revealed ? (
             <Button size="lg" onClick={handleReveal}>
-              Reveal (Space)
+              {revealLabel}
             </Button>
           ) : (
             <div className="grid w-full max-w-sm grid-cols-3 gap-3">

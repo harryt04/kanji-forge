@@ -18,6 +18,7 @@ import { SettingsScreen } from './settings-screen'
 import {
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_SETTING,
+  STUDY_TWO_TAP_SETTING,
 } from '@/features/study/study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
@@ -128,6 +129,25 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('persists two-tap study mode offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Study taps' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /Two-tap study/ }))
+
+    const runtime = getActiveUserRuntime()!
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_TWO_TAP_SETTING,
+        ),
+      ).toMatchObject({ value: 'true' }),
+    )
+  })
+
   it('persists the inline stroke animation preference offline', async () => {
     const user = userEvent.setup()
     render(<SettingsScreen />)
@@ -162,6 +182,11 @@ describe('SettingsScreen', () => {
       value: 'meaning',
       updatedAt: Date.now(),
     })
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_TWO_TAP_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
     render(<SettingsScreen />)
 
     await screen.findByRole('heading', { name: 'Study answer' })
@@ -180,6 +205,11 @@ describe('SettingsScreen', () => {
           STUDY_ANSWER_SETTING,
         ),
       ).toMatchObject({ value: 'kanji,reading,meaning' })
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          STUDY_TWO_TAP_SETTING,
+        ),
+      ).toMatchObject({ value: 'false' })
     })
     expect(screen.getByRole('radio', { name: /Kanji/ })).toHaveAttribute(
       'aria-checked',

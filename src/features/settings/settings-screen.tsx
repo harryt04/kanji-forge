@@ -22,6 +22,7 @@ import {
   STUDY_ANSWER_SETTING,
   STUDY_QUESTION_OPTIONS,
   STUDY_QUESTION_SETTING,
+  STUDY_TWO_TAP_SETTING,
   type StudyAnswer,
   type StudyQuestion,
 } from '@/features/study/study-style'
@@ -103,6 +104,7 @@ export function SettingsScreen(): React.ReactElement {
   const [studyAnswer, setStudyAnswer] = useState<readonly StudyAnswer[]>(
     parseStudyAnswer(undefined),
   )
+  const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [systemDark, setSystemDark] = useState(false)
@@ -126,6 +128,7 @@ export function SettingsScreen(): React.ReactElement {
         savedBadge,
         savedQuestion,
         savedAnswer,
+        savedTwoTap,
         savedAutoPlayAudio,
         savedStrokeAnimation,
         savedBackup,
@@ -134,6 +137,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(APP_BADGE_SETTING),
         repositories.settings.get(STUDY_QUESTION_SETTING),
         repositories.settings.get(STUDY_ANSWER_SETTING),
+        repositories.settings.get(STUDY_TWO_TAP_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(BACKUP_LAST_EXPORTED_SETTING),
@@ -146,6 +150,7 @@ export function SettingsScreen(): React.ReactElement {
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
       setStudyAnswer(parseStudyAnswer(savedAnswer?.value))
+      setTwoTapStudy(savedTwoTap?.value === 'true')
       setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeAnimation?.value),
@@ -274,6 +279,31 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function toggleTwoTapStudy(): Promise<void> {
+    if (!runtime || saving) return
+    const previous = twoTapStudy
+    const next = !previous
+    setTwoTapStudy(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: STUDY_TWO_TAP_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setTwoTapStudy(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the two-tap study setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function toggleAutoPlayAudio(): Promise<void> {
     if (!runtime || saving) return
     const previous = autoPlayAudio
@@ -328,10 +358,12 @@ export function SettingsScreen(): React.ReactElement {
     if (!runtime || saving) return
     const previousQuestion = studyQuestion
     const previousAnswer = studyAnswer
+    const previousTwoTap = twoTapStudy
     const repositories = createUserRepositories(runtime.database)
     const updatedAt = Date.now()
     setStudyQuestion(DEFAULT_STUDY_QUESTION)
     setStudyAnswer([...DEFAULT_STUDY_ANSWER])
+    setTwoTapStudy(false)
     setError(null)
     setSaving(true)
     try {
@@ -345,9 +377,15 @@ export function SettingsScreen(): React.ReactElement {
         value: serializeStudyAnswer(DEFAULT_STUDY_ANSWER),
         updatedAt,
       })
+      await repositories.settings.set({
+        key: STUDY_TWO_TAP_SETTING,
+        value: 'false',
+        updatedAt,
+      })
     } catch (reason: unknown) {
       setStudyQuestion(previousQuestion)
       setStudyAnswer(previousAnswer)
+      setTwoTapStudy(previousTwoTap)
       setError(
         reason instanceof Error
           ? reason.message
@@ -541,6 +579,30 @@ export function SettingsScreen(): React.ReactElement {
           onClick={() => void restoreStudyStyleDefaults()}
         >
           Restore study style defaults
+        </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Study taps</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Use two taps to reveal a card in stages: the word, its readings, then
+          all configured details. This overrides the question and answer field
+          choices while enabled.
+        </p>
+        <Button
+          type="button"
+          variant={twoTapStudy ? 'secondary' : 'outline'}
+          aria-checked={twoTapStudy}
+          role="checkbox"
+          disabled={saving}
+          className="mt-5 h-auto min-h-14 justify-start px-4 py-3 text-left"
+          onClick={() => void toggleTwoTapStudy()}
+        >
+          <span>
+            <span className="block font-semibold">Two-tap study</span>
+            <span className="text-muted-foreground block text-sm font-normal">
+              First tap shows readings; second tap shows everything.
+            </span>
+          </span>
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">

@@ -18,7 +18,11 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { useStudyStore } from './store'
 import { GREY_STICKIES_SETTING, StudyScreen } from './study-screen'
-import { STUDY_ANSWER_SETTING, STUDY_QUESTION_SETTING } from './study-style'
+import {
+  STUDY_ANSWER_SETTING,
+  STUDY_QUESTION_SETTING,
+  STUDY_TWO_TAP_SETTING,
+} from './study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from './audio'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -232,6 +236,54 @@ describe('StudyScreen', () => {
     expect(answer).not.toHaveTextContent('音:')
     expect(answer).not.toHaveTextContent('訓:')
     expect(answer).not.toHaveTextContent('日')
+  })
+
+  it('reveals readings first and all card details on the second tap', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_QUESTION_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_ANSWER_SETTING,
+      value: 'meaning',
+      updatedAt: Date.now(),
+    })
+    await createUserRepositories(runtime.database).settings.set({
+      key: STUDY_TWO_TAP_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+
+    await renderReady()
+    expect(screen.getByTestId('study-question')).toHaveAttribute(
+      'data-study-question',
+      'kanji',
+    )
+    expect(screen.getByTestId('study-question')).not.toHaveTextContent(
+      'country',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Show readings (Space)' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show readings (Space)' }),
+    )
+    expect(screen.getByTestId('study-two-tap-readings')).toHaveTextContent(
+      '音:',
+    )
+    expect(
+      screen.queryByRole('button', { name: /I know/ }),
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show everything (Space)' }),
+    )
+    expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+    expect(screen.getByTestId('study-answer')).toHaveTextContent('country')
+    expect(screen.getByTestId('study-answer')).toHaveTextContent('国')
   })
 
   it('grades via keyboard once revealed', async () => {

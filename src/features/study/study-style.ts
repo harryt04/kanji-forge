@@ -1,5 +1,6 @@
 export const STUDY_QUESTION_SETTING = 'study.question'
 export const STUDY_ANSWER_SETTING = 'study.answer'
+export const STUDY_TWO_TAP_SETTING = 'study.twoTap'
 
 export const STUDY_QUESTION_OPTIONS = [
   {
@@ -67,4 +68,8 @@ export function serializeStudyAnswer(values: readonly StudyAnswer[]): string {
   return STUDY_ANSWER_OPTIONS.filter(({ value }) => values.includes(value))
     .map(({ value }) => value)
     .join(',')
+}
+
+export function parseStudyTwoTap(value: string | undefined): boolean {
+  return value === 'true'
 }
