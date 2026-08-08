@@ -1,4 +1,7 @@
+import initSqlJs from 'sql.js'
+import { zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import { parseAnkiApkg } from '@/core/import/apkg'
 import {
   guessKanjiColumn,
   isKanjiLiteral,
@@ -117,5 +120,46 @@ describe('previewKanjiImport', () => {
       { literal: '本', status: 'already-saved' },
       { literal: '𠮷', status: 'not-found' },
     ])
+  })
+})
+
+describe('Anki package import', () => {
+  it('extracts unique kanji from note fields and reads the deck name', async () => {
+    const SQL = await initSqlJs()
+    const database = new SQL.Database()
+    database.run('CREATE TABLE col (decks TEXT)')
+    database.run('CREATE TABLE notes (id INTEGER, flds TEXT)')
+    database.run('INSERT INTO col VALUES (?)', [
+      JSON.stringify({
+        '1': { name: 'N5 vocabulary' },
+        '2': { name: 'Default' },
+      }),
+    ])
+    database.run('INSERT INTO notes VALUES (?, ?), (?, ?)', [
+      2,
+      '日本\u001fにほん\u001fJapan',
+      1,
+      '本\u001fほん\u001fbook',
+    ])
+
+    const result = await parseAnkiApkg(
+      zipSync({ 'collection.anki2': database.export() }).buffer,
+    )
+
+    expect(result).toEqual({
+      deckName: 'N5 vocabulary',
+      noteCount: 2,
+      kanji: ['本', '日'],
+    })
+    database.close()
+  })
+
+  it('rejects malformed packages and packages without a collection', async () => {
+    await expect(
+      parseAnkiApkg(new Uint8Array([1, 2, 3]).buffer),
+    ).rejects.toThrow('not a valid .apkg archive')
+    await expect(
+      parseAnkiApkg(zipSync({ README: new Uint8Array() }).buffer),
+    ).rejects.toThrow('does not contain collection.anki2')
   })
 })

@@ -25,6 +25,7 @@ import {
   type StoragePersistenceStatus,
 } from '@/pwa'
 import { Button } from '@/ui/button'
+import { parseAnkiApkg } from '@/core/import/apkg'
 import {
   DEFAULT_STUDY_ANSWER,
   DEFAULT_STUDY_QUESTION,
@@ -241,6 +242,7 @@ export function SettingsScreen(): React.ReactElement {
   )
   const [csvKanjiColumn, setCsvKanjiColumn] = useState(0)
   const [jsonImportText, setJsonImportText] = useState('')
+  const [ankiImportFile, setAnkiImportFile] = useState<File | null>(null)
   const [notificationStatus, setNotificationStatus] = useState<
     NotificationPermission | 'unsupported' | null
   >(null)
@@ -1200,6 +1202,35 @@ export function SettingsScreen(): React.ReactElement {
     } catch (reason: unknown) {
       setDeckImportMessage(
         reason instanceof Error ? reason.message : 'Could not parse JSON.',
+      )
+    }
+  }
+
+  async function previewAnkiList(): Promise<void> {
+    if (!ankiImportFile) {
+      setDeckImportMessage('Choose an Anki .apkg file to import.')
+      return
+    }
+    try {
+      const deck = await parseAnkiApkg(await ankiImportFile.arrayBuffer())
+      if (deck.kanji.length === 0) {
+        setDeckImportMessage(
+          'The Anki package contains no kanji in its note fields.',
+        )
+        return
+      }
+      await previewKanjiLiterals(
+        deck.kanji,
+        'The Anki package contains no kanji in its note fields.',
+      )
+      setDeckImportMessage(
+        `Previewing ${deck.kanji.length} kanji from ${deck.deckName ? `“${deck.deckName}”` : 'the Anki package'}.`,
+      )
+    } catch (reason: unknown) {
+      setDeckImportMessage(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not read Anki package.',
       )
     }
   }
@@ -2656,6 +2687,34 @@ export function SettingsScreen(): React.ReactElement {
                 onClick={() => void previewJsonList()}
               >
                 Preview JSON import
+              </Button>
+            </div>
+            <div className="border-border mt-5 border-t pt-5">
+              <h4 className="font-medium">Import from Anki</h4>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Choose an Anki .apkg export. Kanji found in its note fields are
+                previewed and added to Saved; tags, scheduling, and card
+                templates are intentionally not imported.
+              </p>
+              <input
+                className="mt-3 block text-sm"
+                type="file"
+                accept=".apkg,application/zip"
+                aria-label="Choose Anki package import file"
+                disabled={deckImportBusy}
+                onChange={(event) => {
+                  setAnkiImportFile(event.target.files?.[0] ?? null)
+                  setDeckImportPreview(null)
+                  setDeckImportMessage(null)
+                }}
+              />
+              <Button
+                type="button"
+                className="mt-3"
+                disabled={deckImportBusy || ankiImportFile === null}
+                onClick={() => void previewAnkiList()}
+              >
+                Preview Anki import
               </Button>
             </div>
           </div>

@@ -1,5 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import initSqlJs from 'sql.js'
+import { zipSync } from 'fflate'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -915,6 +917,44 @@ describe('SettingsScreen', () => {
     )
     expect(screen.getByLabelText('Import preview')).toHaveTextContent(
       '本 matched — will be added',
+    )
+  })
+
+  it('loads an Anki package into the existing offline import preview', async () => {
+    const user = userEvent.setup()
+    const SQL = await initSqlJs()
+    const database = new SQL.Database()
+    database.run('CREATE TABLE col (decks TEXT)')
+    database.run('CREATE TABLE notes (id INTEGER, flds TEXT)')
+    database.run('INSERT INTO col VALUES (?)', [
+      JSON.stringify({ '1': { name: 'N5 vocabulary' } }),
+    ])
+    database.run('INSERT INTO notes VALUES (?, ?)', [
+      1,
+      '日本\u001fにほん\u001fJapan',
+    ])
+    const archive = zipSync({ 'collection.anki2': database.export() })
+    const file = new File([archive], 'n5.apkg', { type: 'application/zip' })
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => archive.buffer,
+    })
+    database.close()
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Backup & restore' })
+    await user.upload(
+      screen.getByLabelText('Choose Anki package import file'),
+      file,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Preview Anki import' }),
+    )
+
+    expect(
+      await screen.findByText('Previewing 2 kanji from “N5 vocabulary”.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Import preview')).toHaveTextContent(
+      '日 matched — will be added',
     )
   })
 
