@@ -9,6 +9,7 @@ import {
 import { createUserRepositories } from '@/data/repo'
 import { APP_BADGE_SETTING } from '@/pwa'
 import { THEME_SETTING } from './theme'
+import { BACKUP_FORMAT, BACKUP_VERSION } from './backup'
 import { SettingsScreen } from './settings-screen'
 
 describe('SettingsScreen', () => {
@@ -76,5 +77,44 @@ describe('SettingsScreen', () => {
         ),
       ).toMatchObject({ value: 'total' }),
     )
+  })
+
+  it('restores a same-account backup through the Settings file picker', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Backup & restore' }),
+    ).toBeInTheDocument()
+    const backupJson = JSON.stringify({
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: Date.now(),
+      user: { id: runtime.userId },
+      decks: [],
+      settings: [{ key: 'theme', value: 'dark', updatedAt: 2 }],
+      deckMembership: [],
+      reviews: [],
+    })
+    const file = new File([backupJson], 'kanjiforge-backup.json', {
+      type: 'application/json',
+    })
+    Object.defineProperty(file, 'text', {
+      value: async () => backupJson,
+    })
+    await user.upload(
+      screen.getByLabelText('Choose KanjiForge backup file'),
+      file,
+    )
+
+    expect(
+      await screen.findByText(
+        'Backup restored. Your local study data was merged safely.',
+      ),
+    ).toBeInTheDocument()
+    await expect(
+      createUserRepositories(runtime.database).settings.get(THEME_SETTING),
+    ).resolves.toMatchObject({ value: 'dark' })
   })
 })

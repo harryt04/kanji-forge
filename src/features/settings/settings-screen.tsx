@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import {
@@ -11,6 +11,7 @@ import {
   type AppBadgePreference,
 } from '@/pwa'
 import { Button } from '@/ui/button'
+import { createBackup, parseBackup } from './backup'
 import {
   applyTheme,
   isThemePreference,
@@ -78,6 +79,9 @@ export function SettingsScreen(): React.ReactElement {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [backupMessage, setBackupMessage] = useState<string | null>(null)
+  const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!runtime) return
@@ -164,6 +168,62 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function exportBackup(): Promise<void> {
+    if (!runtime) return
+    setBackupBusy(true)
+    setBackupMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const backup = await createBackup(
+        createUserRepositories(runtime.database),
+        runtime.userId,
+      )
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `kanjiforge-backup-${new Date(backup.exportedAt).toISOString().slice(0, 10)}.json`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      setBackupMessage('Backup downloaded.')
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not create backup.',
+      )
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function restoreBackup(file: File): Promise<void> {
+    if (!runtime) return
+    setBackupBusy(true)
+    setBackupMessage(null)
+    setError(null)
+    try {
+      await runtime.database.ready
+      const fileText =
+        typeof file.text === 'function'
+          ? await file.text()
+          : new TextDecoder().decode(await file.arrayBuffer())
+      const backup = parseBackup(fileText, runtime.userId)
+      await createUserRepositories(runtime.database).restoreBackup(backup)
+      setBackupMessage(
+        'Backup restored. Your local study data was merged safely.',
+      )
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error ? reason.message : 'Could not restore backup.',
+      )
+    } finally {
+      setBackupBusy(false)
+      if (backupInputRef.current) backupInputRef.current.value = ''
+    }
+  }
+
   if (!runtime)
     return (
       <p className="text-muted-foreground p-6">Sign in to open Settings.</p>
@@ -247,6 +307,46 @@ export function SettingsScreen(): React.ReactElement {
             </Button>
           ))}
         </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Backup &amp; restore</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Keep an open JSON copy of your decks, settings, and complete review
+          history. Restoring merges data and never removes newer local records.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Button
+            type="button"
+            disabled={backupBusy}
+            onClick={() => void exportBackup()}
+          >
+            Download full backup
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={backupBusy}
+            onClick={() => backupInputRef.current?.click()}
+          >
+            Restore backup
+          </Button>
+          <input
+            ref={backupInputRef}
+            className="sr-only"
+            type="file"
+            accept="application/json,.json"
+            aria-label="Choose KanjiForge backup file"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void restoreBackup(file)
+            }}
+          />
+        </div>
+        {backupMessage && (
+          <p className="text-muted-foreground mt-4 text-sm" role="status">
+            {backupMessage}
+          </p>
+        )}
       </section>
     </main>
   )

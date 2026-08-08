@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 32 (210 test cases: 210 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 55 cases, included above) |
+| Unit/integration test files | 33 (214 test cases: 214 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 56 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.23%** |
+| Overall statement coverage | **85.97%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -31,7 +31,7 @@ Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.
 | `src/features/**` | 70% | browse 90.36 / 81.21 / 84.84 / 90.36 · history 100 / 100 / 87.5 / 100 · home 98.96 / 90.47 / 93.75 / 98.96 · study 97.86 / 83.94 / 80 / 97.86 | ✅ comfortable margin |
 | `src/features/dictionary/**` | 70% | 94.78 / 75.9 / 90.9 / 94.78 | ✅ comfortable margin |
 | `src/features/settings/**` | 70% | covered by theme and SettingsScreen tests | ✅ |
-| Global floor | 60% | 86.33 / 87.14 / 89.26 / 86.33 | ✅ comfortable margin |
+| Global floor | 60% | 85.97 / 84.53 / 89.17 / 85.97 | ✅ comfortable margin |
 
 **Not yet covered / not in scope for this plan** (pulls the global average down, but doesn't affect
 any directory gate above):
@@ -63,7 +63,7 @@ Locked at 100% by the CI gate; this directory should never regress.
 - **`db/index.test.ts`** (6) — empty-userId rejection, per-user namespacing, concurrent-write
   serialization, OPFS persistence across close/reopen (via a fake in-memory OPFS shim), namespace
   isolation with OPFS enabled, post-close rejection.
-- **`repo/index.test.ts`** (20, up from 1) — derived-deck projection, `recordGrade()` atomicity,
+- **`repo/index.test.ts`** (21, up from 1) — derived-deck projection, `recordGrade()` atomicity,
   manual level override atomicity and validation, and atomic manual card-state flag persistence
   (mismatched id rejected, review+state+stat+outbox written together), outbox attempt/removal
   lifecycle, deck-filtered session listing, daily-stat rollup across grades, session start/end, settings round-trip with
@@ -146,9 +146,11 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 8 cases
+### `src/features/settings` — 9 cases
 
 **`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, and offline persistence of the app-icon badge preference.
+
+**`backup.test.ts`** covers the locked v1 backup schema, malformed/cross-account rejection, complete export metadata, and non-destructive restore with review-log replay. The Settings component test covers restoring a same-account JSON file through the file picker.
 
 ### `src/pwa` — 4 cases
 

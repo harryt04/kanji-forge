@@ -195,7 +195,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | — | ARCHITECTURE §9 (T8.0) |
 | — | Import preview with matched/ambiguous/not-found | ➕ ✅ | — | (T8.0) |
 | — | Export to CSV and JSON files | ➕ ✅ | — | (T8.0) |
-| — | Full backup export/restore incl. review history | ➕ ✅ | — | (T8.0) |
+| — | Full backup export/restore incl. review history | ➕ ✅ | 2026-08-07 | Settings downloads/restores the locked v1 JSON format; restore unions records and replays the review log |
 | — | Anki .apkg import | ➕ 🔷 | — | Best-effort (T8.0) |
 
 ## 11. Sync & backup
@@ -204,7 +204,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 |---|---|---|---|---|
 | 11.1 | iCloud backup and sync | ❌ as built | — | Platform-locked |
 | 11.2 | Dropbox backup | ❌ | — | Discontinued upstream too |
-| — | Manual full backup file | ➕ ✅ | — | MVP replacement for 11.1 (T8.0) |
+| — | Manual full backup file | ➕ ✅ | 2026-08-07 | Settings provides a local JSON download and same-account non-destructive restore; includes decks, settings, Saved membership, and complete review history |
 | — | Auto-backup to a chosen folder (File System Access) | ➕ 🔷 | — | Desktop (T2+) |
 | — | Optional self-hostable sync server | ➕ 🔷 | — | ARCHITECTURE §10 (T4.0) |
 | — | Backup nag when none taken in 30 days | ➕ ✅ | — | |

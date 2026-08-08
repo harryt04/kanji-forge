@@ -1,4 +1,6 @@
 import type { LocalUserDatabase, SqlRow, SqlValue } from '@/data/db'
+import { replay } from '@/core/srs/replay'
+import { DEFAULT_SRS_CONFIG } from '@/core/srs/types'
 
 export type CardLevel = 0 | 1 | 2 | 3 | 4
 export type Grade = 'again' | 'good' | 'easy'
@@ -120,6 +122,7 @@ export interface UserRepositories {
   readonly settings: {
     set(setting: Setting): Promise<void>
     get(key: string): Promise<Setting | undefined>
+    list(): Promise<readonly Setting[]>
   }
   readonly dailyStats: {
     get(day: string): Promise<DailyStat | undefined>
@@ -153,6 +156,13 @@ export interface UserRepositories {
     deck: Deck
     membership: DeckMembership
     mutation: OutboxMutation
+  }): Promise<void>
+  /** Merges a KanjiForge backup without deleting newer local data. */
+  restoreBackup(input: {
+    decks: readonly Deck[]
+    settings: readonly Setting[]
+    deckMembership: readonly DeckMembership[]
+    reviews: readonly Review[]
   }): Promise<void>
 }
 
@@ -466,6 +476,18 @@ export function createUserRepositories(
             }
           : undefined
       },
+      async list() {
+        return (
+          await database.read(
+            'SELECT key, value, updated_at FROM settings WHERE user_id = ? ORDER BY key',
+            [userId],
+          )
+        ).map((row) => ({
+          key: text(row, 'key'),
+          value: text(row, 'value'),
+          updatedAt: numberValue(row, 'updated_at'),
+        }))
+      },
     },
     dailyStats: {
       async get(day) {
@@ -635,6 +657,64 @@ export function createUserRepositories(
           ],
         },
       ])
+    },
+    async restoreBackup({ decks, settings, deckMembership, reviews }) {
+      const existingReviews = await this.reviews.list()
+      const mergedReviews = new Map<string, Review>()
+      for (const review of existingReviews) mergedReviews.set(review.id, review)
+      for (const review of reviews) mergedReviews.set(review.id, review)
+      const projectedStates = replay(
+        [...mergedReviews.values()].map((review) => ({
+          ...review,
+          stickyId: review.contentRef,
+        })),
+        { config: DEFAULT_SRS_CONFIG },
+      )
+      const statements = [
+        ...decks.map((deck) => ({
+          sql: 'INSERT INTO decks(id, user_id, name, kind, definition_id, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, kind=excluded.kind, definition_id=excluded.definition_id, updated_at=excluded.updated_at WHERE excluded.updated_at >= decks.updated_at',
+          parameters: [
+            deck.id,
+            userId,
+            deck.name,
+            deck.kind,
+            deck.definitionId,
+            deck.updatedAt,
+          ] as readonly SqlValue[],
+        })),
+        ...settings.map((setting) => ({
+          sql: 'INSERT INTO settings(user_id, key, value, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at WHERE excluded.updated_at >= settings.updated_at',
+          parameters: [
+            userId,
+            setting.key,
+            setting.value,
+            setting.updatedAt,
+          ] as readonly SqlValue[],
+        })),
+        ...deckMembership.map((membership) => ({
+          sql: 'INSERT INTO deck_membership(user_id, deck_id, content_ref, sort_order, added_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(deck_id, content_ref) DO UPDATE SET sort_order=excluded.sort_order, added_at=excluded.added_at, updated_at=excluded.updated_at WHERE excluded.updated_at >= deck_membership.updated_at',
+          parameters: [
+            userId,
+            membership.deckId,
+            membership.contentRef,
+            membership.sortOrder,
+            membership.addedAt,
+            membership.updatedAt,
+          ] as readonly SqlValue[],
+        })),
+        ...reviews.map((review) => ({
+          sql: putReview.replace('INSERT INTO', 'INSERT OR IGNORE INTO'),
+          parameters: reviewParams(review),
+        })),
+        ...[...projectedStates.values()].map((state) => ({
+          sql: putState,
+          parameters: stateParams({
+            ...state,
+            contentRef: state.stickyId,
+          }),
+        })),
+      ]
+      await database.transaction(statements)
     },
   }
 }
