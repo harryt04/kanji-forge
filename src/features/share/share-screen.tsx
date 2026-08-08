@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import {
@@ -32,6 +32,12 @@ import {
   serializeAnalyzerDisplaySettings,
   type AnalyzerDisplaySettings,
 } from './analyzer-settings'
+import {
+  ANALYZER_HISTORY_SETTING,
+  parseAnalyzerHistory,
+  recordAnalyzerText,
+  serializeAnalyzerHistory,
+} from './analyzer-history'
 
 export interface SharedTextPayload {
   readonly text: string
@@ -143,6 +149,8 @@ export function ShareTargetScreen(): React.ReactElement {
   )
   const [displaySettings, setDisplaySettings] =
     useState<AnalyzerDisplaySettings>(DEFAULT_ANALYZER_DISPLAY_SETTINGS)
+  const [analysisHistory, setAnalysisHistory] = useState<readonly string[]>([])
+  const analysisHistoryDirty = useRef(false)
   const [expandedGlosses, setExpandedGlosses] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
@@ -209,15 +217,19 @@ export function ShareTargetScreen(): React.ReactElement {
       try {
         await runtime.database.ready
         const repositories = createUserRepositories(runtime.database)
-        const [existing, savedDisplaySettings, entries] = await Promise.all([
-          repositories.deckMembership.list(),
-          repositories.settings.get(ANALYZER_DISPLAY_SETTING),
-          importEntries,
-        ])
+        const [existing, savedDisplaySettings, savedAnalysisHistory, entries] =
+          await Promise.all([
+            repositories.deckMembership.list(),
+            repositories.settings.get(ANALYZER_DISPLAY_SETTING),
+            repositories.settings.get(ANALYZER_HISTORY_SETTING),
+            importEntries,
+          ])
         if (!active) return
         setDisplaySettings(
           parseAnalyzerDisplaySettings(savedDisplaySettings?.value),
         )
+        if (!analysisHistoryDirty.current)
+          setAnalysisHistory(parseAnalyzerHistory(savedAnalysisHistory?.value))
         setSavedContentRefs(
           new Set(
             existing
@@ -254,19 +266,68 @@ export function ShareTargetScreen(): React.ReactElement {
     }
   }, [runtime])
 
-  async function analyzeText(): Promise<void> {
-    if (!draftText.trim() || analyzing) return
+  async function recordAnalyzedText(text: string): Promise<void> {
+    if (!runtime) return
+    analysisHistoryDirty.current = true
+    const nextHistory = recordAnalyzerText(analysisHistory, text)
+    setAnalysisHistory(nextHistory)
+    try {
+      await runtime.database.ready
+      await createUserRepositories(runtime.database).settings.set({
+        key: ANALYZER_HISTORY_SETTING,
+        value: serializeAnalyzerHistory(nextHistory),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save analyzer history.',
+      )
+    }
+  }
+
+  async function runAnalysis(
+    text: string,
+    shouldRecordHistory = true,
+  ): Promise<void> {
+    if (!text.trim() || analyzing) return
     setAnalyzing(true)
     setError(null)
     try {
       setExpandedGlosses(new Set())
-      setAnalysis(await analyzeJapaneseText(draftText))
+      setAnalysis(await analyzeJapaneseText(text))
+      if (shouldRecordHistory) await recordAnalyzedText(text)
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not analyze text.',
       )
     } finally {
       setAnalyzing(false)
+    }
+  }
+
+  async function analyzeText(): Promise<void> {
+    await runAnalysis(draftText)
+  }
+
+  async function clearAnalysisHistory(): Promise<void> {
+    if (!runtime) return
+    analysisHistoryDirty.current = true
+    setAnalysisHistory([])
+    try {
+      await runtime.database.ready
+      await createUserRepositories(runtime.database).settings.set({
+        key: ANALYZER_HISTORY_SETTING,
+        value: '[]',
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not clear analyzer history.',
+      )
     }
   }
 
@@ -573,6 +634,43 @@ export function ShareTargetScreen(): React.ReactElement {
             </select>
           </label>
         </fieldset>
+        {analysisHistory.length > 0 && (
+          <section
+            aria-label="Analyzer history"
+            className="bg-muted/40 grid gap-2 rounded-md border p-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">Recent analyses</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void clearAnalysisHistory()}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {analysisHistory.map((text, index) => (
+                <Button
+                  key={`${text}-${index}`}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="max-w-full justify-start truncate"
+                  title={text}
+                  aria-label={`Reuse analysis ${index + 1}: ${text}`}
+                  onClick={() => {
+                    setDraftText(text)
+                    void runAnalysis(text, false)
+                  }}
+                >
+                  {text}
+                </Button>
+              ))}
+            </div>
+          </section>
+        )}
         <Button
           className="w-fit"
           disabled={analyzing || !draftText.trim()}

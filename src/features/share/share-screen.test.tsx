@@ -16,6 +16,7 @@ import {
   readSharedTextPayload,
 } from './share-screen'
 import { ANALYZER_DISPLAY_SETTING } from './analyzer-settings'
+import { ANALYZER_HISTORY_SETTING } from './analyzer-history'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -245,6 +246,45 @@ describe('ShareTargetScreen', () => {
     ).not.toHaveTextContent('money')
     fireEvent.click(screen.getAllByRole('button', { name: 'Show gloss' })[0]!)
     expect(await screen.findByText('money')).toBeInTheDocument()
+  })
+
+  it('persists analyzed text history, reuses entries, and clears it offline', async () => {
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    fireEvent.change(screen.getByLabelText('Japanese text'), {
+      target: { value: 'お金を' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze text' }))
+
+    const history = await screen.findByRole('region', {
+      name: 'Analyzer history',
+    })
+    expect(history).toHaveTextContent('お金を')
+    expect(
+      await createUserRepositories(
+        getActiveUserRuntime()!.database,
+      ).settings.get(ANALYZER_HISTORY_SETTING),
+    ).toMatchObject({ value: '["お金を"]' })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reuse analysis 1: お金を' }),
+    )
+    expect(screen.getByLabelText('Japanese text')).toHaveValue('お金を')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('region', { name: 'Analyzer history' }),
+      ).not.toBeInTheDocument()
+    })
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(ANALYZER_HISTORY_SETTING),
+      ).toMatchObject({ value: '[]' })
+    })
   })
 
   it('imports matched shared kanji to Saved atomically with sync mutations', async () => {
