@@ -3,7 +3,17 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { loadStarterDeck, type LoadedDeck } from '@/features/study/deck-loader'
+import {
+  getKanjiByLiterals,
+  getSimilarKanji,
+  parseContentRef,
+} from '@/data/packs'
+import { createUserRepositories } from '@/data/repo'
+import {
+  loadStarterDeck,
+  type LoadedDeck,
+  type StudyCard,
+} from '@/features/study/deck-loader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
@@ -18,6 +28,11 @@ export function DetailScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
   const [contentRef, setContentRef] = useState<string | null>(null)
+  const [detailCard, setDetailCard] = useState<{
+    readonly content: StudyCard
+    readonly state: LoadedDeck['cards'][number]['state']
+  } | null>(null)
+  const [similarKanji, setSimilarKanji] = useState<readonly string[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,7 +42,49 @@ export function DetailScreen(): React.ReactElement {
     void (async () => {
       await runtime.database.ready
       const loaded = await loadStarterDeck(runtime.database)
-      if (active) setDeck(loaded)
+      const requestedRef = requestedContentRef()
+      if (!requestedRef) {
+        if (active) setDeck(loaded)
+        return
+      }
+      const inDeck = loaded.content.get(requestedRef)
+      const inDeckCard = loaded.cards.find(
+        (candidate) => candidate.contentRef === requestedRef,
+      )
+      let literal = inDeck?.literal
+      if (inDeck) {
+        if (active) setDetailCard({ content: inDeck, state: inDeckCard?.state })
+      } else {
+        const parsed = parseContentRef(requestedRef)
+        if (parsed.type !== 'kanji') throw new Error('Unsupported detail type.')
+        const record = (await getKanjiByLiterals([parsed.key])).get(parsed.key)
+        if (!record)
+          throw new Error('This card is not available in the installed pack.')
+        literal = record.literal
+        const state = await createUserRepositories(
+          runtime.database,
+        ).cardStates.get(loaded.deckId, requestedRef)
+        if (active)
+          setDetailCard({
+            content: {
+              contentRef: requestedRef,
+              literal: record.literal,
+              strokeCount: record.strokeCount,
+              frequency: record.freq,
+              jlptLegacy: record.jlptLegacy,
+              grade: record.grade,
+              nanori: record.nanori,
+              meanings: record.meanings,
+              onReadings: record.onReadings,
+              kunReadings: record.kunReadings,
+            },
+            state,
+          })
+      }
+      if (active) {
+        setDeck(loaded)
+        setSimilarKanji(literal ? await getSimilarKanji(literal) : [])
+      }
     })().catch((reason: unknown) => {
       if (active)
         setError(
@@ -42,7 +99,7 @@ export function DetailScreen(): React.ReactElement {
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to view details.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
-  if (!deck || !contentRef)
+  if (!deck || !contentRef || !detailCard)
     return (
       <main className="p-6" aria-busy="true">
         <p className="text-muted-foreground">
@@ -53,23 +110,7 @@ export function DetailScreen(): React.ReactElement {
       </main>
     )
 
-  const content = deck.content.get(contentRef)
-  const card = deck.cards.find(
-    (candidate) => candidate.contentRef === contentRef,
-  )
-  if (!content || !card)
-    return (
-      <main className="mx-auto grid w-full max-w-2xl gap-4 px-4 py-8 sm:px-6">
-        <p role="alert" className="text-destructive">
-          This card is not available in the installed deck.
-        </p>
-        <Link className="text-primary underline" href="/browse">
-          Back to Browse
-        </Link>
-      </main>
-    )
-
-  const state = card.state
+  const { content, state } = detailCard
   const level = state?.level ?? 0
   const reading = [...content.onReadings, ...content.kunReadings]
 
@@ -138,6 +179,37 @@ export function DetailScreen(): React.ReactElement {
           </dl>
         </CardContent>
       </Card>
+      {similarKanji.length > 0 && (
+        <section aria-labelledby="similar-kanji-heading">
+          <h2
+            id="similar-kanji-heading"
+            className="font-jp-ui text-lg font-semibold"
+          >
+            Similar-looking kanji
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Generated from shared visual features. Select one to view its
+            details.
+          </p>
+          <ul
+            className="mt-3 flex flex-wrap gap-2"
+            aria-label="Similar-looking kanji"
+          >
+            {similarKanji.map((literal) => (
+              <li key={literal}>
+                <Link
+                  className="border-border bg-card text-foreground focus-visible:ring-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-3 py-2 text-2xl shadow-sm focus-visible:ring-2 focus-visible:outline-none"
+                  href={`/detail?contentRef=${encodeURIComponent(`kanji:${literal}`)}`}
+                  lang="ja"
+                  aria-label={`View details for ${literal}`}
+                >
+                  {literal}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }

@@ -138,7 +138,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/detail` — 2 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging and loading a selected kanji's readings, meanings, stroke count, and local level from the offline content pack.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level, rendering ranked similar-looking kanji links, and opening a linked kanji outside the starter deck from the offline content pack.
 
 ### `src/features/navigation` — 2 cases
 

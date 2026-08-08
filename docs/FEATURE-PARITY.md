@@ -80,7 +80,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.2 | School grade, JLPT level, frequency | ✅ | — | JLPT flagged as unofficial |
 | 4.3 | Nanori (name readings) | ✅ | — | |
 | 4.4 | SKIP code display | ❌ | — | Not licensable — DATA-SOURCES §6 |
-| 4.5 | Similar-looking kanji | ✅ | — | Generated dataset — DATA-SOURCES §7 |
+| 4.5 | Similar-looking kanji | ✅ | 2026-08-07 | Detail shows ranked generated matches from the offline derived pack; each match links to its own kanji detail |
 | 4.6 | Example words containing this kanji | ✅ | — | Ranked by frequency |
 | 4.7 | Example sentences with breakdown | ✅ | — | Tatoeba |
 | 4.8 | Everything hyperlinked | ✅ | — | Navigation stack |

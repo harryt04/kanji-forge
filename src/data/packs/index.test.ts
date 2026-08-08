@@ -3,13 +3,16 @@ import { join } from 'path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
+const REPO_PACK_ROOT = join(process.cwd(), 'packs')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     const path = url.replace(/^\/packs-dev\//, '')
     try {
-      const buffer = readFileSync(join(FIXTURE_ROOT, path))
+      const buffer = readFileSync(
+        join(path === 'similar.json' ? REPO_PACK_ROOT : FIXTURE_ROOT, path),
+      )
       const body = path.endsWith('.json')
         ? buffer.toString('utf8')
         : new Uint8Array(buffer)
@@ -83,6 +86,20 @@ describe('data/packs', () => {
         .mocked(fetch)
         .mock.calls.filter(([url]) => String(url).includes('kanji-v1.sqlite'))
       expect(packFetches).toHaveLength(1)
+    })
+  })
+
+  describe('getSimilarKanji', () => {
+    it('loads ranked similar-looking kanji from the offline derived pack', async () => {
+      const { getSimilarKanji } = await freshPacks()
+      const result = await getSimilarKanji('国')
+      expect(result.length).toBeGreaterThan(0)
+      expect(result).toEqual(expect.arrayContaining(['固']))
+    })
+
+    it('returns an empty list for a literal without generated matches', async () => {
+      const { getSimilarKanji } = await freshPacks()
+      expect(await getSimilarKanji('あ')).toEqual([])
     })
   })
 

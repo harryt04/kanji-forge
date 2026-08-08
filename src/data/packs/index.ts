@@ -62,6 +62,41 @@ export function loadDeckDefinitions(): Promise<readonly DeckDefinition[]> {
   return deckDefinitionsPromise
 }
 
+let similarKanjiPromise:
+  Promise<Readonly<Record<string, readonly string[]>>> | undefined
+
+function loadSimilarKanji(): Promise<
+  Readonly<Record<string, readonly string[]>>
+> {
+  similarKanjiPromise ??= fetch('/packs-dev/similar.json')
+    .then((response) => {
+      if (!response.ok)
+        throw new Error(
+          `Failed to load similar-kanji pack (${response.status}).`,
+        )
+      return response.json() as Promise<Record<string, unknown>>
+    })
+    .then((body) => {
+      const result: Record<string, readonly string[]> = {}
+      for (const [literal, candidates] of Object.entries(body)) {
+        if (!Array.isArray(candidates)) continue
+        result[literal] = candidates.filter(
+          (candidate): candidate is string => typeof candidate === 'string',
+        )
+      }
+      return result
+    })
+  return similarKanjiPromise
+}
+
+/** Returns generated, offline similar-looking kanji in pack ranking order. */
+export async function getSimilarKanji(
+  literal: string,
+): Promise<readonly string[]> {
+  const similar = await loadSimilarKanji()
+  return similar[literal] ?? []
+}
+
 const packHandles = new Map<string, Promise<SqlJsDatabase>>()
 function openPack(fileName: string): Promise<SqlJsDatabase> {
   let handle = packHandles.get(fileName)

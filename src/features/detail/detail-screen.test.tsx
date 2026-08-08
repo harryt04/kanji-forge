@@ -59,4 +59,21 @@ describe('DetailScreen', () => {
       screen.getByRole('link', { name: '← Back to Browse' }),
     ).toHaveAttribute('href', '/browse')
   })
+
+  it('opens a similar kanji that is outside the starter deck', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    window.history.replaceState({}, '', '/detail?contentRef=kanji%3A%E5%9B%BD')
+    render(<DetailScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: '国' })).toBeInTheDocument(),
+    )
+    expect(screen.getByText('country')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Similar-looking kanji' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'View details for 固' }),
+    ).toHaveAttribute('href', '/detail?contentRef=kanji%3A%E5%9B%BA')
+  })
 })

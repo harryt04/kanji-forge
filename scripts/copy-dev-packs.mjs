@@ -14,4 +14,8 @@ if (!existsSync(source)) {
 
 mkdirSync(destination, { recursive: true })
 cpSync(source, destination, { recursive: true })
+cpSync(
+  path.join(root, 'packs', 'similar.json'),
+  path.join(destination, 'similar.json'),
+)
 console.info('Mirrored packs-dev/ into public/packs-dev/')
