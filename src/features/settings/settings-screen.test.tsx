@@ -7,6 +7,7 @@ import {
   getActiveUserRuntime,
 } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import { APP_BADGE_SETTING } from '@/pwa'
 import { THEME_SETTING } from './theme'
 import { SettingsScreen } from './settings-screen'
 
@@ -55,5 +56,25 @@ describe('SettingsScreen', () => {
     expect(
       await screen.findByRole('radio', { name: /Night schedule/ }),
     ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('persists the selected app icon badge information offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'App icon badge' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /All cards/ }))
+
+    const runtime = getActiveUserRuntime()
+    expect(runtime).toBeDefined()
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(runtime!.database).settings.get(
+          APP_BADGE_SETTING,
+        ),
+      ).toMatchObject({ value: 'total' }),
+    )
   })
 })

@@ -3,6 +3,13 @@
 import { useEffect, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import {
+  APP_BADGE_PREFERENCES,
+  APP_BADGE_SETTING,
+  APP_BADGE_SETTING_CHANGED_EVENT,
+  isAppBadgePreference,
+  type AppBadgePreference,
+} from '@/pwa'
 import { Button } from '@/ui/button'
 import {
   applyTheme,
@@ -32,6 +39,28 @@ const THEME_OPTIONS: ReadonlyArray<{
   },
 ]
 
+const APP_BADGE_OPTIONS: ReadonlyArray<{
+  value: AppBadgePreference
+  label: string
+  description: string
+}> = [
+  {
+    value: 'due',
+    label: 'Cards to study',
+    description: 'Show new and scheduled cards from the current deck.',
+  },
+  {
+    value: 'total',
+    label: 'All cards',
+    description: 'Show the total number of cards in the current deck.',
+  },
+  {
+    value: 'off',
+    label: 'Off',
+    description: 'Do not show a number on the app icon.',
+  },
+]
+
 function getSystemPreference(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -43,6 +72,8 @@ function getSystemPreference(): boolean {
 export function SettingsScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [preference, setPreference] = useState<ThemePreference>('light')
+  const [badgePreference, setBadgePreference] =
+    useState<AppBadgePreference>('due')
   const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -57,8 +88,14 @@ export function SettingsScreen(): React.ReactElement {
       const saved = await createUserRepositories(runtime.database).settings.get(
         THEME_SETTING,
       )
+      const savedBadge = await createUserRepositories(
+        runtime.database,
+      ).settings.get(APP_BADGE_SETTING)
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
+      const nextBadgePreference = savedBadge?.value ?? ''
+      if (isAppBadgePreference(nextBadgePreference))
+        setBadgePreference(nextBadgePreference)
       setLoading(false)
     })().catch((reason: unknown) => {
       if (!cancelled) {
@@ -94,6 +131,33 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save theme setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseBadgePreference(
+    next: AppBadgePreference,
+  ): Promise<void> {
+    if (!runtime || next === badgePreference) return
+    const previous = badgePreference
+    setBadgePreference(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: APP_BADGE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+      window.dispatchEvent(new Event(APP_BADGE_SETTING_CHANGED_EVENT))
+    } catch (reason: unknown) {
+      setBadgePreference(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save app badge setting.',
       )
     } finally {
       setSaving(false)
@@ -149,6 +213,40 @@ export function SettingsScreen(): React.ReactElement {
             {error}
           </p>
         )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">App icon badge</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          On supported browsers, choose the number shown on the installed app
+          icon. It uses your local deck and works offline.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="App icon badge"
+        >
+          {APP_BADGE_OPTIONS.filter(({ value }) =>
+            APP_BADGE_PREFERENCES.includes(value),
+          ).map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={badgePreference === value ? 'secondary' : 'outline'}
+              aria-checked={badgePreference === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseBadgePreference(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
       </section>
     </main>
   )

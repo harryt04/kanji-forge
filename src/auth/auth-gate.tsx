@@ -12,6 +12,7 @@ import {
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { AppNavigation } from '@/features/navigation/app-navigation'
 import { ThemeController } from '@/features/settings'
+import { AppBadgeController } from '@/pwa'
 import { Button } from '@/ui/button'
 
 export function AuthGate({
@@ -81,6 +82,7 @@ export function AuthGate({
         </nav>
       </header>
       <ThemeController userId={user.id} />
+      <AppBadgeController userId={user.id} />
       {children}
     </>
   )

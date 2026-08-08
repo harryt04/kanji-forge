@@ -10,10 +10,10 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 31 (207 test cases: 207 passing) |
-| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 54 cases, included above) |
+| Unit/integration test files | 32 (210 test cases: 210 passing) |
+| Component test files | 8 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx` — 55 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
-| Overall statement coverage | **86.15%** |
+| Overall statement coverage | **86.23%** |
 | `src/core/srs` coverage | **100%** (lines/branches/functions/statements) |
 | CI gate | `pnpm test:coverage` runs on every push/PR; per-directory thresholds fail the build if violated |
 
@@ -146,13 +146,13 @@ promotion, and pinned-search toggling.
 
 **`app-navigation.test.tsx`** (Testing Library) — authenticated primary routes, offline starter-deck sticky-count badge rendering, and no stale badge when the runtime is unavailable.
 
-### `src/features/settings` — 7 cases
+### `src/features/settings` — 8 cases
 
-**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, and restoration of a saved night preference.
+**`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, and offline persistence of the app-icon badge preference.
 
-### `src/pwa` — 2 cases
+### `src/pwa` — 4 cases
 
-**`index.test.tsx`** covers client registration of the build-generated `/sw.js` worker and the browser-safe fallback when service-worker registration is unavailable or rejected.
+**`index.test.tsx`** covers client registration of the build-generated `/sw.js` worker and the browser-safe fallback when service-worker registration is unavailable or rejected. **`app-badge.test.tsx`** covers due/new versus total/off count semantics and the supported-browser badge update/clear lifecycle.
 
 ### `src/auth` — 11 cases across 3 files
 

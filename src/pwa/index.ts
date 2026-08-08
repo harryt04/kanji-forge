@@ -1,6 +1,15 @@
 'use client'
 
 import { useEffect } from 'react'
+export {
+  APP_BADGE_PREFERENCES,
+  APP_BADGE_SETTING,
+  APP_BADGE_SETTING_CHANGED_EVENT,
+  AppBadgeController,
+  countAppBadgeCards,
+  isAppBadgePreference,
+  type AppBadgePreference,
+} from './app-badge'
 
 /** Register the build-generated Serwist worker without making startup network-dependent. */
 export function PwaRegistration(): null {
