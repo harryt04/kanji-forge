@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -257,6 +258,28 @@ describe('StudyScreen', () => {
     expect(answer).not.toHaveTextContent('音:')
     expect(answer).not.toHaveTextContent('訓:')
     expect(answer).not.toHaveTextContent('日')
+  })
+
+  it('hides related example readings and meanings until tapped', async () => {
+    await renderReady()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    const related = await screen.findByTestId('study-related')
+    const disclose = within(related).getAllByRole('button', {
+      name: /Show reading and meaning for/,
+    })[0]
+    if (!disclose) throw new Error('related example disclosure missing')
+    expect(
+      within(related).queryByTestId('study-related-details'),
+    ).not.toBeInTheDocument()
+
+    await userEvent.click(disclose)
+
+    expect(
+      within(related).getByTestId('study-related-details'),
+    ).toBeInTheDocument()
   })
 
   it('renders the opt-in writing pad on the answer side', async () => {

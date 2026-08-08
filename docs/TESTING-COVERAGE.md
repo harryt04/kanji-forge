@@ -97,7 +97,7 @@ leaving local-only mutation types queued until their server contract exists.
 - **`deck-loader.test.ts`** (7) — lazy deck registration against real `packs-dev` fixtures, no
   re-registration/re-fetch on a second load, unknown-definition error, tolerant handling of content
   refs missing from the pack, and loading kanji and dictionary-word memberships from user-owned decks.
-- **`study-screen.test.tsx`** (20, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
+- **`study-screen.test.tsx`** (21, Testing Library) — sign-in-required state, tap-to-reveal, flag/unflag,
   the
   `motion-reduce:transition-none` class is present, keyboard grading (Space then arrow keys),
   arrow keys ignored before reveal, swipe-gesture grading via synthetic `TouchEvent`s, undo restores
@@ -106,7 +106,8 @@ leaving local-only mutation types queued until their server contract exists.
   colors and reloads in a later session, study-session persistence/closure on finish, and the
   persisted meaning question face, rendering only the configured answer fields, rendering the opt-in
   offline writing answer pad after reveal, dictionary-word study cards omitting that writing pad, explicit synthesized voice replay, auto-play on reveal, and
-  two-tap staged reveal behavior.
+  two-tap staged reveal behavior, and related example readings/meanings staying hidden until each
+  example is explicitly disclosed.
 - **`audio.test.ts`** (2) — browser capability detection plus Japanese utterance configuration and
   cancellation before replay.
 - **`audio-pack.test.ts`** (3) — licensed manifest validation, ZIP extraction with missing-file

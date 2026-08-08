@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
+import { getExampleWords, type WordRecord } from '@/data/packs'
 import { createUserRepositories, type UserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import {
@@ -64,6 +65,11 @@ export function StudyScreen({
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [relatedWords, setRelatedWords] = useState<readonly WordRecord[]>([])
+  const [relatedWordsLoading, setRelatedWordsLoading] = useState(false)
+  const [shownRelatedWordIds, setShownRelatedWordIds] = useState<
+    ReadonlySet<number>
+  >(new Set())
   const [preferenceError, setPreferenceError] = useState<string | null>(null)
   const touchStartX = useRef<number | null>(null)
   const sessionId = useRef<string | null>(null)
@@ -209,6 +215,36 @@ export function StudyScreen({
   const card = queue[index]
   const studyCard = card ? content.get(card.stickyId) : undefined
   const repo = runtime ? createUserRepositories(runtime.database) : null
+
+  useEffect(() => {
+    let cancelled = false
+    setRelatedWords([])
+    setShownRelatedWordIds(new Set())
+
+    if (!revealed || !studyCard || studyCard.contentType !== 'kanji') {
+      setRelatedWordsLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setRelatedWordsLoading(true)
+    void getExampleWords(studyCard.literal, 3)
+      .then((words) => {
+        if (cancelled) return
+        setRelatedWords(words)
+        setRelatedWordsLoading(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setRelatedWords([])
+        setRelatedWordsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [revealed, studyCard])
 
   const speakCurrentCard = useCallback(() => {
     if (!studyCard) return
@@ -495,6 +531,77 @@ export function StudyScreen({
                   <p className="text-muted-foreground">
                     {studyCard.meanings.join(', ')}
                   </p>
+                )}
+                {studyCard.contentType === 'kanji' && (
+                  <section
+                    className="border-border mt-5 border-t pt-4"
+                    aria-labelledby="study-related-heading"
+                    data-testid="study-related"
+                  >
+                    <h3
+                      id="study-related-heading"
+                      className="text-muted-foreground text-sm font-semibold"
+                    >
+                      Related
+                    </h3>
+                    {relatedWordsLoading ? (
+                      <p className="text-muted-foreground mt-2 text-sm">
+                        Loading examples…
+                      </p>
+                    ) : relatedWords.length > 0 ? (
+                      <ul className="mt-2 space-y-2">
+                        {relatedWords.map((word) => {
+                          const shown = shownRelatedWordIds.has(word.id)
+                          const form = word.forms[0] ?? ''
+                          return (
+                            <li
+                              key={word.id}
+                              className="bg-muted/40 rounded-md px-3 py-2"
+                              data-testid={`study-related-word-${word.id}`}
+                            >
+                              <p className="font-jp-ui" lang="ja">
+                                {form}
+                              </p>
+                              {shown ? (
+                                <p
+                                  className="text-muted-foreground mt-1 text-sm"
+                                  data-testid="study-related-details"
+                                >
+                                  {word.readings.join('、')}
+                                  {word.readings.length > 0 &&
+                                  word.meanings.length > 0
+                                    ? ' — '
+                                    : ''}
+                                  {word.meanings.join(', ')}
+                                </p>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="mt-1 h-auto px-0 text-sm"
+                                  aria-expanded={false}
+                                  onClick={() =>
+                                    setShownRelatedWordIds((current) => {
+                                      const next = new Set(current)
+                                      next.add(word.id)
+                                      return next
+                                    })
+                                  }
+                                >
+                                  Show reading and meaning for {form}
+                                </Button>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground mt-2 text-sm">
+                        No related examples are available.
+                      </p>
+                    )}
+                  </section>
                 )}
               </div>
             )}
