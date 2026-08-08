@@ -6,6 +6,14 @@ import { defineConfig, devices } from '@playwright/test'
 // picks them up fine. Load them the same way Next.js does so specs that gate on it run.
 nextEnv.loadEnvConfig(process.cwd())
 
+// Auth-dependent specs skip when no API origin is configured. In that mode, avoid
+// `pnpm start`: it performs a real Postgres migration before the server boots, which
+// would make a public clone with no local database fail before Playwright can run the
+// public/offline checks. Configured auth runs retain the migration step.
+const webServerCommand = process.env.NEXT_PUBLIC_API_URL
+  ? 'pnpm build && pnpm start'
+  : 'pnpm build && pnpm exec next start'
+
 export default defineConfig({
   testDir: './e2e',
   // Specs share a single local auth backend whose default rate limiter allows only
@@ -33,9 +41,10 @@ export default defineConfig({
     // The offline/PWA specs need a real service worker, which `@serwist/next` only emits
     // for `next build` (it's disabled in `next dev` to avoid a rebuild loop — see
     // next.config.js). Run a production build rather than the dev server, so the service
-    // worker is actually present for these specs to exercise. `pnpm start` also runs the
-    // migrations, which the auth specs need when a database is configured.
-    command: 'pnpm build && pnpm start',
+    // worker is actually present for these specs to exercise. Auth-enabled runs use
+    // `pnpm start` so migrations are applied; offline/public runs use `next start` so
+    // they do not require a Postgres instance.
+    command: webServerCommand,
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
