@@ -11,6 +11,7 @@ import {
 import type { SrsMode } from './study-style'
 import type { UserRepositories } from '@/data/repo'
 import { getDeviceId } from '@/lib/device-id'
+import { requestAppBadgeRefresh } from '@/pwa/events'
 import { toCoreState, toRepoState } from './adapters'
 import type { LoadedDeck, StudyCard } from './deck-loader'
 
@@ -137,6 +138,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         attempts: 0,
       },
     })
+    requestAppBadgeRefresh()
 
     const queue = [...state.queue]
     queue[state.index] = { ...card, state: after }
@@ -205,6 +207,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         attempts: 0,
       },
     })
+    requestAppBadgeRefresh()
 
     const updatedCard: QueueCard = { ...card, state: after }
     let queue = [...state.queue]
@@ -292,6 +295,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         attempts: 0,
       },
     })
+    requestAppBadgeRefresh()
 
     set({
       queue: [...entry.queueSnapshot],

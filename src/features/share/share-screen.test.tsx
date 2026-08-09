@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   bootstrapUserRuntime,
@@ -16,6 +22,8 @@ import {
   readSharedTextPayload,
 } from './share-screen'
 import { ANALYZER_DISPLAY_SETTING } from './analyzer-settings'
+import { ANALYZER_HISTORY_SETTING } from './analyzer-history'
+import { readSharedFormDataPayload } from './share-target'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -94,6 +102,20 @@ describe('ShareTargetScreen', () => {
     })
   })
 
+  it('reads bounded text-share form fields from a native POST payload', () => {
+    const form = new FormData()
+    form.set('text', '  日本語  ')
+    form.set('title', '  Study article  ')
+    form.set('url', 'https://example.com/article')
+    form.append('files', new File(['ignored'], 'article.txt'))
+
+    expect(readSharedFormDataPayload(form)).toEqual({
+      text: '日本語',
+      title: 'Study article',
+      url: 'https://example.com/article',
+    })
+  })
+
   it('accepts only http(s) article URLs for external link-out', () => {
     expect(isExternalArticleUrl('https://example.com/article')).toBe(true)
     expect(isExternalArticleUrl('http://example.com/article')).toBe(true)
@@ -128,6 +150,42 @@ describe('ShareTargetScreen', () => {
       await screen.findByRole('region', { name: 'Shared text import preview' }),
     ).toHaveTextContent('日')
     expect(screen.getAllByText('matched')).toHaveLength(2)
+  })
+
+  it('previews and imports dictionary-backed words from shared text', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/analyze?text=%E3%81%8A%E9%87%91%E3%82%92',
+    )
+    render(<ShareTargetScreen />)
+
+    const preview = await screen.findByRole('region', {
+      name: 'Shared text import preview',
+    })
+    expect(preview).toHaveTextContent('お金')
+    expect(preview).toHaveTextContent('word')
+    const importButton = within(preview).getByRole('button', {
+      name: 'Import matched cards to Saved',
+    })
+    fireEvent.click(importButton)
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).deckMembership.list('saved'),
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            contentRef: expect.stringMatching(/^word:\d+$/u),
+          }),
+        ]),
+      )
+    })
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /Added \d+ cards? to Saved\./u,
+    )
   })
 
   it('analyzes pasted Japanese text with readings and meanings offline', async () => {
@@ -245,6 +303,75 @@ describe('ShareTargetScreen', () => {
     ).not.toHaveTextContent('money')
     fireEvent.click(screen.getAllByRole('button', { name: 'Show gloss' })[0]!)
     expect(await screen.findByText('money')).toBeInTheDocument()
+  })
+
+  it('persists display-option changes made from the analyzer', async () => {
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Furigana display')).toHaveValue('all')
+    })
+    fireEvent.change(screen.getByLabelText('Furigana display'), {
+      target: { value: 'non-n5' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: /show rōmaji/i }))
+    fireEvent.change(screen.getByLabelText('English gloss display'), {
+      target: { value: 'tap' },
+    })
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(ANALYZER_DISPLAY_SETTING),
+      ).toMatchObject({
+        value: JSON.stringify({
+          furigana: 'non-n5',
+          romaji: true,
+          gloss: 'tap',
+        }),
+      })
+    })
+  })
+
+  it('persists analyzed text history, reuses entries, and clears it offline', async () => {
+    window.history.replaceState({}, '', '/analyze')
+    render(<ShareTargetScreen />)
+
+    fireEvent.change(screen.getByLabelText('Japanese text'), {
+      target: { value: 'お金を' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze text' }))
+
+    const history = await screen.findByRole('region', {
+      name: 'Analyzer history',
+    })
+    expect(history).toHaveTextContent('お金を')
+    expect(
+      await createUserRepositories(
+        getActiveUserRuntime()!.database,
+      ).settings.get(ANALYZER_HISTORY_SETTING),
+    ).toMatchObject({ value: '["お金を"]' })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reuse analysis 1: お金を' }),
+    )
+    expect(screen.getByLabelText('Japanese text')).toHaveValue('お金を')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('region', { name: 'Analyzer history' }),
+      ).not.toBeInTheDocument()
+    })
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(ANALYZER_HISTORY_SETTING),
+      ).toMatchObject({ value: '[]' })
+    })
   })
 
   it('imports matched shared kanji to Saved atomically with sync mutations', async () => {

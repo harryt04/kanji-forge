@@ -15,6 +15,20 @@ export interface InstalledAudioPack {
   readonly files: Readonly<Record<string, Uint8Array>>
 }
 
+export interface InstalledAudioRecording {
+  readonly manifest: AudioPackManifest
+  readonly path: string
+  readonly bytes: Uint8Array
+}
+
+/** Keep accidental downloads from exhausting browser storage before ZIP validation. */
+export const MAX_AUDIO_PACK_BYTES = 100 * 1024 * 1024
+
+/** Returns the number of writing/reading recordings declared by a pack. */
+export function countAudioPackRecordings(pack: AudioPackManifest): number {
+  return Object.keys(pack.files).length
+}
+
 const AUDIO_PACK_DB = 'kanjiforge-audio-packs-v1'
 const AUDIO_PACK_STORE = 'packs'
 const memoryPacks = new Map<string, InstalledAudioPack>()
@@ -70,6 +84,34 @@ export function parseAudioPackManifest(value: unknown): AudioPackManifest {
   return { id, name, version, license, attribution, files }
 }
 
+/** Returns the browser media type implied by a community recording path. */
+export function audioMimeTypeForPath(path: string): string {
+  const withoutQuery = path.toLowerCase().split('?').at(0) ?? ''
+  const extension = withoutQuery.split('.').at(-1) ?? ''
+  switch (extension) {
+    case 'aac':
+      return 'audio/aac'
+    case 'flac':
+      return 'audio/flac'
+    case 'm4a':
+    case 'mp4':
+      return 'audio/mp4'
+    case 'mp3':
+      return 'audio/mpeg'
+    case 'oga':
+    case 'ogg':
+    case 'opus':
+      return 'audio/ogg'
+    case 'wav':
+      return 'audio/wav'
+    case 'weba':
+    case 'webm':
+      return 'audio/webm'
+    default:
+      return 'application/octet-stream'
+  }
+}
+
 export function parseAudioPackArchive(bytes: Uint8Array): InstalledAudioPack {
   let archive: Record<string, Uint8Array>
   try {
@@ -95,6 +137,40 @@ export function parseAudioPackArchive(bytes: Uint8Array): InstalledAudioPack {
     files[key] = audio
   }
   return { manifest, files }
+}
+
+/**
+ * Fetches a licensed pack from a user-supplied web URL before installing it.
+ * Credentials are never sent, and only HTTP(S) URLs are accepted.
+ */
+export async function fetchAudioPack(url: string): Promise<AudioPackManifest> {
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(url.trim())
+  } catch {
+    throw new Error('Audio pack URL must be a valid HTTP(S) URL.')
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('Audio pack URL must be a valid HTTP(S) URL.')
+  }
+
+  let response: Response
+  try {
+    response = await fetch(parsedUrl.href, { credentials: 'omit' })
+  } catch {
+    throw new Error('Could not download the audio pack URL.')
+  }
+  if (!response.ok) {
+    throw new Error(`Could not download the audio pack (${response.status}).`)
+  }
+  const declaredLength = Number(response.headers.get('content-length'))
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_AUDIO_PACK_BYTES)
+    throw new Error('Audio pack is larger than the 100 MB browser limit.')
+
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  if (bytes.byteLength > MAX_AUDIO_PACK_BYTES)
+    throw new Error('Audio pack is larger than the 100 MB browser limit.')
+  return installAudioPack(bytes)
 }
 
 function openDatabase(): Promise<IDBDatabase | null> {
@@ -178,16 +254,41 @@ export async function removeAudioPack(id: string): Promise<void> {
 export async function getAudioPackFile(
   writing: string,
   reading: string,
+  preferredPackId?: string,
 ): Promise<Blob | null> {
+  const recording = await getAudioPackRecording(
+    writing,
+    reading,
+    preferredPackId,
+  )
+  if (recording) {
+    const copy = new ArrayBuffer(recording.bytes.byteLength)
+    new Uint8Array(copy).set(recording.bytes)
+    return new Blob([copy], { type: audioMimeTypeForPath(recording.path) })
+  }
+  return null
+}
+
+/** Returns the exact offline recording for a writing and reading, if installed. */
+export async function getAudioPackRecording(
+  writing: string,
+  reading: string,
+  preferredPackId?: string,
+): Promise<InstalledAudioRecording | null> {
   const key = `${writing}|${reading}`
   await listAudioPacks()
-  for (const pack of memoryPacks.values()) {
+  const packs = [...memoryPacks.values()]
+  if (preferredPackId) {
+    packs.sort((left, right) => {
+      if (left.manifest.id === preferredPackId) return -1
+      if (right.manifest.id === preferredPackId) return 1
+      return 0
+    })
+  }
+  for (const pack of packs) {
     const bytes = pack.files[key]
-    if (bytes) {
-      const copy = new ArrayBuffer(bytes.byteLength)
-      new Uint8Array(copy).set(bytes)
-      return new Blob([copy], { type: 'audio/mpeg' })
-    }
+    const path = pack.manifest.files[key]
+    if (bytes && path) return { manifest: pack.manifest, path, bytes }
   }
   return null
 }

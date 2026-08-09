@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_STUDY_ANSWER,
   DEFAULT_STUDY_QUESTION,
+  STUDY_QUESTION_OPTIONS,
   parseStudyAnswer,
   parseStudyTwoTap,
   serializeStudyAnswer,
@@ -11,6 +12,13 @@ describe('study answer settings', () => {
   it('uses kanji with all answer fields as the study-style default', () => {
     expect(DEFAULT_STUDY_QUESTION).toBe('kanji')
     expect(DEFAULT_STUDY_ANSWER).toEqual(['kanji', 'reading', 'meaning'])
+  })
+
+  it('keeps writing answer-only so it cannot be paired with a word question', () => {
+    expect(STUDY_QUESTION_OPTIONS.map(({ value }) => value)).not.toContain(
+      'writing',
+    )
+    expect(parseStudyAnswer('writing')).toEqual(['writing'])
   })
 
   it('defaults to all available answer fields', () => {

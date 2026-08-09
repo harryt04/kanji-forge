@@ -10,7 +10,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 | | |
 |---|---|
-| Unit/integration test files | 67 (462 test cases: 462 passing) |
+| Unit/integration test files | 68 (468 test cases: 468 passing) |
 | Component test files | 11 (`study-screen.test.tsx`, `home-screen.test.tsx`, `history-screen.test.tsx`, `dictionary-screen.test.tsx`, `browse-screen.test.tsx`, `detail-screen.test.tsx`, `writing-screen.test.tsx`, `settings-screen.test.tsx`, `app-navigation.test.tsx`, `help-screen.test.tsx`, `share-screen.test.tsx` — 134 cases, included above) |
 | E2E spec files | 2 (`auth.spec.ts`, `offline-study.spec.ts`) — 5 passed and 1 skipped in the configured local run |
 | Overall statement coverage | **85.51%** |
@@ -86,7 +86,7 @@ leaving local-only mutation types queued until their server contract exists.
 
 ### `src/features/study` — 54 cases across 7 files
 
-- **`store.test.ts`** (15) — the highest-value target per the plan. Queue construction from a loaded
+- **`store.test.ts`** (17) — the highest-value target per the plan. Queue construction from a loaded
   deck, empty-deck immediate finish, reveal, `recordGrade()` call shape, index/summary
   advancement, `wentGreen` tally, "again" requeue position matches `requeueAfterAgain()` exactly,
   session finish on last card, **persistence-failure isolation** (a rejected `recordGrade()` leaves
@@ -120,7 +120,8 @@ leaving local-only mutation types queued until their server contract exists.
 ### `src/features/home` — 14 cases
 
 **`home-screen.test.tsx`** (Testing Library) — sign-in-required and loading states, deck progress
-with no goal set and its accessible belt-rank label, progress bar reflects a real recorded grade
+with no goal set and its accessible belt-rank label, shape-coded level distribution swatches,
+progress bar reflects a real recorded grade
 (via `recordGrade()` against a real local DB), level-distribution bar and counts include untouched
 cards at level 0, total duration from completed sessions, setting a goal date drives the
 on-pace/behind-pace readout, and projected completion compares recent correct-answer pace against
@@ -143,7 +144,7 @@ breakdown and pressed state.
 **`help-screen.test.tsx`** (Testing Library) — bundled offline documentation sections and links,
 plus the anonymous-access message when rendered outside the authenticated app shell.
 
-### `src/features/browse` — 26 cases
+### `src/features/browse` — 29 cases
 
 **`browse-screen.test.tsx`** (Testing Library) — anonymous access messaging, offline fixture-pack
 loading into a 200-card accessible list, persisted List/Tiles view selection with a 200-card tile
@@ -156,6 +157,9 @@ multiple cards in either view, and atomically bulk flagging or assigning manual 
 
 `browse-filter.test.ts` covers untouched cards as level zero, inclusive stroke ranges, flagged and
 level combinations, JLPT matching, and missing JLPT metadata.
+
+`browse-virtual.test.ts` covers bounded overscanned ranges at the top and bottom of a 2,500-card
+list and clamps invalid scroll/sizing inputs.
 
 **`browse-sort.test.ts`** (Vitest) — all metadata sort modes, missing metadata placement, implicit
 level-zero cards, stable deck-order ties, and non-mutating deck-order output.
@@ -170,9 +174,9 @@ user-scoped recent-search persistence with pinning, reuse, and clear behavior.
 **`search-history.test.ts`** — query normalization, duplicate removal, history limits, repeat-query
 promotion, and pinned-search toggling.
 
-### `src/features/detail` — 13 cases
+### `src/features/detail` — 14 cases
 
-**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level/school grade/JLPT/frequency/name readings, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating the labeled synthesized-voice audio control when device speech is available, saving the selected kanji to the offline Saved deck with an outbox mutation, opening an analyzed dictionary word in the shared detail route and saving it offline, adding it to an existing custom deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe. Community-pack playback is covered by the pure `audio-pack.test.ts` suite and shares this fallback path.
+**`detail-screen.test.tsx`** (Testing Library) — anonymous access messaging, loading a selected kanji's readings/meanings/stroke count/local level/school grade/JLPT/frequency/name readings, rendering its offline stroke-order player and stepping/restarting it, rendering its offline radical/component section, rendering ranked example words and example sentences with accessible Japanese breakdowns, highlighted target kanji, English translation, and attribution, rendering ranked similar-looking kanji links, opening a linked kanji outside the starter deck from the offline content pack, exposing and activating labeled synthesized-voice audio when device speech is available, exposing and activating an installed community recording from dictionary word detail, saving the selected kanji to the offline Saved deck with an outbox mutation, opening an analyzed dictionary word in the shared detail route and saving it offline, adding it to an existing custom deck with an outbox mutation, honoring the persisted ask-before-saving preference, saving per-sticky notes and normalized tags with an outbox mutation, navigating to adjacent deck cards with previous/next controls, and moving forward with a horizontal touch swipe. Pack parsing and persistence remain covered by `audio-pack.test.ts`.
 
 **`electric-shape.test.ts`** (Vitest) — parsing Electric JSON-array, NDJSON, and SSE shape responses, ignoring keep-alive comments, materializing inserts/partial updates/deletes and `must-refetch`, and translating snake_case shape rows into the local sync snapshot contract. `sync/index.test.ts` continues to cover the authenticated API snapshot fallback.
 
@@ -186,7 +190,7 @@ promotion, and pinned-search toggling.
 
 ### `src/features/settings` — 76 cases
 
-**`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, non-kanji, and multi-character word input, versioned KanjiForge JSON deck and content-only share-file import validation, best-effort Anki `.apkg` SQLite note extraction and malformed-archive rejection, plus non-mutating matched/already-in-target/not-found preview classification. The Settings component test also verifies exact offline dictionary-word enrichment and word content-reference persistence alongside kanji imports.
+**`deck-export.test.ts`** covers deterministic text, escaped CSV, and versioned JSON exports including local study progress. **`deck-import.test.ts`** covers RFC-style quoted CSV parsing, BOM/newline handling, kanji-column guessing/mapping, stable parsing of one-per-line, compact, tab-separated, commented, non-kanji, and multi-character word input, versioned KanjiForge JSON deck and content-only share-file import validation, best-effort Anki `.apkg` SQLite note extraction with normalized/merged note tags and malformed-archive rejection, plus non-mutating matched/already-in-target/not-found preview classification. The Settings component test also verifies exact offline dictionary-word enrichment and word content-reference persistence alongside kanji imports, and persists Anki tags as sticky annotations.
 
 **`theme.test.ts`** covers persisted-value validation, the 21:00–06:00 local night window, device-theme resolution, and document/browser-chrome theme application. **`settings-screen.test.tsx`** covers anonymous access, offline persistence of a dark preference, restoration of a saved night preference, offline persistence of the study question, independently selected study answer fields including the writing pad, two-tap study mode, adaptive scheduler mode, synthesized-voice autoplay, the inline stroke-animation visibility toggle, restoring the default study style, app-icon badge preferences, storage-protection denial/retry messaging, the Saved deck direct-vs-confirm preference, validated RSS link-out sources with offline persistence and removal, the one-click attributed Japanese Wikinews preset, installing/removing the optional JMnedict names pack, renaming and restoring the starter deck name with an outbox mutation, creating a custom deck with an outbox mutation, assigning offline folders to decks, deleting the Saved deck after confirmation while preserving the built-in deck, resetting starter-deck colors while preserving review totals, resetting starter-deck statistics while preserving flags, copying the starter deck as tab-separated text, previewing and confirming matched and unknown input from text, CSV, JSON, and Anki package imports, appending imported cards to an existing custom deck without touching Saved, transferring studied starter-deck progress to matching Saved cards while preserving Saved flags, backup restore, and the stale-backup warning with its recovery action. **`names-pack.test.ts`** covers licensed manifest/schema validation, generated-style ZIP and raw SQLite installation, and offline list/remove behavior. **`rss-feeds.test.ts`** covers URL safety, label derivation, malformed-data cleanup, de-duplication, list limits, add/remove behavior, and the attributed Japanese Wikinews preset. **`deck-folders.test.ts`** covers folder-label normalization and deterministic grouping. **`deck-progress.test.ts`** covers shared-card selection, SRS-field copying, destination-flag preservation, and idempotent no-op planning. **`auto-backup.test.ts`** covers persistent-folder capability detection, chosen-folder storage, complete backup writes, and the once-per-day write interval.
 
@@ -194,9 +198,9 @@ promotion, and pinned-search toggling.
 
 **`deck-combine.test.ts`** covers source-order de-duplication, first-N truncation after de-duplication, equivalent question/reading cards with different dictionary ids, identity normalization, and invalid-limit rejection. The Settings component test covers composing a selected source deck into a custom deck with a first-N limit and sync-ready membership mutations.
 
-### `src/features/share` — 12 cases
+### `src/features/share` — 14 cases
 
-**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations.
+**`share-screen.test.tsx`** covers parsing the PWA GET share-target payload, safe external article URL link-out, previewing shared Japanese text against the offline dictionary, automatically analyzing shared article text offline with readings/furigana, analyzing pasted Japanese text with offline readings/meanings and links to offline word details, bulk-saving deduplicated unsaved dictionary words with atomic membership and outbox mutations, and importing matched kanji into Saved with atomic membership and outbox mutations. Together with the analyzed-word case in `detail-screen.test.tsx`, this verifies the complete tap-word → detail → save-to-deck flow.
 It also covers validating a legacy content-only deck URL, previewing the shared deck name, importing its matched cards, and importing a mixed version-2 deck containing a dictionary-word card.
 The Settings component coverage also selects and shares a locally owned custom deck, confirming the generated payload uses that deck's name and content.
 
@@ -205,11 +209,12 @@ preferences, malformed-value defaults, and reading romanization. **`src/core/tex
 and **`src/core/text/analyzer.test.ts`** cover potential, imperative, prohibitive, and progressive
 verb-form recognition in addition to the existing polite, negative, conditional, and adjective
 forms. The share-screen suite verifies
-that these preferences load offline and that tap-to-reveal glosses remain hidden until requested.
+that these preferences load offline, remain persisted after user changes, and that tap-to-reveal
+glosses remain hidden until requested.
 
 **`src/features/settings/deck-share.test.ts`** covers deterministic mixed-card URL and readable share-file payloads, omission of SRS progress, legacy version-1 compatibility, dictionary-word round-tripping, and malformed/empty payload rejection.
 
-**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`src/server/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline.
+**`src/pwa/daily-reminder.test.ts`** covers daily reminder time validation, next-occurrence rollover, and due-card counting. **`src/pwa/push-payload.test.ts`** covers safe app-relative notification navigation and malformed-payload defaults. **`src/server/push.test.ts`** covers subscription endpoint validation, local-time reminder matching, and the sender payload. **`storage-persistence.test.ts`** covers unsupported browsers, a granted request, and the once-only post-session request marker. The Settings component test covers saving a permissioned daily reminder and its local time offline. The app-badge suite also covers an explicit refresh after local study state changes, not only timer/focus refreshes.
 
 ### `src/pwa` — 10 cases
 

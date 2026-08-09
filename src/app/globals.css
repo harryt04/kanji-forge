@@ -339,6 +339,14 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html[data-font-scale='large'] {
+  font-size: 112.5%;
+}
+
+html[data-font-scale='x-large'] {
+  font-size: 125%;
+}
+
 body {
   margin: 0;
   padding: 0;

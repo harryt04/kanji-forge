@@ -16,7 +16,8 @@ import {
   DAILY_REMINDER_ENABLED_SETTING,
   DAILY_REMINDER_TIME_SETTING,
 } from '@/pwa'
-import { THEME_SETTING } from './theme'
+import * as pwa from '@/pwa'
+import { FONT_SCALE_SETTING, THEME_SETTING } from './theme'
 import {
   BACKUP_FORMAT,
   BACKUP_LAST_EXPORTED_SETTING,
@@ -29,12 +30,17 @@ import {
   SRS_MODE_SETTING,
   STUDY_TWO_TAP_SETTING,
 } from '@/features/study/study-style'
-import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
+import {
+  AUDIO_PACK_PREFERENCE_SETTING,
+  STUDY_AUTO_PLAY_AUDIO_SETTING,
+} from '@/features/study/audio'
 import { STROKE_ANIMATION_SETTING } from '@/features/detail/stroke-animation'
 import { SAVE_BEHAVIOR_SETTING } from '@/features/detail/save-behavior'
 import { deckFolderSettingKey } from './deck-folders'
 import { JAPANESE_WIKINEWS_FEED, RSS_FEEDS_SETTING } from './rss-feeds'
 import { removeNamesPack } from './names-pack'
+import { removeWordsPack } from './words-pack'
+import { installAudioPack, removeAudioPack } from '@/features/study/audio-pack'
 import { repoCardState, repoReview } from '../../../test/factories'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
@@ -55,7 +61,12 @@ function fixtureFetch(): typeof fetch {
 }
 
 describe('SettingsScreen', () => {
+  const installedAudioPacks: string[] = []
   const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
+  const originalUserAgent = Object.getOwnPropertyDescriptor(
+    navigator,
+    'userAgent',
+  )
 
   beforeEach(() => {
     vi.stubGlobal('fetch', fixtureFetch())
@@ -63,11 +74,18 @@ describe('SettingsScreen', () => {
   })
 
   afterEach(async () => {
+    for (const id of installedAudioPacks.splice(0)) await removeAudioPack(id)
     await removeNamesPack()
+    await removeWordsPack()
     if (originalStorage) {
       Object.defineProperty(navigator, 'storage', originalStorage)
     } else {
       Reflect.deleteProperty(navigator, 'storage')
+    }
+    if (originalUserAgent) {
+      Object.defineProperty(navigator, 'userAgent', originalUserAgent)
+    } else {
+      Reflect.deleteProperty(navigator, 'userAgent')
     }
     vi.unstubAllGlobals()
     clearUserRuntime()
@@ -95,6 +113,25 @@ describe('SettingsScreen', () => {
     await expect(
       createUserRepositories(runtime!.database).settings.get(THEME_SETTING),
     ).resolves.toMatchObject({ value: 'dark' })
+  })
+
+  it('persists the selected text size offline', async () => {
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Text size' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Large text/ }))
+
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(FONT_SCALE_SETTING),
+      ).toMatchObject({ value: 'large' }),
+    )
+    expect(document.documentElement.dataset.fontScale).toBe('large')
   })
 
   it('persists RSS links and provides link-out-only news sources', async () => {
@@ -188,6 +225,40 @@ describe('SettingsScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('installs and removes the optional full dictionary offline', async () => {
+    const user = userEvent.setup()
+    const SQL = await initSqlJs()
+    const database = new SQL.Database()
+    database.run(`
+      CREATE TABLE entries (id INTEGER PRIMARY KEY, common_score INTEGER NOT NULL, data BLOB NOT NULL);
+      CREATE TABLE forms (entry_id INTEGER NOT NULL, form TEXT NOT NULL, kind TEXT NOT NULL, is_common INTEGER NOT NULL);
+      CREATE TABLE glosses_fts (entry_id INTEGER NOT NULL, gloss TEXT NOT NULL);
+    `)
+    const bytes = database.export()
+    database.close()
+    const file = new File([bytes], 'words-full-v1.sqlite', {
+      type: 'application/x-sqlite3',
+    })
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: async () => bytes.buffer,
+    })
+
+    render(<SettingsScreen />)
+    await screen.findByRole('heading', { name: 'Optional full dictionary' })
+    await user.upload(
+      screen.getByLabelText('Install full dictionary pack'),
+      file,
+    )
+
+    expect(
+      await screen.findByText('Full JMdict dictionary v1'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(
+      await screen.findByText(/No full dictionary installed\./u),
+    ).toBeInTheDocument()
+  })
+
   it('restores a saved night preference on a later render', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({
@@ -258,6 +329,97 @@ describe('SettingsScreen', () => {
     ).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('refreshes an active background push subscription when the reminder time changes', async () => {
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: DAILY_REMINDER_ENABLED_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+    const refreshPush = vi
+      .spyOn(pwa, 'enableBackgroundPush')
+      .mockResolvedValue('subscribed')
+    render(<SettingsScreen />)
+
+    const time = await screen.findByLabelText('Reminder time')
+    fireEvent.change(time, { target: { value: '07:30' } })
+
+    await waitFor(async () => {
+      expect(
+        await createUserRepositories(runtime.database).settings.get(
+          DAILY_REMINDER_TIME_SETTING,
+        ),
+      ).toMatchObject({ value: '07:30' })
+    })
+    expect(refreshPush).toHaveBeenCalledOnce()
+    refreshPush.mockRestore()
+  })
+
+  it('offers an immediate test for an active background push subscription', async () => {
+    const user = userEvent.setup()
+    const getStatus = vi
+      .spyOn(pwa, 'getBackgroundPushStatus')
+      .mockResolvedValue('subscribed')
+    const sendTest = vi.spyOn(pwa, 'sendTestBackgroundPush').mockResolvedValue()
+    await createUserRepositories(getActiveUserRuntime()!.database).settings.set(
+      {
+        key: DAILY_REMINDER_ENABLED_SETTING,
+        value: 'true',
+        updatedAt: Date.now(),
+      },
+    )
+
+    render(<SettingsScreen />)
+    const button = await screen.findByRole('button', {
+      name: 'Send test reminder',
+    })
+    await user.click(button)
+
+    expect(sendTest).toHaveBeenCalledOnce()
+    expect(await screen.findByText(/Test reminder sent/u)).toBeInTheDocument()
+    getStatus.mockRestore()
+    sendTest.mockRestore()
+  })
+
+  it('shows iOS Home Screen guidance when storage is not protected', async () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    })
+    Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: {
+        persisted: vi.fn().mockResolvedValue(false),
+        persist: vi.fn().mockResolvedValue(false),
+      },
+    })
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByText('Keep KanjiForge on your Home Screen'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Tap Share, then “Add to Home Screen/u),
+    ).toBeInTheDocument()
+  })
+
+  it('explains that iOS reminders require an installed PWA', async () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    })
+    render(<SettingsScreen />)
+
+    expect(
+      await screen.findByText('Install KanjiForge for iOS reminders'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /cannot deliver reminders reliably from an ordinary tab/u,
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('persists the selected study answer fields offline', async () => {
     const user = userEvent.setup()
     render(<SettingsScreen />)
@@ -304,7 +466,7 @@ describe('SettingsScreen', () => {
       await screen.findByRole('heading', { name: 'Study audio' }),
     ).toBeInTheDocument()
     await user.click(
-      screen.getByRole('checkbox', { name: /Auto-play synthesized voice/ }),
+      screen.getByRole('checkbox', { name: /Auto-play Japanese audio/ }),
     )
 
     const runtime = getActiveUserRuntime()!
@@ -314,6 +476,86 @@ describe('SettingsScreen', () => {
           STUDY_AUTO_PLAY_AUDIO_SETTING,
         ),
       ).toMatchObject({ value: 'true' }),
+    )
+  })
+
+  it('installs a community audio pack from a URL', async () => {
+    const user = userEvent.setup()
+    const id = `settings-remote-audio-${crypto.randomUUID()}`
+    installedAudioPacks.push(id)
+    const previousFetch = globalThis.fetch
+    const remoteUrl = 'https://audio.example.test/community.zip'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === remoteUrl) {
+          expect(init?.credentials).toBe('omit')
+          return new Response(
+            zipSync({
+              'manifest.json': new TextEncoder().encode(
+                JSON.stringify({
+                  id,
+                  name: 'Remote community voice',
+                  version: '1.0.0',
+                  license: 'CC BY 4.0',
+                  attribution: 'A Japanese speaker',
+                  files: { '日|ひ': 'audio/hi.mp3' },
+                }),
+              ),
+              'audio/hi.mp3': new Uint8Array([1, 2, 3]),
+            }),
+            { status: 200 },
+          )
+        }
+        return previousFetch(input, init)
+      }),
+    )
+    render(<SettingsScreen />)
+
+    await screen.findByRole('heading', { name: 'Study audio' })
+    await user.type(screen.getByLabelText('Or install from a URL'), remoteUrl)
+    await user.click(screen.getByRole('button', { name: 'Install URL' }))
+
+    expect(
+      (await screen.findByRole('list', { name: 'Installed audio packs' }))
+        .textContent,
+    ).toContain('Remote community voice')
+  })
+
+  it('persists the preferred community audio pack offline', async () => {
+    const firstId = `settings-first-audio-${crypto.randomUUID()}`
+    const preferredId = `settings-preferred-audio-${crypto.randomUUID()}`
+    installedAudioPacks.push(firstId, preferredId)
+    const createPack = (id: string, name: string) =>
+      zipSync({
+        'manifest.json': new TextEncoder().encode(
+          JSON.stringify({
+            id,
+            name,
+            version: '1.0.0',
+            license: 'CC BY 4.0',
+            attribution: 'A Japanese speaker',
+            files: { '日|ひ': `audio/${id}.mp3` },
+          }),
+        ),
+        [`audio/${id}.mp3`]: new Uint8Array([1, 2, 3]),
+      })
+    await installAudioPack(createPack(firstId, 'First voice'))
+    await installAudioPack(createPack(preferredId, 'Preferred voice'))
+
+    const user = userEvent.setup()
+    render(<SettingsScreen />)
+    await screen.findByRole('heading', { name: 'Preferred recording pack' })
+    await user.click(
+      screen.getByRole('radio', { name: /Preferred voice 1\.0\.0/ }),
+    )
+
+    await waitFor(async () =>
+      expect(
+        await createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).settings.get(AUDIO_PACK_PREFERENCE_SETTING),
+      ).toMatchObject({ value: preferredId }),
     )
   })
 
@@ -684,6 +926,48 @@ describe('SettingsScreen', () => {
         'Deleted the Saved deck. It will be recreated when you save a card.',
       ),
     ).toBeInTheDocument()
+    expect(await repositories.outbox.pending()).toEqual([
+      expect.objectContaining({ mutType: 'deck.delete' }),
+    ])
+    confirm.mockRestore()
+  })
+
+  it('deletes a custom deck after confirmation and removes it from deck tools', async () => {
+    const user = userEvent.setup()
+    const runtime = getActiveUserRuntime()!
+    const repositories = createUserRepositories(runtime.database)
+    await repositories.decks.upsert({
+      id: 'custom-delete',
+      name: 'Practice deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repositories.deckMembership.save({
+      deckId: 'custom-delete',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SettingsScreen />)
+
+    await screen.findByRole('button', { name: 'Delete Practice deck' })
+    await user.click(
+      screen.getByRole('button', { name: 'Delete Practice deck' }),
+    )
+
+    await waitFor(async () =>
+      expect(await repositories.decks.get('custom-delete')).toBeUndefined(),
+    )
+    expect(await repositories.deckMembership.list()).toEqual([])
+    expect(
+      await screen.findByText('Deleted the “Practice deck” deck.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Delete Practice deck' }),
+    ).not.toBeInTheDocument()
     expect(await repositories.outbox.pending()).toEqual([
       expect.objectContaining({ mutType: 'deck.delete' }),
     ])
@@ -1127,13 +1411,14 @@ describe('SettingsScreen', () => {
     const SQL = await initSqlJs()
     const database = new SQL.Database()
     database.run('CREATE TABLE col (decks TEXT)')
-    database.run('CREATE TABLE notes (id INTEGER, flds TEXT)')
+    database.run('CREATE TABLE notes (id INTEGER, flds TEXT, tags TEXT)')
     database.run('INSERT INTO col VALUES (?)', [
       JSON.stringify({ '1': { name: 'N5 vocabulary' } }),
     ])
-    database.run('INSERT INTO notes VALUES (?, ?)', [
+    database.run('INSERT INTO notes VALUES (?, ?, ?)', [
       1,
-      '日本\u001fにほん\u001fJapan',
+      'お金\u001fおかね\u001fMoney',
+      'money::n5 frequency',
     ])
     const archive = zipSync({ 'collection.anki2': database.export() })
     const file = new File([archive], 'n5.apkg', { type: 'application/zip' })
@@ -1153,11 +1438,29 @@ describe('SettingsScreen', () => {
     )
 
     expect(
-      await screen.findByText('Previewing 2 kanji from “N5 vocabulary”.'),
+      await screen.findByText(
+        'Previewing 2 Japanese entries from “N5 vocabulary”.',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Import preview')).toHaveTextContent(
-      '日 matched — will be added',
+      'お金 matched — will be added',
     )
+
+    await user.click(
+      screen.getByRole('button', { name: 'Import matched kanji' }),
+    )
+    await waitFor(async () => {
+      await expect(
+        createUserRepositories(
+          getActiveUserRuntime()!.database,
+        ).annotations.list(),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          deckId: 'saved',
+          tags: ['money::n5', 'frequency'],
+        }),
+      ])
+    })
   })
 
   it('transfers studied starter progress to Saved while keeping Saved flags', async () => {

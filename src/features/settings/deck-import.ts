@@ -1,71 +1,29 @@
 import { parseDeckSharePayload } from './deck-share'
+import {
+  parseCsvImport as parseCoreCsvImport,
+  parseImportValues as parseCoreImportValues,
+  parseKanjiImportText as parseCoreKanjiImportText,
+  isKanjiLiteral as isCoreKanjiLiteral,
+  type ParsedImportTable,
+} from '@/core/import/parse'
+import {
+  deduplicateImportEntries as deduplicateCoreImportEntries,
+  previewImport as previewCoreImport,
+  type ImportEntry,
+  type ImportPreviewItem,
+} from '@/core/import/enrich'
+
+export type { ImportEntry, ImportPreviewItem }
 
 /** A parsed CSV table used by the Settings import mapping UI. */
-export interface CsvImportTable {
-  readonly headers: readonly string[]
-  readonly rows: readonly (readonly string[])[]
-}
+export type CsvImportTable = ParsedImportTable
 
 /**
  * Parses a CSV file with RFC 4180-style quoted cells. A UTF-8 BOM is ignored,
  * and embedded commas, quotes, and newlines are preserved inside quoted cells.
  */
 export function parseCsvImport(input: string): CsvImportTable {
-  const source = input.replace(/^\uFEFF/u, '')
-  const rows: string[][] = []
-  let row: string[] = []
-  let cell = ''
-  let quoted = false
-
-  for (let index = 0; index < source.length; index += 1) {
-    const character = source[index]
-    if (quoted) {
-      if (character === '"') {
-        if (source[index + 1] === '"') {
-          cell += '"'
-          index += 1
-        } else {
-          quoted = false
-        }
-      } else {
-        cell += character
-      }
-      continue
-    }
-
-    if (character === '"' && cell.length === 0) {
-      quoted = true
-    } else if (character === ',') {
-      row.push(cell)
-      cell = ''
-    } else if (character === '\n' || character === '\r') {
-      row.push(cell)
-      cell = ''
-      if (character === '\r' && source[index + 1] === '\n') index += 1
-      if (row.some((value) => value.length > 0)) rows.push(row)
-      row = []
-    } else {
-      cell += character
-    }
-  }
-
-  if (quoted) throw new Error('CSV contains an unterminated quoted field.')
-  if (cell.length > 0 || row.length > 0) {
-    row.push(cell)
-    if (row.some((value) => value.length > 0)) rows.push(row)
-  }
-
-  if (rows.length === 0) return { headers: [], rows: [] }
-
-  const width = Math.max(...rows.map((candidate) => candidate.length))
-  const headers = Array.from({ length: width }, (_, index) => {
-    const value = rows[0]?.[index]?.trim() ?? ''
-    return value || `Column ${index + 1}`
-  })
-  const dataRows = rows
-    .slice(1)
-    .map((candidate) => headers.map((_, index) => candidate[index] ?? ''))
-  return { headers, rows: dataRows }
+  return parseCoreCsvImport(input)
 }
 
 /** Selects the most likely kanji column while leaving the user in control. */
@@ -105,13 +63,7 @@ export function parseCsvKanjiColumn(
  * paste without a column-mapping step.
  */
 export function parseKanjiImportText(input: string): readonly string[] {
-  const values = input
-    .split(/\r?\n/u)
-    .map((line) => line.trim().split('\t', 1)[0]?.trim() ?? '')
-    .filter((line) => line.length > 0 && !line.startsWith('#'))
-    .flatMap((line) => [...line])
-
-  return [...new Set(values.filter(isKanjiLiteral))]
+  return parseCoreKanjiImportText(input)
 }
 
 /**
@@ -121,12 +73,7 @@ export function parseKanjiImportText(input: string): readonly string[] {
  * resolved before falling back to individual kanji.
  */
 export function parseImportValues(input: string): readonly string[] {
-  const values = input
-    .split(/\r?\n/u)
-    .map((line) => line.trim().split('\t', 1)[0]?.trim() ?? '')
-    .filter((line) => line.length > 0 && !line.startsWith('#'))
-
-  return [...new Set(values)]
+  return parseCoreImportValues(input)
 }
 
 /** Reads the selected CSV column as one import value per data row. */
@@ -180,17 +127,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function isKanjiLiteral(value: string): boolean {
-  if ([...value].length !== 1) return false
-  const codePoint = value.codePointAt(0)
-  return (
-    codePoint !== undefined &&
-    ((codePoint >= 0x3400 && codePoint <= 0x4dbf) ||
-      (codePoint >= 0x4e00 && codePoint <= 0x9fff) ||
-      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
-      (codePoint >= 0x20000 && codePoint <= 0x2fa1f))
-  )
-}
+export const isKanjiLiteral = isCoreKanjiLiteral
 
 export type KanjiImportPreviewStatus =
   'matched' | 'already-in-target' | 'not-found'
@@ -200,30 +137,19 @@ export interface KanjiImportPreviewItem {
   readonly status: KanjiImportPreviewStatus
 }
 
-export interface ImportEntry {
-  readonly label: string
-  readonly contentRef: string | null
-  readonly kind: 'kanji' | 'word' | 'name' | 'unknown'
-}
-
-export interface ImportPreviewItem extends ImportEntry {
-  readonly status: KanjiImportPreviewStatus
-}
-
 /** Classifies resolved dictionary entries and unresolved values uniformly. */
 export function previewImport(
   entries: readonly ImportEntry[],
   existingContentRefs: ReadonlySet<string>,
 ): readonly ImportPreviewItem[] {
-  return entries.map((entry) => ({
-    ...entry,
-    status:
-      entry.contentRef === null
-        ? 'not-found'
-        : existingContentRefs.has(entry.contentRef)
-          ? 'already-in-target'
-          : 'matched',
-  }))
+  return previewCoreImport(entries, existingContentRefs)
+}
+
+/** Removes repeated content identities before a preview or import. */
+export function deduplicateImportEntries(
+  entries: readonly ImportEntry[],
+): readonly ImportEntry[] {
+  return deduplicateCoreImportEntries(entries)
 }
 
 /** Classifies a parsed import without changing local deck membership. */

@@ -14,10 +14,16 @@ import {
 import { retentionByLevel, type RetentionLevel } from '@/core/srs/retention'
 import { identifyLeeches, type Leech } from '@/core/srs/leeches'
 import { emptyCardState } from '@/core/srs/types'
-import { createUserRepositories, type CardState } from '@/data/repo'
+import {
+  createUserRepositories,
+  type CardInDeck,
+  type CardState,
+  type UserRepositories,
+} from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
+import { loadDeckDefinitions } from '@/data/packs'
 import { toCoreState } from '@/features/study/adapters'
 import {
   groupDecksByFolder,
@@ -81,7 +87,51 @@ interface HomeData {
   readonly leeches: readonly Leech[]
   readonly content: ReadonlyMap<string, { readonly literal: string }>
   readonly forecast: ReturnType<typeof reviewForecast>
+  readonly builtInDecks: readonly DeckShelfItem[]
   readonly customDecks: readonly DeckShelfItem[]
+}
+
+async function summarizeDeck(
+  repo: UserRepositories,
+  deck: Pick<DeckShelfItem, 'id' | 'name'>,
+  cards: readonly CardInDeck[],
+  userId: string,
+  folder = '',
+): Promise<DeckShelfItem> {
+  const states = cards.map(({ contentRef, state }) =>
+    state ? toCoreState(state) : emptyCardState(deck.id, contentRef, userId),
+  )
+  const sessions = await repo.sessions.list(deck.id)
+  const lastReviewedAt = cards.reduce<number | null>(
+    (latest, card) =>
+      card.state?.lastReviewedAt &&
+      (latest === null || card.state.lastReviewedAt > latest)
+        ? card.state.lastReviewedAt
+        : latest,
+    null,
+  )
+  const lastSessionAt = sessions.reduce<number | null>(
+    (latest, session) =>
+      session.endedAt !== null && (latest === null || session.endedAt > latest)
+        ? session.endedAt
+        : latest,
+    null,
+  )
+
+  return {
+    id: deck.id,
+    name: deck.name,
+    cardCount: cards.length,
+    progressPercent: Math.round(computeProgress(cards.length, states) * 100),
+    progressLevel: computeProgressLevel(computeProgress(cards.length, states)),
+    lastStudiedAt:
+      lastReviewedAt === null
+        ? lastSessionAt
+        : lastSessionAt === null
+          ? lastReviewedAt
+          : Math.max(lastReviewedAt, lastSessionAt),
+    folder,
+  }
 }
 
 function localReviewDay(timestamp: number): string {
@@ -128,55 +178,41 @@ export function HomeScreen(): React.ReactElement {
     const repo = createUserRepositories(runtime.database)
     const loaded = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
     const settings = await repo.settings.list()
+    const builtInDecks = await Promise.all(
+      (await loadDeckDefinitions()).map(async (definition) => {
+        const existing = await repo.decks.get(definition.id)
+        const deck =
+          existing ??
+          ({
+            id: definition.id,
+            name: definition.name,
+            kind: 'derived',
+            definitionId: definition.id,
+            updatedAt: Date.now(),
+          } as const)
+        if (!existing) await repo.decks.upsert(deck)
+        const cards = await repo.decks.listCards(deck.id, {
+          contentRefsFor: () => definition.contentRefs,
+        })
+        return summarizeDeck(repo, deck, cards, runtime.userId)
+      }),
+    )
     const customDecks = await Promise.all(
       (await repo.decks.list())
         .filter((candidate) => candidate.kind === 'custom')
         .map(async (candidate): Promise<DeckShelfItem> => {
           const customDeck = await loadDeck(runtime.database, candidate.id)
-          const states = customDeck.cards.map(({ contentRef, state }) =>
-            state
-              ? toCoreState(state)
-              : emptyCardState(candidate.id, contentRef, runtime.userId),
-          )
-          const sessions = await repo.sessions.list(candidate.id)
-          const lastReviewedAt = customDeck.cards.reduce<number | null>(
-            (latest, card) =>
-              card.state?.lastReviewedAt &&
-              (latest === null || card.state.lastReviewedAt > latest)
-                ? card.state.lastReviewedAt
-                : latest,
-            null,
-          )
-          const lastSessionAt = sessions.reduce<number | null>(
-            (latest, session) =>
-              session.endedAt !== null &&
-              (latest === null || session.endedAt > latest)
-                ? session.endedAt
-                : latest,
-            null,
-          )
-          return {
-            id: candidate.id,
-            name: candidate.name,
-            cardCount: customDeck.cards.length,
-            progressPercent: Math.round(
-              computeProgress(customDeck.cards.length, states) * 100,
-            ),
-            progressLevel: computeProgressLevel(
-              computeProgress(customDeck.cards.length, states),
-            ),
-            lastStudiedAt:
-              lastReviewedAt === null
-                ? lastSessionAt
-                : lastSessionAt === null
-                  ? lastReviewedAt
-                  : Math.max(lastReviewedAt, lastSessionAt),
-            folder: normalizeDeckFolder(
+          return summarizeDeck(
+            repo,
+            candidate,
+            customDeck.cards,
+            runtime.userId,
+            normalizeDeckFolder(
               settings.find(
                 (setting) => setting.key === `deck-folder:${candidate.id}`,
               )?.value,
             ),
-          }
+          )
         }),
     )
 
@@ -253,6 +289,7 @@ export function HomeScreen(): React.ReactElement {
       leeches,
       content: loaded.content,
       forecast,
+      builtInDecks,
       customDecks,
     })
   }
@@ -305,6 +342,7 @@ export function HomeScreen(): React.ReactElement {
     data.customDecks,
     Object.fromEntries(data.customDecks.map((deck) => [deck.id, deck.folder])),
   )
+  const builtInDecks = data.builtInDecks
   const progressLabel = `Level ${data.progressLevel}, ${BELT_NAMES[data.progressLevel]}`
   const forecastTotal = data.forecast.reduce(
     (total, day) => total + day.reviews,
@@ -374,7 +412,7 @@ export function HomeScreen(): React.ReactElement {
                     key={level}
                     aria-hidden="true"
                     data-level={level}
-                    className="level-swatch h-full"
+                    className={`level-swatch sticky-shape l${level} h-full`}
                     style={{ width: `${(count / data.cardCount) * 100}%` }}
                   />
                 ) : null,
@@ -390,7 +428,7 @@ export function HomeScreen(): React.ReactElement {
                     <span
                       aria-hidden="true"
                       data-level={level}
-                      className="level-swatch h-3 w-3 shrink-0 rounded-sm"
+                      className={`level-swatch sticky-shape l${level} h-3 w-3 shrink-0 rounded-sm`}
                     />
                     <span>
                       Level {level}, {BELT_NAMES[level]}
@@ -492,6 +530,51 @@ export function HomeScreen(): React.ReactElement {
         </Card>
       )}
 
+      <Card data-testid="builtin-deck-shelf">
+        <CardHeader>
+          <CardTitle className="text-base">Built-in decks</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Choose a bundled deck to study or browse. Progress is tracked
+            separately for each deck.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {builtInDecks.map((deck) => (
+            <div key={deck.id} className="border-border rounded-md border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate font-medium">{deck.name}</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {deck.progressPercent}% · {deck.cardCount}{' '}
+                    {deck.cardCount === 1 ? 'card' : 'cards'}
+                    {deck.lastStudiedAt
+                      ? ` · Last studied ${new Date(deck.lastStudiedAt).toLocaleString()}`
+                      : ' · Not studied yet'}
+                  </p>
+                </div>
+                <span
+                  className="level-swatch sticky-shape h-8 w-8 shrink-0"
+                  data-level={deck.progressLevel}
+                  aria-label={`Deck color: level ${deck.progressLevel}`}
+                />
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" asChild>
+                  <Link href={`/study?deckId=${encodeURIComponent(deck.id)}`}>
+                    Study {deck.name}
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/browse?deckId=${encodeURIComponent(deck.id)}`}>
+                    Browse {deck.name}
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card data-testid="retention-by-level">
         <CardHeader>
           <CardTitle className="text-base">Retention by level</CardTitle>
@@ -573,9 +656,14 @@ export function HomeScreen(): React.ReactElement {
                     className="border-border flex items-center justify-between gap-3 rounded-md border p-2"
                   >
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="text-xl" lang="ja">
+                      <Link
+                        className="text-primary text-xl underline underline-offset-4"
+                        href={`/detail?contentRef=${encodeURIComponent(leech.stickyId)}`}
+                        lang="ja"
+                        aria-label={`View details for ${card?.literal ?? leech.stickyId}`}
+                      >
                         {card?.literal ?? leech.stickyId}
-                      </span>
+                      </Link>
                       <span className="text-muted-foreground truncate">
                         Level {leech.level}
                       </span>

@@ -121,7 +121,7 @@ Immutable, large, shared, replaceable, queried with indexes and FTS.
 ```
 packs/kanji-v3.sqlite       ~4 MB
 packs/words-core-v3.sqlite  ~6 MB
-packs/words-full-v3.sqlite   optional, ~25 MB
+packs/words-full-v3.sqlite   optional, ~40 MB compressed
 packs/names-v3.sqlite        optional, ~15 MB
 packs/sentences-v3.sqlite   ~12 MB
 packs/strokes-*.json        chunked
@@ -416,9 +416,12 @@ This matches Electric’s documented pattern of “read-path sync + your existin
   authenticated proxy server-enforces `where user_id = <token uid>` and the client only uses the
   allow-listed shape route; the API snapshot remains available when Electric is unavailable.
 - Background reminders use the same authenticated API: the browser stores a user-owned Web Push
-  subscription, while an operator-scheduled `POST /api/push/reminders` call signs and sends the
-  configured local-time reminder with VAPID. The service worker validates the app-relative target
-  before opening Study. Set `VAPID_*` and `PUSH_CRON_SECRET` only on the backend.
+  subscription, while the optional `deploy` Compose `push-cron` service (or an operator-scheduled
+  equivalent) calls `POST /api/push/reminders` once per minute to sign and send the configured
+  local-time reminder with VAPID. The service worker validates the app-relative target before
+  opening Study. Settings can call the authenticated `POST /api/push/test` endpoint to send an
+  immediate delivery check to the current user's active subscriptions. Set `VAPID_*` and
+  `PUSH_CRON_SECRET` only on the backend.
 - Shared device: switching accounts must not show the previous user’s local DB (per-user local DB name/path or wipe-on-switch).
 
 ### 10.4 Conflict policy
@@ -445,12 +448,13 @@ DATABASE_URL=postgres://kanjiforge:<secret>@postgres:5432/kanjiforge
 BETTER_AUTH_SECRET=<32+ char random, unique per environment>
 BETTER_AUTH_URL=https://app.example.com   # this app's own public origin
 
-# Optional Web Push. A scheduled task then POSTs /api/push/reminders every minute
-# with the x-kanjiforge-push-secret header.
+# Optional Web Push. The deploy Compose `push-cron` profile or another scheduled task
+# POSTs /api/push/reminders every minute with the x-kanjiforge-push-secret header.
 VAPID_PUBLIC_KEY=…
 VAPID_PRIVATE_KEY=…
 VAPID_SUBJECT=mailto:admin@example.com
 PUSH_CRON_SECRET=<random>
+KANJIFORGE_APP_URL=https://app.example.com
 
 # Optional live sync. Setting these switches /api/electric/shape from 503 to proxying.
 ELECTRIC_URL=http://electric:3000

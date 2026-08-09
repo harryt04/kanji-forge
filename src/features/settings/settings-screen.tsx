@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories, type CardState, type Deck } from '@/data/repo'
 import {
+  findDictionaryEntriesInText,
   findDictionaryEntry,
   getKanjiByLiterals,
   getWordById,
@@ -12,8 +13,14 @@ import {
 } from '@/data/packs'
 import { getDeviceId } from '@/lib/device-id'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
-import { STUDY_AUTO_PLAY_AUDIO_SETTING } from '@/features/study/audio'
 import {
+  AUDIO_PACK_PREFERENCE_AUTO,
+  AUDIO_PACK_PREFERENCE_SETTING,
+  STUDY_AUTO_PLAY_AUDIO_SETTING,
+} from '@/features/study/audio'
+import {
+  countAudioPackRecordings,
+  fetchAudioPack,
   installAudioPack,
   listAudioPacks,
   removeAudioPack,
@@ -25,6 +32,12 @@ import {
   removeNamesPack,
   type NamesPackManifest,
 } from './names-pack'
+import {
+  getInstalledWordsPack,
+  installWordsPack,
+  removeWordsPack,
+  type WordsPackManifest,
+} from './words-pack'
 import { invalidateContentPack } from '@/data/packs'
 import {
   APP_BADGE_PREFERENCES,
@@ -36,18 +49,22 @@ import {
   DEFAULT_DAILY_REMINDER_TIME,
   disableBackgroundPush,
   enableBackgroundPush,
+  getBackgroundPushStatus,
   isDailyReminderTime,
   isAppBadgePreference,
+  readInstallGuidanceEnvironment,
   requestDailyReminderPermission,
+  sendTestBackgroundPush,
   getStoragePersistenceStatus,
   requestStoragePersistence,
+  shouldShowIosInstallGuidance,
   STORAGE_PERSISTENCE_REQUESTED_SETTING,
   type AppBadgePreference,
   type BackgroundPushStatus,
   type StoragePersistenceStatus,
 } from '@/pwa'
 import { Button } from '@/ui/button'
-import { parseAnkiApkg } from '@/core/import/apkg'
+import { parseAnkiApkg, type AnkiImportValue } from '@/core/import/apkg'
 import {
   DEFAULT_STUDY_ANSWER,
   DEFAULT_STUDY_QUESTION,
@@ -92,11 +109,15 @@ import {
   type SaveBehavior,
 } from '@/features/detail/save-behavior'
 import {
+  applyFontScale,
   applyTheme,
+  FONT_SCALE_SETTING,
+  isFontScalePreference,
   isThemePreference,
   resolveTheme,
   THEME_PREFERENCES,
   THEME_SETTING,
+  type FontScalePreference,
   type ThemePreference,
 } from './theme'
 import {
@@ -117,6 +138,7 @@ import {
   type ImportPreviewItem,
   type CsvImportTable,
 } from './deck-import'
+import { deduplicateImportEntries } from '@/core/import/enrich'
 import {
   deckFolderSettingKey,
   groupDecksByFolder,
@@ -158,6 +180,28 @@ const THEME_OPTIONS: ReadonlyArray<{
     value: 'night',
     label: 'Night schedule',
     description: 'Use dark theme from 21:00 to 06:00 local time.',
+  },
+]
+
+const FONT_SCALE_OPTIONS: ReadonlyArray<{
+  value: FontScalePreference
+  label: string
+  description: string
+}> = [
+  {
+    value: 'default',
+    label: 'Default text',
+    description: 'Use the standard app text size.',
+  },
+  {
+    value: 'large',
+    label: 'Large text',
+    description: 'Increase text and controls by 12.5%.',
+  },
+  {
+    value: 'x-large',
+    label: 'Extra-large text',
+    description: 'Increase text and controls by 25%.',
   },
 ]
 
@@ -266,6 +310,7 @@ function getSystemPreference(): boolean {
 export function SettingsScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [preference, setPreference] = useState<ThemePreference>('light')
+  const [fontScale, setFontScale] = useState<FontScalePreference>('default')
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false)
@@ -279,10 +324,16 @@ export function SettingsScreen(): React.ReactElement {
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [srsMode, setSrsMode] = useState<SrsMode>(DEFAULT_SRS_MODE)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [audioPackPreference, setAudioPackPreference] = useState(
+    AUDIO_PACK_PREFERENCE_AUTO,
+  )
   const [audioPacks, setAudioPacks] = useState<readonly AudioPackManifest[]>([])
   const [audioPackBusy, setAudioPackBusy] = useState(false)
+  const [audioPackUrl, setAudioPackUrl] = useState('')
   const [namesPack, setNamesPack] = useState<NamesPackManifest | null>(null)
   const [namesPackBusy, setNamesPackBusy] = useState(false)
+  const [wordsPack, setWordsPack] = useState<WordsPackManifest | null>(null)
+  const [wordsPackBusy, setWordsPackBusy] = useState(false)
   const [showStrokeAnimation, setShowStrokeAnimation] = useState(true)
   const [saveBehavior, setSaveBehavior] = useState<SaveBehavior>('direct')
   const [rssFeeds, setRssFeeds] = useState<readonly RssFeed[]>([])
@@ -354,8 +405,13 @@ export function SettingsScreen(): React.ReactElement {
   >(null)
   const [backgroundPushStatus, setBackgroundPushStatus] =
     useState<BackgroundPushStatus | null>(null)
+  const [backgroundPushTesting, setBackgroundPushTesting] = useState(false)
+  const [backgroundPushMessage, setBackgroundPushMessage] = useState<
+    string | null
+  >(null)
   const [storagePersistenceStatus, setStoragePersistenceStatus] =
     useState<StoragePersistenceStatus | null>(null)
+  const [showIosInstallGuidance, setShowIosInstallGuidance] = useState(false)
   const backupInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -363,11 +419,15 @@ export function SettingsScreen(): React.ReactElement {
     let cancelled = false
     setSystemDark(getSystemPreference())
     setAutoBackupSupported(supportsAutoBackup())
+    setShowIosInstallGuidance(
+      shouldShowIosInstallGuidance(readInstallGuidanceEnvironment()),
+    )
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const [
         saved,
+        savedFontScale,
         savedBadge,
         savedReminderEnabled,
         savedReminderTime,
@@ -376,6 +436,7 @@ export function SettingsScreen(): React.ReactElement {
         savedTwoTap,
         savedSrsMode,
         savedAutoPlayAudio,
+        savedAudioPackPreference,
         savedStrokeAnimation,
         savedSaveBehavior,
         savedRssFeeds,
@@ -388,6 +449,7 @@ export function SettingsScreen(): React.ReactElement {
         allSettings,
       ] = await Promise.all([
         repositories.settings.get(THEME_SETTING),
+        repositories.settings.get(FONT_SCALE_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
         repositories.settings.get(DAILY_REMINDER_ENABLED_SETTING),
         repositories.settings.get(DAILY_REMINDER_TIME_SETTING),
@@ -396,6 +458,7 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_TWO_TAP_SETTING),
         repositories.settings.get(SRS_MODE_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repositories.settings.get(AUDIO_PACK_PREFERENCE_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
         repositories.settings.get(RSS_FEEDS_SETTING),
@@ -409,6 +472,8 @@ export function SettingsScreen(): React.ReactElement {
       ])
       if (cancelled) return
       if (isThemePreference(saved?.value)) setPreference(saved.value)
+      if (isFontScalePreference(savedFontScale?.value))
+        setFontScale(savedFontScale.value)
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
@@ -420,6 +485,8 @@ export function SettingsScreen(): React.ReactElement {
           ? 'unsupported'
           : Notification.permission,
       )
+      if (savedReminderEnabled?.value === 'true')
+        setBackgroundPushStatus(await getBackgroundPushStatus())
       setStoragePersistenceStatus(await getStoragePersistenceStatus())
       if (savedQuestion && isStudyQuestion(savedQuestion.value))
         setStudyQuestion(savedQuestion.value as StudyQuestion)
@@ -428,6 +495,9 @@ export function SettingsScreen(): React.ReactElement {
       if (savedSrsMode && isSrsMode(savedSrsMode.value))
         setSrsMode(savedSrsMode.value)
       setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
+      setAudioPackPreference(
+        savedAudioPackPreference?.value || AUDIO_PACK_PREFERENCE_AUTO,
+      )
       setShowStrokeAnimation(
         isStrokeAnimationEnabled(savedStrokeAnimation?.value),
       )
@@ -513,8 +583,18 @@ export function SettingsScreen(): React.ReactElement {
   }, [])
 
   useEffect(() => {
+    void getInstalledWordsPack().then((pack) =>
+      setWordsPack(pack?.manifest ?? null),
+    )
+  }, [])
+
+  useEffect(() => {
     applyTheme(resolveTheme(preference, new Date(), systemDark))
   }, [preference, systemDark])
+
+  useEffect(() => {
+    applyFontScale(fontScale)
+  }, [fontScale])
 
   async function choosePreference(next: ThemePreference): Promise<void> {
     if (!runtime || next === preference) return
@@ -533,6 +613,30 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save theme setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseFontScale(next: FontScalePreference): Promise<void> {
+    if (!runtime || next === fontScale) return
+    const previous = fontScale
+    setFontScale(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: FONT_SCALE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setFontScale(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save text-size setting.',
       )
     } finally {
       setSaving(false)
@@ -640,6 +744,13 @@ export function SettingsScreen(): React.ReactElement {
         value: next,
         updatedAt: Date.now(),
       })
+      // Re-register an already-subscribed device so a timezone change is
+      // reflected in the server-side background reminder row as well.
+      if (dailyReminderEnabled) {
+        void enableBackgroundPush()
+          .then(setBackgroundPushStatus)
+          .catch(() => setBackgroundPushStatus('not-configured'))
+      }
       window.dispatchEvent(new Event(DAILY_REMINDER_SETTING_CHANGED_EVENT))
     } catch (reason: unknown) {
       setDailyReminderTime(previous)
@@ -698,6 +809,26 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function sendTestReminder(): Promise<void> {
+    if (backgroundPushStatus !== 'subscribed' || backgroundPushTesting) return
+    setBackgroundPushTesting(true)
+    setBackgroundPushMessage(null)
+    try {
+      await sendTestBackgroundPush()
+      setBackgroundPushMessage(
+        'Test reminder sent. It should appear even when KanjiForge is in the background.',
+      )
+    } catch (reason: unknown) {
+      setBackgroundPushMessage(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not send a test reminder.',
+      )
+    } finally {
+      setBackgroundPushTesting(false)
     }
   }
 
@@ -850,6 +981,30 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
+  async function chooseAudioPackPreference(next: string): Promise<void> {
+    if (!runtime || next === audioPackPreference || saving) return
+    const previous = audioPackPreference
+    setAudioPackPreference(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: AUDIO_PACK_PREFERENCE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setAudioPackPreference(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the audio pack preference.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleAudioPackFile(file: File | undefined): Promise<void> {
     if (!file) return
     setAudioPackBusy(true)
@@ -859,6 +1014,26 @@ export function SettingsScreen(): React.ReactElement {
         new Uint8Array(await file.arrayBuffer()),
       )
       setAudioPacks(await listAudioPacks())
+      setError(`Installed ${manifest.name} ${manifest.version}.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not install audio pack.',
+      )
+    } finally {
+      setAudioPackBusy(false)
+    }
+  }
+
+  async function handleAudioPackUrl(): Promise<void> {
+    if (!audioPackUrl.trim()) return
+    setAudioPackBusy(true)
+    setError(null)
+    try {
+      const manifest = await fetchAudioPack(audioPackUrl)
+      setAudioPacks(await listAudioPacks())
+      setAudioPackUrl('')
       setError(`Installed ${manifest.name} ${manifest.version}.`)
     } catch (reason: unknown) {
       setError(
@@ -925,6 +1100,46 @@ export function SettingsScreen(): React.ReactElement {
       )
     } finally {
       setNamesPackBusy(false)
+    }
+  }
+
+  async function handleWordsPackFile(file: File | undefined): Promise<void> {
+    if (!file) return
+    setWordsPackBusy(true)
+    setError(null)
+    try {
+      const manifest = await installWordsPack(
+        new Uint8Array(await file.arrayBuffer()),
+      )
+      invalidateContentPack('words-full-v1.sqlite')
+      setWordsPack(manifest)
+      setError(`Installed ${manifest.name} ${manifest.version}.`)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not install full dictionary pack.',
+      )
+    } finally {
+      setWordsPackBusy(false)
+    }
+  }
+
+  async function handleRemoveWordsPack(): Promise<void> {
+    setWordsPackBusy(true)
+    setError(null)
+    try {
+      await removeWordsPack()
+      invalidateContentPack('words-full-v1.sqlite')
+      setWordsPack(null)
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not remove full dictionary pack.',
+      )
+    } finally {
+      setWordsPackBusy(false)
     }
   }
 
@@ -1229,13 +1444,19 @@ export function SettingsScreen(): React.ReactElement {
     }
   }
 
-  async function deleteSavedDeck(): Promise<void> {
+  async function deleteUserDeck(
+    deck: Pick<Deck, 'id' | 'name'>,
+  ): Promise<void> {
+    const isSavedDeck = deck.id === 'saved'
+    const exists = isSavedDeck
+      ? savedDeckExists
+      : customDecks.some((candidate) => candidate.id === deck.id)
     if (
       !runtime ||
       saving ||
-      !savedDeckExists ||
+      !exists ||
       !window.confirm(
-        'Delete the Saved deck? Its cards, progress, notes, and review history will be removed from this device.',
+        `Delete the ${deck.name} deck? Its cards, progress, notes, and review history will be removed from this device.`,
       )
     )
       return
@@ -1246,26 +1467,50 @@ export function SettingsScreen(): React.ReactElement {
     try {
       const now = Date.now()
       await createUserRepositories(runtime.database).deleteDeck({
-        deckId: 'saved',
+        deckId: deck.id,
         mutation: {
           id: crypto.randomUUID(),
           mutType: 'deck.delete',
-          payload: JSON.stringify({ deckId: 'saved', deletedAt: now }),
+          payload: JSON.stringify({ deckId: deck.id, deletedAt: now }),
           createdAt: now,
           attempts: 0,
         },
       })
-      setSavedDeckExists(false)
-      setDeckFolders((current) => ({ ...current, saved: '' }))
-      setDeckFolderDrafts((current) => ({ ...current, saved: '' }))
+      if (isSavedDeck) {
+        setSavedDeckExists(false)
+      } else {
+        setCustomDecks((current) =>
+          current.filter((candidate) => candidate.id !== deck.id),
+        )
+      }
+      setDeckSources((current) =>
+        current.filter((source) => source.id !== deck.id),
+      )
+      setSelectedDeckSourceIds((current) =>
+        current.filter((sourceId) => sourceId !== deck.id),
+      )
+      setDeckFolders((current) => {
+        const next = { ...current }
+        delete next[deck.id]
+        return next
+      })
+      setDeckFolderDrafts((current) => {
+        const next = { ...current }
+        delete next[deck.id]
+        return next
+      })
+      if (shareDeckId === deck.id) setShareDeckId(STARTER_DECK_ID)
+      if (importDeckId === deck.id) setImportDeckId('saved')
       setDeckMessage(
-        'Deleted the Saved deck. It will be recreated when you save a card.',
+        isSavedDeck
+          ? 'Deleted the Saved deck. It will be recreated when you save a card.'
+          : `Deleted the “${deck.name}” deck.`,
       )
     } catch (reason: unknown) {
       setError(
         reason instanceof Error
           ? reason.message
-          : 'Could not delete Saved deck.',
+          : `Could not delete the ${deck.name} deck.`,
       )
     } finally {
       setSaving(false)
@@ -1403,49 +1648,72 @@ export function SettingsScreen(): React.ReactElement {
   }
 
   async function resolveImportValues(
-    values: readonly string[],
+    values: readonly (string | AnkiImportValue)[],
   ): Promise<readonly ImportEntry[]> {
     const entries: ImportEntry[] = []
-    const seen = new Set<string>()
 
-    async function add(value: string): Promise<void> {
+    async function add(
+      value: string,
+      tags: readonly string[] = [],
+    ): Promise<void> {
       const match = await findDictionaryEntry(value)
-      const entry: ImportEntry = match
-        ? {
-            label: value,
-            contentRef:
-              match.type === 'kanji'
-                ? `kanji:${match.record.literal}`
-                : `${match.type}:${match.record.id}`,
-            kind: match.type,
-          }
-        : { label: value, contentRef: null, kind: 'unknown' }
-      const key = entry.contentRef ?? `unknown:${entry.label}`
-      if (seen.has(key)) return
-      seen.add(key)
-      entries.push(entry)
+      if (!match) {
+        entries.push({
+          label: value,
+          contentRef: null,
+          kind: 'unknown',
+          ...(tags.length > 0 ? { tags } : {}),
+        })
+        return
+      }
+      entries.push({
+        label: value,
+        contentRef:
+          match.type === 'kanji'
+            ? `kanji:${match.record.literal}`
+            : `${match.type}:${match.record.id}`,
+        kind: match.type,
+        ...(tags.length > 0 ? { tags } : {}),
+      })
     }
 
-    for (const value of values) {
+    for (const imported of values) {
+      const value = typeof imported === 'string' ? imported : imported.value
+      const tags = typeof imported === 'string' ? [] : imported.tags
       const direct = await findDictionaryEntry(value)
       if (direct || [...value].length <= 1) {
-        await add(value)
+        await add(value, tags)
         continue
       }
       // A compact kanji list such as 日本 still works when it is not also a
       // dictionary word; exact words take precedence for one-per-line input.
       const characters = [...value]
       if (characters.every((character) => isKanjiLiteral(character))) {
-        for (const character of characters) await add(character)
+        for (const character of characters) await add(character, tags)
       } else {
-        await add(value)
+        const segmented = await findDictionaryEntriesInText(value)
+        if (segmented.length === 0) {
+          await add(value, tags)
+        } else {
+          for (const { text, result } of segmented) {
+            entries.push({
+              label: text,
+              contentRef:
+                result.type === 'kanji'
+                  ? `kanji:${result.record.literal}`
+                  : `${result.type}:${result.record.id}`,
+              kind: result.type,
+              ...(tags.length > 0 ? { tags } : {}),
+            })
+          }
+        }
       }
     }
-    return entries
+    return deduplicateImportEntries(entries)
   }
 
   async function previewImportValues(
-    values: readonly string[],
+    values: readonly (string | AnkiImportValue)[],
     emptyMessage: string,
   ): Promise<void> {
     if (!runtime || deckImportBusy) return
@@ -1537,18 +1805,22 @@ export function SettingsScreen(): React.ReactElement {
     }
     try {
       const deck = await parseAnkiApkg(await ankiImportFile.arrayBuffer())
-      if (deck.kanji.length === 0) {
+      if (deck.values.length === 0 && deck.kanji.length === 0) {
         setDeckImportMessage(
-          'The Anki package contains no kanji in its note fields.',
+          'The Anki package contains no Japanese content in its note fields.',
         )
         return
       }
       await previewImportValues(
-        deck.kanji,
-        'The Anki package contains no kanji in its note fields.',
+        deck.taggedValues.length > 0
+          ? deck.taggedValues
+          : deck.values.length > 0
+            ? deck.values
+            : deck.kanji,
+        'The Anki package contains no Japanese content in its note fields.',
       )
       setDeckImportMessage(
-        `Previewing ${deck.kanji.length} kanji from ${deck.deckName ? `“${deck.deckName}”` : 'the Anki package'}.`,
+        `Previewing ${deck.values.length || deck.kanji.length} Japanese entries from ${deck.deckName ? `“${deck.deckName}”` : 'the Anki package'}.`,
       )
     } catch (reason: unknown) {
       setDeckImportMessage(
@@ -1620,6 +1892,37 @@ export function SettingsScreen(): React.ReactElement {
         existingRefs.add(contentRef)
         sortOrder += 1
         imported += 1
+      }
+
+      const annotated = deckImportPreview.filter(
+        (item) =>
+          item.contentRef &&
+          item.tags &&
+          item.tags.length > 0 &&
+          (item.status === 'matched' || item.status === 'already-in-target'),
+      )
+      for (const item of annotated) {
+        if (!item.contentRef || !item.tags) continue
+        const previous = await repositories.annotations.get(
+          targetDeck.id,
+          item.contentRef,
+        )
+        const tags = [...new Set([...(previous?.tags ?? []), ...item.tags])]
+        const annotation = {
+          deckId: targetDeck.id,
+          contentRef: item.contentRef,
+          note: previous?.note ?? '',
+          tags,
+          updatedAt: now,
+          updatedBy: getDeviceId(),
+        }
+        await repositories.annotations.upsert(annotation, {
+          id: crypto.randomUUID(),
+          mutType: 'annotation.upsert',
+          payload: JSON.stringify(annotation),
+          createdAt: now,
+          attempts: 0,
+        })
       }
 
       const alreadyInTarget = deckImportPreview.filter(
@@ -2004,6 +2307,38 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Text size</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Increase app text and controls for easier reading. This setting is
+          saved on this device and works offline.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="Text size"
+        >
+          {FONT_SCALE_OPTIONS.map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={fontScale === value ? 'secondary' : 'outline'}
+              aria-checked={fontScale === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseFontScale(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Japanese news links</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Keep a personal list of RSS sources and open them in your browser.
@@ -2343,7 +2678,7 @@ export function SettingsScreen(): React.ReactElement {
         >
           <span>
             <span className="block font-semibold">
-              Auto-play synthesized voice
+              Auto-play Japanese audio
             </span>
             <span className="text-muted-foreground block text-sm font-normal">
               Speak the first Japanese reading when the answer is revealed.
@@ -2403,6 +2738,57 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold">Optional full dictionary</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Install the larger full-JMdict SQLite pack to search less-common
+          vocabulary offline. It extends the built-in dictionary without
+          changing study cards or progress.
+        </p>
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="words-pack-file"
+        >
+          Install full dictionary pack
+        </label>
+        <input
+          id="words-pack-file"
+          type="file"
+          accept=".sqlite,.zip,application/zip,application/x-sqlite3"
+          disabled={wordsPackBusy}
+          className="mt-2 block w-full text-sm"
+          onChange={(event) => {
+            void handleWordsPackFile(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
+        {wordsPack ? (
+          <div className="border-border mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
+            <span>
+              <span className="block font-medium">
+                {wordsPack.name} {wordsPack.version}
+              </span>
+              <span className="text-muted-foreground block">
+                {wordsPack.license} · {wordsPack.attribution}
+              </span>
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={wordsPackBusy}
+              onClick={() => void handleRemoveWordsPack()}
+            >
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <p className="text-muted-foreground mt-4 text-sm">
+            No full dictionary installed. The smaller core dictionary remains
+            available.
+          </p>
+        )}
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Community audio packs</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Install a ZIP containing a manifest.json and recordings. Packs are
@@ -2426,6 +2812,99 @@ export function SettingsScreen(): React.ReactElement {
             event.target.value = ''
           }}
         />
+        <label
+          className="mt-4 block text-sm font-medium"
+          htmlFor="audio-pack-url"
+        >
+          Or install from a URL
+        </label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <input
+            id="audio-pack-url"
+            type="url"
+            value={audioPackUrl}
+            onChange={(event) => setAudioPackUrl(event.target.value)}
+            placeholder="https://example.org/japanese-audio.zip"
+            autoComplete="url"
+            disabled={audioPackBusy}
+            className="border-input bg-background h-11 min-w-0 flex-1 rounded-md border px-3 text-base"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={audioPackBusy || !audioPackUrl.trim()}
+            onClick={() => void handleAudioPackUrl()}
+          >
+            Install URL
+          </Button>
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          The host must allow browser downloads (CORS). Only HTTP(S) URLs are
+          accepted; credentials are not sent.
+        </p>
+        {audioPacks.length > 0 ? (
+          <>
+            <h3 className="mt-5 font-medium">Preferred recording pack</h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Automatic uses the first matching recording. Choose a pack when
+              multiple installed voices cover the same word.
+            </p>
+            <div
+              className="mt-3 grid gap-2"
+              role="radiogroup"
+              aria-label="Preferred recording pack"
+            >
+              <Button
+                type="button"
+                variant={
+                  audioPackPreference === AUDIO_PACK_PREFERENCE_AUTO
+                    ? 'secondary'
+                    : 'outline'
+                }
+                role="radio"
+                aria-checked={
+                  audioPackPreference === AUDIO_PACK_PREFERENCE_AUTO
+                }
+                disabled={saving || audioPackBusy}
+                className="h-auto justify-start px-4 py-3 text-left"
+                onClick={() =>
+                  void chooseAudioPackPreference(AUDIO_PACK_PREFERENCE_AUTO)
+                }
+              >
+                <span>
+                  <span className="block font-semibold">Automatic</span>
+                  <span className="text-muted-foreground block text-sm font-normal">
+                    Use any installed matching recording.
+                  </span>
+                </span>
+              </Button>
+              {audioPacks.map((pack) => (
+                <Button
+                  key={pack.id}
+                  type="button"
+                  variant={
+                    audioPackPreference === pack.id ? 'secondary' : 'outline'
+                  }
+                  role="radio"
+                  aria-checked={audioPackPreference === pack.id}
+                  disabled={saving || audioPackBusy}
+                  className="h-auto justify-start px-4 py-3 text-left"
+                  onClick={() => void chooseAudioPackPreference(pack.id)}
+                >
+                  <span>
+                    <span className="block font-semibold">
+                      {pack.name} {pack.version}
+                    </span>
+                    <span className="text-muted-foreground block text-sm font-normal">
+                      {countAudioPackRecordings(pack)} recordings ·{' '}
+                      {pack.license}
+                    </span>
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : null}
         {audioPacks.length > 0 ? (
           <ul className="mt-4 grid gap-2" aria-label="Installed audio packs">
             {audioPacks.map((pack) => (
@@ -2439,6 +2918,12 @@ export function SettingsScreen(): React.ReactElement {
                   </span>
                   <span className="text-muted-foreground block">
                     {pack.license} · {pack.attribution}
+                  </span>
+                  <span className="text-muted-foreground block">
+                    {countAudioPackRecordings(pack)}{' '}
+                    {countAudioPackRecordings(pack) === 1
+                      ? 'recording'
+                      : 'recordings'}
                   </span>
                 </span>
                 <Button
@@ -2554,8 +3039,9 @@ export function SettingsScreen(): React.ReactElement {
         <h2 className="text-lg font-semibold">Study reminder</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Ask this browser to remind you once a day when cards are due. The
-          offline fallback runs while KanjiForge is open; background Web Push
-          delivery needs a push server and is not enabled yet.
+          offline fallback runs while KanjiForge is open. When the server is
+          configured, enabling the reminder also registers this device for
+          background Web Push delivery.
         </p>
         <div className="mt-5 flex flex-wrap items-end gap-4">
           <label
@@ -2596,6 +3082,16 @@ export function SettingsScreen(): React.ReactElement {
                 ? 'This browser does not provide notifications.'
                 : 'Notifications are off until you enable a reminder.'}
         </p>
+        {showIosInstallGuidance && notificationStatus !== 'granted' ? (
+          <div className="border-border bg-muted mt-4 rounded-md border p-4">
+            <p className="font-medium">Install KanjiForge for iOS reminders</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              iPhone and iPad Safari cannot deliver reminders reliably from an
+              ordinary tab. Install KanjiForge from Safari’s Share menu, then
+              reopen it from the Home Screen before enabling notifications.
+            </p>
+          </div>
+        ) : null}
         <p className="text-muted-foreground mt-2 text-sm" role="status">
           {backgroundPushStatus === 'subscribed'
             ? 'Background Web Push is enabled for this device.'
@@ -2605,8 +3101,32 @@ export function SettingsScreen(): React.ReactElement {
                 ? 'This browser cannot receive background Web Push; the open-app fallback remains active.'
                 : backgroundPushStatus === 'permission-denied'
                   ? 'Allow browser notifications before enabling background Web Push.'
-                  : 'When configured, enabling this reminder also registers this device for background Web Push.'}
+                  : backgroundPushStatus === 'not-subscribed'
+                    ? 'This device is not registered for background Web Push; the open-app fallback remains active.'
+                    : 'When configured, enabling this reminder also registers this device for background Web Push.'}
         </p>
+        {backgroundPushStatus === 'subscribed' ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={backgroundPushTesting}
+              onClick={() => void sendTestReminder()}
+            >
+              {backgroundPushTesting
+                ? 'Sending test reminder…'
+                : 'Send test reminder'}
+            </Button>
+            <span className="text-muted-foreground text-sm">
+              Check delivery now instead of waiting for the scheduled time.
+            </span>
+          </div>
+        ) : null}
+        {backgroundPushMessage ? (
+          <p className="text-muted-foreground mt-3 text-sm" role="status">
+            {backgroundPushMessage}
+          </p>
+        ) : null}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Storage protection</h2>
@@ -2645,6 +3165,16 @@ export function SettingsScreen(): React.ReactElement {
             >
               Try storage protection again
             </Button>
+          </div>
+        ) : null}
+        {showIosInstallGuidance && storagePersistenceStatus !== 'granted' ? (
+          <div className="border-border bg-muted mt-4 rounded-md border p-4">
+            <p className="font-medium">Keep KanjiForge on your Home Screen</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              iPhone and iPad Safari are more likely to retain offline study
+              data when the app is installed. Tap Share, then “Add to Home
+              Screen,” and open KanjiForge from there.
+            </p>
           </div>
         ) : null}
       </section>
@@ -2757,6 +3287,16 @@ export function SettingsScreen(): React.ReactElement {
                     <Button type="submit" disabled={saving}>
                       Save folder
                     </Button>
+                    {deck.kind === 'custom' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => void deleteUserDeck(deck)}
+                      >
+                        Delete {deck.name}
+                      </Button>
+                    )}
                   </form>
                 ))}
               </div>
@@ -2781,7 +3321,12 @@ export function SettingsScreen(): React.ReactElement {
           variant="outline"
           className="mt-5"
           disabled={saving || !savedDeckExists}
-          onClick={() => void deleteSavedDeck()}
+          onClick={() =>
+            void deleteUserDeck({
+              id: 'saved',
+              name: 'Saved',
+            })
+          }
         >
           {savedDeckExists ? 'Delete Saved deck' : 'Saved deck is empty'}
         </Button>
@@ -3261,9 +3806,11 @@ export function SettingsScreen(): React.ReactElement {
             <div className="border-border mt-5 border-t pt-5">
               <h4 className="font-medium">Import from Anki</h4>
               <p className="text-muted-foreground mt-1 text-sm">
-                Choose an Anki .apkg export. Kanji found in its note fields are
-                previewed and added to Saved; tags, scheduling, and card
-                templates are intentionally not imported.
+                Choose an Anki .apkg export. Japanese words and kanji found in
+                its note fields are enriched through the offline dictionary and
+                previewed before being added to Saved; tags are preserved as
+                sticky annotations, while scheduling and card templates are
+                intentionally not imported.
               </p>
               <input
                 className="mt-3 block text-sm"

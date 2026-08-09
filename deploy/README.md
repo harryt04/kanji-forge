@@ -17,6 +17,17 @@ serves the UI and its own API under `/api/*` in one process — a single deploya
 6. Register through better-auth:
    `curl -i -X POST http://localhost:3000/api/auth/sign-up/email -H 'content-type: application/json' -d '{"name":"Local User","email":"local@example.test","password":"a-long-local-password"}'`.
 
+To run the optional background reminder scheduler from the same Compose project, set
+`KANJIFORGE_APP_URL` in `deploy/.env` to the app URL reachable from the container, then start:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml --profile push up -d push-cron
+```
+
+The scheduler calls `POST /api/push/reminders` once per minute. On Linux, replace the example
+`host.docker.internal` value with an address resolvable from the container (for example, the
+deployment's HTTPS origin or a host-gateway address).
+
 ### Optional: Electric
 
 Sync works without Electric — the client polls the authenticated `/api/sync` snapshot. To try the
@@ -75,7 +86,8 @@ separate `apps/api` service) — see `docs/DECISIONS.md` D16 for why.
   the authenticated `GET /api/electric/shape` proxy; it enforces an allow-listed `user_id` filter
   and keeps the Electric secret server-side.
 - Background Web Push is opt-in. Generate VAPID keys with `npx web-push generate-vapid-keys`, set
-  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `PUSH_CRON_SECRET`, then run a
-  scheduler every minute with `curl -fsS -X POST http://localhost:3000/api/push/reminders -H
-  "x-kanjiforge-push-secret: $PUSH_CRON_SECRET"`. The endpoint only sends to authenticated users
-  who enabled reminders and whose configured local time matches the scheduler minute.
+  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `PUSH_CRON_SECRET`, and
+  `KANJIFORGE_APP_URL`, then start the optional `push-cron` Compose profile. It calls the reminder
+  endpoint every minute and can be replaced by an external scheduler when preferred. The endpoint
+  only sends to authenticated users who enabled reminders and whose configured local time matches
+  the scheduler minute.

@@ -48,8 +48,8 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 2.1 | Choose what appears before the tap | ✅ | 2026-08-07 | Settings persistently chooses kanji, reading, or first meaning for the starter-deck question face |
 | 2.2 | Choose what appears after the tap | ✅ | 2026-08-07 | Settings independently persists kanji, reading, and meaning answer fields; at least one answer field remains selected |
 | 2.3 | 2-tap study (word → readings → everything) | ✅ | 2026-08-07 | Settings toggle; overrides question and answer field choices while enabled |
-| 2.4 | Word + writing cannot both be the question | ✅ | — | Enforced in the UI |
-| 2.5 | Audio setting ignored for kanji-only decks | ✅ | — | |
+| 2.4 | Word + writing cannot both be the question | ✅ | 2026-08-08 | Writing is exposed only as an answer-side practice field; the question options intentionally exclude it, so it cannot be paired with a word question |
+| 2.5 | Audio setting ignored for kanji-only decks | ✅ | 2026-08-08 | Study audio controls and auto-play apply only to dictionary-word cards; kanji-only decks remain silent |
 | 2.6 | Writing setting ignored for word-only decks | ✅ | 2026-08-08 | Dictionary-word memberships remain studyable in custom decks, while the kanji writing pad is omitted for word cards |
 | 2.7 | Restore study style to default | ✅ | 2026-08-07 | Settings restores the kanji question and all answer fields offline |
 | 2.8 | Hide 'Related' answers until tapped | ✅ | 2026-08-08 | Study reveals up to three offline related example words for kanji; each word's reading and English meaning stays hidden until its disclosure control is tapped |
@@ -63,7 +63,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 3.2 | Configurable tile content | ✅ | 2026-08-07 | Browse tiles can show kanji, reading, or the first English meaning; the choice persists per user offline |
 | 3.3 | Zoom ratio setting | ✅ | 2026-08-07 | Browse persists 75% compact, 100% standard, and 150% large tile density per user and applies it to the tile wall |
 | 3.4 | Tap tile for detail | ✅ | 2026-08-07 | Browse tiles open an authenticated offline kanji detail view backed by the installed content pack |
-| 3.5 | List view | ✅ | 2026-08-07 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; virtualization remains a follow-up for very large packs |
+| 3.5 | List view | ✅ | 2026-08-08 | Accessible local-first list for the installed deck, with level/color, readings, meanings, and flag state; lists above 500 cards use an overscanned fixed-row viewport so full-size packs do not create one DOM node per card |
 | 3.6 | Inline color editing in list view | ✅ | 2026-08-07 | Accessible per-card level picker schedules the new level and persists a manual override offline |
 | 3.7 | Sorting | ✅ | 2026-08-07 | Browse list sorts offline by deck order, level, stroke count, frequency, JLPT, school grade, review count, last review, or kana; ties retain deck order and missing metadata sorts last |
 | 3.8 | Filtering | ✅ | 2026-08-07 | Browse filters offline by level/color, flagged state, inclusive stroke-count range, and JLPT level; filters combine with text search and can be cleared together |
@@ -83,14 +83,15 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 4.5 | Similar-looking kanji | ✅ | 2026-08-07 | Detail shows ranked generated matches from the offline derived pack; each match links to its own kanji detail |
 | 4.6 | Example words containing this kanji | ✅ | 2026-08-07 | Detail loads up to 12 matching JMdict words from the offline pack, ranked by pack frequency |
 | 4.7 | Example sentences with breakdown | ✅ | 2026-08-07 | Detail loads ranked offline Tatoeba sentences with furigana, English translation, target-kanji highlighting, and author attribution |
-| 4.8 | Everything hyperlinked | ✅ | — | Navigation stack |
+| 4.8 | Everything hyperlinked | ✅ | 2026-08-08 | Dictionary results and Detail example words link to their offline detail views; similar-kanji links retain the same navigation stack |
 | 4.9 | Swipe between stickies in detail view | ✅ | 2026-08-07 | Detail provides previous/next controls and horizontal touch swiping through the loaded deck order |
 | 4.10 | Save sticky to a deck | ✅ | 2026-08-07 | Kanji detail saves the selected card offline to the per-user Saved deck or an existing custom deck and queues the membership mutation for sync |
 | 4.11 | "Save to Saved deck" vs. always-ask setting | ✅ | 2026-08-07 | Settings persists direct-save vs. ask-every-time behavior offline; Detail and Dictionary honor the confirmation preference before saving to the per-user Saved deck |
 | 4.12 | Inline stroke animations instead of static glyph | ✅ | 2026-08-07 | Kanji detail loads ordered KanjiVG paths offline with play, pause, restart, and step controls; Settings persists the global visibility toggle |
-| 4.13 | Night mode with auto 21:00–06:00 | ✅ | — | Plus a full theme system |
-| 4.14 | Native-speaker audio per word | ⚠️ Partial | 2026-08-07 | Detail exposes device-synthesized Japanese audio when supported; human-recorded community packs remain 🔷 — DATA-SOURCES §8 |
-| — | Installable community audio packs | ➕ ✅ | 2026-08-08 | Settings installs a licensed ZIP manifest with `writing|reading` recordings into browser-local storage; Study and Detail prefer an installed recording and fall back to labeled device speech synthesis |
+| 4.13 | Night mode with auto 21:00–06:00 | ✅ | 2026-08-08 | Plus a full theme system; automatic refresh aligns to the next local minute boundary |
+| 4.14 | Native-speaker audio per word | ⚠️ Partial | 2026-08-08 | Kanji and dictionary-word Detail views, plus Study, prefer matching licensed community recordings installed from Settings (MP3, OGG/Opus, WAV, M4A, AAC, FLAC, and WebM), including alternate valid dictionary readings; packs can be selected locally or downloaded from a user-supplied HTTP(S) URL, identify the installed recording pack, license, attribution, and declared recording coverage at install, and users can choose which installed pack wins when voices overlap; fall back to labeled device-synthesized Japanese audio; broad human-recorded coverage remains 🔷 — DATA-SOURCES §8 |
+| — | Choose preferred community audio pack | ➕ ✅ | 2026-08-08 | Settings persists an offline per-user preference for Automatic or a specific installed licensed recording pack when multiple packs cover the same word |
+| — | Installable community audio packs | ➕ ✅ | 2026-08-08 | Settings installs a licensed ZIP manifest with `writing|reading` recordings from a local file or CORS-enabled HTTP(S) URL into browser-local storage; downloads omit credentials, enforce a 100 MB limit, and validate the manifest before storage. Study exposes an installed recording only when it matches the current word, even when the browser has no SpeechSynthesis runtime, and Study/Detail fall back to labeled device speech synthesis |
 | — | Per-sticky notes and tags | ➕ ✅ | 2026-08-08 | Detail view persists personal notes and comma-separated tags offline, includes them in backups, and syncs annotation mutations with authenticated last-write-wins storage |
 
 ## 5. Writing
@@ -98,21 +99,21 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 5.1 | Writing trainer with stroke input | ✅ | 2026-08-07 | Offline practice surface captures finger, stylus, and mouse strokes over a KanjiVG/grid guide |
-| 5.2 | 6,500+ kanji stroke animations | ✅ | — | KanjiVG (T6.0) |
+| 5.2 | 6,500+ kanji stroke animations | ✅ | 2026-08-08 | KanjiVG (T6.0); committed chunk sizes and checksums are now regression-tested so offline stroke playback cannot silently drift from its manifest |
 | 5.3 | "Correct pen strokes" — reject wrong strokes live | ✅ | 2026-08-07 | Persisted Check stroke order toggle rejects mismatched next strokes, highlights the expected stroke after failures, and keeps an unchecked free-draw mode |
 | 5.4 | Writing as the answer side of a study card | ✅ | 2026-08-08 | Study answer settings can opt into an ephemeral offline writing pad with KanjiVG guidance; the learner grades the result with the normal answer buttons and no stroke data enters SRS history |
 | — | Hint escalation after repeated failures | ➕ ✅ | 2026-08-08 | After two rejected strokes, the expected stroke gets a start dot; after three, it pulses as an animated hint, with reduced-motion support |
 | — | Leniency setting | ➕ ✅ | 2026-08-08 | Writing practice persists strict, normal, or forgiving stroke-match tolerance per user and applies it while validating strokes |
 | — | Alternate-stroke-order exceptions table | ➕ ✅ | 2026-08-08 | Writing validation accepts a curated set of interchangeable stroke indexes for common ambiguous orders while keeping all other strokes sequential |
-| — | Standalone drill mode | ➕ 🔷 | 2026-08-07 | Detail-linked offline writing practice can run a selected kanji for 1–10 repetitions without changing study progress |
+| — | Standalone drill mode | ➕ ✅ | 2026-08-08 | Authenticated primary navigation opens the offline writing route directly (defaulting to 日), and each Detail view can open a selected kanji for 1–10 repetitions without changing study progress |
 
 ## 6. Decks
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 6.1 | Deck chooser with progress %, color, last studied | ✅ | 2026-08-06 | |
+| 6.1 | Deck chooser with progress %, color, last studied | ✅ | 2026-08-08 | Home now lists every bundled deck with independent offline progress, belt color, last-studied metadata, and Study/Browse actions |
 | 6.2 | Rename deck | ✅ | 2026-08-07 | Settings renames the built-in starter deck offline and queues its metadata mutation for sync |
-| 6.3 | Delete deck (swipe) | ✅ | 2026-08-08 | Settings can delete the user-owned Saved deck after confirmation, atomically removing its membership, progress, notes, reviews, sessions, and folder metadata; the built-in starter deck is protected |
+| 6.3 | Delete deck (swipe) | ✅ | 2026-08-08 | Settings can delete any user-owned Saved or custom deck after confirmation, atomically removing its membership, progress, notes, reviews, sessions, and folder metadata; the built-in starter deck is protected |
 | 6.4 | Create new deck | ✅ | 2026-08-08 | Settings creates an empty user-owned custom deck offline and queues its metadata for sync; card population and custom-deck study surfaces follow in the deck-content slices |
 | 6.5 | Combine multiple decks into a new deck | ✅ | 2026-08-08 | Settings creates a user-owned deck from one or more built-in or user-owned sources, preserving source order and removing duplicate cards |
 | 6.6 | Take only the first N stickies when combining | ✅ | 2026-08-08 | Optional first-N limit applies after the combined source list is de-duplicated |
@@ -153,7 +154,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | — | Level distribution stacked bar | ➕ ✅ | 2026-08-07 | Home shows all five belt-rank levels, including untouched cards as level 0, with an accessible stacked bar and count legend |
 | — | 30-day review forecast | ➕ 🔷 | 2026-08-07 | Home shows the currently scheduled due-review workload for the next 30 calendar days; overdue cards count today and unscheduled new cards are excluded |
 | — | Retention rate per level | ➕ 🔷 | 2026-08-07 | Home reports retained study answers by starting level, excluding manual history and reviews taken before 80% of the configured stage interval |
-| — | Leech identification | ➕ 🔷 | 2026-08-07 | Home surfaces cards with six or more lapses for manual attention, following SRS-SPEC §8 |
+| — | Leech identification | ➕ ✅ | 2026-08-08 | Home surfaces cards with six or more lapses for manual attention and links each card to its offline Detail view, following SRS-SPEC §8 |
 | — | Heatmap calendar | ➕ 🔷 | 2026-08-07 | History includes a keyboard-accessible 30-day activity grid with intensity by review count and shared day detail selection |
 | — | Unrealistic-pace warning with inline fixes | ➕ ✅ | 2026-08-07 | Home warns above 200 answers/day and offers a one-tap later-date suggestion; smaller-deck selection remains unavailable for the built-in fixture deck |
 
@@ -161,7 +162,7 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
-| 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-07 | Offline search over the installed KANJIDIC2/JMdict fixture packs |
+| 8.1 | Search by kanji, kana, or English | ✅ | 2026-08-08 | Offline search over the installed KANJIDIC2/JMdict fixture packs detects kanji, kana, romaji, English, and mixed-script input while typing |
 | 8.2 | Rōmaji input | ✅ | 2026-08-07 | Dictionary search normalizes romaji to hiragana before matching |
 | 8.3 | ~700,000 entries including names and places | ✅ | 2026-08-08 | `npm run build:names` reproducibly builds the optional JMnedict SQLite pack; Settings installs a raw SQLite file or manifest-bearing ZIP into browser-local storage, and Dictionary searches and links names offline without forcing the default install to carry the optional pack |
 | 8.4 | Details for 6,355 kanji | ✅ | 2026-08-07 | Offline results expose KANJIDIC2 readings, meanings, stroke count, school grade, JLPT, frequency rank, and name readings; KANJIDIC2 covers 13,108 |
@@ -169,21 +170,23 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 8.6 | Search by radical | ✅ | 2026-08-07 | Offline classical radical-number search over the installed KANJIDIC2 pack |
 | 8.7 | Search by stroke count | ✅ | 2026-08-07 | Dictionary offers an offline exact stroke-count search over the installed KANJIDIC2 pack |
 | 8.8 | Wildcard search | ✅ | 2026-08-07 | `*` matches zero or more characters and `?` matches exactly one across normalized Japanese and English dictionary values |
-| 8.9 | Save any result to a deck | ✅ | 2026-08-07 | Dictionary results can be saved offline to the per-user Saved system deck and queue a membership sync mutation |
+| 8.9 | Save any result to a deck | ✅ | 2026-08-08 | Dictionary results can be saved offline to the per-user Saved system deck or an existing custom deck; each membership is persisted atomically and queued for sync |
 | 8.10 | Fully offline | ✅ | 2026-08-06 | SQLite-WASM over OPFS (content pipeline) |
 | — | Search history / pinned searches | ➕ 🔷 | 2026-08-07 | Recent searches and pinned queries persist per authenticated user in the local database and work offline |
+| — | Optional full JMdict dictionary tier | ➕ ✅ | 2026-08-08 | `npm run build:words-full` produces a reproducible all-entry JMdict SQLite pack; Settings accepts its raw SQLite or manifest-bearing ZIP form, stores it offline, and merges its less-common entries into Dictionary without duplicating words-core results |
 
 ## 9. Text analysis & news
 
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 9.1 | Paste Japanese text → readings, furigana, English | ✅ | 2026-08-08 | Authenticated `/analyze` now lazy-loads an offline Kuromoji/IPADIC morphological tokenizer pack and maps its boundaries through the dictionary, inflection, grammar, furigana, and unknown-text fallback layers. The tokenizer pack is optional and never blocks study; if unavailable, the prior dictionary-only analyzer remains usable |
-| 9.2 | Many display options for the analyzed output | 🔷 | 2026-08-08 | Analyzer preferences persist offline for furigana all/non-N5/off, optional rōmaji, and inline or tap-to-reveal English glosses |
-| 9.3 | Tap any word → detail → save to deck | 🔷 | 2026-08-08 | Analyzer word tokens open an authenticated offline word detail route with readings, meanings, parts of speech, and the optional Kuromoji grammatical boundaries |
+| 9.2 | Many display options for the analyzed output | ✅ | 2026-08-08 | Analyzer preferences persist offline for furigana all/non-N5/off, optional rōmaji, and inline or tap-to-reveal English glosses |
+| 9.3 | Tap any word → detail → save to deck | ✅ | 2026-08-08 | Analyzer word tokens open the shared authenticated offline word-detail route; the detail view exposes readings, meanings, parts of speech, optional Kuromoji grammatical boundaries, and the same offline Saved/custom-deck actions as dictionary results |
 | 9.4 | Live Japanese news feed, updated daily | ❌ as built | — | NHK Easy content is copyrighted |
 | 9.5 | Tap an article → broken into words + furigana | ✅ | 2026-08-08 | PWA share-target text is analyzed immediately and offline with readings/furigana; the source article URL remains an explicit external link and the supplied text can be edited and re-analyzed |
+| — | Text analysis history | ➕ ✅ | 2026-08-08 | The analyzer keeps the ten most recent successful texts per user offline, supports one-tap reuse, and allows the history to be cleared without touching study progress |
 | — | Add all unknown words from a text in bulk | ➕ 🔷 | 2026-08-08 | Analyzer can bulk-save deduplicated dictionary-backed word tokens not already in Saved, atomically and offline; unmatched characters remain visible for future tokenizer/enrichment work |
-| — | Web Share Target — share text into KanjiForge from any app | ➕ 🔷 | 2026-08-08 | The PWA share target opens an authenticated offline preview, extracts dictionary-backed kanji from shared text, and adds new cards to Saved with progress-preserving outbox mutations |
+| — | Web Share Target — share text into KanjiForge from any app | ➕ 🔷 | 2026-08-08 | The PWA accepts native URL-encoded POST shares through a bounded app-relative redirect (while retaining direct GET links), then opens an authenticated offline preview, extracts dictionary-backed kanji and word tokens from shared text, and adds new cards to Saved with progress-preserving outbox mutations |
 | — | User-configurable RSS with link-out, no reproduction | ➕ 🔶 | 2026-08-08 | Settings stores up to 12 validated HTTP(S) feed links per user and opens them externally; feed content is never fetched or reproduced |
 | — | CC-licensed news source (e.g. Japanese Wikinews) | ➕ 🔶 | 2026-08-08 | Settings offers a one-click Japanese Wikinews RSS link-out preset labeled CC BY 4.0; KanjiForge stores only the URL and never reproduces article content |
 
@@ -193,14 +196,14 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 |---|---|---|---|---|
 | 10.1 | Import by typing/pasting into an import box | ✅ | 2026-08-08 | Settings accepts one-per-line dictionary words or compact bare-kanji lists (including the first column of KanjiForge text exports), enriches exact forms/readings/glosses offline, and appends matches to Saved or a custom deck without changing progress |
 | 10.2 | CSV import | ✅ | 2026-08-08 | Settings accepts pasted or selected CSV files, parses quoted fields offline, and lets users map any column containing kanji or exact dictionary words into the existing preview-and-confirm flow; imported progress remains untouched |
-| 10.3 | Multiple import formats | ✅ | 2026-08-08 | Settings accepts CSV, TSV, line lists, versioned KanjiForge JSON deck exports, and best-effort Anki `.apkg` files; all imports share the matched/already-in-target/not-found preview and add content without overwriting progress |
+| 10.3 | Multiple import formats | ✅ | 2026-08-08 | Settings accepts CSV, TSV, line lists, versioned KanjiForge JSON deck exports, and best-effort Anki `.apkg` files; shared pure import parsing/enrichment helpers preserve quoted cells, stable identities, and preview classification; Anki Japanese word runs and pasted Japanese phrases are segmented through the offline analyzer into dictionary cards; all imports add content without overwriting progress |
 | 10.4 | Append imported stickies to the current deck | ✅ | 2026-08-08 | Import preview and confirmation can append matched kanji to Saved or an existing custom deck without overwriting progress; built-in derived decks remain read-only |
 | 10.5 | Export deck to clipboard as text | ✅ | 2026-08-07 | Settings copies the current starter deck as tab-separated kanji, readings, and meanings for pasting into another app or spreadsheet |
 | — | Auto-enrichment of bare kanji/word lists | ➕ ✅ | 2026-08-08 | Bare kanji and exact dictionary word forms/readings/glosses are matched against the installed offline packs before being added to Saved or a custom deck; unknown values remain in the preview |
-| — | Import preview with matched/already-in-target/not-found results | ➕ ✅ | 2026-08-08 | Preview classifies kanji and exact dictionary-word matches, existing target-deck cards, and missing entries before confirmation; ambiguous word segmentation remains future work |
+| — | Import preview with matched/already-in-target/not-found results | ➕ ✅ | 2026-08-08 | Preview classifies kanji and dictionary-word matches, existing target-deck cards, and missing entries before confirmation; Japanese phrases are segmented offline while unmatched text remains visible as not found |
 | — | Export to CSV and JSON files | ➕ ✅ | 2026-08-07 | Settings downloads the current deck's content and local study progress as versioned CSV or JSON files |
 | — | Full backup export/restore incl. review history | ➕ ✅ | 2026-08-07 | Settings downloads/restores the locked v1 JSON format; restore unions records and replays the review log |
-| — | Anki .apkg import | ➕ 🔷 | 2026-08-08 | Browser-local best-effort import reads `collection.anki2`/`.anki21`, extracts kanji from note fields, and previews them before adding to Saved; scheduling, tags, and templates are intentionally not migrated |
+| — | Anki .apkg import | ➕ 🔷 | 2026-08-08 | Browser-local best-effort import reads `collection.anki2`/`.anki21`, extracts Japanese values from note fields, previews them before adding to Saved, and preserves note tags as sticky annotations; scheduling and card templates remain intentionally unmigrated |
 
 ## 11. Sync & backup
 
@@ -221,17 +224,18 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | # | Feature | Status | Implemented | Notes |
 |---|---|---|---|---|
 | 12.1 | Night mode (manual + auto 21:00–06:00) | ✅ | 2026-08-07 | Settings persists light, dark, device, and StickyStudy-compatible 21:00–06:00 night preferences per user and applies them app-wide |
-| 12.2 | App icon badge with configurable info | ⚠️ Partial | 2026-08-07 | Settings choose Cards to study, All cards, or Off; the optional Badging API is used when supported and remains unavailable on iOS Safari |
-| 12.3 | Notifications | ⚠️ Partial | 2026-08-08 | Settings persist a daily reminder time and permission-aware local browser reminders fire while the app is open. When the self-hosted VAPID sender is configured, enabling the reminder registers the device, the API scheduler sends a localized Web Push reminder, and the service worker opens Study; iOS still requires an installed PWA (T1.1) |
-| 12.4 | Extensive options | ✅ | — | PRD §4.14 |
+| 12.2 | App icon badge with configurable info | ⚠️ Partial | 2026-08-08 | Settings choose Cards to study, All cards, or Off; the optional Badging API is used when supported, refreshes immediately after local study grades/undo, and unsupported or runtime-rejecting browsers get both a temporary browser-tab title count and a reversible favicon badge; iOS Safari still cannot change an installed home-screen icon badge |
+| 12.3 | Notifications | ⚠️ Partial | 2026-08-08 | Settings persist a daily reminder time; foreground reminders now use the service worker notification path for installed PWAs and fall back to a page notification in ordinary browser tabs, with either path opening Study. When the self-hosted VAPID sender is configured, enabling the reminder registers the device, reminder-time changes refresh an active subscription's timezone metadata, Settings restores the device's subscription state after reload, and a **Send test reminder** action verifies background delivery immediately. The API scheduler sends a localized Web Push reminder, removes browser-expired subscriptions before retrying them, and the service worker opens Study. Self-hosted deployments can run the pinned `deploy` Compose `push-cron` profile instead of installing a separate host cron. On non-standalone iOS Safari, Settings explains that reminders require installing the PWA first; iOS still requires an installed PWA (T1.1) |
+| — | Service-worker foreground reminder delivery | ➕ ✅ | 2026-08-08 | Permissioned local reminders use the registered service worker's notification surface when available, attach an app-relative Study target for the existing click handler, and fall back to a page-owned notification when no usable worker exists |
+| 12.4 | Extensive options | ✅ | 2026-08-08 | Settings now includes offline-persisted font-size/text scaling alongside the theme, study, audio, backup, and platform options; PRD §4.14 |
 | 12.5 | Full in-app documentation | ✅ | 2026-08-07 | Authenticated `/help` route bundles offline guidance for study controls, levels, Browse/Dictionary, backup, and privacy |
-| — | Request persistent browser storage + warn when eviction protection is denied | ➕ ✅ | 2026-08-07 | After the first non-empty completed study session, KanjiForge requests durable storage; Settings reports unsupported/denied browsers and points users to backups |
+| — | Request persistent browser storage + warn when eviction protection is denied | ➕ ✅ | 2026-08-07 | After the first non-empty completed study session, KanjiForge requests durable storage; Settings reports unsupported/denied browsers, points users to backups, and gives non-standalone iPhone/iPad Safari users Add to Home Screen instructions |
 | — | Installable to home screen, all platforms | ➕ ✅ | 2026-08-07 | Manifest and build-generated Serwist service worker are registered on the client; the app shell and visited pages can load offline after the first visit |
 | — | Works in a plain browser with no install | ➕ ✅ | 2026-08-06 | |
-| — | Tablet / laptop / desktop layouts | ➕ ✅ | — | Two-pane above `md` |
+| — | Tablet / laptop / desktop layouts | ➕ 🔷 | 2026-08-08 | Authenticated screens use a persistent left sidebar above `md` and a compact horizontal header on smaller screens. Browse and Dictionary keep their list/results visible beside the selected offline Detail card in responsive two-pane views on large screens |
 | — | Full keyboard operability | ➕ ✅ | 2026-08-06 | |
-| — | CVD-safe alternate color ramp | ➕ ✅ | — | The red→green default is the worst case for CVD |
-| — | Screen reader support | ➕ ✅ | — | |
+| — | CVD-safe alternate color ramp | ➕ ✅ | 2026-08-08 | The belt ramp uses luminance and always-on fold shapes so Home distribution, Browse cards, tiles, and deck chips remain distinguishable without hue perception; the red→green default is avoided |
+| — | Screen reader support | ➕ ✅ | 2026-08-08 | Study announces card position, reveal state, and grading prompt through a polite live region; the focused flashcard also supports Enter activation |
 | — | Open source, self-hostable, no account | ➕ ✅ | 2026-08-06 | The whole point |
 | — | Chinese/hanzi support (StickyStudy has a separate app) | 🔶 | — | Architecture allows; out of MVP scope |
 

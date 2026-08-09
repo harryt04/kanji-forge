@@ -1,15 +1,22 @@
 import { zipSync } from 'fflate'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getAudioPackFile,
+  getAudioPackRecording,
+  countAudioPackRecordings,
+  fetchAudioPack,
   installAudioPack,
   listAudioPacks,
   parseAudioPackArchive,
   parseAudioPackManifest,
+  audioMimeTypeForPath,
   removeAudioPack,
 } from './audio-pack'
 
-function archive(id = `test-pack-${crypto.randomUUID()}`): Uint8Array {
+function archive(
+  id = `test-pack-${crypto.randomUUID()}`,
+  audioByte = 1,
+): Uint8Array {
   const manifest = {
     id,
     name: 'Community voice',
@@ -20,7 +27,7 @@ function archive(id = `test-pack-${crypto.randomUUID()}`): Uint8Array {
   }
   return zipSync({
     'manifest.json': new TextEncoder().encode(JSON.stringify(manifest)),
-    'audio/hi.mp3': new Uint8Array([1, 2, 3]),
+    'audio/hi.mp3': new Uint8Array([audioByte, 2, 3]),
   })
 }
 
@@ -29,6 +36,7 @@ describe('community audio packs', () => {
 
   afterEach(async () => {
     for (const id of installed.splice(0)) await removeAudioPack(id)
+    vi.unstubAllGlobals()
   })
 
   it('validates the licensed manifest and rejects unsafe or empty entries', () => {
@@ -45,9 +53,19 @@ describe('community audio packs', () => {
     ).toThrow(/at least one/)
   })
 
+  it('maps common community recording formats to browser media types', () => {
+    expect(audioMimeTypeForPath('voice.mp3')).toBe('audio/mpeg')
+    expect(audioMimeTypeForPath('voice.OGG')).toBe('audio/ogg')
+    expect(audioMimeTypeForPath('voice.wav')).toBe('audio/wav')
+    expect(audioMimeTypeForPath('voice.m4a')).toBe('audio/mp4')
+    expect(audioMimeTypeForPath('voice.webm')).toBe('audio/webm')
+    expect(audioMimeTypeForPath('voice.bin')).toBe('application/octet-stream')
+  })
+
   it('extracts recordings from a ZIP and fails when a declared file is absent', () => {
     const pack = parseAudioPackArchive(archive())
     expect(pack.manifest.name).toBe('Community voice')
+    expect(countAudioPackRecordings(pack.manifest)).toBe(1)
     expect(pack.files['日|ひ']).toEqual(new Uint8Array([1, 2, 3]))
 
     const missing = zipSync({
@@ -74,9 +92,83 @@ describe('community audio packs', () => {
     const file = await getAudioPackFile('日', 'ひ')
     expect(file).not.toBeNull()
     expect(file?.type).toBe('audio/mpeg')
+    await expect(getAudioPackRecording('日', 'ひ')).resolves.toMatchObject({
+      manifest: { id },
+      bytes: new Uint8Array([1, 2, 3]),
+    })
+    expect((await getAudioPackRecording('日', 'ひ'))?.path).toBe('audio/hi.mp3')
+    await expect(getAudioPackRecording('お金', 'おかね')).resolves.toBeNull()
     await removeAudioPack(id)
     expect((await listAudioPacks()).some((pack) => pack.id === id)).toBe(false)
     installed.splice(installed.indexOf(id), 1)
     expect(await getAudioPackFile('日', 'ひ')).toBeNull()
+  })
+
+  it('prioritizes the selected pack when recordings overlap', async () => {
+    const firstId = `first-pack-${crypto.randomUUID()}`
+    const preferredId = `preferred-pack-${crypto.randomUUID()}`
+    installed.push(firstId, preferredId)
+    await installAudioPack(archive(firstId, 1))
+    await installAudioPack(archive(preferredId, 9))
+
+    await expect(
+      getAudioPackRecording('日', 'ひ', preferredId),
+    ).resolves.toMatchObject({
+      manifest: { id: preferredId },
+      bytes: new Uint8Array([9, 2, 3]),
+    })
+  })
+
+  it('downloads and installs a pack from an HTTP(S) URL without credentials', async () => {
+    const id = `remote-${crypto.randomUUID()}`
+    installed.push(id)
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.credentials).toBe('omit')
+        return new Response(archive(id), { status: 200 })
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      fetchAudioPack('https://cdn.example.test/voice.zip'),
+    ).resolves.toMatchObject({ id })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cdn.example.test/voice.zip',
+      { credentials: 'omit' },
+    )
+  })
+
+  it('rejects non-HTTP URLs before making a request', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      fetchAudioPack('data:application/zip;base64,abc'),
+    ).rejects.toThrow(/HTTP\(S\)/)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('preserves a non-MP3 recording type for browser playback', async () => {
+    const id = `ogg-pack-${crypto.randomUUID()}`
+    installed.push(id)
+    const manifest = {
+      id,
+      name: 'Ogg voice',
+      version: '1.0.0',
+      license: 'CC BY 4.0',
+      attribution: 'A Japanese speaker',
+      files: { '日|ひ': 'audio/hi.ogg' },
+    }
+    await installAudioPack(
+      zipSync({
+        'manifest.json': new TextEncoder().encode(JSON.stringify(manifest)),
+        'audio/hi.ogg': new Uint8Array([1, 2, 3]),
+      }),
+    )
+
+    await expect(getAudioPackFile('日', 'ひ')).resolves.toMatchObject({
+      type: 'audio/ogg',
+    })
   })
 })

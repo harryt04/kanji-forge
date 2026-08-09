@@ -27,6 +27,8 @@ import {
   STUDY_TWO_TAP_SETTING,
 } from './study-style'
 import { STUDY_AUTO_PLAY_AUDIO_SETTING } from './audio'
+import { installAudioPack, removeAudioPack } from './audio-pack'
+import { zipSync } from 'fflate'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -87,7 +89,34 @@ describe('StudyScreen', () => {
     expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
   })
 
-  it('plays the synthesized voice from the study toolbar', async () => {
+  it('announces study-card position and reveal state to assistive technology', async () => {
+    await renderReady()
+    const announcement = screen.getByTestId('study-announcement')
+
+    expect(announcement).toHaveTextContent(
+      `Card 1 of ${useStudyStore.getState().queue.length}`,
+    )
+    expect(announcement).toHaveTextContent('Answer hidden')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    )
+
+    expect(announcement).toHaveTextContent('Answer revealed')
+    expect(announcement).toHaveTextContent('Choose a grade')
+  })
+
+  it('allows the focused flashcard to reveal with Enter', async () => {
+    await renderReady()
+    const card = screen.getByRole('button', { name: 'Reveal answer' })
+
+    card.focus()
+    await userEvent.keyboard('{Enter}')
+
+    expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+  })
+
+  it('does not expose audio controls for kanji-only cards', async () => {
     const speak = vi.fn()
     const cancel = vi.fn()
     class FakeUtterance {
@@ -99,15 +128,17 @@ describe('StudyScreen', () => {
     vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
 
     await renderReady()
+    expect(
+      screen.queryByRole('button', { name: 'Play Japanese audio' }),
+    ).not.toBeInTheDocument()
+
     await userEvent.click(
-      screen.getByRole('button', { name: 'Play synthesized voice' }),
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
     )
-    expect(speak).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.any(String), lang: 'ja-JP' }),
-    )
+    expect(speak).not.toHaveBeenCalled()
   })
 
-  it('auto-plays after reveal when the preference is enabled', async () => {
+  it('does not auto-play kanji audio even when the preference is enabled', async () => {
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).settings.set({
       key: STUDY_AUTO_PLAY_AUDIO_SETTING,
@@ -128,7 +159,7 @@ describe('StudyScreen', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Reveal (Space)' }),
     )
-    expect(speak).toHaveBeenCalledOnce()
+    expect(speak).not.toHaveBeenCalled()
   })
 
   it('flags and unflags the current card from the study screen', async () => {
@@ -343,6 +374,20 @@ describe('StudyScreen', () => {
       value: 'writing',
       updatedAt: Date.now(),
     })
+    await repo.settings.set({
+      key: STUDY_AUTO_PLAY_AUDIO_SETTING,
+      value: 'true',
+      updatedAt: Date.now(),
+    })
+    const speak = vi.fn()
+    const cancel = vi.fn()
+    class FakeUtterance {
+      lang = ''
+      rate = 1
+      constructor(readonly text: string) {}
+    }
+    vi.stubGlobal('speechSynthesis', { speak, cancel })
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
 
     render(<StudyScreen deckDefinitionId={deck.id} />)
     await waitFor(() =>
@@ -356,6 +401,96 @@ describe('StudyScreen', () => {
     expect(
       screen.queryByRole('heading', { name: 'Writing answer' }),
     ).not.toBeInTheDocument()
+    await waitFor(() => expect(speak).toHaveBeenCalledOnce())
+  })
+
+  it('exposes installed community audio when speech synthesis is unavailable', async () => {
+    const entry = await findDictionaryEntry('お金')
+    if (!entry || entry.type !== 'word') throw new Error('word fixture missing')
+    const runtime = getActiveUserRuntime()!
+    const repo = createUserRepositories(runtime.database)
+    const deck = {
+      id: 'community-audio-study-deck',
+      name: 'Community audio study',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: 1,
+    }
+    await repo.recordDeckMembership({
+      deck,
+      membership: {
+        deckId: deck.id,
+        contentRef: `word:${entry.record.id}`,
+        sortOrder: 0,
+        addedAt: 1,
+        updatedAt: 1,
+      },
+      mutation: {
+        id: 'community-audio-study-membership',
+        mutType: 'deckMembership.upsert',
+        payload: JSON.stringify({
+          deckId: deck.id,
+          contentRef: `word:${entry.record.id}`,
+        }),
+        createdAt: 1,
+        attempts: 0,
+      },
+    })
+    const packId = `study-audio-${crypto.randomUUID()}`
+    const pack = zipSync({
+      'manifest.json': new TextEncoder().encode(
+        JSON.stringify({
+          id: packId,
+          name: 'Study voice',
+          version: '1.0.0',
+          license: 'CC BY 4.0',
+          attribution: 'A Japanese speaker',
+          files: { 'お金|おかね': 'audio/okane.mp3' },
+        }),
+      ),
+      'audio/okane.mp3': new Uint8Array([1, 2, 3]),
+    })
+    await installAudioPack(pack)
+    const createObjectUrl = Object.getOwnPropertyDescriptor(
+      URL,
+      'createObjectURL',
+    )
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: () => 'blob:study-audio',
+    })
+
+    try {
+      class FakeAudio {
+        static instances: FakeAudio[] = []
+        constructor(readonly src: string) {
+          FakeAudio.instances.push(this)
+        }
+        addEventListener(): void {}
+        async play(): Promise<void> {}
+      }
+      vi.stubGlobal('Audio', FakeAudio)
+
+      render(<StudyScreen deckDefinitionId={deck.id} />)
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Play Japanese audio' }),
+        ).toBeInTheDocument(),
+      )
+      expect(screen.getByText('Japanese audio')).toBeInTheDocument()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Play Japanese audio' }),
+      )
+      await waitFor(() => expect(FakeAudio.instances).toHaveLength(1))
+    } finally {
+      await removeAudioPack(packId)
+      if (createObjectUrl) {
+        Object.defineProperty(URL, 'createObjectURL', createObjectUrl)
+      } else {
+        Reflect.deleteProperty(URL, 'createObjectURL')
+      }
+    }
   })
 
   it('reveals readings first and all card details on the second tap', async () => {

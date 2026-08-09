@@ -35,14 +35,16 @@ import {
   StrokeAnimation,
 } from './stroke-animation'
 import {
-  playJapaneseAudio,
+  playJapaneseAudioForReadings,
   supportsJapaneseSpeech,
+  findInstalledJapaneseAudioMatch,
 } from '@/features/study/audio'
 import { listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
+type AudioSource = Awaited<ReturnType<typeof playJapaneseAudioForReadings>>
 
 function requestedContentRef(): string | null {
   if (typeof window === 'undefined') return null
@@ -64,23 +66,117 @@ function parseTags(value: string): readonly string[] {
 
 interface WordDetailViewProps {
   readonly word: WordRecord | NameRecord
+  readonly canSpeak: boolean
+  readonly hasAudioPack: boolean
   readonly saveDecks: readonly Deck[]
   readonly savedDeckIds: ReadonlySet<string>
   readonly saving: boolean
   readonly onSave: (deck: Deck) => void
+  readonly backHref: string
+  readonly backLabel: string
+  readonly embedded: boolean
+}
+
+interface AudioControlProps {
+  readonly writing: string
+  readonly readings: readonly string[]
+  readonly canSpeak: boolean
+  readonly hasAudioPack: boolean
+}
+
+function AudioControl({
+  writing,
+  readings,
+  canSpeak,
+  hasAudioPack,
+}: AudioControlProps): React.ReactElement | null {
+  const [source, setSource] = useState<AudioSource | null>(null)
+  const [recordingPack, setRecordingPack] =
+    useState<Awaited<ReturnType<typeof findInstalledJapaneseAudioMatch>>>(null)
+  const readingKey = readings.join('\u0000')
+
+  useEffect(() => {
+    let active = true
+    if (!hasAudioPack) {
+      setRecordingPack(null)
+      return () => {
+        active = false
+      }
+    }
+    setSource(null)
+    void findInstalledJapaneseAudioMatch(
+      writing,
+      readingKey ? readingKey.split('\u0000') : [],
+    ).then((match) => {
+      if (active) setRecordingPack(match)
+    })
+    return () => {
+      active = false
+    }
+  }, [hasAudioPack, readingKey, writing])
+
+  if (!canSpeak && !recordingPack) return null
+
+  const displayedSource: AudioSource =
+    source ?? (recordingPack ? 'pack' : 'synthesized')
+  const sourceLabel =
+    displayedSource === 'pack'
+      ? 'Community recording'
+      : displayedSource === 'synthesized'
+        ? 'Synthesized voice'
+        : 'Audio unavailable'
+  const actionLabel =
+    displayedSource === 'pack'
+      ? `Play community recording for ${writing}`
+      : `Play synthesized Japanese audio for ${writing}`
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          void playJapaneseAudioForReadings(writing, readings).then(setSource)
+        }}
+        aria-label={actionLabel}
+      >
+        Play audio
+      </Button>
+      <span className="text-muted-foreground text-xs">{sourceLabel}</span>
+      {recordingPack && displayedSource === 'pack' ? (
+        <span
+          className="text-muted-foreground text-xs"
+          aria-label={`Recording source: ${recordingPack.recording.manifest.name}, ${recordingPack.recording.manifest.license}, ${recordingPack.recording.manifest.attribution}`}
+        >
+          {recordingPack.recording.manifest.name}{' '}
+          {recordingPack.recording.manifest.version} ·{' '}
+          {recordingPack.recording.manifest.license} ·{' '}
+          {recordingPack.recording.manifest.attribution}
+        </span>
+      ) : null}
+    </div>
+  )
 }
 
 function WordDetailView({
   word,
+  canSpeak,
+  hasAudioPack,
   saveDecks,
   savedDeckIds,
   saving,
   onSave,
+  backHref,
+  backLabel,
+  embedded,
 }: WordDetailViewProps): React.ReactElement {
   return (
-    <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6">
-      <Link className="text-primary w-fit text-sm underline" href="/analyze">
-        ← Back to text analyzer
+    <main
+      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
+    >
+      <Link className="text-primary w-fit text-sm underline" href={backHref}>
+        ← {backLabel}
       </Link>
       <Card data-testid="word-detail">
         <CardHeader>
@@ -91,6 +187,12 @@ function WordDetailView({
           <p className="font-jp-ui text-muted-foreground" lang="ja">
             {word.readings.join('、') || 'Reading unavailable'}
           </p>
+          <AudioControl
+            writing={word.forms[0] ?? word.readings[0] ?? ''}
+            readings={word.readings}
+            canSpeak={canSpeak}
+            hasAudioPack={hasAudioPack}
+          />
           <Button
             type="button"
             variant="outline"
@@ -166,7 +268,13 @@ function WordDetailView({
   )
 }
 
-export function DetailScreen(): React.ReactElement {
+export function DetailScreen({
+  embedded = false,
+  embeddedPath = '/browse',
+}: {
+  readonly embedded?: boolean
+  readonly embeddedPath?: '/browse' | '/dictionary'
+} = {}): React.ReactElement {
   const runtime = getActiveUserRuntime()
   const [deck, setDeck] = useState<LoadedDeck | null>(null)
   const [contentRef, setContentRef] = useState<string | null>(
@@ -390,13 +498,23 @@ export function DetailScreen(): React.ReactElement {
     )
 
   const selectedContentRef = contentRef
+  const detailPath = embedded ? embeddedPath : '/detail'
   if (wordDetail)
     return (
       <WordDetailView
         word={wordDetail}
+        canSpeak={canSpeak}
+        hasAudioPack={hasAudioPack}
         saveDecks={saveDecks}
         savedDeckIds={savedDeckIds}
         saving={saving}
+        backHref={embedded ? embeddedPath : '/analyze'}
+        backLabel={
+          embeddedPath === '/dictionary'
+            ? 'Back to Dictionary'
+            : 'Back to text analyzer'
+        }
+        embedded={embedded}
         onSave={(targetDeck) => void saveToDeck(targetDeck)}
       />
     )
@@ -433,7 +551,7 @@ export function DetailScreen(): React.ReactElement {
   }
 
   function navigateTo(nextContentRef: string): void {
-    const nextUrl = `/detail?contentRef=${encodeURIComponent(nextContentRef)}`
+    const nextUrl = `${detailPath}?contentRef=${encodeURIComponent(nextContentRef)}`
     window.history.pushState({}, '', nextUrl)
     setContentRef(nextContentRef)
   }
@@ -543,14 +661,20 @@ export function DetailScreen(): React.ReactElement {
 
   return (
     <main
-      className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-8 sm:px-6"
+      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
       onTouchStart={(event) =>
         setTouchStartX(event.touches[0]?.clientX ?? null)
       }
       onTouchEnd={(event) => finishTouchSwipe(event.changedTouches[0]?.clientX)}
     >
-      <Link className="text-primary w-fit text-sm underline" href="/browse">
-        ← Back to Browse
+      <Link
+        className="text-primary w-fit text-sm underline"
+        href={embedded ? embeddedPath : '/browse'}
+      >
+        ←{' '}
+        {embeddedPath === '/dictionary'
+          ? 'Back to Dictionary'
+          : 'Back to Browse'}
       </Link>
       {currentIndex >= 0 && (
         <nav
@@ -596,24 +720,12 @@ export function DetailScreen(): React.ReactElement {
             Level {level} · {LEVEL_NAMES[level]}
             {state?.flagged ? ' · Flagged' : ''}
           </p>
-          {(canSpeak || hasAudioPack) && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  void playJapaneseAudio(content.literal, audioText)
-                }
-                aria-label={`Play synthesized Japanese audio for ${content.literal}`}
-              >
-                Play audio
-              </Button>
-              <span className="text-muted-foreground text-xs">
-                Synthesized voice
-              </span>
-            </div>
-          )}
+          <AudioControl
+            writing={content.literal}
+            readings={[audioText, ...reading]}
+            canSpeak={canSpeak}
+            hasAudioPack={hasAudioPack}
+          />
           <Button
             type="button"
             variant="outline"
@@ -829,9 +941,14 @@ export function DetailScreen(): React.ReactElement {
                 key={word.id}
                 className="border-border bg-card rounded-md border p-3"
               >
-                <p className="font-jp-ui text-lg" lang="ja">
+                <Link
+                  className="font-jp-ui text-primary text-lg underline underline-offset-4"
+                  href={`${detailPath}?contentRef=${encodeURIComponent(`word:${word.id}`)}`}
+                  lang="ja"
+                  aria-label={`View details for ${word.forms[0] ?? word.readings[0]}`}
+                >
                   {word.forms.join('、') || word.readings.join('、')}
-                </p>
+                </Link>
                 <p
                   className="font-jp-ui text-muted-foreground text-sm"
                   lang="ja"
@@ -934,7 +1051,7 @@ export function DetailScreen(): React.ReactElement {
               <li key={literal}>
                 <Link
                   className="border-border bg-card text-foreground focus-visible:ring-ring inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-3 py-2 text-2xl shadow-sm focus-visible:ring-2 focus-visible:outline-none"
-                  href={`/detail?contentRef=${encodeURIComponent(`kanji:${literal}`)}`}
+                  href={`${detailPath}?contentRef=${encodeURIComponent(`kanji:${literal}`)}`}
                   lang="ja"
                   aria-label={`View details for ${literal}`}
                 >

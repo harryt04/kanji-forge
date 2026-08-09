@@ -52,38 +52,67 @@ export function AuthGate({
 
   return (
     <>
-      <header className="border-border flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            className="font-display shrink-0 text-xl font-bold"
-            href="/home"
-          >
+      <div className="min-h-screen md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
+        <aside
+          className="border-border bg-card hidden border-r md:flex md:min-h-screen md:flex-col md:gap-8 md:p-5"
+          aria-label="Application sidebar"
+        >
+          <Link className="font-display text-xl font-bold" href="/home">
             KanjiForge
           </Link>
-          <AppNavigation userId={user.id} />
+          <AppNavigation userId={user.id} orientation="vertical" />
+          <AccountNavigation onSignOut={() => void handleSignOut()} />
+        </aside>
+
+        <div className="min-w-0">
+          <header className="border-border flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-4 sm:px-6 md:hidden">
+            <div className="flex min-w-0 items-center gap-2">
+              <Link
+                className="font-display shrink-0 text-xl font-bold"
+                href="/home"
+              >
+                KanjiForge
+              </Link>
+              <AppNavigation userId={user.id} />
+            </div>
+            <AccountNavigation onSignOut={() => void handleSignOut()} />
+          </header>
+          {children}
         </div>
-        <nav className="flex items-center gap-1" aria-label="Account">
-          <Link
-            className="text-muted-foreground hover:text-foreground rounded-md px-3 py-2 text-sm"
-            href="/settings"
-          >
-            Settings
-          </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void handleSignOut()}
-          >
-            Sign out
-          </Button>
-        </nav>
-      </header>
+      </div>
       <ThemeController userId={user.id} />
       <AutoBackupController userId={user.id} />
       <AppBadgeController userId={user.id} />
       <DailyReminderController userId={user.id} />
-      {children}
     </>
+  )
+}
+
+function AccountNavigation({
+  onSignOut,
+}: {
+  readonly onSignOut: () => void
+}): React.ReactElement {
+  return (
+    <nav
+      className="md:border-border flex items-center gap-1 md:grid md:w-full md:gap-1 md:border-t md:pt-4"
+      aria-label="Account"
+    >
+      <Link
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none md:w-full"
+        href="/settings"
+      >
+        Settings
+      </Link>
+      <Button
+        className="md:justify-start"
+        variant="ghost"
+        size="sm"
+        onClick={onSignOut}
+      >
+        Sign out
+      </Button>
+    </nav>
   )
 }
 

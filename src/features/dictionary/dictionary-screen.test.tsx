@@ -52,6 +52,46 @@ describe('DictionaryScreen', () => {
 
     expect(await screen.findByText('お金')).toBeInTheDocument()
     expect(screen.getByText('money')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'View details for お金' }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^\/dictionary\?contentRef=word%3A\d+$/u),
+    )
+  })
+
+  it('shows the detected input type while entering a dictionary query', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), 'okane')
+
+    expect(screen.getByTestId('dictionary-input-type')).toHaveTextContent(
+      'Detected input: Romaji',
+    )
+  })
+
+  it('keeps dictionary results visible beside the selected offline detail', async () => {
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), 'okane')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    const detailLink = await screen.findByRole('link', {
+      name: 'View details for お金',
+    })
+    const detailHref = detailLink.getAttribute('href')
+    expect(detailHref).toMatch(/^\/dictionary\?contentRef=word%3A\d+$/u)
+    await user.click(detailLink)
+
+    expect(
+      await screen.findByTestId('dictionary-detail-pane'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('お金')).toBeInTheDocument()
+    expect(screen.getByTestId('word-detail')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '← Back to Dictionary' }),
+    ).toHaveAttribute('href', '/dictionary')
   })
 
   it('searches the visible form with wildcards', async () => {
@@ -87,6 +127,9 @@ describe('DictionaryScreen', () => {
     expect(firstDetails.getByText('JLPT')).toBeInTheDocument()
     expect(firstDetails.getByText('Frequency rank')).toBeInTheDocument()
     expect(firstDetails.getByText('Classical radical')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('link', { name: 'View details for 日' }).length,
+    ).toBeGreaterThan(0)
   })
 
   it('searches kanji by classical radical number', async () => {
@@ -143,6 +186,50 @@ describe('DictionaryScreen', () => {
     expect(
       await createUserRepositories(runtime.database).outbox.pending(),
     ).toMatchObject([{ mutType: 'deckMembership.upsert' }])
+  })
+
+  it('saves a dictionary result to an existing custom deck', async () => {
+    const runtime = getActiveUserRuntime()!
+    const customDeck = {
+      id: 'custom-reading',
+      name: 'Reading practice',
+      kind: 'custom' as const,
+      definitionId: null,
+      updatedAt: Date.now(),
+    }
+    await createUserRepositories(runtime.database).decks.upsert(customDeck)
+
+    const user = userEvent.setup()
+    render(<DictionaryScreen />)
+
+    await user.type(screen.getByLabelText('Dictionary search'), '日')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    const addButtons = await screen.findAllByRole('button', {
+      name: 'Add to Reading practice',
+    })
+    await user.click(addButtons[0]!)
+
+    expect(
+      await screen.findByRole('button', { name: 'In Reading practice' }),
+    ).toBeDisabled()
+    expect(
+      await createUserRepositories(runtime.database).deckMembership.list(
+        customDeck.id,
+      ),
+    ).toMatchObject([
+      expect.objectContaining({
+        deckId: customDeck.id,
+        contentRef: 'kanji:日',
+      }),
+    ])
+    expect(
+      await createUserRepositories(runtime.database).outbox.pending(),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mutType: 'deckMembership.upsert' }),
+      ]),
+    )
   })
 
   it('asks before saving a dictionary result when configured', async () => {

@@ -30,7 +30,9 @@ import {
   type StudyQuestion,
 } from './study-style'
 import {
-  playJapaneseAudio,
+  playJapaneseAudioForReadings,
+  findInstalledJapaneseAudioReading,
+  supportsStudyCardAudio,
   supportsJapaneseSpeech,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
@@ -65,6 +67,7 @@ export function StudyScreen({
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [hasAudioRecording, setHasAudioRecording] = useState(false)
   const [relatedWords, setRelatedWords] = useState<readonly WordRecord[]>([])
   const [relatedWordsLoading, setRelatedWordsLoading] = useState(false)
   const [shownRelatedWordIds, setShownRelatedWordIds] = useState<
@@ -165,6 +168,7 @@ export function StudyScreen({
         setTwoTapStudy(parseStudyTwoTap(twoTapSetting?.value))
         setTwoTapStage(0)
         setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
+        setHasAudioRecording(false)
         setPreferenceError(null)
         setLoading(false)
       }
@@ -217,6 +221,25 @@ export function StudyScreen({
   const repo = runtime ? createUserRepositories(runtime.database) : null
 
   useEffect(() => {
+    let active = true
+    if (!studyCard || !supportsStudyCardAudio(studyCard.contentType)) {
+      setHasAudioRecording(false)
+      return () => {
+        active = false
+      }
+    }
+    void findInstalledJapaneseAudioReading(
+      studyCard.literal,
+      studyCard.readings,
+    ).then((available) => {
+      if (active) setHasAudioRecording(Boolean(available))
+    })
+    return () => {
+      active = false
+    }
+  }, [studyCard])
+
+  useEffect(() => {
     let cancelled = false
     setRelatedWords([])
     setShownRelatedWordIds(new Set())
@@ -247,9 +270,8 @@ export function StudyScreen({
   }, [revealed, studyCard])
 
   const speakCurrentCard = useCallback(() => {
-    if (!studyCard) return
-    const reading = studyCard.readings[0] ?? studyCard.literal
-    void playJapaneseAudio(studyCard.literal, reading)
+    if (!studyCard || !supportsStudyCardAudio(studyCard.contentType)) return
+    void playJapaneseAudioForReadings(studyCard.literal, studyCard.readings)
   }, [studyCard])
 
   const handleReveal = useCallback(() => {
@@ -358,7 +380,9 @@ export function StudyScreen({
         ? (studyCard?.meanings[0] ?? studyCard?.literal ?? '')
         : (studyCard?.literal ?? '')
   const questionIsJapanese = twoTapStudy || studyQuestion !== 'meaning'
-  const canSpeak = supportsJapaneseSpeech()
+  const canSpeak =
+    supportsStudyCardAudio(studyCard?.contentType) &&
+    (supportsJapaneseSpeech() || hasAudioRecording)
   const stickyColor = greyStickies
     ? 'var(--muted-foreground)'
     : `var(--level-${level})`
@@ -370,9 +394,31 @@ export function StudyScreen({
       ? 'Show everything (Space)'
       : 'Show readings (Space)'
     : 'Reveal (Space)'
+  const studyAnnouncement =
+    queue.length === 0
+      ? 'Nothing due right now.'
+      : finished
+        ? `Study session complete. ${summary.seen} ${summary.seen === 1 ? 'card' : 'cards'} seen.`
+        : `Card ${index + 1} of ${queue.length}. ${questionText}. ${
+            showingTwoTapReadings
+              ? 'Readings shown. Activate the card or Show everything to reveal the answer.'
+              : revealed
+                ? 'Answer revealed. Choose a grade.'
+                : 'Answer hidden. Activate the card or Reveal to show the answer.'
+          } Level ${level}, ${LEVEL_LABELS[level]}.`
 
   return (
     <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
+      <p
+        id="study-announcement"
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="study-announcement"
+      >
+        {studyAnnouncement}
+      </p>
       <div className="border-border text-muted-foreground flex items-center justify-between border-b px-4 py-3 text-sm">
         <span>{deckName}</span>
         <div className="flex items-center gap-3">
@@ -404,12 +450,12 @@ export function StudyScreen({
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label="Play synthesized voice"
+                    aria-label="Play Japanese audio"
                     onClick={speakCurrentCard}
                   >
                     Speak
                   </Button>
-                  <span className="text-xs">Synthesized voice</span>
+                  <span className="text-xs">Japanese audio</span>
                 </>
               )}
             </>
@@ -446,8 +492,15 @@ export function StudyScreen({
             style={{ borderColor: stickyColor }}
             data-grey-stickies={greyStickies}
             onClick={() => !revealed && handleReveal()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !revealed) {
+                event.preventDefault()
+                handleReveal()
+              }
+            }}
             role="button"
             tabIndex={0}
+            aria-describedby="study-announcement"
             aria-label={
               revealed
                 ? undefined

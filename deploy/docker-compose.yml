@@ -37,5 +37,32 @@ services:
     ports:
       - "127.0.0.1:3010:3000"
 
+  # Optional. Calls the app's authenticated reminder endpoint once per minute
+  # so background Web Push does not require a separate host cron installation.
+  # Start it with `--profile push` after setting KANJIFORGE_APP_URL and
+  # PUSH_CRON_SECRET in the compose env file.
+  push-cron:
+    profiles: ["push"]
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      KANJIFORGE_APP_URL: ${KANJIFORGE_APP_URL:-}
+      PUSH_CRON_SECRET: ${PUSH_CRON_SECRET:-}
+    command:
+      - sh
+      - -ceu
+      - |
+        if [ -z "$${KANJIFORGE_APP_URL}" ] || [ -z "$${PUSH_CRON_SECRET}" ]; then
+          echo 'Set KANJIFORGE_APP_URL and PUSH_CRON_SECRET before starting push-cron.' >&2
+          exit 1
+        fi
+        while true; do
+          curl --fail --silent --show-error --max-time 30 \
+            -X POST "$${KANJIFORGE_APP_URL%/}/api/push/reminders" \
+            -H "x-kanjiforge-push-secret: $${PUSH_CRON_SECRET}" \
+            || true
+          sleep 60
+        done
+
 volumes:
   postgres-data:

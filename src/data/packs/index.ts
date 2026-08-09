@@ -11,6 +11,7 @@ import {
 import { tokenizeJapaneseText } from '@/core/text/tokenizer'
 import { parseFuriganaTokens, type FuriganaToken } from '@/core/text/furigana'
 import { getInstalledNamesPackBytes } from '@/features/settings/names-pack'
+import { getInstalledWordsPackBytes } from '@/features/settings/words-pack'
 
 export type { TextAnalysisToken } from '@/core/text/analyzer'
 
@@ -92,6 +93,11 @@ export type DictionaryResult =
       readonly type: 'name'
       readonly record: NameRecord
     }
+
+export interface DictionaryTextMatch {
+  readonly text: string
+  readonly result: Exclude<DictionaryResult, { readonly type: 'name' }>
+}
 
 let sqlJsPromise: ReturnType<typeof initSqlJs> | undefined
 function loadSqlJs(): ReturnType<typeof initSqlJs> {
@@ -327,6 +333,7 @@ async function getPackBytes(fileName: string): Promise<Uint8Array> {
 /** Forces a subsequent lookup to reopen a replaced optional pack. */
 export function invalidateContentPack(fileName: string): void {
   packHandles.delete(fileName)
+  if (fileName === 'words-full-v1.sqlite') dictionaryWordsPromise = undefined
 }
 
 function jsonArray(raw: unknown): readonly string[] {
@@ -521,45 +528,67 @@ export async function searchDictionaryByStrokeCount(
   return results
 }
 
-let dictionaryWordsPromise: Promise<readonly WordRecord[]> | undefined
-function loadDictionaryWords(): Promise<readonly WordRecord[]> {
-  dictionaryWordsPromise ??= openPack('words-core-v1.sqlite').then(
-    (database) => {
-      const statement = database.prepare(
-        'SELECT id, common_score, data FROM entries ORDER BY common_score DESC, id ASC',
-      )
-      const records: WordRecord[] = []
-      while (statement.step()) {
-        const row = statement.getAsObject()
-        const data = jsonBlob(row.data)
-        const kanji = Array.isArray(data.kanji) ? data.kanji : []
-        const kana = Array.isArray(data.kana) ? data.kana : []
-        const senses = Array.isArray(data.senses) ? data.senses : []
-        const forms = stringArray(kanji)
-        const readings = stringArray(kana)
-        const meanings = senses.flatMap((sense) => {
-          if (!sense || typeof sense !== 'object' || !('gloss' in sense))
-            return []
-          return stringArray(sense.gloss)
-        })
-        const partsOfSpeech = senses.flatMap((sense) => {
-          if (!sense || typeof sense !== 'object' || !('pos' in sense))
-            return []
-          return stringArray(sense.pos)
-        })
-        records.push({
-          id: Number(row.id),
-          commonScore: Number(row.common_score),
-          forms,
-          readings,
-          partsOfSpeech,
-          meanings,
-        })
+function readWordRecords(database: SqlJsDatabase): readonly WordRecord[] {
+  const statement = database.prepare(
+    'SELECT id, common_score, data FROM entries ORDER BY common_score DESC, id ASC',
+  )
+  const records: WordRecord[] = []
+  while (statement.step()) {
+    const row = statement.getAsObject()
+    const data = jsonBlob(row.data)
+    const kanji = Array.isArray(data.kanji) ? data.kanji : []
+    const kana = Array.isArray(data.kana) ? data.kana : []
+    const senses = Array.isArray(data.senses) ? data.senses : []
+    const forms = stringArray(kanji)
+    const readings = stringArray(kana)
+    const meanings = senses.flatMap((sense) => {
+      if (!sense || typeof sense !== 'object' || !('gloss' in sense)) return []
+      return stringArray(sense.gloss)
+    })
+    const partsOfSpeech = senses.flatMap((sense) => {
+      if (!sense || typeof sense !== 'object' || !('pos' in sense)) return []
+      return stringArray(sense.pos)
+    })
+    records.push({
+      id: Number(row.id),
+      commonScore: Number(row.common_score),
+      forms,
+      readings,
+      partsOfSpeech,
+      meanings,
+    })
+  }
+  statement.free()
+  return records
+}
+
+function loadOptionalFullDictionaryWords(): Promise<readonly WordRecord[]> {
+  return Promise.all([loadSqlJs(), getInstalledWordsPackBytes()]).then(
+    ([SQL, bytes]) => {
+      if (!bytes) return []
+      const database = new SQL.Database(bytes)
+      try {
+        return readWordRecords(database)
+      } finally {
+        database.close()
       }
-      statement.free()
-      return records
     },
   )
+}
+
+let dictionaryWordsPromise: Promise<readonly WordRecord[]> | undefined
+function loadDictionaryWords(): Promise<readonly WordRecord[]> {
+  dictionaryWordsPromise ??= Promise.all([
+    openPack('words-core-v1.sqlite').then(readWordRecords),
+    loadOptionalFullDictionaryWords(),
+  ]).then(([core, full]) => {
+    const records = new Map<number, WordRecord>()
+    for (const record of [...core, ...full]) records.set(record.id, record)
+    return [...records.values()].sort(
+      (left, right) =>
+        right.commonScore - left.commonScore || left.id - right.id,
+    )
+  })
   return dictionaryWordsPromise
 }
 
@@ -708,6 +737,49 @@ export async function analyzeJapaneseText(
   return segments
     ? analyzeTextWithSegments(text, segments, words, kanji, maxTokens)
     : analyzeText(text, words, kanji, maxTokens)
+}
+
+/**
+ * Resolves dictionary-backed tokens from an offline Japanese phrase. This is
+ * intentionally separate from `findDictionaryEntry`: imports can contain a
+ * sentence or a run of words that has no single exact dictionary entry.
+ */
+export async function findDictionaryEntriesInText(
+  text: string,
+  maxTokens = 500,
+): Promise<readonly DictionaryTextMatch[]> {
+  const [tokens, words, kanji] = await Promise.all([
+    analyzeJapaneseText(text, maxTokens),
+    loadDictionaryWords(),
+    loadDictionaryKanji(),
+  ])
+  const wordsById = new Map(words.map((record) => [record.id, record]))
+  const kanjiByLiteral = new Map(
+    kanji.map((record) => [record.literal, record]),
+  )
+  const seen = new Set<string>()
+  const matches: DictionaryTextMatch[] = []
+
+  for (const token of tokens) {
+    if (!token.contentRef || seen.has(token.contentRef)) continue
+    const { type, key } = parseContentRef(token.contentRef)
+    // The analyzer emits only `word:` and `kanji:` refs. The record maps are
+    // built from the same arrays used by that analyzer, so these lookups are
+    // guaranteed for a valid token ref.
+    const result =
+      type === 'word'
+        ? ({
+            type: 'word',
+            record: wordsById.get(Number(key))!,
+          } as const)
+        : ({
+            type: 'kanji',
+            record: kanjiByLiteral.get(key)!,
+          } as const)
+    seen.add(token.contentRef)
+    matches.push({ text: token.text, result })
+  }
+  return matches
 }
 
 function matchScore(

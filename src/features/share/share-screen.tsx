@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import {
@@ -14,6 +14,7 @@ import { Button } from '@/ui/button'
 import {
   parseKanjiImportText,
   previewImport,
+  deduplicateImportEntries,
   type ImportEntry,
   type ImportPreviewItem,
 } from '@/features/settings/deck-import'
@@ -32,12 +33,15 @@ import {
   serializeAnalyzerDisplaySettings,
   type AnalyzerDisplaySettings,
 } from './analyzer-settings'
+import {
+  ANALYZER_HISTORY_SETTING,
+  parseAnalyzerHistory,
+  recordAnalyzerText,
+  serializeAnalyzerHistory,
+} from './analyzer-history'
+import type { SharedTextPayload } from './share-target'
 
-export interface SharedTextPayload {
-  readonly text: string
-  readonly title: string | null
-  readonly url: string | null
-}
+export type { SharedTextPayload } from './share-target'
 
 /** Reads the GET share-target fields without requiring a network round trip. */
 export function readSharedTextPayload(search: string): SharedTextPayload {
@@ -97,14 +101,34 @@ async function resolveSharedDeckEntries(
 }
 
 async function resolveTextImportEntries(
-  entries: readonly ImportEntry[],
+  text: string,
 ): Promise<readonly ImportEntry[]> {
-  const records = await getKanjiByLiterals(entries.map((entry) => entry.label))
-  return entries.map((entry) => ({
+  const kanjiEntries = parseKanjiImportText(text).map((label) => ({
+    label,
+    contentRef: null,
+    kind: 'unknown' as const,
+  }))
+  const records = await getKanjiByLiterals(
+    kanjiEntries.map((entry) => entry.label),
+  )
+  const resolvedKanji = kanjiEntries.map((entry) => ({
     ...entry,
     contentRef: records.has(entry.label) ? `kanji:${entry.label}` : null,
     kind: 'kanji' as const,
   }))
+  const analysis = await analyzeJapaneseText(text)
+  const resolvedWords = analysis.flatMap((token) =>
+    token.type === 'word' && token.contentRef
+      ? [
+          {
+            label: token.text,
+            contentRef: token.contentRef,
+            kind: 'word' as const,
+          },
+        ]
+      : [],
+  )
+  return deduplicateImportEntries([...resolvedWords, ...resolvedKanji])
 }
 
 /** Returns dictionary-backed word tokens that are not already in Saved. */
@@ -143,6 +167,8 @@ export function ShareTargetScreen(): React.ReactElement {
   )
   const [displaySettings, setDisplaySettings] =
     useState<AnalyzerDisplaySettings>(DEFAULT_ANALYZER_DISPLAY_SETTINGS)
+  const [analysisHistory, setAnalysisHistory] = useState<readonly string[]>([])
+  const analysisHistoryDirty = useRef(false)
   const [expandedGlosses, setExpandedGlosses] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
@@ -191,13 +217,7 @@ export function ShareTargetScreen(): React.ReactElement {
     }
     const importEntries = nextDeck
       ? resolveSharedDeckEntries(nextDeck)
-      : Promise.resolve<readonly ImportEntry[]>(
-          parseKanjiImportText(nextPayload.text).map((label) => ({
-            label,
-            contentRef: null,
-            kind: 'unknown',
-          })),
-        )
+      : resolveTextImportEntries(nextPayload.text)
     if (!runtime) {
       setLoading(false)
       return () => {
@@ -209,15 +229,19 @@ export function ShareTargetScreen(): React.ReactElement {
       try {
         await runtime.database.ready
         const repositories = createUserRepositories(runtime.database)
-        const [existing, savedDisplaySettings, entries] = await Promise.all([
-          repositories.deckMembership.list(),
-          repositories.settings.get(ANALYZER_DISPLAY_SETTING),
-          importEntries,
-        ])
+        const [existing, savedDisplaySettings, savedAnalysisHistory, entries] =
+          await Promise.all([
+            repositories.deckMembership.list(),
+            repositories.settings.get(ANALYZER_DISPLAY_SETTING),
+            repositories.settings.get(ANALYZER_HISTORY_SETTING),
+            importEntries,
+          ])
         if (!active) return
         setDisplaySettings(
           parseAnalyzerDisplaySettings(savedDisplaySettings?.value),
         )
+        if (!analysisHistoryDirty.current)
+          setAnalysisHistory(parseAnalyzerHistory(savedAnalysisHistory?.value))
         setSavedContentRefs(
           new Set(
             existing
@@ -225,12 +249,9 @@ export function ShareTargetScreen(): React.ReactElement {
               .map((membership) => membership.contentRef),
           ),
         )
-        const resolvedEntries = nextDeck
-          ? entries
-          : await resolveTextImportEntries(entries)
         setPreview(
           previewImport(
-            resolvedEntries,
+            entries,
             new Set(
               existing
                 .filter((membership) => membership.deckId === 'saved')
@@ -254,19 +275,68 @@ export function ShareTargetScreen(): React.ReactElement {
     }
   }, [runtime])
 
-  async function analyzeText(): Promise<void> {
-    if (!draftText.trim() || analyzing) return
+  async function recordAnalyzedText(text: string): Promise<void> {
+    if (!runtime) return
+    analysisHistoryDirty.current = true
+    const nextHistory = recordAnalyzerText(analysisHistory, text)
+    setAnalysisHistory(nextHistory)
+    try {
+      await runtime.database.ready
+      await createUserRepositories(runtime.database).settings.set({
+        key: ANALYZER_HISTORY_SETTING,
+        value: serializeAnalyzerHistory(nextHistory),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save analyzer history.',
+      )
+    }
+  }
+
+  async function runAnalysis(
+    text: string,
+    shouldRecordHistory = true,
+  ): Promise<void> {
+    if (!text.trim() || analyzing) return
     setAnalyzing(true)
     setError(null)
     try {
       setExpandedGlosses(new Set())
-      setAnalysis(await analyzeJapaneseText(draftText))
+      setAnalysis(await analyzeJapaneseText(text))
+      if (shouldRecordHistory) await recordAnalyzedText(text)
     } catch (reason: unknown) {
       setError(
         reason instanceof Error ? reason.message : 'Could not analyze text.',
       )
     } finally {
       setAnalyzing(false)
+    }
+  }
+
+  async function analyzeText(): Promise<void> {
+    await runAnalysis(draftText)
+  }
+
+  async function clearAnalysisHistory(): Promise<void> {
+    if (!runtime) return
+    analysisHistoryDirty.current = true
+    setAnalysisHistory([])
+    try {
+      await runtime.database.ready
+      await createUserRepositories(runtime.database).settings.set({
+        key: ANALYZER_HISTORY_SETTING,
+        value: '[]',
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not clear analyzer history.',
+      )
     }
   }
 
@@ -360,6 +430,9 @@ export function ShareTargetScreen(): React.ReactElement {
       const unknown = preview.filter(
         (item) => item.status === 'not-found',
       ).length
+      const importedWords = matched.filter(
+        (item) => item.kind === 'word',
+      ).length
       setPreview(
         preview.map((item) =>
           item.status === 'matched'
@@ -368,7 +441,7 @@ export function ShareTargetScreen(): React.ReactElement {
         ),
       )
       setMessage(
-        `Added ${sharedDeck ? `${imported} card${imported === 1 ? '' : 's'}` : `${imported} kanji`}${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
+        `Added ${sharedDeck || importedWords > 0 ? `${imported} card${imported === 1 ? '' : 's'}` : `${imported} kanji`}${sharedDeck ? ` from “${sharedDeck.name}”` : ''} to Saved.${alreadySaved > 0 ? ` ${alreadySaved} already in Saved.` : ''}${unknown > 0 ? ` ${unknown} were not found in the installed dictionary.` : ''}`,
       )
     } catch (reason: unknown) {
       setError(
@@ -573,6 +646,43 @@ export function ShareTargetScreen(): React.ReactElement {
             </select>
           </label>
         </fieldset>
+        {analysisHistory.length > 0 && (
+          <section
+            aria-label="Analyzer history"
+            className="bg-muted/40 grid gap-2 rounded-md border p-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">Recent analyses</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void clearAnalysisHistory()}
+              >
+                Clear
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {analysisHistory.map((text, index) => (
+                <Button
+                  key={`${text}-${index}`}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="max-w-full justify-start truncate"
+                  title={text}
+                  aria-label={`Reuse analysis ${index + 1}: ${text}`}
+                  onClick={() => {
+                    setDraftText(text)
+                    void runAnalysis(text, false)
+                  }}
+                >
+                  {text}
+                </Button>
+              ))}
+            </div>
+          </section>
+        )}
         <Button
           className="w-fit"
           disabled={analyzing || !draftText.trim()}
@@ -738,7 +848,12 @@ export function ShareTargetScreen(): React.ReactElement {
               ? 'Importing…'
               : sharedDeck
                 ? 'Import shared deck to Saved'
-                : 'Import matched kanji to Saved'}
+                : preview.some(
+                      (item) =>
+                        item.status === 'matched' && item.kind === 'word',
+                    )
+                  ? 'Import matched cards to Saved'
+                  : 'Import matched kanji to Saved'}
           </Button>
         </section>
       )}

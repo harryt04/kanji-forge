@@ -19,6 +19,7 @@ import * as path from 'path'
 import * as zlib from 'zlib'
 import * as crypto from 'crypto'
 import { createReadStream } from 'fs'
+import { pathToFileURL } from 'node:url'
 import Database from 'better-sqlite3'
 
 // Minimal XML parser using streaming/regex
@@ -46,7 +47,6 @@ interface JmdictEntry {
 
 const OUTPUT_DIR = path.join(process.cwd(), 'packs')
 const OUTPUT_DB = path.join(OUTPUT_DIR, 'words-core-v1.sqlite')
-const OUTPUT_DB_TMP = OUTPUT_DB + '.tmp'
 const OUTPUT_MANIFEST = path.join(OUTPUT_DIR, 'words-core-v1.manifest.json')
 const LOCK_FILE = path.join(
   process.cwd(),
@@ -92,7 +92,7 @@ function decodeJmdictEntities(s: string): string {
   return s
 }
 
-function resolveAndVerifyJmdictPath(): string {
+export function resolveAndVerifyJmdictPath(): string {
   if (!fs.existsSync(LOCK_FILE)) {
     throw new Error(`sources.lock.json not found at ${LOCK_FILE}`)
   }
@@ -282,7 +282,7 @@ function parseJmdictLine(line: string, state: ParseState): JmdictEntry | null {
   return null
 }
 
-async function* parseJmdictStream(
+export async function* parseJmdictStream(
   inputPath: string,
 ): AsyncGenerator<JmdictEntry> {
   const state: ParseState = {
@@ -353,19 +353,29 @@ function hasCommonScore(entry: JmdictEntry): number {
   return maxScore
 }
 
-async function buildWordsCoreDB(jmdictPath: string): Promise<{
+export interface WordsPackBuildOptions {
+  readonly outputDb: string
+  readonly packId: 'words-core' | 'words-full'
+  readonly includeEntry: (entry: JmdictEntry, commonScore: number) => boolean
+}
+
+export async function buildWordsPack(
+  jmdictPath: string,
+  options: WordsPackBuildOptions,
+): Promise<{
   entryCount: number
   formCount: number
   glossCount: number
 }> {
+  const outputDbTmp = options.outputDb + '.tmp'
   // Ensure output dir
   fs.mkdirSync(OUTPUT_DIR, { recursive: true })
   // do not delete final here; use tmp for atomic
-  if (fs.existsSync(OUTPUT_DB_TMP)) {
-    fs.unlinkSync(OUTPUT_DB_TMP)
+  if (fs.existsSync(outputDbTmp)) {
+    fs.unlinkSync(outputDbTmp)
   }
 
-  const db = new Database(OUTPUT_DB_TMP)
+  const db = new Database(outputDbTmp)
 
   // Create schema per ARCHITECTURE.md §4.1 (with FTS5)
   db.exec(`
@@ -404,10 +414,7 @@ async function buildWordsCoreDB(jmdictPath: string): Promise<{
   for await (const entry of parseJmdictStream(jmdictPath)) {
     const score = hasCommonScore(entry)
 
-    // Only include entries with pri tags (words-core per DATA-SOURCES §2.3)
-    if (score === 0) {
-      continue
-    }
+    if (!options.includeEntry(entry, score)) continue
 
     filteredCount++
 
@@ -464,22 +471,30 @@ async function buildWordsCoreDB(jmdictPath: string): Promise<{
   db.close()
 
   // atomic rename after success (before manifest)
-  fs.renameSync(OUTPUT_DB_TMP, OUTPUT_DB)
+  fs.renameSync(outputDbTmp, options.outputDb)
 
   console.log(
-    `Built words-core: ${entryCount} entries, ${formCount} forms, ${glossCount} glosses`,
+    `Built ${options.packId}: ${entryCount} entries, ${formCount} forms, ${glossCount} glosses`,
   )
 
   return { entryCount, formCount, glossCount }
 }
 
-async function writeManifest(stats: {
-  entryCount: number
-  formCount: number
-  glossCount: number
-}): Promise<string> {
-  const dbStats = fs.statSync(OUTPUT_DB)
-  const dbContent = fs.readFileSync(OUTPUT_DB)
+export async function writeWordsManifest(
+  stats: {
+    entryCount: number
+    formCount: number
+    glossCount: number
+  },
+  options: {
+    readonly outputDb: string
+    readonly outputManifest: string
+    readonly packId: 'words-core' | 'words-full'
+    readonly filterDescription: string
+  },
+): Promise<string> {
+  const dbStats = fs.statSync(options.outputDb)
+  const dbContent = fs.readFileSync(options.outputDb)
   const sha256 = crypto.createHash('sha256').update(dbContent).digest('hex')
 
   // compute gzip compressed size (for done-check budget note; brotli may be smaller in future)
@@ -488,7 +503,7 @@ async function writeManifest(stats: {
   const compressedMB = (compressedSizeBytes / 1024 / 1024).toFixed(2)
 
   const manifest = {
-    id: 'words-core',
+    id: options.packId,
     version: 'v1',
     schemaVersion: 1,
     sha256,
@@ -496,8 +511,7 @@ async function writeManifest(stats: {
     compressedSizeBytes,
     compressedSizeMB: compressedMB,
     license: 'CC BY-SA 4.0',
-    attribution:
-      'JMdict — © Electronic Dictionary Research and Development Group, Monash University. Used under CC BY-SA 4.0. Modified: converted to a database format, some fields omitted, filtered to common-tagged entries.',
+    attribution: `JMdict — © Electronic Dictionary Research and Development Group, Monash University. Used under CC BY-SA 4.0. Modified: converted to a database format, some fields omitted, ${options.filterDescription}.`,
     sources: [
       {
         id: 'jmdict',
@@ -509,9 +523,9 @@ async function writeManifest(stats: {
     stats,
   }
 
-  const manifestTmp = OUTPUT_MANIFEST + '.tmp'
+  const manifestTmp = options.outputManifest + '.tmp'
   fs.writeFileSync(manifestTmp, JSON.stringify(manifest, null, 2))
-  fs.renameSync(manifestTmp, OUTPUT_MANIFEST)
+  fs.renameSync(manifestTmp, options.outputManifest)
 
   console.log(
     `✓ Gzip compressed size: ${compressedMB} MB (note: spec budget ~6 MB compressed; brotli in later T0.x)`,
@@ -533,8 +547,17 @@ async function main() {
   }
 
   try {
-    const stats = await buildWordsCoreDB(jmdictPath)
-    const sha256 = await writeManifest(stats)
+    const stats = await buildWordsPack(jmdictPath, {
+      outputDb: OUTPUT_DB,
+      packId: 'words-core',
+      includeEntry: (_entry, commonScore) => commonScore > 0,
+    })
+    const sha256 = await writeWordsManifest(stats, {
+      outputDb: OUTPUT_DB,
+      outputManifest: OUTPUT_MANIFEST,
+      packId: 'words-core',
+      filterDescription: 'filtered to common-tagged entries',
+    })
 
     console.log(`✓ Created ${OUTPUT_DB}`)
     console.log(`✓ SHA256: ${sha256}`)
@@ -545,11 +568,12 @@ async function main() {
   } catch (error) {
     // cleanup temp on failure; do not leave partial db or write manifest
     try {
-      if (fs.existsSync(OUTPUT_DB_TMP)) fs.unlinkSync(OUTPUT_DB_TMP)
+      if (fs.existsSync(OUTPUT_DB + '.tmp')) fs.unlinkSync(OUTPUT_DB + '.tmp')
     } catch {}
     console.error('Build failed:', error)
     process.exit(1)
   }
 }
 
-main()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+  main()
