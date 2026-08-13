@@ -657,7 +657,7 @@ export function HomeScreen(): React.ReactElement {
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <Link
-                        className="text-primary text-xl underline underline-offset-4"
+                        className="text-primary inline-flex min-h-11 min-w-11 items-center justify-center text-xl underline underline-offset-4"
                         href={`/detail?contentRef=${encodeURIComponent(leech.stickyId)}`}
                         lang="ja"
                         aria-label={`View details for ${card?.literal ?? leech.stickyId}`}

@@ -470,7 +470,7 @@ export function DictionaryScreen(): React.ReactElement {
                 <div className="flex min-w-0 items-baseline justify-between gap-4">
                   <h2 className="min-w-0">
                     <Link
-                      className="font-jp-ui text-primary rounded-sm text-3xl underline underline-offset-4 focus-visible:ring-2"
+                      className="font-jp-ui text-primary inline-flex min-h-11 min-w-11 items-center rounded-sm text-3xl underline underline-offset-4 focus-visible:ring-2"
                       href={detailHrefForResult(result)}
                       lang="ja"
                       aria-label={`View details for ${result.type === 'kanji' ? result.record.literal : (result.record.forms[0] ?? result.record.readings[0])}`}

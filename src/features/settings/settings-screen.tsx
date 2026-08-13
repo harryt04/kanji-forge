@@ -2294,7 +2294,7 @@ export function SettingsScreen(): React.ReactElement {
           <p className="max-w-2xl">
             Try{' '}
             <a
-              className="text-primary font-medium underline-offset-4 hover:underline"
+              className="text-primary inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline"
               href="https://ja.wikinews.org/wiki/メインページ"
               target="_blank"
               rel="noopener noreferrer"
@@ -2359,7 +2359,7 @@ export function SettingsScreen(): React.ReactElement {
               >
                 <div className="min-w-0">
                   <a
-                    className="text-primary font-medium underline-offset-4 hover:underline"
+                    className="text-primary inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline"
                     href={feed.url}
                     target="_blank"
                     rel="noopener noreferrer"

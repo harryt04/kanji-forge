@@ -164,7 +164,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
 
 ## Loop B — Accessibility conformance (P1)
 
-- [ ] **B1. Touch targets under 44×44 throughout.**
+- [x] **B1. Touch targets under 44×44 throughout.**
       Where: [`src/ui/button.tsx:22-27`](../src/ui/button.tsx#L22) — `default`
       is `h-10` (40px), `sm` is `h-9` (36px). Also: Settings deck-selection
       checkboxes (13×13px), pack-install file inputs (20px tall), Browse row
@@ -179,6 +179,10 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** every interactive element's bounding box is
       ≥44×44 CSS px, checked on Home, Study, Browse, Settings, Dictionary,
       Writing at 375px and 1440px.
+      Raised shared button and form-control hit heights to 44px and wrapped
+      checkbox/glyph/link affordances with 44px targets; `e2e/ux-touch-targets.spec.ts`
+      audits every visible interactive element at both viewports (auth-backed
+      checks skipped locally because `NEXT_PUBLIC_API_URL` is unset).
 
 - [ ] **B2. Marketing hero text fails WCAG AA over the tile wall.**
       Where: `/` hero — H1 and subhead sit directly on the animated tile

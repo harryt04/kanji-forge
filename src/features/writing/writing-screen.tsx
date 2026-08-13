@@ -299,7 +299,7 @@ export function WritingScreen(): React.ReactElement {
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          className="text-primary text-sm underline-offset-4 hover:underline"
+          className="text-primary inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"
           href={`/detail?contentRef=${encodeURIComponent(contentRef)}`}
         >
           ← Back to Detail
@@ -545,7 +545,7 @@ export function WritingScreen(): React.ReactElement {
             </Button>
           </div>
         </div>
-        <label className="text-muted-foreground flex items-center gap-2 text-sm">
+        <label className="text-muted-foreground flex min-h-11 items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={validationEnabled}

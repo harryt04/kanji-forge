@@ -632,7 +632,7 @@ export function StudyScreen({
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="mt-1 h-auto px-0 text-sm"
+                                  className="mt-1 h-auto min-h-11 px-0 text-sm"
                                   aria-expanded={false}
                                   onClick={() =>
                                     setShownRelatedWordIds((current) => {

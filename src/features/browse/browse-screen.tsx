@@ -881,7 +881,7 @@ export function BrowseScreen({
               </select>
             </label>
 
-            <label className="flex min-h-10 items-center gap-3 self-end pb-2">
+            <label className="flex min-h-11 items-center gap-3 self-end pb-2">
               <input
                 type="checkbox"
                 checked={filters.flagged}
@@ -1085,7 +1085,7 @@ export function BrowseScreen({
                   className="relative min-w-0"
                   data-testid="browse-tile-shell"
                 >
-                  <label className="bg-background/90 absolute top-1 left-1 z-10 rounded p-1 shadow-sm">
+                  <label className="bg-background/90 absolute top-1 left-1 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded p-1 shadow-sm">
                     <span className="sr-only">Select {card.literal}</span>
                     <input
                       type="checkbox"
@@ -1180,7 +1180,7 @@ export function BrowseScreen({
                       aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
                     >
                       <CardContent className="flex min-w-0 items-center gap-4 p-4 sm:p-5">
-                        <label className="shrink-0">
+                        <label className="flex min-h-11 min-w-11 shrink-0 items-center justify-center">
                           <span className="sr-only">Select {card.literal}</span>
                           <input
                             type="checkbox"
@@ -1203,7 +1203,7 @@ export function BrowseScreen({
                           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                             <h2 className="font-jp-ui text-lg" lang="ja">
                               <Link
-                                className="text-primary underline underline-offset-2"
+                                className="text-primary inline-flex min-h-11 min-w-11 items-center underline underline-offset-2"
                                 href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
                                 aria-label={`View details for ${card.literal}`}
                               >
