@@ -528,19 +528,19 @@ export function StudyScreen({
               >
                 {studyCard.contentType === 'word' ? (
                   studyCard.readings.length > 0 && (
-                    <p className="font-jp-ui text-lg">
+                    <p className="font-jp-ui text-lg" lang="ja">
                       読み: {studyCard.readings.join('、')}
                     </p>
                   )
                 ) : (
                   <>
                     {studyCard.onReadings.length > 0 && (
-                      <p className="font-jp-ui text-lg">
+                      <p className="font-jp-ui text-lg" lang="ja">
                         音: {studyCard.onReadings.join('、')}
                       </p>
                     )}
                     {studyCard.kunReadings.length > 0 && (
-                      <p className="font-jp-ui text-lg">
+                      <p className="font-jp-ui text-lg" lang="ja">
                         訓: {studyCard.kunReadings.join('、')}
                       </p>
                     )}
@@ -560,7 +560,7 @@ export function StudyScreen({
                 )}
                 {answerShows('reading') && studyCard.contentType === 'word' ? (
                   studyCard.readings.length > 0 && (
-                    <p className="font-jp-ui text-lg">
+                    <p className="font-jp-ui text-lg" lang="ja">
                       読み: {studyCard.readings.join('、')}
                     </p>
                   )
@@ -568,13 +568,13 @@ export function StudyScreen({
                   <>
                     {answerShows('reading') &&
                       studyCard.onReadings.length > 0 && (
-                        <p className="font-jp-ui text-lg">
+                        <p className="font-jp-ui text-lg" lang="ja">
                           音: {studyCard.onReadings.join('、')}
                         </p>
                       )}
                     {answerShows('reading') &&
                       studyCard.kunReadings.length > 0 && (
-                        <p className="font-jp-ui text-lg">
+                        <p className="font-jp-ui text-lg" lang="ja">
                           訓: {studyCard.kunReadings.join('、')}
                         </p>
                       )}
@@ -620,7 +620,9 @@ export function StudyScreen({
                                   className="text-muted-foreground mt-1 text-sm"
                                   data-testid="study-related-details"
                                 >
-                                  {word.readings.join('、')}
+                                  <span lang="ja">
+                                    {word.readings.join('、')}
+                                  </span>
                                   {word.readings.length > 0 &&
                                   word.meanings.length > 0
                                     ? ' — '

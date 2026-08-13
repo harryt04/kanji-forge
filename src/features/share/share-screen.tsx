@@ -528,7 +528,7 @@ export function ShareTargetScreen(): React.ReactElement {
 
   return (
     <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
-      <p className="font-jp-ui text-muted-foreground text-sm">
+      <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
         {sharedDeck ? '共有されたデッキ' : '共有された文章'}
       </p>
       <h1 className="font-display mt-2 text-3xl font-bold">
@@ -557,7 +557,10 @@ export function ShareTargetScreen(): React.ReactElement {
         </div>
       )}
       {!sharedDeck && (
-        <blockquote className="border-primary bg-card mt-5 max-h-48 overflow-auto rounded-md border-l-4 p-4 text-lg whitespace-pre-wrap">
+        <blockquote
+          className="border-primary bg-card mt-5 max-h-48 overflow-auto rounded-md border-l-4 p-4 text-lg whitespace-pre-wrap"
+          lang="ja"
+        >
           {payload.text || 'No text field was included.'}
         </blockquote>
       )}
@@ -578,6 +581,7 @@ export function ShareTargetScreen(): React.ReactElement {
         </label>
         <textarea
           id="analyze-text"
+          lang="ja"
           value={draftText}
           onChange={(event) => {
             setDraftText(event.target.value)

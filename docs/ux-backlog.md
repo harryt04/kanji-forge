@@ -214,7 +214,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       `e2e/ux-navigation.spec.ts` checks semantics and computed-style differences
       at 375px and 1440px.
 
-- [ ] **B4. `lang="ja"` missing on several Japanese text nodes.**
+- [x] **B4. `lang="ja"` missing on several Japanese text nodes.**
       Where: page eyebrows — 一覧 (Browse), 辞書 (Dictionary), 環境設定
       (Settings), 共有された文章 (Import) — and kanji glyphs inside Browse's
       list (`span.font-jp-display`). The Study card already sets `lang="ja"`
@@ -227,6 +227,10 @@ Functional breakage, not polish. Fix these before anything else in this file.
       `lang="ja"` set on itself or an ancestor, verified across all app routes
       (re-run the injected `jaLangMissing` check from the original audit — see
       "How this was measured").
+      Added Japanese language metadata to the shared page eyebrows, Browse list
+      glyphs/readings, Study reading lines, Detail labels, and analyzer text
+      surfaces; `e2e/ux-language.spec.ts` runs the text-node audit across app
+      routes when the auth backend is configured.
 
 - [ ] **B5. 14px inputs trigger iOS zoom-on-focus.**
       Where: most Settings and Browse `<input>`/`<select>` elements

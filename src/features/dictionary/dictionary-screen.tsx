@@ -266,7 +266,9 @@ export function DictionaryScreen(): React.ReactElement {
     >
       <section className="grid min-w-0 gap-6">
         <header>
-          <p className="font-jp-ui text-muted-foreground text-sm">辞書</p>
+          <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+            辞書
+          </p>
           <h1 className="font-display mt-1 text-3xl font-bold">Dictionary</h1>
           <p className="text-muted-foreground mt-2">
             Search the installed dictionary by kanji, kana, romaji, English, or

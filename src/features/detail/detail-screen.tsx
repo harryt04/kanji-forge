@@ -180,7 +180,9 @@ function WordDetailView({
       </Link>
       <Card data-testid="word-detail">
         <CardHeader>
-          <p className="font-jp-ui text-muted-foreground text-sm">単語の詳細</p>
+          <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+            単語の詳細
+          </p>
           <CardTitle className="font-jp-ui text-4xl" lang="ja">
             {word.forms.join('、') || word.readings.join('、')}
           </CardTitle>
@@ -712,7 +714,9 @@ export function DetailScreen({
         data-testid="kanji-detail"
       >
         <CardHeader>
-          <p className="font-jp-ui text-muted-foreground text-sm">漢字の詳細</p>
+          <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+            漢字の詳細
+          </p>
           <CardTitle className="font-jp-display text-7xl" lang="ja">
             {content.literal}
           </CardTitle>

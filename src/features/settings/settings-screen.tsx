@@ -2216,7 +2216,9 @@ export function SettingsScreen(): React.ReactElement {
 
   return (
     <main className="mx-auto max-w-2xl p-6 sm:p-8">
-      <p className="font-jp-ui text-muted-foreground text-sm">環境設定</p>
+      <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+        環境設定
+      </p>
       <h1 className="font-display mt-1 text-3xl font-bold">Settings</h1>
       <section className="border-border bg-card mt-8 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2 className="text-lg font-semibold">Appearance</h2>

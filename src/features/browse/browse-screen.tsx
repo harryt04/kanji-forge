@@ -642,7 +642,9 @@ export function BrowseScreen({
       <section className="grid min-w-0 gap-6">
         <header className="flex min-w-0 flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <p className="font-jp-ui text-muted-foreground text-sm">一覧</p>
+            <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+              一覧
+            </p>
             <h1 className="font-display mt-1 text-3xl font-bold">Browse</h1>
             <p className="text-muted-foreground mt-2">
               {deck.name} ·{' '}
@@ -1195,7 +1197,7 @@ export function BrowseScreen({
                           data-level={level}
                           aria-hidden="true"
                         >
-                          <span className="font-jp-display">
+                          <span className="font-jp-display" lang="ja">
                             {card.literal}
                           </span>
                         </div>
@@ -1219,7 +1221,10 @@ export function BrowseScreen({
                               </span>
                             )}
                           </div>
-                          <p className="font-jp-ui text-muted-foreground mt-1 text-sm">
+                          <p
+                            className="font-jp-ui text-muted-foreground mt-1 text-sm"
+                            lang="ja"
+                          >
                             {reading || 'No reading recorded'}
                           </p>
                           <p className="text-muted-foreground mt-1 truncate text-sm">
