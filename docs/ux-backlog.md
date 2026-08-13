@@ -232,7 +232,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       surfaces; `e2e/ux-language.spec.ts` runs the text-node audit across app
       routes when the auth backend is configured.
 
-- [ ] **B5. 14px inputs trigger iOS zoom-on-focus.**
+- [x] **B5. 14px inputs trigger iOS zoom-on-focus.**
       Where: most Settings and Browse `<input>`/`<select>` elements
       (`text-sm`, 14px). Sign-in's fields are already correctly 16px, so this
       is inconsistency, not an unset default.
@@ -240,6 +240,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       smaller on mobile — iOS zoom-on-focus guard."
       **Acceptance line:** every `input`, `select`, `textarea` in the app
       computes to ≥16px font-size, checked at 375px.
+      Applied the shared `--text-base` font-size rule to all native form controls;
+      `e2e/ux-form-controls.spec.ts` verifies authenticated routes plus sign-in
+      and sign-up at 375px in Chromium and WebKit.
 
 - [ ] **B6. Password field's accessible name is "PasswordShow".**
       Where: sign-in password field — the "Show" toggle button is nested
