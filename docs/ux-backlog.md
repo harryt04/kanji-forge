@@ -115,7 +115,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       classes and `e2e/offline-study.spec.ts` verifies computed colors in both
       themes when the auth backend is configured.
 
-- [ ] **A3. Stroke-order guide renders as a filled blob, not an outline.**
+- [x] **A3. Stroke-order guide renders as a filled blob, not an outline.**
       Where: [`writing-screen.tsx:434-441`](../src/features/writing/writing-screen.tsx#L434)
       and [`:460-463`](../src/features/writing/writing-screen.tsx#L460);
       [`stroke-animation.tsx:66-77`](../src/features/detail/stroke-animation.tsx#L66).
@@ -129,6 +129,10 @@ Functional breakage, not polish. Fix these before anything else in this file.
       `fill="none"` with an explicit `stroke`, matching the captured-stroke
       pattern already in `writing-screen.tsx`. Confirmed visually at `/writing`
       and on a card's stroke animation in `/detail`.
+      Implemented outlined guide, hint, and animation paths; colocated writing
+      and stroke-animation tests assert the outline attributes, and full CI
+      passes. Browser visual confirmation was unavailable because this checkout
+      has no `NEXT_PUBLIC_API_URL` for authenticated routes.
 
 - [ ] **A4. Home deck-card action row overflows on mobile.**
       Where: Home screen deck list, action row (`flex gap-2`,

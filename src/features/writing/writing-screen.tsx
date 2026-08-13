@@ -435,7 +435,11 @@ export function WritingScreen(): React.ReactElement {
               <path
                 key={`${index}-${path}`}
                 d={path}
-                fill="currentColor"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 opacity="0.1"
                 aria-hidden="true"
               />
@@ -459,7 +463,11 @@ export function WritingScreen(): React.ReactElement {
                 <>
                   <path
                     d={paths[expectedStrokeIndex]}
-                    fill="var(--accent)"
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
                     className={
                       failedAttempts >= 3 ? 'writing-hint-animate' : undefined

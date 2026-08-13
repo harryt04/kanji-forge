@@ -67,7 +67,11 @@ export function StrokeAnimation({
             <path
               key={`${index}-${path}`}
               d={path}
-              fill="currentColor"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               opacity={index < visibleStrokes ? 1 : 0}
               style={{
                 transition: 'opacity var(--duration-reveal) var(--ease-out)',

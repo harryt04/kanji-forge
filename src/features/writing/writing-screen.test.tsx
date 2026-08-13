@@ -68,6 +68,13 @@ describe('WritingScreen', () => {
     expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument()
     expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
 
+    const guidePaths = Array.from(surface.querySelectorAll('svg path'))
+    expect(guidePaths).toHaveLength(4)
+    for (const path of guidePaths) {
+      expect(path).toHaveAttribute('fill', 'none')
+      expect(path).toHaveAttribute('stroke', 'currentColor')
+    }
+
     await user.click(
       screen.getByRole('checkbox', { name: 'Check stroke order' }),
     )
@@ -190,6 +197,14 @@ describe('WritingScreen', () => {
     rejectStroke(3)
     expect(screen.getByTestId('writing-hint-stroke')).toHaveClass(
       'writing-hint-animate',
+    )
+    expect(screen.getByTestId('writing-hint-stroke')).toHaveAttribute(
+      'fill',
+      'none',
+    )
+    expect(screen.getByTestId('writing-hint-stroke')).toHaveAttribute(
+      'stroke',
+      'var(--accent)',
     )
     expect(screen.getByText(/animated stroke/)).toBeInTheDocument()
   })
