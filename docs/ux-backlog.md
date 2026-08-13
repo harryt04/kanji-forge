@@ -386,7 +386,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       the colocated unit test and responsive Chromium/WebKit E2E test verify
       token usage at 375px and 1440px.
 
-- [ ] **E2. Fold overlay swamps small level chips.**
+- [x] **E2. Fold overlay swamps small level chips.**
       Where: `.sticky-shape` fold border-width ladder (6/9/12/16px for levels
       1–4) per `BRAND-DESIGN-LANGUAGE.md` §3.3.
       Evidence: legend chips render at 12×12px total, so a level-3 (12px
@@ -398,6 +398,11 @@ Functional breakage, not polish. Fix these before anything else in this file.
       chips, tile-wall cells, study-card strip), the base ramp colour remains
       the dominant visible colour of the swatch — the fold does not cover a
       majority of the element's area.
+      Fold overlays now preserve the 6/9/12/16px level ladder while capping
+      each triangle at 20/25/30/35% of its element; canvas tiles use the same
+      proportions. `fold-overlay.test.ts` covers small and capped tile geometry,
+      and `e2e/ux-fold-overlay.spec.ts` measures visible overlays at 375px and
+      1440px across Home, Browse, and Detail.
 
 - [ ] **E3. Dark-theme card/background contrast is razor-thin.**
       Evidence: `--card` vs `--background` measures 1.09:1 dark, 1.05:1

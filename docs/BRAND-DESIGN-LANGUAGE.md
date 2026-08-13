@@ -127,16 +127,32 @@ Ships **always-on**, not a switchable "shapes + color mode" (PRD §4.17 asks for
 ```css
 .sticky-shape { position: relative; overflow: hidden; }
 .sticky-shape::before, .sticky-shape::after {
-  content: ''; position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid;
+  content: ''; position: absolute; top: 0; right: 0;
+  width: min(16px, 35%); height: min(16px, 35%);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
-.sticky-shape::before { border-color: transparent rgba(0,0,0,.32) transparent transparent; }
-.sticky-shape::after  { border-color: transparent rgba(255,255,255,.92) transparent transparent; }
-.sticky-shape.l0::before, .sticky-shape.l0::after { border-width: 0; }
-.sticky-shape.l1::before { border-width: 0 6px 6px 0; }  .sticky-shape.l1::after { border-width: 0 5px 5px 0; }
-.sticky-shape.l2::before { border-width: 0 9px 9px 0; }  .sticky-shape.l2::after { border-width: 0 8px 8px 0; }
-.sticky-shape.l3::before { border-width: 0 12px 12px 0; } .sticky-shape.l3::after { border-width: 0 11px 11px 0; }
-.sticky-shape.l4::before { border-width: 0 16px 16px 0; } .sticky-shape.l4::after { border-width: 0 15px 15px 0; }
+.sticky-shape::before { background: rgba(0,0,0,.32); }
+.sticky-shape::after {
+  width: min(15px, max(0px, calc(35% - 1px)));
+  height: min(15px, max(0px, calc(35% - 1px)));
+  background: rgba(255,255,255,.92);
+}
+.sticky-shape.l0::before, .sticky-shape.l0::after { width: 0; height: 0; }
+.sticky-shape.l1::before, .sticky-shape.l1::after { width: min(6px, 20%); height: min(6px, 20%); }
+.sticky-shape.l2::before, .sticky-shape.l2::after { width: min(9px, 25%); height: min(9px, 25%); }
+.sticky-shape.l3::before, .sticky-shape.l3::after { width: min(12px, 30%); height: min(12px, 30%); }
+.sticky-shape.l4::before, .sticky-shape.l4::after { width: min(16px, 35%); height: min(16px, 35%); }
+.sticky-shape.l1::after { width: min(5px, max(0px, calc(20% - 1px))); height: min(5px, max(0px, calc(20% - 1px))); }
+.sticky-shape.l2::after { width: min(8px, max(0px, calc(25% - 1px))); height: min(8px, max(0px, calc(25% - 1px))); }
+.sticky-shape.l3::after { width: min(11px, max(0px, calc(30% - 1px))); height: min(11px, max(0px, calc(30% - 1px))); }
+.sticky-shape.l4::after { width: min(15px, max(0px, calc(35% - 1px))); height: min(15px, max(0px, calc(35% - 1px))); }
 ```
+
+The fold keeps the level ladder's 6/9/12/16px maximums while scaling each level
+to 20/25/30/35% of the element's width and height on small ones. The visible
+triangle therefore uses less than 7% of a square swatch's area even at the
+minimum size, leaving the level ramp colour dominant. Canvas-rendered tile
+walls use the same per-level proportions and maximums.
 
 This reads by luminance contrast alone (black shadow + white fold), so it survives any CVD type and full greyscale. On the tile wall, hit-testing and rendering stay in the canvas layer per `ARCHITECTURE.md` §5 — draw the same two-triangle shape directly into the glyph atlas / dirty-rect pass rather than using real DOM elements at low zoom.
 
