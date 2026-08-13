@@ -101,4 +101,37 @@ test.describe('authenticated layout overflow', () => {
       metrics.clientWidth,
     )
   })
+
+  test('keeps the Study remaining count visible on mobile', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 900 })
+    await page.goto('/study')
+    const remaining = page.getByTestId('study-remaining')
+    await remaining.waitFor()
+
+    const metrics = await page.evaluate(() => {
+      const documentElement = document.documentElement
+      const element = document.querySelector('[data-testid="study-remaining"]')
+      const rect = element?.getBoundingClientRect()
+      return {
+        clientWidth: documentElement.clientWidth,
+        scrollWidth: documentElement.scrollWidth,
+        remainingLeft: rect?.left ?? Number.NaN,
+        remainingRight: rect?.right ?? Number.NaN,
+      }
+    })
+
+    expect(metrics.scrollWidth, 'Study scroll width').toBeLessThanOrEqual(
+      metrics.clientWidth,
+    )
+    expect(
+      metrics.remainingLeft,
+      'Remaining count left edge',
+    ).toBeGreaterThanOrEqual(0)
+    expect(
+      metrics.remainingRight,
+      'Remaining count right edge',
+    ).toBeLessThanOrEqual(metrics.clientWidth)
+  })
 })

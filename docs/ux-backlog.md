@@ -148,7 +148,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       and "Browse"; `e2e/ux-layout.spec.ts` measures Home document width at
       375px and `home-screen.test.tsx` verifies the concise destinations.
 
-- [ ] **A5. Study toolbar overflows on mobile, clipping the remaining-count.**
+- [x] **A5. Study toolbar overflows on mobile, clipping the remaining-count.**
       Where: `/study` header row.
       Evidence: 430px document on a 375px viewport; "N remaining" clipped.
       Fix: wrap the toolbar row, or move timer/sticky-colors/remaining-count
@@ -156,6 +156,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** at 375px, `document.documentElement.scrollWidth`
       on `/study` does not exceed `clientWidth`, and "N remaining" is fully
       visible (bounding box within viewport).
+      Wrapped the toolbar controls and constrained nested flex children with
+      `min-w-0`; `e2e/ux-layout.spec.ts` measures document width and the
+      remaining-count bounding box at 375px.
 
 ---
 

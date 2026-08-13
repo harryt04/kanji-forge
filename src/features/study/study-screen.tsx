@@ -419,9 +419,9 @@ export function StudyScreen({
       >
         {studyAnnouncement}
       </p>
-      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-4 py-3 text-sm">
-        <span>{deckName}</span>
-        <div className="flex items-center gap-3">
+      <div className="border-border text-muted-foreground flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-3 text-sm">
+        <span className="min-w-0">{deckName}</span>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
           {!finished && (
             <>
               {showTimer && (
@@ -460,7 +460,7 @@ export function StudyScreen({
               )}
             </>
           )}
-          <span>{remaining} remaining</span>
+          <span data-testid="study-remaining">{remaining} remaining</span>
         </div>
       </div>
 
