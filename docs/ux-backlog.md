@@ -200,7 +200,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       Added a 94% theme-background scrim behind the hero copy; `e2e/ux-contrast.spec.ts`
       composites it against all five ramp colors and verifies H1/subhead thresholds in light and dark themes (Chromium and WebKit).
 
-- [ ] **B3. No active-page indication in nav.**
+- [x] **B3. No active-page indication in nav.**
       Where: [`app-navigation.tsx:113-117`](../src/features/navigation/app-navigation.tsx#L113).
       Evidence: `grep -rn "aria-current" src/` returns nothing; every
       `NavLink` renders `text-muted-foreground` regardless of route.
@@ -209,6 +209,10 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** on every app route, the corresponding nav link has
       `aria-current="page"` and a computed style distinguishable from inactive
       links (not just identical `text-muted-foreground`).
+      Added pathname-aware `aria-current="page"` and active foreground/surface
+      styling; `app-navigation.test.tsx` covers all seven routes and
+      `e2e/ux-navigation.spec.ts` checks semantics and computed-style differences
+      at 375px and 1440px.
 
 - [ ] **B4. `lang="ja"` missing on several Japanese text nodes.**
       Where: page eyebrows — 一覧 (Browse), 辞書 (Dictionary), 環境設定
