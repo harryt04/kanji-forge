@@ -280,7 +280,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       compatible Kuromoji bundle, and normalized analyzer failures to one
       bounded error; unit, E2E, and live signed-in analysis checks cover it.
 
-- [ ] **C2. `/detail` with an unresolvable ref hangs forever.**
+- [x] **C2. `/detail` with an unresolvable ref hangs forever.**
       Where: [`detail-screen.tsx:489-497`](../src/features/detail/detail-screen.tsx#L489)
       collapses "still loading", "no card chosen", and "ref doesn't resolve"
       into one branch.
@@ -293,6 +293,11 @@ Functional breakage, not polish. Fix these before anything else in this file.
       non-existent `contentRef` shows a distinct "not found" state with a link
       back to Browse within a bounded time, not an indefinite `aria-busy`
       state.
+      Detail now loads the deck before resolving a ref, separates loading from
+      no-card-selected and not-found states, and provides a Browse recovery link;
+      `src/features/detail/detail-screen.test.tsx` and
+      `e2e/ux-detail-states.spec.ts` cover the bounded state (the authenticated
+      E2E spec skips without the auth backend).
 
 ---
 

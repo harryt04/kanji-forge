@@ -314,6 +314,7 @@ export function DetailScreen({
     null,
   )
   const [error, setError] = useState<string | null>(null)
+  const [notFound, setNotFound] = useState(false)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
 
   useEffect(() => {
@@ -328,7 +329,7 @@ export function DetailScreen({
   }, [runtime])
 
   useEffect(() => {
-    if (!runtime || !contentRef) return
+    if (!runtime) return
     let active = true
     setDeck(null)
     setDetailCard(null)
@@ -344,10 +345,15 @@ export function DetailScreen({
     setSavedDeckIds(new Set())
     setAnnotationMessage(null)
     setError(null)
+    setNotFound(false)
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database)
+      if (!contentRef) {
+        if (active) setDeck(loaded)
+        return
+      }
       const [decks, savedStrokeSetting, savedSaveBehavior, savedAnnotation] =
         await Promise.all([
           repositories.decks.list(),
@@ -404,8 +410,13 @@ export function DetailScreen({
           const record = (await getKanjiByLiterals([parsed.key])).get(
             parsed.key,
           )
-          if (!record)
-            throw new Error('This card is not available in the installed pack.')
+          if (!record) {
+            if (active) {
+              setDeck(loaded)
+              setNotFound(true)
+            }
+            return
+          }
           literal = record.literal
           const state = await createUserRepositories(
             runtime.database,
@@ -441,10 +452,13 @@ export function DetailScreen({
               ? await getNameById(wordId)
               : await getWordById(wordId)
             : null
-          if (!word)
-            throw new Error(
-              'This entry is not available in the installed dictionary pack.',
-            )
+          if (!word) {
+            if (active) {
+              setDeck(loaded)
+              setNotFound(true)
+            }
+            return
+          }
           if (active) setWordDetail(word)
         } else {
           throw new Error('Unsupported detail type.')
@@ -488,14 +502,30 @@ export function DetailScreen({
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to view details.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
-  if (!deck || !contentRef || (!detailCard && !wordDetail))
+  if (!deck)
     return (
       <main className="p-6" aria-busy="true">
+        <p className="text-muted-foreground">Loading detail…</p>
+      </main>
+    )
+  if (notFound)
+    return (
+      <main className="grid gap-3 p-6" data-testid="detail-not-found">
+        <p>Couldn&apos;t find that card.</p>
+        <Link className="text-primary w-fit text-sm underline" href="/browse">
+          Back to Browse
+        </Link>
+      </main>
+    )
+  if (!contentRef || (!detailCard && !wordDetail))
+    return (
+      <main className="grid gap-3 p-6">
         <p className="text-muted-foreground">
-          {deck
-            ? 'Choose a card from Browse to view its details.'
-            : 'Loading detail…'}
+          Choose a card from Browse to view its details.
         </p>
+        <Link className="text-primary w-fit text-sm underline" href="/browse">
+          Back to Browse
+        </Link>
       </main>
     )
 

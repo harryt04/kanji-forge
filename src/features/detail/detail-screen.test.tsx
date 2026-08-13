@@ -56,6 +56,37 @@ describe('DetailScreen', () => {
     expect(screen.getByText('Sign in to view details.')).toBeInTheDocument()
   })
 
+  it('shows a bounded not-found state for an unresolved content ref', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    window.history.replaceState(
+      {},
+      '',
+      `/detail?contentRef=${encodeURIComponent('kanji:不存在')}`,
+    )
+    render(<DetailScreen />)
+
+    expect(
+      await screen.findByText("Couldn't find that card."),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('detail-not-found')).not.toHaveAttribute(
+      'aria-busy',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Back to Browse' }),
+    ).toHaveAttribute('href', '/browse')
+  })
+
+  it('shows the no-card state after the deck loads without aria-busy', async () => {
+    bootstrapUserRuntime(`detail-${userId}`)
+    window.history.replaceState({}, '', '/detail')
+    render(<DetailScreen />)
+
+    expect(
+      await screen.findByText('Choose a card from Browse to view its details.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('main')).not.toHaveAttribute('aria-busy')
+  })
+
   it('loads the selected kanji detail from the offline pack', async () => {
     bootstrapUserRuntime(`detail-${userId}`)
     render(<DetailScreen />)
