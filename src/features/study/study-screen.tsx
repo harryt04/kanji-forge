@@ -681,8 +681,10 @@ export function StudyScreen({
               >
                 Don&apos;t know (←)
               </Button>
-              <Button onClick={() => handleGrade('good')}>I know (→)</Button>
-              <Button variant="secondary" onClick={() => handleGrade('easy')}>
+              <Button variant="success" onClick={() => handleGrade('good')}>
+                I know (→)
+              </Button>
+              <Button variant="perfect" onClick={() => handleGrade('easy')}>
                 No problem (↑)
               </Button>
             </div>

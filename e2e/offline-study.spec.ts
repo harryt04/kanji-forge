@@ -91,4 +91,51 @@ test.describe('offline study', () => {
 
     await context.setOffline(false)
   })
+
+  test('uses semantic grade colors in both themes', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.goto('/study')
+    await page.getByRole('button', { name: 'Reveal (Space)' }).click()
+
+    for (const theme of ['light', 'dark']) {
+      if (theme === 'dark') {
+        await page
+          .locator('html')
+          .evaluate((element) => element.classList.add('dark'))
+      }
+
+      const colors = await page.evaluate(() => {
+        const resolve = (token: string) => {
+          const probe = document.createElement('div')
+          probe.style.backgroundColor = `var(${token})`
+          document.body.append(probe)
+          const color = getComputedStyle(probe).backgroundColor
+          probe.remove()
+          return color
+        }
+        return {
+          success: resolve('--success'),
+          perfect: resolve('--perfect'),
+        }
+      })
+
+      const knowColor = await page
+        .getByRole('button', { name: /I know/ })
+        .evaluate((element) => getComputedStyle(element).backgroundColor)
+      const perfectColor = await page
+        .getByRole('button', { name: /No problem/ })
+        .evaluate((element) => getComputedStyle(element).backgroundColor)
+
+      expect(knowColor, `${theme} I know`).toBe(colors.success)
+      expect(perfectColor, `${theme} No problem`).toBe(colors.perfect)
+
+      if (theme === 'dark') {
+        await page
+          .locator('html')
+          .evaluate((element) => element.classList.remove('dark'))
+      }
+    }
+  })
 })

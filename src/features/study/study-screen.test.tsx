@@ -86,7 +86,12 @@ describe('StudyScreen', () => {
     await renderReady()
     const revealButton = screen.getByRole('button', { name: 'Reveal (Space)' })
     await userEvent.click(revealButton)
-    expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /I know/ })).toHaveClass(
+      'bg-success',
+    )
+    expect(screen.getByRole('button', { name: /No problem/ })).toHaveClass(
+      'bg-perfect',
+    )
   })
 
   it('announces study-card position and reveal state to assistive technology', async () => {

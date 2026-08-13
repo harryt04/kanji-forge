@@ -96,7 +96,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       nested flex rows with `min-w-0`; `e2e/ux-layout.spec.ts` measures the
       acceptance condition at all required viewports and route variants.
 
-- [ ] **A2. Grade buttons use the wrong colour tokens.**
+- [x] **A2. Grade buttons use the wrong colour tokens.**
       Where: study screen grade buttons (locate via the "I know" / "No problem"
       button text).
       Evidence: measured `background-color` — "I know" resolves to
@@ -110,6 +110,10 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** computed `background-color` of "I know" equals
       `--success`, and "No problem" equals `--perfect`, in both light and dark
       theme.
+      Added semantic `success` and `perfect` Button variants and applied them to
+      the two correct-grade actions; `study-screen.test.tsx` verifies the token
+      classes and `e2e/offline-study.spec.ts` verifies computed colors in both
+      themes when the auth backend is configured.
 
 - [ ] **A3. Stroke-order guide renders as a filled blob, not an outline.**
       Where: [`writing-screen.tsx:434-441`](../src/features/writing/writing-screen.tsx#L434)
