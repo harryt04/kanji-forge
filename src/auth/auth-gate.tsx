@@ -52,9 +52,9 @@ export function AuthGate({
 
   return (
     <>
-      <div className="min-h-screen md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
         <aside
-          className="border-border bg-card hidden border-r md:sticky md:top-0 md:flex md:min-h-screen md:flex-col md:gap-8 md:self-start md:p-5"
+          className="border-border bg-card hidden border-r lg:sticky lg:top-0 lg:flex lg:min-h-screen lg:flex-col lg:gap-8 lg:self-start lg:p-5"
           aria-label="Application sidebar"
         >
           <Link className="font-display text-xl font-bold" href="/home">
@@ -65,7 +65,7 @@ export function AuthGate({
         </aside>
 
         <div className="min-w-0">
-          <header className="border-border flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-4 sm:px-6 md:hidden">
+          <header className="border-border flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-4 sm:px-6 lg:hidden">
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 className="font-display shrink-0 text-xl font-bold"
@@ -95,17 +95,17 @@ function AccountNavigation({
 }): React.ReactElement {
   return (
     <nav
-      className="md:border-border flex items-center gap-1 md:grid md:w-full md:gap-1 md:border-t md:pt-4"
+      className="lg:border-border flex items-center gap-1 lg:grid lg:w-full lg:gap-1 lg:border-t lg:pt-4"
       aria-label="Account"
     >
       <Link
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none md:w-full"
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-md px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none lg:w-full"
         href="/settings"
       >
         Settings
       </Link>
       <Button
-        className="md:justify-start"
+        className="lg:justify-start"
         variant="ghost"
         size="sm"
         onClick={onSignOut}

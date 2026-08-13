@@ -344,7 +344,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       navigation while preserving swipe scrolling; unit and Playwright
       coverage verifies the cue and its overflow geometry.
 
-- [ ] **D4. Sidebar breakpoint switches on too early for tablet portrait.**
+- [x] **D4. Sidebar breakpoint switches on too early for tablet portrait.**
       Evidence: the two-column `md:grid` layout activates at 768px — iPad
       portrait's exact width — leaving 528px for content after a 240px
       sidebar, which is also the width that triggers A1.
@@ -353,6 +353,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       the same `scrollWidth`/`clientWidth` check as A1, or (b) the breakpoint
       is raised to `lg:` (1024px) and 768px gets the mobile-style collapsible
       nav instead.
+      Raised the authenticated shell breakpoint from `md` to `lg`, keeping
+      tablet portrait on the mobile navigation layout; `e2e/ux-layout.spec.ts`
+      verifies the sidebar/header visibility at 768px.
 
 - [ ] **D5. Settings is one 9775px scroll with no sectioning.**
       Evidence: measured document height 9775px, fully linear — Appearance,

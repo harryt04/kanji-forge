@@ -224,4 +224,41 @@ test.describe('authenticated layout overflow', () => {
       ).toBeLessThanOrEqual(metrics.viewportHeight)
     }
   })
+
+  test('keeps tablet portrait on the mobile navigation layout', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 768, height: 900 })
+    await page.goto('/home')
+
+    const metrics = await page.evaluate(() => {
+      const sidebar = document.querySelector(
+        '[aria-label="Application sidebar"]',
+      )
+      const mobileHeader = document.querySelector('header')
+      const primaryNavigation = mobileHeader?.querySelector(
+        'nav[aria-label="Primary"]',
+      )
+      return {
+        sidebarVisible: sidebar
+          ? getComputedStyle(sidebar).display !== 'none'
+          : false,
+        mobileHeaderVisible: mobileHeader
+          ? getComputedStyle(mobileHeader).display !== 'none'
+          : false,
+        primaryNavigationVisible: primaryNavigation
+          ? getComputedStyle(primaryNavigation).display !== 'none'
+          : false,
+      }
+    })
+
+    expect(metrics.sidebarVisible, 'tablet sidebar visibility').toBe(false)
+    expect(metrics.mobileHeaderVisible, 'tablet mobile header visibility').toBe(
+      true,
+    )
+    expect(
+      metrics.primaryNavigationVisible,
+      'tablet primary navigation visibility',
+    ).toBe(true)
+  })
 })
