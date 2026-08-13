@@ -73,7 +73,7 @@ before/after numbers changed.
 
 Functional breakage, not polish. Fix these before anything else in this file.
 
-- [ ] **A1. Browse overflows horizontally, and collides with the Detail pane
+- [x] **A1. Browse overflows horizontally, and collides with the Detail pane
       when open.**
       Where: [`browse-screen.tsx:640`](../src/features/browse/browse-screen.tsx#L640)
       (`section.grid.min-w-0` wraps flex rows that report max-content width to
@@ -92,6 +92,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       (both standalone and with the split pane open), `document.documentElement.scrollWidth`
       does not exceed `clientWidth`, and no element's bounding box crosses into
       an adjacent grid track.
+      Changed split-pane tracks to allow zero-width minimums and constrained
+      nested flex rows with `min-w-0`; `e2e/ux-layout.spec.ts` measures the
+      acceptance condition at all required viewports and route variants.
 
 - [ ] **A2. Grade buttons use the wrong colour tokens.**
       Where: study screen grade buttons (locate via the "I know" / "No problem"

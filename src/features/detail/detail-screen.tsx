@@ -173,7 +173,7 @@ function WordDetailView({
 }: WordDetailViewProps): React.ReactElement {
   return (
     <main
-      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
+      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
     >
       <Link className="text-primary w-fit text-sm underline" href={backHref}>
         ← {backLabel}
@@ -661,7 +661,7 @@ export function DetailScreen({
 
   return (
     <main
-      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
+      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
       onTouchStart={(event) =>
         setTouchStartX(event.touches[0]?.clientX ?? null)
       }
@@ -678,7 +678,7 @@ export function DetailScreen({
       </Link>
       {currentIndex >= 0 && (
         <nav
-          className="flex items-center justify-between gap-3"
+          className="flex min-w-0 items-center justify-between gap-3"
           aria-label="Detail navigation"
         >
           <Button

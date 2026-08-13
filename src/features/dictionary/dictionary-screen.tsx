@@ -262,7 +262,7 @@ export function DictionaryScreen(): React.ReactElement {
 
   return (
     <main
-      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${hasDetailPane ? 'max-w-[96rem] lg:grid-cols-[minmax(22rem,0.9fr)_minmax(28rem,1.1fr)] lg:items-start' : 'max-w-3xl'}`}
+      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${hasDetailPane ? 'max-w-[96rem] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start' : 'max-w-3xl'}`}
     >
       <section className="grid min-w-0 gap-6">
         <header>
@@ -276,7 +276,7 @@ export function DictionaryScreen(): React.ReactElement {
 
         <form className="grid gap-3" onSubmit={(event) => void submit(event)}>
           <div
-            className="flex flex-wrap gap-2"
+            className="flex min-w-0 flex-wrap gap-2"
             role="group"
             aria-label="Dictionary search type"
           >
@@ -320,7 +320,7 @@ export function DictionaryScreen(): React.ReactElement {
               Stroke-count search
             </Button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex min-w-0 gap-2">
             <label className="sr-only" htmlFor="dictionary-query">
               {searchMode === 'radical'
                 ? 'Classical radical number'
@@ -403,7 +403,7 @@ export function DictionaryScreen(): React.ReactElement {
             )}
             {history.length > 0 && (
               <div className="grid gap-2">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold">Recent searches</h2>
                   <Button
                     type="button"
@@ -467,8 +467,8 @@ export function DictionaryScreen(): React.ReactElement {
               key={`${result.type}-${result.type === 'kanji' ? result.record.literal : result.record.id}`}
             >
               <CardContent className="grid gap-2 pt-6">
-                <div className="flex items-baseline justify-between gap-4">
-                  <h2>
+                <div className="flex min-w-0 items-baseline justify-between gap-4">
+                  <h2 className="min-w-0">
                     <Link
                       className="font-jp-ui text-primary rounded-sm text-3xl underline underline-offset-4 focus-visible:ring-2"
                       href={detailHrefForResult(result)}
