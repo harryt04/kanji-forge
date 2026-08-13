@@ -41,6 +41,9 @@ import {
 } from './analyzer-history'
 import type { SharedTextPayload } from './share-target'
 
+const OFFLINE_DICTIONARY_ERROR =
+  "Couldn't load the offline dictionary — try reloading"
+
 export type { SharedTextPayload } from './share-target'
 
 /** Reads the GET share-target fields without requiring a network round trip. */
@@ -206,13 +209,8 @@ export function ShareTargetScreen(): React.ReactElement {
         .then((nextAnalysis) => {
           if (active) setAnalysis(nextAnalysis)
         })
-        .catch((reason: unknown) => {
-          if (active)
-            setError(
-              reason instanceof Error
-                ? reason.message
-                : 'Could not analyze shared text.',
-            )
+        .catch(() => {
+          if (active) setError(OFFLINE_DICTIONARY_ERROR)
         })
     }
     const importEntries = nextDeck
@@ -262,9 +260,11 @@ export function ShareTargetScreen(): React.ReactElement {
       } catch (reason: unknown) {
         if (active)
           setError(
-            reason instanceof Error
-              ? reason.message
-              : 'Could not prepare the shared content.',
+            !nextDeck && nextPayload.text
+              ? OFFLINE_DICTIONARY_ERROR
+              : reason instanceof Error
+                ? reason.message
+                : 'Could not prepare the shared content.',
           )
       } finally {
         if (active) setLoading(false)
@@ -307,10 +307,8 @@ export function ShareTargetScreen(): React.ReactElement {
       setExpandedGlosses(new Set())
       setAnalysis(await analyzeJapaneseText(text))
       if (shouldRecordHistory) await recordAnalyzedText(text)
-    } catch (reason: unknown) {
-      setError(
-        reason instanceof Error ? reason.message : 'Could not analyze text.',
-      )
+    } catch {
+      setError(OFFLINE_DICTIONARY_ERROR)
     } finally {
       setAnalyzing(false)
     }
@@ -796,7 +794,7 @@ export function ShareTargetScreen(): React.ReactElement {
             </Button>
           )}
       </section>
-      {loading && (
+      {loading && !error && (
         <p className="text-muted-foreground mt-5">Preparing preview…</p>
       )}
       {error && (

@@ -13,6 +13,7 @@ import {
   clearUserRuntime,
   getActiveUserRuntime,
 } from '@/auth/runtime'
+import * as packs from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
 import {
   ShareTargetScreen,
@@ -54,6 +55,7 @@ describe('ShareTargetScreen', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     clearUserRuntime()
     window.history.replaceState({}, '', '/')
@@ -229,6 +231,19 @@ describe('ShareTargetScreen', () => {
     expect(
       screen.getByRole('link', { name: 'https://example.com/article' }),
     ).toHaveAttribute('target', '_blank')
+  })
+
+  it('shows one bounded offline-dictionary error when analysis cannot load', async () => {
+    vi.spyOn(packs, 'analyzeJapaneseText').mockRejectedValue(
+      new Error('tokenizer dictionary unavailable'),
+    )
+    window.history.replaceState({}, '', '/analyze?text=%E6%97%A5%E6%9C%AC')
+    render(<ShareTargetScreen />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't load the offline dictionary — try reloading",
+    )
+    expect(screen.queryByText('Preparing preview…')).not.toBeInTheDocument()
   })
 
   it('bulk-saves analyzed dictionary words atomically with sync mutations', async () => {

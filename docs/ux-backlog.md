@@ -260,7 +260,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
 
 ## Loop C — Dead-end states (P1)
 
-- [ ] **C1. `/analyze` (text analyzer) is broken with no visible error.**
+- [x] **C1. `/analyze` (text analyzer) is broken with no visible error.**
       Evidence: console repeats `TypeError: Cannot read properties of
       undefined (reading 'Gunzip')` from
       `kuromoji/src/loader/BrowserDictionaryLoader.js:50`; dictionary/tokenizer
@@ -276,6 +276,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       the UI shows one clear error ("Couldn't load the offline dictionary —
       try reloading") instead of an infinite spinner plus a contradictory
       banner.
+      Added the tokenizer copy to `predev`, switched browser loading to the
+      compatible Kuromoji bundle, and normalized analyzer failures to one
+      bounded error; unit, E2E, and live signed-in analysis checks cover it.
 
 - [ ] **C2. `/detail` with an unresolvable ref hangs forever.**
       Where: [`detail-screen.tsx:489-497`](../src/features/detail/detail-screen.tsx#L489)

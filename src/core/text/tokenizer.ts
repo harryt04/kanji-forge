@@ -9,7 +9,13 @@ type Tokenizer = {
 let tokenizerPromise: Promise<Tokenizer | null> | undefined
 
 function buildTokenizer(): Promise<Tokenizer | null> {
-  return import('kuromoji')
+  // The prebuilt browser bundle carries zlibjs inline. Keep unit tests on the
+  // package entry so jsdom does not issue real XHR requests for the dictionary.
+  const kuromojiImport =
+    process.env.NODE_ENV === 'test'
+      ? import('kuromoji')
+      : import('kuromoji/build/kuromoji.js')
+  return kuromojiImport
     .then(
       ({ default: kuromoji }) =>
         new Promise<Tokenizer | null>((resolve, reject) => {
