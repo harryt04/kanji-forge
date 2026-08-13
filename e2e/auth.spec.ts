@@ -67,6 +67,19 @@ base.describe('landing page', () => {
   )
 })
 
+base(
+  'sign-in password has the exact accessible name Password',
+  async ({ page }) => {
+    await page.goto('/sign-in')
+    const password = page.getByRole('textbox', {
+      name: 'Password',
+      exact: true,
+    })
+    await expect(password).toHaveAttribute('name', 'password')
+    await expect(password).toHaveCount(1)
+  },
+)
+
 base.describe('sign-in smoke', () => {
   base.skip(
     !API_URL,

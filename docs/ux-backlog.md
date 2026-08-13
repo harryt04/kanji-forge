@@ -244,7 +244,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       `e2e/ux-form-controls.spec.ts` verifies authenticated routes plus sign-in
       and sign-up at 375px in Chromium and WebKit.
 
-- [ ] **B6. Password field's accessible name is "PasswordShow".**
+- [x] **B6. Password field's accessible name is "PasswordShow".**
       Where: sign-in password field — the "Show" toggle button is nested
       inside the `<label>` wrapping the input, so the accessible name
       concatenates both.
@@ -252,6 +252,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       explicit `aria-label="Password"`.
       **Acceptance line:** the password input's computed accessible name is
       exactly "Password".
+      Added an explicit `aria-label="Password"` to the shared auth password
+      input; `e2e/auth.spec.ts` asserts the exact accessible name in Chromium
+      and WebKit.
 
 ---
 
