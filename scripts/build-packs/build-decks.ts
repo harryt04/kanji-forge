@@ -38,12 +38,32 @@ const kankenLevels = [
   { id: '1', label: '1', file: 'kanken.lv01.json' },
 ] as const
 const kankenDataDir = path.join(root, 'node_modules/kanji/data')
+/** Shelf taxonomy. Array order is the order the app renders category sections. */
+const deckCategories = [
+  'jlpt',
+  'joyo',
+  'school',
+  'kanken',
+  'frequency',
+  'kana',
+] as const
+type DeckCategory = (typeof deckCategories)[number]
+/**
+ * Content types whose backing pack ships to production. Word decks resolve against
+ * words-core-v1.sqlite (27 MB), which is not committed, so they are built and hashed
+ * but withheld from catalog.json until that pack has a delivery path. Adding 'word'
+ * here is the only change needed to ship them.
+ */
+const shippedContentTypes = new Set<Deck['contentType']>(['kanji'])
+const catalogFile = 'catalog.json'
 type Deck = {
   id: string
   schemaVersion: 1
   name: string
   description: string
   contentType: 'kanji' | 'word'
+  category: DeckCategory
+  sortOrder: number
   contentRefs: string[]
   provenance: Record<string, unknown>
 }
@@ -267,6 +287,8 @@ function archiveMembers(archive: string, format: 'tar' | 'zip'): string[] {
     fail(`cannot enumerate ${archive}; source format is malformed`)
   }
 }
+/** A deck before the shelf taxonomy is applied; see classify(). */
+type DraftDeck = Omit<Deck, 'category' | 'sortOrder'>
 function deck(
   id: string,
   name: string,
@@ -274,7 +296,7 @@ function deck(
   contentType: Deck['contentType'],
   refs: string[],
   provenance: Record<string, unknown>,
-): Deck {
+): DraftDeck {
   if (!refs.length) fail(`${id} has no resolved content references`)
   if (new Set(refs).size !== refs.length)
     fail(`${id} contains duplicate content references`)
@@ -287,6 +309,54 @@ function deck(
     contentRefs: refs,
     provenance,
   }
+}
+/**
+ * Maps a deck id onto its shelf category and its position inside that category.
+ * Keeping the taxonomy in one table — rather than threading two more arguments through
+ * every deck() call — means an unclassified deck fails the build instead of appearing
+ * unsorted in the app.
+ */
+function classify(id: string): { category: DeckCategory; sortOrder: number } {
+  const jlptRank = (level: string) => levels.indexOf(level.toUpperCase() as Level)
+  const jlptKanji = /^jlpt-kanji-(n[1-5])$/.exec(id)
+  if (jlptKanji) return { category: 'jlpt', sortOrder: jlptRank(jlptKanji[1]) + 1 }
+  const jlptVocabulary = /^jlpt-vocabulary-(n[1-5])$/.exec(id)
+  if (jlptVocabulary)
+    return { category: 'jlpt', sortOrder: jlptRank(jlptVocabulary[1]) + 11 }
+  if (id === 'joyo-2010') return { category: 'joyo', sortOrder: 1 }
+  if (id === 'joyo-1981') return { category: 'joyo', sortOrder: 2 }
+  const school = /^school-grade-([1-9])$/.exec(id)
+  if (school) return { category: 'school', sortOrder: Number(school[1]) }
+  const kanken = /^kanken-(.+)$/.exec(id)
+  if (kanken) {
+    const index = kankenLevels.findIndex((level) => level.id === kanken[1])
+    if (index >= 0) return { category: 'kanken', sortOrder: index + 1 }
+  }
+  if (id === 'top-500-kanji') return { category: 'frequency', sortOrder: 1 }
+  const kana = ['hiragana', 'katakana', 'kana-words'].indexOf(id)
+  if (kana >= 0) return { category: 'kana', sortOrder: kana + 1 }
+  return fail(`deck ${id} has no shelf category; add one to classify()`)
+}
+function withTaxonomy(drafts: DraftDeck[]): Deck[] {
+  const seen = new Set<string>()
+  return drafts.map((draft) => {
+    const { category, sortOrder } = classify(draft.id)
+    const key = `${category} ${sortOrder}`
+    if (seen.has(key))
+      fail(`duplicate shelf position ${category}#${sortOrder} at deck ${draft.id}`)
+    seen.add(key)
+    return {
+      id: draft.id,
+      schemaVersion: draft.schemaVersion,
+      name: draft.name,
+      description: draft.description,
+      contentType: draft.contentType,
+      category,
+      sortOrder,
+      contentRefs: draft.contentRefs,
+      provenance: draft.provenance,
+    }
+  })
 }
 function sortedKanji(rows: Kanji[]): Kanji[] {
   return [...rows].sort(
@@ -589,7 +659,7 @@ function main() {
       generatedFrom: ['日本漢字能力検定級別漢字表'],
     }
     const kankenCoverage: Record<string, CoverageLevel> = {}
-    const decks: Deck[] = []
+    const decks: DraftDeck[] = []
     for (const level of levels) {
       decks.push(
         deck(
@@ -717,7 +787,8 @@ function main() {
       ),
     )
     decks.push(...kanaDecks(wordByForm, provenance))
-    validateRefs(decks, kanjiSet, new Set([...wordByForm.values()]))
+    const classified = withTaxonomy(decks)
+    validateRefs(classified, kanjiSet, new Set([...wordByForm.values()]))
     const coverageReport: CoverageReport = {
       id: 'jlpt-coverage',
       schemaVersion: 1,
@@ -728,15 +799,18 @@ function main() {
       },
       kanken: kankenCoverage,
     }
-    writeCatalogAtomically(
-      decks,
+    const shipped = writeCatalogAtomically(
+      classified,
       { kanji: kanjiManifest, words: wordsManifest },
       { kanji: kanjiInput.source, vocab: vocabInput.source },
       coverageReport,
       kankenProvenance,
     )
     console.log(
-      `✓ Generated ${decks.length} deterministic deck definitions and manifest in packs/decks`,
+      `✓ Generated ${classified.length} deterministic deck definitions and manifest in packs/decks`,
+    )
+    console.log(
+      `✓ Shipped catalog: ${shipped} deck${shipped === 1 ? '' : 's'} in packs/decks/${catalogFile}`,
     )
     console.log(
       `✓ Jōyō 2010: ${joyo2010.length}; Jōyō 1981: ${joyo1981.length}; secondary tiers: ${tierSize}/${tierSize}/${tierSize}`,
@@ -752,7 +826,7 @@ function writeCatalogAtomically(
   sources: { kanji: Source; vocab: Source },
   coverageReport: CoverageReport,
   kankenProvenance: Record<string, unknown>,
-) {
+): number {
   const stage = path.join(path.dirname(outDir), `.decks-staging-${process.pid}`)
   const backup = path.join(path.dirname(outDir), `.decks-backup-${process.pid}`)
   fs.rmSync(stage, { recursive: true, force: true })
@@ -777,8 +851,37 @@ function writeCatalogAtomically(
       sha256: crypto.createHash('sha256').update(coverageBytes).digest('hex'),
       sizeBytes: coverageBytes.length,
     }
+    // The single file the app fetches at runtime: every deck whose backing pack ships,
+    // in shelf order. The per-deck JSON files above stay as the auditable catalog.
+    const shippedDecks = decks.filter((definition) =>
+      shippedContentTypes.has(definition.contentType),
+    )
+    if (!shippedDecks.length) fail('shipped catalog would be empty')
+    const shippedBytes = Buffer.from(
+      serializeJson({
+        id: 'decks',
+        schemaVersion: 1,
+        license: 'CC BY-SA 4.0',
+        attribution:
+          'Deck definitions generated by KanjiForge from KANJIDIC2/JMdict backing packs, the pinned community JLPT sources, and the pinned Kanji Kentei level lists. Deck definitions are licensed CC BY-SA 4.0.',
+        categories: deckCategories,
+        decks: [...shippedDecks].sort(
+          (a, b) =>
+            deckCategories.indexOf(a.category) -
+              deckCategories.indexOf(b.category) ||
+            a.sortOrder - b.sortOrder,
+        ),
+      }) + '\n',
+    )
+    fs.writeFileSync(path.join(stage, catalogFile), shippedBytes)
+    const shippedCatalog = {
+      file: catalogFile,
+      sha256: crypto.createHash('sha256').update(shippedBytes).digest('hex'),
+      sizeBytes: shippedBytes.length,
+      deckCount: shippedDecks.length,
+    }
     const catalogBytes = Buffer.concat(
-      [...files, coverage].map((file) =>
+      [...files, coverage, shippedCatalog].map((file) =>
         Buffer.from(`${file.file}\n${file.sha256}\n${file.sizeBytes}\n`),
       ),
     )
@@ -816,6 +919,7 @@ function writeCatalogAtomically(
       catalogSizeBytes: catalogBytes.length,
       decks: files,
       coverageReport: coverage,
+      shippedCatalog,
       backingPacks: {
         kanji: backingPack(packs.kanji),
         wordsCore: backingPack(packs.words),
@@ -834,6 +938,7 @@ function writeCatalogAtomically(
     if (fs.existsSync(outDir)) fs.renameSync(outDir, backup)
     fs.renameSync(stage, outDir)
     fs.rmSync(backup, { recursive: true, force: true })
+    return shippedCatalog.deckCount
   } catch (error) {
     if (!fs.existsSync(outDir) && fs.existsSync(backup))
       fs.renameSync(backup, outDir)
@@ -860,7 +965,7 @@ function compareKanjiRefs(a: string, b: string, rows: Kanji[]): number {
 function kanaDecks(
   words: Map<string, number>,
   provenance: (source: string) => Record<string, unknown>,
-): Deck[] {
+): DraftDeck[] {
   const select = (regex: RegExp, count: number) => {
     const refs: string[] = []
     const seen = new Set<number>()

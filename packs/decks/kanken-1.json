@@ -4,6 +4,8 @@
   "name": "Kanji Kentei 1",
   "description": "Kanji Kentei 1 level, ordered by KANJIDIC2 frequency. The level list is derived from the official 日本漢字能力検定級別漢字表 via the pinned kanji package. 15 rare source characters are unavailable in KANJIDIC2 and are recorded in the catalog coverage report.",
   "contentType": "kanji",
+  "category": "kanken",
+  "sortOrder": 12,
   "contentRefs": [
     "kanji:煕",
     "kanji:盧",

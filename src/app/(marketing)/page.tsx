@@ -32,17 +32,18 @@ const JSON_LD = {
 export default function LandingPage(): React.ReactElement {
   return (
     <main>
-      <SignedInRedirect />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
-      <Hero />
-      <BeltRampExplainer />
-      <FeatureHighlights />
-      <OfflineOwnership />
-      <LicensingHonesty />
-      <InstallPwa />
+      <SignedInRedirect>
+        <Hero />
+        <BeltRampExplainer />
+        <FeatureHighlights />
+        <OfflineOwnership />
+        <LicensingHonesty />
+        <InstallPwa />
+      </SignedInRedirect>
     </main>
   )
 }

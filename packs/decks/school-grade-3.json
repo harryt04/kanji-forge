@@ -4,6 +4,8 @@
   "name": "School Grade 3",
   "description": "KANJIDIC2 grade 3, ordered by frequency.",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 3,
   "contentRefs": [
     "kanji:事",
     "kanji:発",

@@ -6,7 +6,7 @@ import { AuthShell } from '@/auth/auth-shell'
 import { getSession, signOut, type AuthUser } from '@/auth/client'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { AppNavigation } from '@/features/navigation/app-navigation'
-import { AutoBackupController, ThemeController } from '@/features/settings'
+import { AutoBackupController, ThemeMigration } from '@/features/settings'
 import { AppBadgeController, DailyReminderController } from '@/pwa'
 import { Button } from '@/ui/button'
 
@@ -80,7 +80,7 @@ export function AuthGate({
           {children}
         </div>
       </div>
-      <ThemeController userId={user.id} />
+      <ThemeMigration userId={user.id} />
       <AutoBackupController userId={user.id} />
       <AppBadgeController userId={user.id} />
       <DailyReminderController userId={user.id} />

@@ -4,6 +4,8 @@
   "name": "Kana Words",
   "description": "Common kana-only words from words-core, alphabetically ordered.",
   "contentType": "word",
+  "category": "kana",
+  "sortOrder": 3,
   "contentRefs": [
     "word:1196670",
     "word:2394370",

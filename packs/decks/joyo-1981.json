@@ -4,6 +4,8 @@
   "name": "Jōyō Kanji (1981)",
   "description": "The 1981 Jōyō list reconstructed from the 2010 KANJIDIC2 list using the reviewed 196-added/5-removed revision diff.",
   "contentType": "kanji",
+  "category": "joyo",
+  "sortOrder": 2,
   "contentRefs": [
     "kanji:日",
     "kanji:一",

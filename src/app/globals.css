@@ -49,6 +49,9 @@
 }
 
 :root {
+  /* Keeps native scrollbars, form controls and the canvas behind the page in step
+     with the resolved theme, so nothing browser-drawn flashes light on load. */
+  color-scheme: light;
   /* ---- shadcn base tokens (light, default theme) ---- */
   --background: oklch(97.3% 0.012 85);
   --foreground: oklch(24.5% 0.02 55);
@@ -124,6 +127,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(19% 0.012 55);
   --foreground: oklch(91% 0.012 70);
   --card: oklch(23% 0.014 55);

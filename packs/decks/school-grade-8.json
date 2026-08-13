@@ -4,6 +4,8 @@
   "name": "School Grade 8",
   "description": "Secondary-school Jōyō kanji: frequency tier 2 of 3 (KANJIDIC2 grade 8).",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 8,
   "contentRefs": [
     "kanji:揚",
     "kanji:冒",

@@ -4,6 +4,8 @@
   "name": "JLPT Vocabulary N4",
   "description": "JLPT N4 vocabulary — community estimate - not official. Source: JLPT Vocabulary (yomitan), pinned 2025.08.01.0; Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY.",
   "contentType": "word",
+  "category": "jlpt",
+  "sortOrder": 12,
   "contentRefs": [
     "word:1000580",
     "word:1000590",

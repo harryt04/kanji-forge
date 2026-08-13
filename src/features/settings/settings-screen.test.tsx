@@ -17,7 +17,9 @@ import {
   DAILY_REMINDER_TIME_SETTING,
 } from '@/pwa'
 import * as pwa from '@/pwa'
-import { FONT_SCALE_SETTING, THEME_SETTING } from './theme'
+import { THEME_SETTING } from './theme'
+import { ThemeController } from './theme-controller'
+import { FONT_SCALE_STORAGE_KEY, THEME_STORAGE_KEY } from './theme-storage'
 import {
   BACKUP_FORMAT,
   BACKUP_LAST_EXPORTED_SETTING,
@@ -70,6 +72,10 @@ describe('SettingsScreen', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', fixtureFetch())
+    // Appearance now lives on the device, so one test's choice would otherwise
+    // leak into the next.
+    window.localStorage.removeItem(THEME_STORAGE_KEY)
+    window.localStorage.removeItem(FONT_SCALE_STORAGE_KEY)
     bootstrapUserRuntime(`settings-test-${crypto.randomUUID()}`)
   })
 
@@ -98,40 +104,44 @@ describe('SettingsScreen', () => {
     expect(screen.getByText('Sign in to open Settings.')).toBeInTheDocument()
   })
 
-  it('loads and persists the selected theme offline', async () => {
+  // Appearance is a per-device setting in localStorage, not a synced database row —
+  // that is what lets the pre-paint script in `<head>` read it before the first frame.
+  it('persists the selected theme on this device', async () => {
     const user = userEvent.setup()
-    render(<SettingsScreen />)
+    render(
+      <>
+        <ThemeController />
+        <SettingsScreen />
+      </>,
+    )
 
     expect(
       await screen.findByRole('heading', { name: 'Appearance' }),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /Dark/ }))
 
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
     await waitFor(() => expect(document.documentElement).toHaveClass('dark'))
-    const runtime = getActiveUserRuntime()
-    expect(runtime).toBeDefined()
-    await expect(
-      createUserRepositories(runtime!.database).settings.get(THEME_SETTING),
-    ).resolves.toMatchObject({ value: 'dark' })
   })
 
-  it('persists the selected text size offline', async () => {
+  it('persists the selected text size on this device', async () => {
     const user = userEvent.setup()
-    render(<SettingsScreen />)
+    render(
+      <>
+        <ThemeController />
+        <SettingsScreen />
+      </>,
+    )
 
     expect(
       await screen.findByRole('heading', { name: 'Text size' }),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /Large text/ }))
 
-    await waitFor(async () =>
-      expect(
-        await createUserRepositories(
-          getActiveUserRuntime()!.database,
-        ).settings.get(FONT_SCALE_SETTING),
-      ).toMatchObject({ value: 'large' }),
+    expect(window.localStorage.getItem(FONT_SCALE_STORAGE_KEY)).toBe('large')
+    await waitFor(() =>
+      expect(document.documentElement.dataset.fontScale).toBe('large'),
     )
-    expect(document.documentElement.dataset.fontScale).toBe('large')
   })
 
   it('persists RSS links and provides link-out-only news sources', async () => {
@@ -260,12 +270,7 @@ describe('SettingsScreen', () => {
   })
 
   it('restores a saved night preference on a later render', async () => {
-    const runtime = getActiveUserRuntime()!
-    await createUserRepositories(runtime.database).settings.set({
-      key: THEME_SETTING,
-      value: 'night',
-      updatedAt: Date.now(),
-    })
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'night')
     render(<SettingsScreen />)
 
     expect(

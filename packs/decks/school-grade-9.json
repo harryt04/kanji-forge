@@ -4,6 +4,8 @@
   "name": "School Grade 9",
   "description": "Secondary-school Jōyō kanji: frequency tier 3 of 3 (KANJIDIC2 grade 8).",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 9,
   "contentRefs": [
     "kanji:峡",
     "kanji:俸",

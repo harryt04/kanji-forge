@@ -4,6 +4,8 @@
   "name": "School Grade 1",
   "description": "KANJIDIC2 grade 1, ordered by frequency.",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 1,
   "contentRefs": [
     "kanji:日",
     "kanji:一",

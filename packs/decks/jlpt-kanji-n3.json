@@ -4,6 +4,8 @@
   "name": "JLPT Kanji N3",
   "description": "JLPT N3 kanji — community estimate - not official. Source: JLPT Kanji Data (davidluzgouveia), pinned 00fd7079c3890f430759536f91aa5e854ec0ca4f; Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY.",
   "contentType": "kanji",
+  "category": "jlpt",
+  "sortOrder": 3,
   "contentRefs": [
     "kanji:政",
     "kanji:議",

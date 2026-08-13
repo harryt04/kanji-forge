@@ -4,6 +4,8 @@
   "name": "Jōyō Kanji (2010)",
   "description": "The 2,136-character 2010 Jōyō list from KANJIDIC2 grades 1–8, ordered by school grade then frequency.",
   "contentType": "kanji",
+  "category": "joyo",
+  "sortOrder": 1,
   "contentRefs": [
     "kanji:日",
     "kanji:一",

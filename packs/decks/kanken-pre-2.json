@@ -4,6 +4,8 @@
   "name": "Kanji Kentei Pre-2",
   "description": "Kanji Kentei Pre-2 level, ordered by KANJIDIC2 frequency. The level list is derived from the official 日本漢字能力検定級別漢字表 via the pinned kanji package.",
   "contentType": "kanji",
+  "category": "kanken",
+  "sortOrder": 9,
   "contentRefs": [
     "kanji:佐",
     "kanji:核",
