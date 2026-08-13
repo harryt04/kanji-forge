@@ -184,7 +184,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       audits every visible interactive element at both viewports (auth-backed
       checks skipped locally because `NEXT_PUBLIC_API_URL` is unset).
 
-- [ ] **B2. Marketing hero text fails WCAG AA over the tile wall.**
+- [x] **B2. Marketing hero text fails WCAG AA over the tile wall.**
       Where: `/` hero — H1 and subhead sit directly on the animated tile
       background with no scrim.
       Evidence (composited against actual tile colors behind the text):
@@ -197,6 +197,8 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** subhead contrast ≥4.5:1 and H1 contrast ≥3:1
       against every one of the five ramp tile colors, both themes, measured
       the same way as the original audit (composited, not assumed).
+      Added a 94% theme-background scrim behind the hero copy; `e2e/ux-contrast.spec.ts`
+      composites it against all five ramp colors and verifies H1/subhead thresholds in light and dark themes (Chromium and WebKit).
 
 - [ ] **B3. No active-page indication in nav.**
       Where: [`app-navigation.tsx:113-117`](../src/features/navigation/app-navigation.tsx#L113).

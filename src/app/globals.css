@@ -338,6 +338,9 @@
     marketing-tile-breathe 4200ms ease-in-out infinite,
     marketing-tile-flash 9000ms ease-in-out infinite;
 }
+.marketing-hero-copy {
+  background: color-mix(in srgb, var(--background) 94%, transparent);
+}
 @media (prefers-reduced-motion: reduce) {
   .marketing-tile {
     animation: none;
