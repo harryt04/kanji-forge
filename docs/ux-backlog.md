@@ -319,7 +319,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       authenticated `e2e/ux-layout.spec.ts` width check compares the computed
       max width with the token at 375px and 1440px.
 
-- [ ] **D2. Desktop sidebar scrolls away with the page.**
+- [x] **D2. Desktop sidebar scrolls away with the page.**
       Evidence: `<aside>` is `position: static`; measured height equals the
       document — 2863px on Home, 9775px on Settings. Scrolling either page
       scrolls the nav sidebar out of view entirely.
@@ -328,6 +328,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** on Home and Settings, at 1440px, after scrolling to
       the bottom of the page, the sidebar `<aside>` remains visible in the
       viewport.
+      Applied sticky positioning to the shared authenticated sidebar; `e2e/ux-layout.spec.ts` verifies its sticky position and Home link remain visible after bottom-scroll on both routes.
 
 - [ ] **D3. Mobile nav hides 4 of 7 destinations with no scroll affordance.**
       Evidence: horizontal nav is 223px wide holding 555px of link content;

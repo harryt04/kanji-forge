@@ -54,7 +54,7 @@ export function AuthGate({
     <>
       <div className="min-h-screen md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
         <aside
-          className="border-border bg-card hidden border-r md:flex md:min-h-screen md:flex-col md:gap-8 md:p-5"
+          className="border-border bg-card hidden border-r md:sticky md:top-0 md:flex md:min-h-screen md:flex-col md:gap-8 md:self-start md:p-5"
           aria-label="Application sidebar"
         >
           <Link className="font-display text-xl font-bold" href="/home">

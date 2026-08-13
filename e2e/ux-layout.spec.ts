@@ -172,4 +172,56 @@ test.describe('authenticated layout overflow', () => {
       ])
     })
   }
+
+  test('keeps the desktop sidebar visible at the bottom of Home and Settings', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+
+    for (const route of ['/home', '/settings']) {
+      await page.goto(route)
+      const sidebar = page.getByRole('complementary', {
+        name: 'Application sidebar',
+      })
+      const homeLink = sidebar.locator('a[href="/home"]')
+      await sidebar.waitFor()
+      await homeLink.waitFor()
+
+      await page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight)
+      })
+
+      const metrics = await sidebar.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        const homeLink = element.querySelector('a[href="/home"]')
+        const homeLinkRect = homeLink?.getBoundingClientRect()
+        return {
+          position: getComputedStyle(element).position,
+          viewportHeight: window.innerHeight,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          homeLinkTop: homeLinkRect?.top ?? Number.NaN,
+          homeLinkBottom: homeLinkRect?.bottom ?? Number.NaN,
+        }
+      })
+
+      expect(metrics.position, `${route} sidebar position`).toBe('sticky')
+      expect(metrics.width, `${route} sidebar width`).toBeGreaterThan(0)
+      expect(metrics.height, `${route} sidebar height`).toBeGreaterThan(0)
+      expect(metrics.top, `${route} sidebar top`).toBeLessThan(
+        metrics.viewportHeight,
+      )
+      expect(metrics.bottom, `${route} sidebar bottom`).toBeGreaterThan(0)
+      expect(
+        metrics.homeLinkTop,
+        `${route} Home link top`,
+      ).toBeGreaterThanOrEqual(0)
+      expect(
+        metrics.homeLinkBottom,
+        `${route} Home link bottom`,
+      ).toBeLessThanOrEqual(metrics.viewportHeight)
+    }
+  })
 })
