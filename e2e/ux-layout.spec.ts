@@ -81,4 +81,24 @@ test.describe('authenticated layout overflow', () => {
       }
     })
   }
+
+  test('keeps the Home deck action row within the mobile viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 900 })
+    await page.goto('/home')
+    await page.getByTestId('builtin-deck-shelf').waitFor()
+
+    const metrics = await page.evaluate(() => {
+      const documentElement = document.documentElement
+      return {
+        clientWidth: documentElement.clientWidth,
+        scrollWidth: documentElement.scrollWidth,
+      }
+    })
+
+    expect(metrics.scrollWidth, 'Home scroll width').toBeLessThanOrEqual(
+      metrics.clientWidth,
+    )
+  })
 })

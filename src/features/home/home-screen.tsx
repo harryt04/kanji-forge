@@ -558,15 +558,15 @@ export function HomeScreen(): React.ReactElement {
                   aria-label={`Deck color: level ${deck.progressLevel}`}
                 />
               </div>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" asChild>
                   <Link href={`/study?deckId=${encodeURIComponent(deck.id)}`}>
-                    Study {deck.name}
+                    Study
                   </Link>
                 </Button>
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/browse?deckId=${encodeURIComponent(deck.id)}`}>
-                    Browse {deck.name}
+                    Browse
                   </Link>
                 </Button>
               </div>

@@ -91,12 +91,15 @@ describe('HomeScreen', () => {
     const wordsHeading = within(shelf).getByText('Development Words')
     expect(wordsHeading).toBeInTheDocument()
     expect(wordsHeading.nextElementSibling).toHaveTextContent('500 cards')
-    expect(
-      within(shelf).getByRole('link', { name: 'Study Development Words' }),
-    ).toHaveAttribute('href', '/study?deckId=dev-words')
-    expect(
-      within(shelf).getByRole('link', { name: 'Browse Development Words' }),
-    ).toHaveAttribute('href', '/browse?deckId=dev-words')
+    const studyLink = within(shelf)
+      .getAllByRole('link', { name: 'Study', exact: true })
+      .find((link) => link.getAttribute('href') === '/study?deckId=dev-words')
+    const browseLink = within(shelf)
+      .getAllByRole('link', { name: 'Browse', exact: true })
+      .find((link) => link.getAttribute('href') === '/browse?deckId=dev-words')
+    expect(studyLink).toHaveAttribute('href', '/study?deckId=dev-words')
+    expect(browseLink).toHaveAttribute('href', '/browse?deckId=dev-words')
+    expect(studyLink?.parentElement).toHaveClass('flex-wrap')
   })
 
   it('keeps level distribution swatches shape-coded for color-independent reading', async () => {
@@ -152,12 +155,18 @@ describe('HomeScreen', () => {
       expect(screen.getByTestId('custom-deck-shelf')).toBeInTheDocument(),
     )
     expect(screen.getByText('Travel kanji')).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'Study', exact: true }),
-    ).toHaveAttribute('href', '/study?deckId=custom-travel')
-    expect(
-      screen.getByRole('link', { name: 'Browse', exact: true }),
-    ).toHaveAttribute('href', '/browse?deckId=custom-travel')
+    const studyLink = screen
+      .getAllByRole('link', { name: 'Study', exact: true })
+      .find(
+        (link) => link.getAttribute('href') === '/study?deckId=custom-travel',
+      )
+    const browseLink = screen
+      .getAllByRole('link', { name: 'Browse', exact: true })
+      .find(
+        (link) => link.getAttribute('href') === '/browse?deckId=custom-travel',
+      )
+    expect(studyLink).toHaveAttribute('href', '/study?deckId=custom-travel')
+    expect(browseLink).toHaveAttribute('href', '/browse?deckId=custom-travel')
   })
 
   it('groups custom decks by their persisted folder on the deck shelf', async () => {

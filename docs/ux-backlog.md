@@ -134,7 +134,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       passes. Browser visual confirmation was unavailable because this checkout
       has no `NEXT_PUBLIC_API_URL` for authenticated routes.
 
-- [ ] **A4. Home deck-card action row overflows on mobile.**
+- [x] **A4. Home deck-card action row overflows on mobile.**
       Where: Home screen deck list, action row (`flex gap-2`,
       `whitespace-nowrap`, no wrap; buttons "Study Development Kanji" 189px +
       "Browse Development Kanji" 201px inside a 251px container).
@@ -144,6 +144,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       enough.
       **Acceptance line:** at 375px, `document.documentElement.scrollWidth`
       on `/home` does not exceed `clientWidth`.
+      Wrapped the built-in deck action row and shortened its links to "Study"
+      and "Browse"; `e2e/ux-layout.spec.ts` measures Home document width at
+      375px and `home-screen.test.tsx` verifies the concise destinations.
 
 - [ ] **A5. Study toolbar overflows on mobile, clipping the remaining-count.**
       Where: `/study` header row.
