@@ -357,10 +357,13 @@ Functional breakage, not polish. Fix these before anything else in this file.
       tablet portrait on the mobile navigation layout; `e2e/ux-layout.spec.ts`
       verifies the sidebar/header visibility at 768px.
 
-- [ ] **D5. Settings is one 9775px scroll with no sectioning.**
+- [x] **D5. Settings is one 9775px scroll with no sectioning.**
       Evidence: measured document height 9775px, fully linear — Appearance,
       Text size, News links, Create a deck, and more below the fold, no jump
       links or sticky section headers.
+      Added a “Jump to a section” anchor nav covering all 24 top-level Settings
+      sections; unit coverage and `e2e/ux-settings-navigation.spec.ts` verify
+      every link target and 375/1440px navigation without horizontal overflow.
       **Acceptance line:** Settings has an in-page way to jump directly to any
       of its major sections (anchor nav, sticky section headers, or
       tabs/accordion) reachable without scrolling past intervening sections.
