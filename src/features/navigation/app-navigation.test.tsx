@@ -82,6 +82,23 @@ describe('AppNavigation', () => {
     expect(screen.getByRole('link', { name: 'Browse' })).toBeInTheDocument()
   })
 
+  it('shows a visual overflow cue for the horizontal destination scroller', () => {
+    render(<AppNavigation userId="missing-user" />)
+
+    expect(screen.getByTestId('navigation-overflow-cue')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+  })
+
+  it('does not add a horizontal overflow cue to the desktop sidebar', () => {
+    render(<AppNavigation userId="missing-user" orientation="vertical" />)
+
+    expect(
+      screen.queryByTestId('navigation-overflow-cue'),
+    ).not.toBeInTheDocument()
+  })
+
   it('supports the persistent desktop sidebar orientation', async () => {
     const id = `navigation-${userId}`
     bootstrapUserRuntime(id)

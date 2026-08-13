@@ -48,59 +48,74 @@ export function AppNavigation({
   }, [userId])
 
   return (
-    <nav
-      className={
-        orientation === 'vertical'
-          ? 'grid w-full gap-1'
-          : 'flex min-w-0 items-center gap-1 overflow-x-auto'
-      }
-      aria-label="Primary"
-      data-orientation={orientation}
+    <div
+      className={orientation === 'vertical' ? undefined : 'relative min-w-0'}
     >
-      <NavLink href="/home" orientation={orientation} pathname={pathname}>
-        Home
-      </NavLink>
-      <NavLink href="/study" orientation={orientation} pathname={pathname}>
-        Study
-      </NavLink>
-      <Link
-        className={navigationLinkClassName(
-          orientation,
-          isNavigationPathActive(pathname, '/browse'),
-          'relative gap-2',
-        )}
-        href="/browse"
-        aria-label={
-          browseCount === null ? 'Browse' : `Browse, ${browseCount} stickies`
+      <nav
+        className={
+          orientation === 'vertical'
+            ? 'grid w-full gap-1'
+            : 'flex min-w-0 items-center gap-1 overflow-x-auto'
         }
-        aria-current={
-          isNavigationPathActive(pathname, '/browse') ? 'page' : undefined
-        }
+        aria-label="Primary"
+        data-orientation={orientation}
       >
-        <span>Browse</span>
-        {browseCount !== null && (
-          <span
-            className="bg-primary text-primary-foreground inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums"
-            data-testid="browse-count-badge"
-            aria-hidden="true"
-          >
-            {browseCount}
-          </span>
-        )}
-      </Link>
-      <NavLink href="/history" orientation={orientation} pathname={pathname}>
-        History
-      </NavLink>
-      <NavLink href="/dictionary" orientation={orientation} pathname={pathname}>
-        Dictionary
-      </NavLink>
-      <NavLink href="/writing" orientation={orientation} pathname={pathname}>
-        Writing
-      </NavLink>
-      <NavLink href="/help" orientation={orientation} pathname={pathname}>
-        Help
-      </NavLink>
-    </nav>
+        <NavLink href="/home" orientation={orientation} pathname={pathname}>
+          Home
+        </NavLink>
+        <NavLink href="/study" orientation={orientation} pathname={pathname}>
+          Study
+        </NavLink>
+        <Link
+          className={navigationLinkClassName(
+            orientation,
+            isNavigationPathActive(pathname, '/browse'),
+            'relative gap-2',
+          )}
+          href="/browse"
+          aria-label={
+            browseCount === null ? 'Browse' : `Browse, ${browseCount} stickies`
+          }
+          aria-current={
+            isNavigationPathActive(pathname, '/browse') ? 'page' : undefined
+          }
+        >
+          <span>Browse</span>
+          {browseCount !== null && (
+            <span
+              className="bg-primary text-primary-foreground inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums"
+              data-testid="browse-count-badge"
+              aria-hidden="true"
+            >
+              {browseCount}
+            </span>
+          )}
+        </Link>
+        <NavLink href="/history" orientation={orientation} pathname={pathname}>
+          History
+        </NavLink>
+        <NavLink
+          href="/dictionary"
+          orientation={orientation}
+          pathname={pathname}
+        >
+          Dictionary
+        </NavLink>
+        <NavLink href="/writing" orientation={orientation} pathname={pathname}>
+          Writing
+        </NavLink>
+        <NavLink href="/help" orientation={orientation} pathname={pathname}>
+          Help
+        </NavLink>
+      </nav>
+      {orientation === 'horizontal' && (
+        <span
+          className="navigation-overflow-cue"
+          data-testid="navigation-overflow-cue"
+          aria-hidden="true"
+        />
+      )}
+    </div>
   )
 }
 

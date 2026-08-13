@@ -330,7 +330,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       viewport.
       Applied sticky positioning to the shared authenticated sidebar; `e2e/ux-layout.spec.ts` verifies its sticky position and Home link remain visible after bottom-scroll on both routes.
 
-- [ ] **D3. Mobile nav hides 4 of 7 destinations with no scroll affordance.**
+- [x] **D3. Mobile nav hides 4 of 7 destinations with no scroll affordance.**
       Evidence: horizontal nav is 223px wide holding 555px of link content;
       scrolls (`overflow-x: auto`) but with no visible scrollbar, arrow, or
       edge fade — History, Dictionary, Writing, Help are undiscoverable.
@@ -340,6 +340,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** at 375px, every one of the 7 nav destinations is
       either visible without scrolling or has a visible, discoverable
       affordance (fade, arrow, or scrollbar) indicating more content exists.
+      Added a pointer-events-none right-edge fade to the horizontal mobile
+      navigation while preserving swipe scrolling; unit and Playwright
+      coverage verifies the cue and its overflow geometry.
 
 - [ ] **D4. Sidebar breakpoint switches on too early for tablet portrait.**
       Evidence: the two-column `md:grid` layout activates at 768px — iPad

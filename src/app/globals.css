@@ -145,6 +145,22 @@ textarea {
   }
 }
 
+/* The mobile primary nav intentionally remains horizontally scrollable so all
+ * seven destinations keep their full labels. This edge fade makes the hidden
+ * destinations discoverable without intercepting swipe or link input. */
+.navigation-overflow-cue {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 2rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--background) 96%, transparent)
+  );
+}
+
 .dark {
   color-scheme: dark;
   --background: oklch(19% 0.012 55);

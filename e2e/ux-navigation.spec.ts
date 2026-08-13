@@ -55,4 +55,41 @@ test.describe('authenticated navigation wayfinding', () => {
       }
     })
   }
+
+  test('shows a visible edge fade when mobile destinations overflow', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 900 })
+    await page.goto('/home')
+
+    const navigation = page.locator('nav[aria-label="Primary"]:visible')
+    await navigation.waitFor()
+
+    const metrics = await navigation.evaluate((nav) => {
+      const cue = nav.parentElement?.querySelector<HTMLElement>(
+        '[data-testid="navigation-overflow-cue"]',
+      )
+      if (!cue) return null
+
+      const navRect = nav.getBoundingClientRect()
+      const cueRect = cue.getBoundingClientRect()
+      const style = getComputedStyle(cue)
+
+      return {
+        isOverflowing: nav.scrollWidth > nav.clientWidth,
+        cueWidth: cueRect.width,
+        cueWithinNav:
+          cueRect.left >= navRect.left && cueRect.right <= navRect.right,
+        cueBackground: style.backgroundImage,
+        cueVisibility: style.visibility,
+      }
+    })
+
+    expect(metrics, 'mobile navigation overflow cue').not.toBeNull()
+    expect(metrics?.isOverflowing).toBe(true)
+    expect(metrics?.cueWidth).toBeGreaterThan(0)
+    expect(metrics?.cueWithinNav).toBe(true)
+    expect(metrics?.cueBackground).toContain('gradient')
+    expect(metrics?.cueVisibility).toBe('visible')
+  })
 })
