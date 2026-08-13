@@ -45,6 +45,26 @@ base.describe('landing page', () => {
       page.getByRole('link', { name: 'Create a free account' }).first(),
     ).toBeVisible()
   })
+
+  // A signed-in visitor used to receive the marketing page, paint it, and only
+  // then bounce to /home. Middleware now redirects before any HTML is generated,
+  // so the marketing markup never reaches the browser at all.
+  base(
+    'redirects a signed-in visitor before sending any HTML',
+    async ({ page, context }) => {
+      await context.addCookies([
+        {
+          name: 'better-auth.session_token',
+          value: 'e2e-session.signature',
+          url: 'http://localhost:3000',
+        },
+      ])
+
+      const response = await page.goto('/', { waitUntil: 'commit' })
+      expect(new URL(page.url()).pathname).toBe('/home')
+      expect(await response?.text()).not.toContain('wall of color')
+    },
+  )
 })
 
 base.describe('sign-in smoke', () => {

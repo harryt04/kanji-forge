@@ -4,6 +4,8 @@
   "name": "Hiragana",
   "description": "Kana-only word references from words-core, alphabetically ordered for hiragana reading practice.",
   "contentType": "word",
+  "category": "kana",
+  "sortOrder": 1,
   "contentRefs": [
     "word:1196670",
     "word:1565440",

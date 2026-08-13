@@ -7,6 +7,8 @@ import {
   Public_Sans,
 } from 'next/font/google'
 import './globals.css'
+import { ThemeController } from '@/features/settings/theme-controller'
+import { THEME_INIT_SCRIPT } from '@/features/settings/theme-script'
 import { PwaRegistration } from '@/pwa'
 import { SITE_URL } from '@/lib/site'
 import { cn } from '@/lib/utils'
@@ -79,7 +81,10 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#f7f4ec',
+  // The `theme-color` meta is rendered by hand in `<head>` below instead of here,
+  // so the pre-paint script can find and patch a single, known element before the
+  // first frame. Next's metadata injection gives no ordering guarantee against
+  // that script.
   viewportFit: 'cover',
 }
 
@@ -91,6 +96,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The pre-paint script below writes `class` and `data-theme` onto this
+      // element before React hydrates, so the two never match on first render.
+      suppressHydrationWarning
       className={cn(
         fraunces.variable,
         notoSansJP.variable,
@@ -100,6 +108,11 @@ export default function RootLayout({
       )}
     >
       <head>
+        {/* This meta must precede the theme script: the script patches it in place. */}
+        <meta name="theme-color" content="#f7f4ec" />
+        {/* Resolves light/dark before the first paint. Nothing above it renders
+            pixels, so a dark-mode visitor never sees a light frame. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <meta name="color-scheme" content="light dark" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link
@@ -112,6 +125,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="KanjiForge" />
       </head>
       <body>
+        <ThemeController />
         <PwaRegistration />
         {children}
       </body>

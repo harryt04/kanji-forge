@@ -16,7 +16,7 @@ function cacheSession(user: AuthUser): void {
   window.localStorage.setItem(CACHED_SESSION_KEY, JSON.stringify(user))
 }
 
-function readCachedSession(): AuthUser | null {
+export function readCachedSession(): AuthUser | null {
   if (typeof window === 'undefined') return null
   const raw = window.localStorage.getItem(CACHED_SESSION_KEY)
   if (!raw) return null

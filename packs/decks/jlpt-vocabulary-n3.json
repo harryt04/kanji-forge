@@ -4,6 +4,8 @@
   "name": "JLPT Vocabulary N3",
   "description": "JLPT N3 vocabulary — community estimate - not official. Source: JLPT Vocabulary (yomitan), pinned 2025.08.01.0; Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY.",
   "contentType": "word",
+  "category": "jlpt",
+  "sortOrder": 13,
   "contentRefs": [
     "word:1000730",
     "word:1000920",

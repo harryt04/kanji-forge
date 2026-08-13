@@ -4,6 +4,8 @@
   "name": "Katakana",
   "description": "Kana-only word references from words-core, alphabetically ordered for katakana reading practice.",
   "contentType": "word",
+  "category": "kana",
+  "sortOrder": 2,
   "contentRefs": [
     "word:2394370",
     "word:1565440",

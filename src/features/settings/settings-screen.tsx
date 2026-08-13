@@ -109,17 +109,16 @@ import {
   type SaveBehavior,
 } from '@/features/detail/save-behavior'
 import {
-  applyFontScale,
-  applyTheme,
-  FONT_SCALE_SETTING,
-  isFontScalePreference,
-  isThemePreference,
-  resolveTheme,
   THEME_PREFERENCES,
-  THEME_SETTING,
   type FontScalePreference,
   type ThemePreference,
 } from './theme'
+import {
+  readFontScalePreference,
+  readThemePreference,
+  writeFontScalePreference,
+  writeThemePreference,
+} from './theme-storage'
 import {
   formatDeckAsCsv,
   formatDeckAsJson,
@@ -299,18 +298,15 @@ async function loadCardIdentities(
   return identities
 }
 
-function getSystemPreference(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  )
-}
-
 export function SettingsScreen(): React.ReactElement {
   const runtime = getActiveUserRuntime()
-  const [preference, setPreference] = useState<ThemePreference>('light')
-  const [fontScale, setFontScale] = useState<FontScalePreference>('default')
+  // Appearance is a device setting in localStorage, not a synced account row, so
+  // it is available immediately and never waits on the database.
+  const [preference, setPreference] =
+    useState<ThemePreference>(readThemePreference)
+  const [fontScale, setFontScale] = useState<FontScalePreference>(
+    readFontScalePreference,
+  )
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false)
@@ -357,7 +353,6 @@ export function SettingsScreen(): React.ReactElement {
   const [deckFolderMessage, setDeckFolderMessage] = useState<string | null>(
     null,
   )
-  const [systemDark, setSystemDark] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -417,7 +412,6 @@ export function SettingsScreen(): React.ReactElement {
   useEffect(() => {
     if (!runtime) return
     let cancelled = false
-    setSystemDark(getSystemPreference())
     setAutoBackupSupported(supportsAutoBackup())
     setShowIosInstallGuidance(
       shouldShowIosInstallGuidance(readInstallGuidanceEnvironment()),
@@ -426,8 +420,6 @@ export function SettingsScreen(): React.ReactElement {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const [
-        saved,
-        savedFontScale,
         savedBadge,
         savedReminderEnabled,
         savedReminderTime,
@@ -448,8 +440,6 @@ export function SettingsScreen(): React.ReactElement {
         existingDecks,
         allSettings,
       ] = await Promise.all([
-        repositories.settings.get(THEME_SETTING),
-        repositories.settings.get(FONT_SCALE_SETTING),
         repositories.settings.get(APP_BADGE_SETTING),
         repositories.settings.get(DAILY_REMINDER_ENABLED_SETTING),
         repositories.settings.get(DAILY_REMINDER_TIME_SETTING),
@@ -471,9 +461,6 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.list(),
       ])
       if (cancelled) return
-      if (isThemePreference(saved?.value)) setPreference(saved.value)
-      if (isFontScalePreference(savedFontScale?.value))
-        setFontScale(savedFontScale.value)
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
@@ -588,59 +575,19 @@ export function SettingsScreen(): React.ReactElement {
     )
   }, [])
 
-  useEffect(() => {
-    applyTheme(resolveTheme(preference, new Date(), systemDark))
-  }, [preference, systemDark])
-
-  useEffect(() => {
-    applyFontScale(fontScale)
-  }, [fontScale])
-
-  async function choosePreference(next: ThemePreference): Promise<void> {
-    if (!runtime || next === preference) return
+  // Appearance writes to localStorage and `ThemeController` — mounted in the root
+  // layout — picks the change up and repaints. Nothing to await, nothing to roll
+  // back, and no database, so these two stay synchronous unlike every other setting.
+  function choosePreference(next: ThemePreference): void {
+    if (next === preference) return
     setPreference(next)
-    setError(null)
-    setSaving(true)
-    try {
-      await createUserRepositories(runtime.database).settings.set({
-        key: THEME_SETTING,
-        value: next,
-        updatedAt: Date.now(),
-      })
-    } catch (reason: unknown) {
-      setPreference(preference)
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Could not save theme setting.',
-      )
-    } finally {
-      setSaving(false)
-    }
+    writeThemePreference(next)
   }
 
-  async function chooseFontScale(next: FontScalePreference): Promise<void> {
-    if (!runtime || next === fontScale) return
-    const previous = fontScale
+  function chooseFontScale(next: FontScalePreference): void {
+    if (next === fontScale) return
     setFontScale(next)
-    setError(null)
-    setSaving(true)
-    try {
-      await createUserRepositories(runtime.database).settings.set({
-        key: FONT_SCALE_SETTING,
-        value: next,
-        updatedAt: Date.now(),
-      })
-    } catch (reason: unknown) {
-      setFontScale(previous)
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'Could not save text-size setting.',
-      )
-    } finally {
-      setSaving(false)
-    }
+    writeFontScalePreference(next)
   }
 
   async function saveRssFeeds(nextFeeds: readonly RssFeed[]): Promise<void> {
@@ -2287,9 +2234,8 @@ export function SettingsScreen(): React.ReactElement {
               variant={preference === value ? 'secondary' : 'outline'}
               aria-checked={preference === value}
               role="radio"
-              disabled={saving}
               className="h-auto min-h-14 justify-start px-4 py-3 text-left"
-              onClick={() => void choosePreference(value)}
+              onClick={() => choosePreference(value)}
             >
               <span>
                 <span className="block font-semibold">{label}</span>
@@ -2324,9 +2270,8 @@ export function SettingsScreen(): React.ReactElement {
               variant={fontScale === value ? 'secondary' : 'outline'}
               aria-checked={fontScale === value}
               role="radio"
-              disabled={saving}
               className="h-auto min-h-14 justify-start px-4 py-3 text-left"
-              onClick={() => void chooseFontScale(value)}
+              onClick={() => chooseFontScale(value)}
             >
               <span>
                 <span className="block font-semibold">{label}</span>

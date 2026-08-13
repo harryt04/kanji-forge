@@ -10,6 +10,9 @@ export default defineWorkspace([
         'scripts/**/*.test.{ts,mts,mjs}',
         'src/server/**/*.test.ts',
         'src/core/**/*.test.ts',
+        // Next.js requires middleware at the root of src/, so it can't sit under
+        // one of the directories above.
+        'src/middleware.test.ts',
       ],
       // build-decks.test.ts asserts against packs/*.sqlite, which are
       // gitignored and only produced by `pnpm packs:refresh` (the monthly

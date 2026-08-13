@@ -1,0 +1,28 @@
+{
+  "id": "kanji",
+  "version": "v1",
+  "schemaVersion": 1,
+  "sha256": "1271f5af664b9ff6b9e1fed4be6356976a82e3d8502c8731c497a7293a93b7f4",
+  "sizeBytes": 1966080,
+  "license": "CC BY-SA 4.0",
+  "attribution": "KANJIDIC2 — © Electronic Dictionary Research and Development Group, Monash University. Used under CC BY-SA 4.0. Modified: converted to a database format, some fields omitted (including all qc_type=\"skip\" and qc_type=\"misclass\" entries).",
+  "sources": [
+    {
+      "id": "kanjidic2",
+      "name": "KANJIDIC2",
+      "license": "CC BY-SA 4.0",
+      "url": "http://ftp.edrdg.org/pub/Nihongo/kanjidic2.xml.gz",
+      "sha256": "79074f594fffe353bedde8c1019c186d3fe1d8b127f9c762011d1571e46fb5df"
+    }
+  ],
+  "stats": {
+    "kanjiCount": 13108
+  },
+  "brotli": [
+    {
+      "file": "kanji-v1.sqlite.br",
+      "sha256": "49c07496a6b3e8a157c3e022f6eacdd2a529e2d075cda76d6e5bfb265413f56c",
+      "sizeBytes": 542992
+    }
+  ]
+}

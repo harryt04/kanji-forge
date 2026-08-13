@@ -1,4 +1,6 @@
 export { SettingsScreen } from './settings-screen'
 export { ThemeController } from './theme-controller'
+export { ThemeMigration } from './theme-migration'
+export * from './theme-storage'
 export { AutoBackupController } from './auto-backup'
 export * from './theme'

@@ -4,6 +4,8 @@
   "name": "School Grade 7",
   "description": "Secondary-school Jōyō kanji: frequency tier 1 of 3 (KANJIDIC2 grade 8).",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 7,
   "contentRefs": [
     "kanji:歳",
     "kanji:企",

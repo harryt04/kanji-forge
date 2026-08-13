@@ -1,78 +1,63 @@
 'use client'
 
 import { useEffect } from 'react'
-import { getActiveUserRuntime } from '@/auth/runtime'
-import { createUserRepositories } from '@/data/repo'
 import {
   applyFontScale,
   applyTheme,
-  FONT_SCALE_SETTING,
   getMillisecondsUntilNextMinute,
-  isFontScalePreference,
-  isThemePreference,
   resolveTheme,
-  THEME_SETTING,
-  type FontScalePreference,
-  type ThemePreference,
 } from './theme'
+import {
+  readFontScalePreference,
+  readThemePreference,
+  THEME_CHANGE_EVENT,
+} from './theme-storage'
 
-/** Applies the saved preference everywhere, including pages other than Settings. */
-export function ThemeController({ userId }: { userId: string }): null {
+/**
+ * Keeps appearance current after the first paint. The pre-paint script in
+ * `<head>` already applied the stored preference, so this component never causes
+ * a visible change on load — it only reacts to what happens next: the system
+ * switching to dark, the clock crossing the night boundary, or another tab
+ * changing the setting.
+ *
+ * Mounted once in the root layout, so marketing, auth and app routes all behave
+ * identically. Appearance is a device setting and needs no signed-in user.
+ */
+export function ThemeController(): null {
   useEffect(() => {
-    const runtime = getActiveUserRuntime()
-    if (!runtime || runtime.userId !== userId) return
-
-    let cancelled = false
-    let preference: ThemePreference = 'system'
-    let fontScale: FontScalePreference = 'default'
     let timerId: number | undefined
     const media =
-      typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      typeof window.matchMedia === 'function'
         ? window.matchMedia('(prefers-color-scheme: dark)')
         : null
 
-    const renderTheme = (): void => {
-      if (!cancelled)
-        applyTheme(
-          resolveTheme(preference, new Date(), media?.matches ?? false),
+    const render = (): void => {
+      const preference = readThemePreference()
+      applyTheme(resolveTheme(preference, new Date(), media?.matches ?? false))
+      applyFontScale(readFontScalePreference())
+
+      if (timerId !== undefined) window.clearTimeout(timerId)
+      timerId = undefined
+      // Night mode is the only preference whose result changes on its own.
+      if (preference === 'night') {
+        timerId = window.setTimeout(
+          render,
+          getMillisecondsUntilNextMinute(new Date()),
         )
+      }
     }
 
-    const scheduleNightRefresh = (): void => {
-      if (cancelled || preference !== 'night') return
-      timerId = window.setTimeout(() => {
-        renderTheme()
-        scheduleNightRefresh()
-      }, getMillisecondsUntilNextMinute(new Date()))
-    }
-
-    void (async () => {
-      await runtime.database.ready
-      const saved = await createUserRepositories(runtime.database).settings.get(
-        THEME_SETTING,
-      )
-      const savedFontScale = await createUserRepositories(
-        runtime.database,
-      ).settings.get(FONT_SCALE_SETTING)
-      if (cancelled) return
-      if (isThemePreference(saved?.value)) preference = saved.value
-      if (isFontScalePreference(savedFontScale?.value))
-        fontScale = savedFontScale.value
-      applyFontScale(fontScale)
-      renderTheme()
-      scheduleNightRefresh()
-    })()
-
-    const onSystemChange = (): void => {
-      if (preference === 'system') renderTheme()
-    }
-    media?.addEventListener('change', onSystemChange)
+    render()
+    media?.addEventListener('change', render)
+    window.addEventListener('storage', render)
+    window.addEventListener(THEME_CHANGE_EVENT, render)
     return () => {
-      cancelled = true
-      media?.removeEventListener('change', onSystemChange)
+      media?.removeEventListener('change', render)
+      window.removeEventListener('storage', render)
+      window.removeEventListener(THEME_CHANGE_EVENT, render)
       if (timerId !== undefined) window.clearTimeout(timerId)
     }
-  }, [userId])
+  }, [])
 
   return null
 }

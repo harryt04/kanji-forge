@@ -4,6 +4,8 @@
   "name": "Top 500 Kanji by Frequency",
   "description": "KANJIDIC2 frequency ranks 1–500, in frequency order.",
   "contentType": "kanji",
+  "category": "frequency",
+  "sortOrder": 1,
   "contentRefs": [
     "kanji:日",
     "kanji:一",

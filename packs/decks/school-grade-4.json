@@ -4,6 +4,8 @@
   "name": "School Grade 4",
   "description": "KANJIDIC2 grade 4, ordered by frequency.",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 4,
   "contentRefs": [
     "kanji:議",
     "kanji:民",

@@ -4,6 +4,8 @@
   "name": "School Grade 2",
   "description": "KANJIDIC2 grade 2, ordered by frequency.",
   "contentType": "kanji",
+  "category": "school",
+  "sortOrder": 2,
   "contentRefs": [
     "kanji:国",
     "kanji:会",

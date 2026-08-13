@@ -4,6 +4,8 @@
   "name": "JLPT Kanji N4",
   "description": "JLPT N4 kanji — community estimate - not official. Source: JLPT Kanji Data (davidluzgouveia), pinned 00fd7079c3890f430759536f91aa5e854ec0ca4f; Derived from Jonathan Waller's JLPT Resources (tanos.co.uk), CC BY.",
   "contentType": "kanji",
+  "category": "jlpt",
+  "sortOrder": 2,
   "contentRefs": [
     "kanji:会",
     "kanji:同",

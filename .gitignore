@@ -58,13 +58,18 @@ Thumbs.db
 scripts/build-packs/.cache/
 .claude/worktrees/
 
-# Generated content packs (reproducible from sources.lock; only packs-dev/ fixtures are committed)
+# Generated content packs (reproducible from sources.lock). Two exceptions are committed:
+# packs-dev/ fixtures, and the kanji pack — production serves it directly, so a fresh clone
+# or a deploy must have it without running the pipeline. See docs/DATA-SOURCES.md §11.1.
 packs/*.sqlite
 packs/*.manifest.json
+!packs/kanji-v1.sqlite
+!packs/kanji-v1.manifest.json
 !packs-dev/
 !packs-dev/**
 
 public/packs-dev
-/public/packs/tokenizer
+# Mirrored by scripts/copy-packs.mjs and scripts/copy-tokenizer-dict.mjs — not source
+/public/packs
 
 tsconfig.tsbuildinfo

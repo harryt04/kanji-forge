@@ -4,6 +4,8 @@
   "name": "Kanji Kentei 3",
   "description": "Kanji Kentei 3 level, ordered by KANJIDIC2 frequency. The level list is derived from the official 日本漢字能力検定級別漢字表 via the pinned kanji package.",
   "contentType": "kanji",
+  "category": "kanken",
+  "sortOrder": 8,
   "contentRefs": [
     "kanji:企",
     "kanji:施",
