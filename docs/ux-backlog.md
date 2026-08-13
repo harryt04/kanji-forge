@@ -303,7 +303,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
 
 ## Loop D — Responsive layout (P2)
 
-- [ ] **D1. Desktop wastes roughly half the viewport width, and container
+- [x] **D1. Desktop wastes roughly half the viewport width, and container
       widths are inconsistent screen-to-screen.**
       Evidence: at 1440px, Home's `<main>` is 576px (`max-w-xl`) inside a
       1200px content area. Widths vary: `max-w-xl` (home), `max-w-2xl`
@@ -314,6 +314,10 @@ Functional breakage, not polish. Fix these before anything else in this file.
       applied consistently and documented in one place (a Tailwind config
       constant or a shared layout component), not repeated as a literal string
       per screen.
+      Added the shared `--content-reading-max: 48rem` token and `.reading-page`
+      utility, applied to Home, History, Settings, Writing, and Help. The
+      authenticated `e2e/ux-layout.spec.ts` width check compares the computed
+      max width with the token at 375px and 1440px.
 
 - [ ] **D2. Desktop sidebar scrolls away with the page.**
       Evidence: `<aside>` is `position: static`; measured height equals the

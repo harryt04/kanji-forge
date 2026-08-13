@@ -120,6 +120,10 @@ textarea {
   --text-sm: 0.875rem;
   --text-xs: 0.75rem;
 
+  /* Shared max width for single-column reading screens. Keep these pages
+     legible and consistent without repeating a screen-specific max-w token. */
+  --content-reading-max: 48rem;
+
   /* ---- elevation ("paper object" rule) ---- */
   --shadow-card:
     0 1px 2px rgba(60, 45, 20, 0.06), 0 6px 16px rgba(60, 45, 20, 0.05);
@@ -132,6 +136,13 @@ textarea {
   --duration-page-reveal: 350ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-grade: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@layer utilities {
+  .reading-page {
+    max-width: var(--content-reading-max);
+    margin-inline: auto;
+  }
 }
 
 .dark {

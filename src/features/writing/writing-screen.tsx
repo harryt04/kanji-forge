@@ -270,16 +270,16 @@ export function WritingScreen(): React.ReactElement {
 
   if (!getActiveUserRuntime()) {
     return (
-      <main className="mx-auto grid min-h-[70vh] max-w-3xl place-items-center p-6">
+      <main className="reading-page grid min-h-[70vh] w-full place-items-center p-6">
         <p>Sign in to practice writing.</p>
       </main>
     )
   }
   if (loading)
-    return <main className="mx-auto max-w-3xl p-6" aria-busy="true" />
+    return <main className="reading-page w-full p-6" aria-busy="true" />
   if (error || !content) {
     return (
-      <main className="mx-auto grid min-h-[70vh] max-w-3xl place-items-center p-6">
+      <main className="reading-page grid min-h-[70vh] w-full place-items-center p-6">
         <p role="alert">{error ?? 'Writing practice is unavailable.'}</p>
       </main>
     )
@@ -296,7 +296,7 @@ export function WritingScreen(): React.ReactElement {
   const expectedStrokeIndex = expectedStrokeIndexes[0]
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-6">
+    <main className="reading-page w-full p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           className="text-primary inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"

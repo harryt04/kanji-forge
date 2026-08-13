@@ -134,4 +134,42 @@ test.describe('authenticated layout overflow', () => {
       'Remaining count right edge',
     ).toBeLessThanOrEqual(metrics.clientWidth)
   })
+
+  for (const viewport of [375, 1440]) {
+    test(`uses one reading width token across single-column screens at ${viewport}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: viewport, height: 900 })
+
+      const screens = [
+        '/home',
+        '/history',
+        '/settings',
+        '/writing?contentRef=kanji%3A%E6%97%A5',
+        '/help',
+      ]
+      const maxWidths: string[] = []
+
+      for (const route of screens) {
+        await page.goto(route)
+        const main = page.locator('main.reading-page')
+        await main.waitFor()
+        maxWidths.push(
+          await main.evaluate((element) => {
+            const root = getComputedStyle(document.documentElement)
+            const pageStyle = getComputedStyle(element)
+            return `${pageStyle.maxWidth}|${root.getPropertyValue('--content-reading-max').trim()}`
+          }),
+        )
+      }
+
+      expect(maxWidths).toEqual([
+        '768px|48rem',
+        '768px|48rem',
+        '768px|48rem',
+        '768px|48rem',
+        '768px|48rem',
+      ])
+    })
+  }
 })

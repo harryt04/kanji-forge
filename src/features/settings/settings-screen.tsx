@@ -2215,7 +2215,7 @@ export function SettingsScreen(): React.ReactElement {
     )
 
   return (
-    <main className="mx-auto max-w-2xl p-6 sm:p-8">
+    <main className="reading-page w-full p-6 sm:p-8">
       <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
         環境設定
       </p>

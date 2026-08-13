@@ -20,7 +20,7 @@ export function HelpScreen(): React.ReactElement {
     return <p className="text-muted-foreground p-6">Sign in to open Help.</p>
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-6 sm:p-8">
+    <main className="reading-page w-full space-y-6 p-6 sm:p-8">
       <header className="space-y-2">
         <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
           使い方

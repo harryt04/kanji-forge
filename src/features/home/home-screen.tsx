@@ -364,7 +364,7 @@ export function HomeScreen(): React.ReactElement {
   }
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
+    <main className="reading-page flex w-full flex-col gap-6 p-6">
       <Card>
         <CardHeader>
           <CardTitle>{deckName}</CardTitle>
