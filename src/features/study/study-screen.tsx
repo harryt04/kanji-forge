@@ -512,7 +512,7 @@ export function StudyScreen({
             <p
               className={
                 questionIsJapanese
-                  ? 'font-jp-display text-8xl'
+                  ? 'font-jp-display text-[length:var(--text-display)]'
                   : 'text-3xl font-semibold'
               }
               data-testid="study-question"

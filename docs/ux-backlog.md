@@ -372,7 +372,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
 
 ## Loop E — Design-system conformance (P2)
 
-- [ ] **E1. `--text-display` token defined but never used.**
+- [x] **E1. `--text-display` token defined but never used.**
       Where: [`tokens.css:64`](tokens.css#L64) defines `--text-display: 8.75rem`
       (140px) explicitly for "study-card kanji." The actual study-card glyph
       renders at `text-8xl` (96px); `grep -rn "text-display" src/` finds only
@@ -382,6 +382,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       `BRAND-DESIGN-LANGUAGE.md` are updated to state the actual value with a
       one-line rationale for the deviation. Do not leave a dead, contradicting
       token in place.
+      Study-card kanji now uses `--text-display` (140px) instead of `text-8xl`;
+      the colocated unit test and responsive Chromium/WebKit E2E test verify
+      token usage at 375px and 1440px.
 
 - [ ] **E2. Fold overlay swamps small level chips.**
       Where: `.sticky-shape` fold border-width ladder (6/9/12/16px for levels

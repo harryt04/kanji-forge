@@ -84,6 +84,9 @@ describe('StudyScreen', () => {
 
   it('loads the deck and reveals the card on tap', async () => {
     await renderReady()
+    expect(screen.getByTestId('study-question')).toHaveClass(
+      'text-[length:var(--text-display)]',
+    )
     const revealButton = screen.getByRole('button', { name: 'Reveal (Space)' })
     await userEvent.click(revealButton)
     expect(screen.getByRole('button', { name: /I know/ })).toHaveClass(

@@ -138,4 +138,38 @@ test.describe('offline study', () => {
       }
     }
   })
+
+  test('uses the display-size token for the study kanji at mobile and desktop widths', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.goto('/study')
+
+    for (const width of [375, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      const sizes = await page.evaluate(() => {
+        const question = document.querySelector(
+          '[data-testid="study-question"]',
+        )
+        if (!question) throw new Error('Study question was not rendered.')
+
+        const root = document.documentElement
+        const probe = document.createElement('div')
+        probe.style.fontSize =
+          getComputedStyle(root).getPropertyValue('--text-display')
+        document.body.append(probe)
+        const tokenSize = getComputedStyle(probe).fontSize
+        probe.remove()
+
+        return {
+          renderedSize: getComputedStyle(question).fontSize,
+          tokenSize,
+        }
+      })
+
+      expect(sizes.renderedSize, `study kanji at ${width}px`).toBe(
+        sizes.tokenSize,
+      )
+    }
+  })
 })
