@@ -197,7 +197,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** subhead contrast ≥4.5:1 and H1 contrast ≥3:1
       against every one of the five ramp tile colors, both themes, measured
       the same way as the original audit (composited, not assumed).
-      Added a 94% theme-background scrim behind the hero copy; `e2e/ux-contrast.spec.ts`
+      Added an opaque theme-background scrim behind the hero copy; `e2e/ux-contrast.spec.ts`
       composites it against all five ramp colors and verifies H1/subhead thresholds in light and dark themes (Chromium and WebKit).
 
 - [x] **B3. No active-page indication in nav.**
@@ -404,7 +404,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       and `e2e/ux-fold-overlay.spec.ts` measures visible overlays at 375px and
       1440px across Home, Browse, and Detail.
 
-- [ ] **E3. Dark-theme card/background contrast is razor-thin.**
+- [x] **E3. Dark-theme card/background contrast is razor-thin.**
       Evidence: `--card` vs `--background` measures 1.09:1 dark, 1.05:1
       light — cards are distinguished almost entirely by their 1px border.
       Level-4 swatch `#3a352e` vs dark background `#18120f` measures 1.53:1;
@@ -417,6 +417,11 @@ Functional breakage, not polish. Fix these before anything else in this file.
       minimum, ideally higher); level-4 hairline alpha in dark theme is raised
       toward the light theme's 0.35. State the new values in this item's
       completion note.
+      Raised the warm page/card surfaces to `--background: oklch(92% 0.012 85)`
+      and `--card: oklch(26% 0.014 55)` in the dark theme; rendered contrast is
+      1.237:1 light and 1.208:1 dark. Raised dark `--level-4-border` to 0.35
+      alpha; `e2e/ux-surface-contrast.spec.ts` measures both themes and the
+      rendered hairline (0.349 after 8-bit canvas quantization).
 
 - [ ] **E4. "Reveal (Space)" hint shown on touch devices.**
       Evidence: the primary study-card button always renders "Reveal (Space)"

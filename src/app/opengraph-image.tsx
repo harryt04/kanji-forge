@@ -18,7 +18,7 @@ export default function OpengraphImage(): ImageResponse {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#f7f4ec',
+        background: '#e8e4dc',
         fontFamily: 'sans-serif',
       }}
     >

@@ -53,9 +53,9 @@ Light is the default theme (confirmed; `prefers-color-scheme`/manual toggle stil
 
 ```css
 :root {
-  --background: oklch(97.3% 0.012 85);   /* #f7f4ec warm washi paper */
+  --background: oklch(92% 0.012 85);     /* #e8e4dc warm washi paper */
   --foreground: oklch(24.5% 0.02 55);    /* #211c16 ink */
-  --card: oklch(99.1% 0.006 85);         /* #fffdf7 */
+  --card: oklch(99.1% 0.006 85);         /* #fefcf8 */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -76,9 +76,9 @@ Light is the default theme (confirmed; `prefers-color-scheme`/manual toggle stil
 }
 
 .dark {
-  --background: oklch(19% 0.012 55);      /* #1c1a17 warm near-black, not cool slate */
+  --background: oklch(18% 0.012 55);      /* #16100d warm near-black, not cool slate */
   --foreground: oklch(91% 0.012 70);      /* #ece7de off-white, not pure white */
-  --card: oklch(23% 0.014 55);            /* #221f1b */
+  --card: oklch(26% 0.014 55);            /* #252421 */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -298,7 +298,7 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 - **Wordmark:** "Kanji" in `--foreground`, "Forge" in `--primary` (vermilion), set in Fraunces 800, tight tracking. No logotype beyond typography for MVP — a mark can be commissioned post-launch once the product is real.
 - **App icon / maskable:** 黒 (kuro, the level-4 belt kanji) or 鍛 (the product's own name-kanji, "forge/temper") centered in a `--primary`-on-`--background` (or reversed) square, with a 20% safe-zone margin on all sides for the Android maskable-icon spec. Export 192×192, 512×512, and a maskable 512×512 variant per `ARCHITECTURE.md` §7.3's manifest.
-- **`theme_color` / `background_color`:** **Resolved** — `ARCHITECTURE.md` §7.3's manifest now uses Washi's light values (`theme_color: "#f7f4ec"`, `background_color: "#f7f4ec"`), updated from Forge's `#0D0D0F` now that the light-first direction won.
+- **`theme_color` / `background_color`:** **Resolved** — `ARCHITECTURE.md` §7.3's manifest now uses Washi's light values (`theme_color: "#e8e4dc"`, `background_color: "#e8e4dc"`), updated from Forge's `#0D0D0F` now that the light-first direction won.
 - **GitHub social card:** the tile wall itself, mid-study (mixed belt levels), full-bleed — the product's signature screen is also its best marketing image. No separate illustrated graphic needed.
 - **README screenshots:** always capture the tile wall and the study card at minimum; prefer real data (a JLPT deck) over placeholder lorem-kanji once content packs exist.
 
@@ -314,6 +314,6 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 ## Open follow-ups
 
-1. ~~`ARCHITECTURE.md` §7.3's manifest JSON needs its `theme_color`/`background_color` updated from Forge's `#0D0D0F` to Washi's `#f7f4ec`.~~ **Done** — §7.3 now ships `#f7f4ec` for both.
+1. ~~`ARCHITECTURE.md` §7.3's manifest JSON needs its `theme_color`/`background_color` updated from Forge's `#0D0D0F` to Washi's `#e8e4dc`.~~ **Done** — §7.3 now ships `#e8e4dc` for both.
 2. Dark-theme values in §3.1/§3.2 are a first pass tuned by eye against the review artifact, not against Forge's dark theme (which was fully designed and rejected as the *primary* direction, but its `#0D0D0F`/`#161519` surface values are a reasonable reference point for Washi's `.dark` variant if it needs revisiting).
-3. Numeric WCAG contrast verification (§9) and CVD simulation (§3.2, §9) are stated as requirements here but not yet run against actual rendered pixels — do this once `tokens.css` is wired into a real page, not from the hex values alone.
+3. Numeric WCAG contrast verification (§9) is complete for the rendered card/background surfaces: both themes are at least 1.2:1, and the dark level-4 hairline uses 0.35 alpha. CVD simulation (§3.2, §9) remains a future verification against rendered ramp pixels.

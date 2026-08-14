@@ -53,7 +53,7 @@ export function applyTheme(theme: ResolvedTheme): void {
   const themeColor = document.querySelector<HTMLMetaElement>(
     'meta[name="theme-color"]',
   )
-  if (themeColor) themeColor.content = theme === 'dark' ? '#1c1a17' : '#f7f4ec'
+  if (themeColor) themeColor.content = theme === 'dark' ? '#16100d' : '#e8e4dc'
 }
 
 /** Scales rem-based app typography without overriding browser zoom or user CSS. */

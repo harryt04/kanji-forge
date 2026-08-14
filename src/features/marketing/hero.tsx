@@ -19,7 +19,7 @@ export function Hero(): React.ReactElement {
           as a wall of color.
         </h1>
         <p
-          className="text-muted-foreground mt-6 max-w-xl text-lg text-balance"
+          className="text-foreground mt-6 max-w-xl text-lg text-balance"
           data-testid="marketing-hero-subhead"
         >
           A free, offline-first way to study kanji — the StickyStudy mechanic,

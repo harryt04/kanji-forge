@@ -46,7 +46,7 @@ type AppBadgeNavigator = Omit<Navigator, 'clearAppBadge' | 'setAppBadge'> & {
   clearAppBadge?: () => Promise<void>
 }
 
-const BADGE_ICON_BACKGROUND = '#f7f4ec'
+const BADGE_ICON_BACKGROUND = '#e8e4dc'
 const BADGE_ICON_FOREGROUND = '#27231f'
 const BADGE_ICON_ACCENT = '#c87842'
 

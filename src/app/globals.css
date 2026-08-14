@@ -61,7 +61,7 @@ textarea {
      with the resolved theme, so nothing browser-drawn flashes light on load. */
   color-scheme: light;
   /* ---- shadcn base tokens (light, default theme) ---- */
-  --background: oklch(97.3% 0.012 85);
+  --background: oklch(92% 0.012 85); /* #e8e4dc warm washi paper */
   --foreground: oklch(24.5% 0.02 55);
   --card: oklch(99.1% 0.006 85);
   --card-foreground: var(--foreground);
@@ -163,9 +163,9 @@ textarea {
 
 .dark {
   color-scheme: dark;
-  --background: oklch(19% 0.012 55);
+  --background: oklch(18% 0.012 55); /* #16100d warm near-black */
   --foreground: oklch(91% 0.012 70);
-  --card: oklch(23% 0.014 55);
+  --card: oklch(26% 0.014 55); /* #252421 */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -204,7 +204,7 @@ textarea {
   --level-4: #3a352e;
   --level-4-foreground: #ede9e0;
   --level-0-border: transparent; /* dark theme: level 0 already contrasts against --background */
-  --level-4-border: rgba(237, 233, 224, 0.25);
+  --level-4-border: rgba(237, 233, 224, 0.35);
 }
 
 /* Reduced motion: collapse every duration to instant, unconditionally. */
@@ -389,7 +389,7 @@ textarea {
     marketing-tile-flash 9000ms ease-in-out infinite;
 }
 .marketing-hero-copy {
-  background: color-mix(in srgb, var(--background) 94%, transparent);
+  background: var(--background);
 }
 @media (prefers-reduced-motion: reduce) {
   .marketing-tile {

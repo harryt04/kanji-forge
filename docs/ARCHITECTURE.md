@@ -284,8 +284,8 @@ This is the highest-severity data-loss risk in the whole product. Budget real UX
   "start_url": "/?source=pwa",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f7f4ec",
-  "theme_color": "#f7f4ec",
+  "background_color": "#e8e4dc",
+  "theme_color": "#e8e4dc",
   "icons": [ /* 192, 512, maskable 512 */ ],
   "shortcuts": [
     { "name": "Study",     "url": "/study" },

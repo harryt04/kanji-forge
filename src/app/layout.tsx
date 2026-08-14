@@ -109,7 +109,7 @@ export default function RootLayout({
     >
       <head>
         {/* This meta must precede the theme script: the script patches it in place. */}
-        <meta name="theme-color" content="#f7f4ec" />
+        <meta name="theme-color" content="#e8e4dc" />
         {/* Resolves light/dark before the first paint. Nothing above it renders
             pixels, so a dark-mode visitor never sees a light frame. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

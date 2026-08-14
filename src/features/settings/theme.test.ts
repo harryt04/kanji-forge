@@ -57,11 +57,11 @@ describe('theme preferences', () => {
     applyTheme('dark')
     expect(document.documentElement).toHaveClass('dark')
     expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(meta.content).toBe('#1c1a17')
+    expect(meta.content).toBe('#16100d')
 
     applyTheme('light')
     expect(document.documentElement).not.toHaveClass('dark')
-    expect(meta.content).toBe('#f7f4ec')
+    expect(meta.content).toBe('#e8e4dc')
   })
 
   it('applies the selected font scale to the app root', () => {
