@@ -423,7 +423,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       alpha; `e2e/ux-surface-contrast.spec.ts` measures both themes and the
       rendered hairline (0.349 after 8-bit canvas quantization).
 
-- [ ] **E4. "Reveal (Space)" hint shown on touch devices.**
+- [x] **E4. "Reveal (Space)" hint shown on touch devices.**
       Evidence: the primary study-card button always renders "Reveal (Space)"
       regardless of input method, including on mobile.
       Fix: detect `matchMedia('(pointer: coarse)')` and drop the keyboard
@@ -431,6 +431,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       **Acceptance line:** on a touch/coarse-pointer device (or emulated via
       `pointer: coarse`), the button reads "Reveal" without the keyboard hint;
       on a mouse/fine-pointer device it still shows "Reveal (Space)".
+      StudyScreen now observes `(pointer: coarse)` and removes the keyboard
+      hint from reveal labels only for coarse pointers; unit tests cover both
+      pointer modes, including the two-tap labels.
 
 - [ ] **E5. Level chip accessible names omit the belt name.**
       Evidence: measured `aria-label` values — "Deck color: level 0" and

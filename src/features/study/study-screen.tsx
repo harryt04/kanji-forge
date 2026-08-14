@@ -57,6 +57,7 @@ export function StudyScreen({
   const runtime = getActiveUserRuntime()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [coarsePointer, setCoarsePointer] = useState(false)
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [showTimer, setShowTimer] = useState(false)
@@ -84,6 +85,20 @@ export function StudyScreen({
     const requested = new URL(window.location.href).searchParams.get('deckId')
     setSelectedDeckId(requested || deckDefinitionId)
   }, [deckDefinitionId])
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return
+
+    const pointerQuery = window.matchMedia('(pointer: coarse)')
+    const updatePointer = (): void => setCoarsePointer(pointerQuery.matches)
+    updatePointer()
+    pointerQuery.addEventListener('change', updatePointer)
+    return () => pointerQuery.removeEventListener('change', updatePointer)
+  }, [])
 
   const {
     deckName,
@@ -389,11 +404,12 @@ export function StudyScreen({
   const answerShows = (field: StudyAnswer): boolean =>
     twoTapStudy || studyAnswer.includes(field)
   const showingTwoTapReadings = twoTapStudy && !revealed && twoTapStage === 1
+  const spaceHint = coarsePointer ? '' : ' (Space)'
   const revealLabel = twoTapStudy
     ? showingTwoTapReadings
-      ? 'Show everything (Space)'
-      : 'Show readings (Space)'
-    : 'Reveal (Space)'
+      ? `Show everything${spaceHint}`
+      : `Show readings${spaceHint}`
+    : `Reveal${spaceHint}`
   const studyAnnouncement =
     queue.length === 0
       ? 'Nothing due right now.'
