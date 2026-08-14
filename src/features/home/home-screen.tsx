@@ -29,16 +29,10 @@ import {
   groupDecksByFolder,
   normalizeDeckFolder,
 } from '@/features/settings/deck-folders'
+import { BELT_NAMES, beltLevelLabel } from '@/features/level-rank'
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
-const BELT_NAMES = [
-  'white (Shiro)',
-  'yellow (Ki)',
-  'green (Midori)',
-  'blue (Ao)',
-  'black (Kuro)',
-] as const
 type LevelCounts = readonly [number, number, number, number, number]
 
 interface DeckShelfItem {
@@ -387,6 +381,7 @@ export function HomeScreen(): React.ReactElement {
               <div
                 className={`level-swatch sticky-shape l${data.progressLevel} h-full rounded-full transition-all motion-reduce:transition-none`}
                 data-level={data.progressLevel}
+                aria-hidden="true"
                 style={{ width: `${data.progressPercent}%` }}
               />
             </div>
@@ -502,7 +497,7 @@ export function HomeScreen(): React.ReactElement {
                         <span
                           className="level-swatch sticky-shape h-8 w-8 shrink-0"
                           data-level={deck.progressLevel}
-                          aria-label={`Deck color: level ${deck.progressLevel}`}
+                          aria-label={`Deck color: ${beltLevelLabel(deck.progressLevel)}`}
                         />
                       </div>
                       <div className="mt-3 flex gap-2">
@@ -555,7 +550,7 @@ export function HomeScreen(): React.ReactElement {
                 <span
                   className="level-swatch sticky-shape h-8 w-8 shrink-0"
                   data-level={deck.progressLevel}
-                  aria-label={`Deck color: level ${deck.progressLevel}`}
+                  aria-label={`Deck color: ${beltLevelLabel(deck.progressLevel)}`}
                 />
               </div>
               <div className="mt-3 flex flex-wrap gap-2">

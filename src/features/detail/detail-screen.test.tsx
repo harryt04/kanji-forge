@@ -95,6 +95,10 @@ describe('DetailScreen', () => {
       expect(screen.getByTestId('kanji-detail')).toBeInTheDocument(),
     )
 
+    expect(screen.getByTestId('kanji-detail')).toHaveAttribute(
+      'aria-label',
+      'Level 0, white (Shiro)',
+    )
     expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument()
     expect(
       screen.getByText('day; sun; Japan; counter for days'),

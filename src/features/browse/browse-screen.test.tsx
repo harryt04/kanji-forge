@@ -89,14 +89,20 @@ describe('BrowseScreen', () => {
 
     expect(screen.getAllByTestId('browse-tile')).toHaveLength(200)
     expect(
-      screen.getByRole('gridcell', { name: '日, Level 0, New' }),
+      screen.getByRole('gridcell', {
+        name: '日, Level 0, white (Shiro), New',
+      }),
     ).toBeInTheDocument()
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Show tile view' }),
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
-      screen.getByRole('gridcell', { name: '日, Level 0, New' }).closest('a'),
+      screen
+        .getByRole('gridcell', {
+          name: '日, Level 0, white (Shiro), New',
+        })
+        .closest('a'),
     ).toHaveAttribute(
       'href',
       '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
@@ -307,7 +313,9 @@ describe('BrowseScreen', () => {
     await waitFor(() => expect(screen.getByText('Flagged')).toBeInTheDocument())
     expect(screen.getByText('Level 3 · Known')).toBeInTheDocument()
     expect(
-      screen.getByRole('article', { name: '日, Level 3, Known, flagged' }),
+      screen.getByRole('article', {
+        name: '日, Level 3, blue (Ao), Known, flagged',
+      }),
     ).toBeInTheDocument()
   })
 
@@ -430,7 +438,9 @@ describe('BrowseScreen', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Show flagged only' }))
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
     expect(
-      screen.getByRole('article', { name: /日, Level 3, Known, flagged/ }),
+      screen.getByRole('article', {
+        name: /日, Level 3, blue \(Ao\), Known, flagged/,
+      }),
     ).toBeInTheDocument()
   })
 

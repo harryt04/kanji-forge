@@ -41,6 +41,7 @@ import {
 } from '@/features/study/audio'
 import { listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
+import { beltLevelLabel } from '@/features/level-rank'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
@@ -742,6 +743,7 @@ export function DetailScreen({
         className={`sticky-shape ${LEVEL_SHAPES[level]}`}
         data-level={level}
         data-testid="kanji-detail"
+        aria-label={beltLevelLabel(level)}
       >
         <CardHeader>
           <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">

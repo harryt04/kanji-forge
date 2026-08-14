@@ -435,7 +435,7 @@ Functional breakage, not polish. Fix these before anything else in this file.
       hint from reveal labels only for coarse pointers; unit tests cover both
       pointer modes, including the two-tap labels.
 
-- [ ] **E5. Level chip accessible names omit the belt name.**
+- [x] **E5. Level chip accessible names omit the belt name.**
       Evidence: measured `aria-label` values — "Deck color: level 0" and
       "Level 0, New" — versus `BRAND-DESIGN-LANGUAGE.md` §3.5's spec, e.g.
       "Level 2, green (Midori)."
@@ -443,6 +443,9 @@ Functional breakage, not polish. Fix these before anything else in this file.
       includes both the numeral and the belt name (romaji + kanji or romaji
       alone, matching §3.5's example format), verified on Home, Browse,
       Detail, and Settings.
+      Centralized belt-rank labels and applied them to Home deck swatches,
+      Browse card/tile names, and Detail; unit coverage plus
+      `e2e/ux-level-labels.spec.ts` verifies the four required routes.
 
 ---
 

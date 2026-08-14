@@ -19,6 +19,7 @@ import {
 } from './browse-filter'
 import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
+import { beltLevelLabel } from '@/features/level-rank'
 import {
   BROWSE_LIST_ROW_HEIGHT,
   BROWSE_LIST_VIEWPORT_HEIGHT,
@@ -1079,8 +1080,8 @@ export function BrowseScreen({
               const japanese = tileContent !== 'meaning'
               const accessibleLabel =
                 tileContent === 'kanji'
-                  ? `${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
-                  : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                  ? `${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                  : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
               return (
                 <div
                   key={card.contentRef}
@@ -1179,7 +1180,7 @@ export function BrowseScreen({
                       data-content-ref={card.contentRef}
                       data-testid="browse-card"
                       role="article"
-                      aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
+                      aria-label={`${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
                     >
                       <CardContent className="flex min-w-0 items-center gap-4 p-4 sm:p-5">
                         <label className="flex min-h-11 min-w-11 shrink-0 items-center justify-center">

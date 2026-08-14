@@ -398,6 +398,9 @@ describe('HomeScreen', () => {
     expect(screen.getByText('Level 2, green (Midori)')).toBeInTheDocument()
     expect(screen.getByText('Level 4, black (Kuro)')).toBeInTheDocument()
     expect(
+      screen.getAllByLabelText('Deck color: Level 0, white (Shiro)'),
+    ).not.toHaveLength(0)
+    expect(
       screen.getByRole('img', {
         name: /Level distribution: Level 0, white \(Shiro\): 197 cards/,
       }),
