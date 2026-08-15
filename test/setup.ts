@@ -7,7 +7,10 @@ import { cleanup } from '@testing-library/react'
  * silently drops clientX/clientY. Drawing surfaces then receive NaN
  * coordinates. Back it with MouseEvent, which carries the coordinates.
  */
-if (typeof window !== 'undefined' && !('PointerEvent' in window)) {
+if (
+  typeof window !== 'undefined' &&
+  typeof window.PointerEvent === 'undefined'
+) {
   class PointerEventPolyfill extends MouseEvent {
     readonly pointerId: number
     readonly pointerType: string
