@@ -11,7 +11,7 @@ import {
 } from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
-import { matchStroke } from '@/core/stroke/match'
+import { matchStroke, STROKE_CANVAS } from '@/core/stroke/match'
 import { nextStrokeIndexes } from '@/core/stroke/order'
 import { flattenSvgPath } from '@/core/stroke/resample'
 import {
@@ -31,6 +31,12 @@ interface Point {
 
 const DEFAULT_CONTENT_REF = 'kanji:日'
 
+/**
+ * Rejected attempts allowed before the next stroke is taken regardless. A
+ * learner stuck on stroke 7 of 14 closes the app, so the trainer never blocks.
+ */
+const ASSIST_AFTER_FAILURES = 3
+
 function contentRefFromLocation(): string {
   if (typeof window === 'undefined') return DEFAULT_CONTENT_REF
   return (
@@ -39,19 +45,28 @@ function contentRefFromLocation(): string {
   )
 }
 
+/** Map a pointer position into the KanjiVG coordinate space the guides use. */
 function pointFromEvent(
   event: React.PointerEvent<SVGSVGElement>,
   surface: SVGSVGElement,
 ): Point {
   const bounds = surface.getBoundingClientRect()
+  const width = bounds.width || STROKE_CANVAS
+  const height = bounds.height || STROKE_CANVAS
   return {
     x: Math.max(
       0,
-      Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100),
+      Math.min(
+        STROKE_CANVAS,
+        ((event.clientX - bounds.left) / width) * STROKE_CANVAS,
+      ),
     ),
     y: Math.max(
       0,
-      Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100),
+      Math.min(
+        STROKE_CANVAS,
+        ((event.clientY - bounds.top) / height) * STROKE_CANVAS,
+      ),
     ),
   }
 }
@@ -165,7 +180,7 @@ export function WritingScreen(): React.ReactElement {
         capturedStrokeIndexes,
         paths?.length ?? 0,
       )
-      const acceptedIndex = validationEnabled
+      const matchedIndex = validationEnabled
         ? expectedIndexes.find((index) => {
             const expectedPath = paths?.[index]
             return (
@@ -174,18 +189,28 @@ export function WritingScreen(): React.ReactElement {
             )
           })
         : (expectedIndexes[0] ?? capturedStrokeIndexes.length)
-      const accepted = acceptedIndex !== undefined
-      if (accepted) {
+      // Never hard-block: once the learner has missed ASSIST_AFTER_FAILURES
+      // times, take the stroke anyway so they can finish the character.
+      const assisted =
+        matchedIndex === undefined && failedAttempts >= ASSIST_AFTER_FAILURES
+      const acceptedIndex = assisted
+        ? (expectedIndexes[0] ?? capturedStrokeIndexes.length)
+        : matchedIndex
+      if (acceptedIndex !== undefined) {
         setCapturedStrokes((current) => [...current, [...stroke]])
         setCapturedStrokeIndexes((current) => [...current, acceptedIndex])
         setFailedAttempts(0)
-        setFeedback(null)
+        setFeedback(
+          assisted
+            ? 'Close enough — moving on. Trace the highlighted stroke to feel the shape.'
+            : null,
+        )
       } else {
         const nextFailures = failedAttempts + 1
         setFailedAttempts(nextFailures)
         setFeedback(
-          nextFailures >= 3
-            ? 'Hint: trace the animated stroke from its start.'
+          nextFailures >= ASSIST_AFTER_FAILURES
+            ? 'Trace the animated stroke — the next attempt will be accepted.'
             : nextFailures >= 2
               ? 'Hint: start at the highlighted dot, then follow the stroke.'
               : 'That stroke was not close enough. Try again from the highlighted start.',
@@ -396,7 +421,7 @@ export function WritingScreen(): React.ReactElement {
           <svg
             ref={surfaceRef}
             className="bg-background aspect-square w-full touch-none select-none"
-            viewBox="0 0 100 100"
+            viewBox={`0 0 ${STROKE_CANVAS} ${STROKE_CANVAS}`}
             role="application"
             aria-label={`Writing canvas for ${content.literal}`}
             onPointerDown={beginStroke}
@@ -407,26 +432,26 @@ export function WritingScreen(): React.ReactElement {
             <rect
               x="0.5"
               y="0.5"
-              width="99"
-              height="99"
+              width={STROKE_CANVAS - 1}
+              height={STROKE_CANVAS - 1}
               fill="none"
               stroke="currentColor"
               opacity="0.25"
             />
             <line
-              x1="50"
+              x1={STROKE_CANVAS / 2}
               y1="0"
-              x2="50"
-              y2="100"
+              x2={STROKE_CANVAS / 2}
+              y2={STROKE_CANVAS}
               stroke="currentColor"
               strokeDasharray="1.5 1.5"
               opacity="0.2"
             />
             <line
               x1="0"
-              y1="50"
-              x2="100"
-              y2="50"
+              y1={STROKE_CANVAS / 2}
+              x2={STROKE_CANVAS}
+              y2={STROKE_CANVAS / 2}
               stroke="currentColor"
               strokeDasharray="1.5 1.5"
               opacity="0.2"
@@ -445,10 +470,10 @@ export function WritingScreen(): React.ReactElement {
               />
             )) ?? (
               <text
-                x="50"
-                y="64"
+                x={STROKE_CANVAS / 2}
+                y="70"
                 textAnchor="middle"
-                fontSize="60"
+                fontSize="65"
                 fill="currentColor"
                 opacity="0.1"
                 lang="ja"

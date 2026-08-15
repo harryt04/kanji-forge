@@ -41,6 +41,24 @@ function fixtureFetch(): typeof fetch {
   }) as unknown as typeof fetch
 }
 
+/**
+ * Size the canvas to the KanjiVG box so client coordinates in a test map one to
+ * one onto the guide's own coordinates.
+ */
+function mockCanvasBounds(surface: HTMLElement): void {
+  vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({
+    bottom: 109,
+    height: 109,
+    left: 0,
+    right: 109,
+    top: 0,
+    width: 109,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  })
+}
+
 beforeEach(() => {
   vi.stubGlobal('fetch', fixtureFetch())
   window.history.replaceState({}, '', '/writing?contentRef=kanji%3A%E6%97%A5')
@@ -141,7 +159,8 @@ describe('WritingScreen', () => {
     const select = await screen.findByRole('combobox', {
       name: 'Stroke matching tolerance',
     })
-    await user.selectOptions(select, 'forgiving')
+    expect(select).toHaveValue('forgiving')
+    await user.selectOptions(select, 'strict')
 
     const runtime = getActiveUserRuntime()
     await waitFor(async () =>
@@ -149,7 +168,7 @@ describe('WritingScreen', () => {
         await createUserRepositories(runtime!.database).settings.get(
           WRITING_LENIENCY_SETTING,
         ),
-      ).toMatchObject({ value: 'forgiving' }),
+      ).toMatchObject({ value: 'strict' }),
     )
 
     unmount()
@@ -158,7 +177,60 @@ describe('WritingScreen', () => {
       await screen.findByRole('combobox', {
         name: 'Stroke matching tolerance',
       }),
-    ).toHaveValue('forgiving')
+    ).toHaveValue('strict')
+  })
+
+  it('accepts a correctly traced stroke while validation is on', async () => {
+    bootstrapUserRuntime('writing-accept-user')
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    mockCanvasBounds(surface)
+
+    // 日's first stroke: a thin vertical from (31.5,24.5) to (33.2,89.5).
+    // Traced a little off, the way a trackpad drag lands.
+    fireEvent.pointerDown(surface, { pointerId: 1, clientX: 32, clientY: 26 })
+    for (const y of [40, 55, 70, 82]) {
+      fireEvent.pointerMove(surface, { pointerId: 1, clientX: 34, clientY: y })
+    }
+    fireEvent.pointerUp(surface, { pointerId: 1, clientX: 33, clientY: 88 })
+
+    await waitFor(() =>
+      expect(screen.getByText('1 stroke captured of 4')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText(/not close enough/)).not.toBeInTheDocument()
+  })
+
+  it('takes the stroke anyway after three rejected attempts', async () => {
+    bootstrapUserRuntime('writing-assist-user')
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    mockCanvasBounds(surface)
+
+    const drawWrongStroke = (pointerId: number): void => {
+      fireEvent.pointerDown(surface, { pointerId, clientX: 100, clientY: 5 })
+      fireEvent.pointerMove(surface, { pointerId, clientX: 60, clientY: 8 })
+      fireEvent.pointerUp(surface, { pointerId, clientX: 20, clientY: 10 })
+    }
+
+    drawWrongStroke(1)
+    drawWrongStroke(2)
+    drawWrongStroke(3)
+    expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
+    expect(
+      screen.getByText(/next attempt will be accepted/),
+    ).toBeInTheDocument()
+
+    drawWrongStroke(4)
+    await waitFor(() =>
+      expect(screen.getByText('1 stroke captured of 4')).toBeInTheDocument(),
+    )
+    expect(screen.getByText(/Close enough — moving on/)).toBeInTheDocument()
   })
 
   it('escalates writing hints after repeated rejected strokes', async () => {
@@ -168,17 +240,7 @@ describe('WritingScreen', () => {
     const surface = await screen.findByRole('application', {
       name: 'Writing canvas for 日',
     })
-    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({
-      bottom: 100,
-      height: 100,
-      left: 0,
-      right: 100,
-      top: 0,
-      width: 100,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    })
+    mockCanvasBounds(surface)
     const rejectStroke = (pointerId: number): void => {
       fireEvent.pointerDown(surface, { pointerId, clientX: 0, clientY: 0 })
       fireEvent.pointerMove(surface, {
