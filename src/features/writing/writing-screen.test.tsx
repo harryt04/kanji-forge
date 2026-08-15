@@ -268,7 +268,7 @@ describe('WritingScreen', () => {
     expect(screen.queryByLabelText(/Captured stroke/)).not.toBeInTheDocument()
   })
 
-  it('leaves a finished drill repetition on screen for the drill controls', async () => {
+  it('keeps the finished repetition on screen until the advance delay elapses', async () => {
     bootstrapUserRuntime('writing-drill-noclear-user')
     render(<WritingScreen />)
 
@@ -287,12 +287,57 @@ describe('WritingScreen', () => {
       fireEvent.pointerUp(surface, { pointerId, clientX: 80, clientY: 80 })
     }
 
+    // Fake timers must be in place before the last stroke schedules the
+    // auto-advance timeout, or advancing them later has nothing to act on.
+    vi.useFakeTimers()
     for (let index = 0; index < 4; index += 1) drawStroke(index + 1)
 
     expect(screen.getByText('4 strokes captured of 4')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Next repetition' }),
     ).toBeEnabled()
+  })
+
+  it('advances to the next repetition automatically once it is drawn correctly', async () => {
+    bootstrapUserRuntime('writing-drill-autoadvance-user')
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    mockCanvasBounds(surface)
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Check stroke order' }),
+    )
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Repetitions' }), {
+      target: { value: '2' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Start drill' }))
+    expect(screen.getByText('Repetition 1 of 2')).toBeInTheDocument()
+
+    const drawStroke = (pointerId: number): void => {
+      fireEvent.pointerDown(surface, { pointerId, clientX: 20, clientY: 20 })
+      fireEvent.pointerMove(surface, { pointerId, clientX: 70, clientY: 70 })
+      fireEvent.pointerUp(surface, { pointerId, clientX: 80, clientY: 80 })
+    }
+
+    vi.useFakeTimers()
+    for (let index = 0; index < 4; index += 1) drawStroke(index + 1)
+    expect(screen.getByText(/starting the next repetition/)).toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(1200))
+
+    expect(screen.getByText('Repetition 2 of 2')).toBeInTheDocument()
+    expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
+
+    for (let index = 0; index < 4; index += 1) drawStroke(index + 10)
+    expect(screen.getByText(/drill complete/i)).toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(1200))
+
+    expect(
+      screen.getByText('Drill complete — 2 repetitions finished.'),
+    ).toBeInTheDocument()
   })
 
   it('escalates writing hints after repeated rejected strokes', async () => {

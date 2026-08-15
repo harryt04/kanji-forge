@@ -6,7 +6,8 @@ import { getActiveUserRuntime } from '@/auth/runtime'
 import {
   getKanjiByLiterals,
   getKanjiStrokes,
-  parseContentRef,
+  loadDeckDefinitions,
+  type DeckDefinition,
   type KanjiRecord,
 } from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
@@ -14,6 +15,7 @@ import { Button } from '@/ui/button'
 import { matchStroke, STROKE_CANVAS } from '@/core/stroke/match'
 import { nextStrokeIndexes } from '@/core/stroke/order'
 import { flattenSvgPath } from '@/core/stroke/resample'
+import { loadWritingQueue, type WritingQueueEntry } from './writing-queue'
 import {
   DEFAULT_WRITING_LENIENCY,
   isWritingLeniency,
@@ -29,7 +31,7 @@ interface Point {
   readonly y: number
 }
 
-const DEFAULT_CONTENT_REF = 'kanji:日'
+const DEFAULT_DECK_ID = 'dev-kanji'
 
 /**
  * Rejected attempts allowed before the next stroke is taken regardless. A
@@ -40,12 +42,21 @@ const ASSIST_AFTER_FAILURES = 3
 /** How long the finished character stays on screen before the canvas resets. */
 const AUTO_CLEAR_DELAY_MS = 500
 
-function contentRefFromLocation(): string {
-  if (typeof window === 'undefined') return DEFAULT_CONTENT_REF
+interface DeckOption {
+  readonly id: string
+  readonly name: string
+}
+
+function deckIdFromLocation(fallback: string): string {
+  if (typeof window === 'undefined') return fallback
   return (
-    new URL(window.location.href).searchParams.get('contentRef') ??
-    DEFAULT_CONTENT_REF
+    new URL(window.location.href).searchParams.get('deckId') ?? fallback
   )
+}
+
+function requestedContentRefFromLocation(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URL(window.location.href).searchParams.get('contentRef')
 }
 
 /** Map a pointer position into the KanjiVG coordinate space the guides use. */
@@ -224,21 +235,41 @@ export function WritingScreen(): React.ReactElement {
     setDraftStroke([])
   }
 
-  // Outside a drill, finishing the character just leaves it filled in with no
-  // way to go again short of clicking "Clear all". Reset automatically once
-  // every stroke is captured, after a pause long enough to see the result.
-  // The drill flow is exempt: it manages its own reset between repetitions
-  // and ends on a summary rather than a blank canvas.
+  // Finishing the character just leaves it filled in with no way to go again
+  // short of clicking a button. Move on automatically once every stroke is
+  // captured, after a pause long enough to see the result: outside a drill
+  // that means clearing the canvas, and inside a drill it means the same
+  // advance the "Next repetition" / "Finish drill" button would trigger.
   useEffect(() => {
-    if (drillAttempt > 0) return
     if (!paths || paths.length === 0 || capturedStrokes.length < paths.length)
       return
-    setFeedback('Nicely drawn — clearing the canvas so you can try again.')
+    const inDrill = drillAttempt > 0 && !drillComplete
+    const lastRepetition = inDrill && drillAttempt >= drillRepetitions
+    setFeedback(
+      lastRepetition
+        ? 'Nicely drawn — drill complete.'
+        : inDrill
+          ? 'Nicely drawn — starting the next repetition.'
+          : 'Nicely drawn — clearing the canvas so you can try again.',
+    )
     const timeout = window.setTimeout(() => {
-      clearStrokes()
+      if (lastRepetition) {
+        setDrillComplete(true)
+      } else if (inDrill) {
+        clearStrokes()
+        setDrillAttempt((current) => current + 1)
+      } else {
+        clearStrokes()
+      }
     }, AUTO_CLEAR_DELAY_MS)
     return () => window.clearTimeout(timeout)
-  }, [capturedStrokes.length, paths, drillAttempt])
+  }, [
+    capturedStrokes.length,
+    paths,
+    drillAttempt,
+    drillComplete,
+    drillRepetitions,
+  ])
 
   function clearStrokes(): void {
     activePointerId.current = null
