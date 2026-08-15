@@ -437,4 +437,79 @@ describe('WritingScreen', () => {
       screen.getByText('Drill complete — 2 repetitions finished.'),
     ).toBeInTheDocument()
   })
+
+  it('walks the whole deck, not just one kanji', async () => {
+    bootstrapUserRuntime('writing-queue-user')
+    const user = userEvent.setup()
+    window.history.replaceState({}, '', '/writing')
+    render(<WritingScreen />)
+
+    // The deck's first entry is not necessarily 日 — the trainer follows the
+    // same SRS-ordered queue Study would use.
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Development Kanji · Character 1 of \d+/),
+      ).toBeInTheDocument(),
+    )
+    const firstHeading = screen.getByRole('heading', { level: 1 })
+    const firstLiteral = firstHeading.textContent
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Development Kanji · Character 2 of \d+/),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).not.toBe(
+      firstLiteral,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Previous' }))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+        firstLiteral,
+      ),
+    )
+  })
+
+  it('switches decks and expands a word deck into its kanji', async () => {
+    bootstrapUserRuntime('writing-deck-switch-user')
+    window.history.replaceState({}, '', '/writing')
+    render(<WritingScreen />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Development Kanji · Character 1 of \d+/),
+      ).toBeInTheDocument(),
+    )
+    const deckSelect = screen.getByRole('combobox', { name: 'Deck' })
+    await waitFor(() =>
+      expect(
+        Array.from(deckSelect.querySelectorAll('option')).map(
+          (option) => option.textContent,
+        ),
+      ).toContain('Development Words'),
+    )
+
+    fireEvent.change(deckSelect, {
+      target: { value: 'dev-words' },
+    })
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Development Words · Character 1 of \d+/),
+      ).toBeInTheDocument(),
+    )
+    // Every option in the character picker must be a single kanji, never kana.
+    const characterSelect = screen.getByRole('combobox', {
+      name: 'Character',
+    })
+    for (const option of Array.from(
+      characterSelect.querySelectorAll('option'),
+    )) {
+      expect(option.textContent).toMatch(/^[一-鿿㐀-䶿]$/u)
+    }
+  })
 })
