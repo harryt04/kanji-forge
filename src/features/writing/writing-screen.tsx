@@ -38,7 +38,7 @@ const DEFAULT_CONTENT_REF = 'kanji:日'
 const ASSIST_AFTER_FAILURES = 3
 
 /** How long the finished character stays on screen before the canvas resets. */
-const AUTO_CLEAR_DELAY_MS = 1200
+const AUTO_CLEAR_DELAY_MS = 500
 
 function contentRefFromLocation(): string {
   if (typeof window === 'undefined') return DEFAULT_CONTENT_REF
