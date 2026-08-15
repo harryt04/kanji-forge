@@ -5,6 +5,14 @@
 
 @import 'tailwindcss';
 
+/* Native controls must stay at the base size on mobile so focusing them does
+   not trigger iOS Safari's automatic viewport zoom. */
+input,
+select,
+textarea {
+  font-size: var(--text-base);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -53,7 +61,7 @@
      with the resolved theme, so nothing browser-drawn flashes light on load. */
   color-scheme: light;
   /* ---- shadcn base tokens (light, default theme) ---- */
-  --background: oklch(97.3% 0.012 85);
+  --background: oklch(92% 0.012 85); /* #e8e4dc warm washi paper */
   --foreground: oklch(24.5% 0.02 55);
   --card: oklch(99.1% 0.006 85);
   --card-foreground: var(--foreground);
@@ -112,6 +120,10 @@
   --text-sm: 0.875rem;
   --text-xs: 0.75rem;
 
+  /* Shared max width for single-column reading screens. Keep these pages
+     legible and consistent without repeating a screen-specific max-w token. */
+  --content-reading-max: 48rem;
+
   /* ---- elevation ("paper object" rule) ---- */
   --shadow-card:
     0 1px 2px rgba(60, 45, 20, 0.06), 0 6px 16px rgba(60, 45, 20, 0.05);
@@ -126,11 +138,34 @@
   --ease-grade: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+@layer utilities {
+  .reading-page {
+    max-width: var(--content-reading-max);
+    margin-inline: auto;
+  }
+}
+
+/* The mobile primary nav intentionally remains horizontally scrollable so all
+ * seven destinations keep their full labels. This edge fade makes the hidden
+ * destinations discoverable without intercepting swipe or link input. */
+.navigation-overflow-cue {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 2rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--background) 96%, transparent)
+  );
+}
+
 .dark {
   color-scheme: dark;
-  --background: oklch(19% 0.012 55);
+  --background: oklch(18% 0.012 55); /* #16100d warm near-black */
   --foreground: oklch(91% 0.012 70);
-  --card: oklch(23% 0.014 55);
+  --card: oklch(26% 0.014 55); /* #252421 */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -169,7 +204,7 @@
   --level-4: #3a352e;
   --level-4-foreground: #ede9e0;
   --level-0-border: transparent; /* dark theme: level 0 already contrasts against --background */
-  --level-4-border: rgba(237, 233, 224, 0.25);
+  --level-4-border: rgba(237, 233, 224, 0.35);
 }
 
 /* Reduced motion: collapse every duration to instant, unconditionally. */
@@ -202,6 +237,16 @@
   }
 }
 
+/* Form controls need the same minimum hit height as buttons. Keep the native
+ * checkbox/radio glyphs compact; their surrounding labels own the hit area. */
+@layer base {
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  select,
+  textarea {
+    min-height: 2.75rem;
+  }
+}
+
 /* Shape encoding — the always-on fold overlay. Apply `.sticky-shape` plus one
  * of `.l0`..`.l4` to any sticky-shaped element (tile-wall cells, deck chips,
  * study-card level strip). Reads by luminance contrast alone, independent of
@@ -217,43 +262,58 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
+  width: min(16px, 35%);
+  height: min(16px, 35%);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
 .sticky-shape::before {
-  border-color: transparent rgba(0, 0, 0, 0.32) transparent transparent;
+  background: rgba(0, 0, 0, 0.32);
 }
 .sticky-shape::after {
-  border-color: transparent rgba(255, 255, 255, 0.92) transparent transparent;
+  width: min(15px, max(0px, calc(35% - 1px)));
+  height: min(15px, max(0px, calc(35% - 1px)));
+  background: rgba(255, 255, 255, 0.92);
 }
 .sticky-shape.l0::before,
 .sticky-shape.l0::after {
-  border-width: 0;
+  width: 0;
+  height: 0;
 }
-.sticky-shape.l1::before {
-  border-width: 0 6px 6px 0;
+.sticky-shape.l1::before,
+.sticky-shape.l1::after {
+  width: min(6px, 20%);
+  height: min(6px, 20%);
+}
+.sticky-shape.l2::before,
+.sticky-shape.l2::after {
+  width: min(9px, 25%);
+  height: min(9px, 25%);
+}
+.sticky-shape.l3::before,
+.sticky-shape.l3::after {
+  width: min(12px, 30%);
+  height: min(12px, 30%);
+}
+.sticky-shape.l4::before,
+.sticky-shape.l4::after {
+  width: min(16px, 35%);
+  height: min(16px, 35%);
 }
 .sticky-shape.l1::after {
-  border-width: 0 5px 5px 0;
-}
-.sticky-shape.l2::before {
-  border-width: 0 9px 9px 0;
+  width: min(5px, max(0px, calc(20% - 1px)));
+  height: min(5px, max(0px, calc(20% - 1px)));
 }
 .sticky-shape.l2::after {
-  border-width: 0 8px 8px 0;
-}
-.sticky-shape.l3::before {
-  border-width: 0 12px 12px 0;
+  width: min(8px, max(0px, calc(25% - 1px)));
+  height: min(8px, max(0px, calc(25% - 1px)));
 }
 .sticky-shape.l3::after {
-  border-width: 0 11px 11px 0;
-}
-.sticky-shape.l4::before {
-  border-width: 0 16px 16px 0;
+  width: min(11px, max(0px, calc(30% - 1px)));
+  height: min(11px, max(0px, calc(30% - 1px)));
 }
 .sticky-shape.l4::after {
-  border-width: 0 15px 15px 0;
+  width: min(15px, max(0px, calc(35% - 1px)));
+  height: min(15px, max(0px, calc(35% - 1px)));
 }
 
 /* Level swatch helper — background/foreground/hairline-border in one class,
@@ -327,6 +387,9 @@
   animation:
     marketing-tile-breathe 4200ms ease-in-out infinite,
     marketing-tile-flash 9000ms ease-in-out infinite;
+}
+.marketing-hero-copy {
+  background: var(--background);
 }
 @media (prefers-reduced-motion: reduce) {
   .marketing-tile {

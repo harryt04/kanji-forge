@@ -50,6 +50,18 @@ function fixtureFetch(): typeof fetch {
 let userId = 0
 const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
 
+function setPointerCoarse(coarse: boolean): void {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({
+      matches: coarse,
+      media: '(pointer: coarse)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  )
+}
+
 beforeEach(() => {
   vi.stubGlobal('fetch', fixtureFetch())
   userId += 1
@@ -63,6 +75,7 @@ afterEach(() => {
     Reflect.deleteProperty(navigator, 'storage')
   }
   vi.useRealTimers()
+  vi.unstubAllGlobals()
   cleanup()
   clearUserRuntime()
   useStudyStore.setState(useStudyStore.getInitialState(), true)
@@ -84,9 +97,39 @@ describe('StudyScreen', () => {
 
   it('loads the deck and reveals the card on tap', async () => {
     await renderReady()
+    expect(screen.getByTestId('study-question')).toHaveClass(
+      'text-[length:var(--text-display)]',
+    )
     const revealButton = screen.getByRole('button', { name: 'Reveal (Space)' })
     await userEvent.click(revealButton)
-    expect(screen.getByRole('button', { name: /I know/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /I know/ })).toHaveClass(
+      'bg-success',
+    )
+    expect(screen.getByRole('button', { name: /No problem/ })).toHaveClass(
+      'bg-perfect',
+    )
+  })
+
+  it('hides the keyboard hint on coarse-pointer devices', async () => {
+    setPointerCoarse(true)
+    await renderReady()
+
+    expect(screen.getByRole('button', { name: 'Reveal' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Reveal (Space)' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the keyboard hint on fine-pointer devices', async () => {
+    setPointerCoarse(false)
+    await renderReady()
+
+    expect(
+      screen.getByRole('button', { name: 'Reveal (Space)' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Reveal' }),
+    ).not.toBeInTheDocument()
   })
 
   it('announces study-card position and reveal state to assistive technology', async () => {

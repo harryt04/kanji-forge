@@ -27,9 +27,13 @@ export function resamplePolyline(
   if (total === 0) return Array.from({ length: count }, () => points[0]!)
 
   return Array.from({ length: count }, (_, sampleIndex) => {
-    const target = (total * sampleIndex) / (count - 1)
+    // Rounding can push the final target a hair past `total`, so clamp both the
+    // target and the segment index; otherwise the walk runs off the end of
+    // `lengths` and every sampled coordinate becomes NaN.
+    const target = Math.min((total * sampleIndex) / (count - 1), total)
     let segment = 1
-    while (segment < lengths.length && lengths[segment]! < target) segment += 1
+    while (segment < lengths.length - 1 && lengths[segment]! < target)
+      segment += 1
     const start = points[segment - 1]!
     const end = points[Math.min(segment, points.length - 1)]!
     const span = lengths[segment]! - lengths[segment - 1]!

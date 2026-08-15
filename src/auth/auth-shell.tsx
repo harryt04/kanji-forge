@@ -189,6 +189,7 @@ export function AuthShell({
                   autoComplete={
                     mode === 'sign-in' ? 'current-password' : 'new-password'
                   }
+                  aria-label="Password"
                   aria-describedby={
                     mode === 'register' ? passwordHintId : undefined
                   }

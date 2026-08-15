@@ -19,6 +19,7 @@ import {
 } from './browse-filter'
 import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
+import { beltLevelLabel } from '@/features/level-rank'
 import {
   BROWSE_LIST_ROW_HEIGHT,
   BROWSE_LIST_VIEWPORT_HEIGHT,
@@ -637,12 +638,14 @@ export function BrowseScreen({
 
   return (
     <main
-      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${hasDetailPane ? 'max-w-[96rem] lg:grid-cols-[minmax(22rem,0.9fr)_minmax(28rem,1.1fr)] lg:items-start' : 'max-w-3xl'}`}
+      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${hasDetailPane ? 'max-w-[96rem] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start' : 'max-w-3xl'}`}
     >
       <section className="grid min-w-0 gap-6">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-jp-ui text-muted-foreground text-sm">一覧</p>
+        <header className="flex min-w-0 flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+              一覧
+            </p>
             <h1 className="font-display mt-1 text-3xl font-bold">Browse</h1>
             <p className="text-muted-foreground mt-2">
               {deck.name} ·{' '}
@@ -656,14 +659,14 @@ export function BrowseScreen({
           </Button>
         </header>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold">View</h2>
             <p className="text-muted-foreground text-sm">
               Tiles make the filtered deck visible at a glance.
             </p>
           </div>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-0 flex-wrap items-end gap-3">
             <label className="grid gap-1" htmlFor="browse-tile-content">
               <span className="text-muted-foreground text-xs">
                 Tile content
@@ -731,7 +734,7 @@ export function BrowseScreen({
           </div>
         </div>
 
-        <div className="border-border flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+        <div className="border-border flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border p-3">
           <p className="text-muted-foreground text-sm">
             Choose the same view, tile content, and zoom automatically for
             future decks.
@@ -830,8 +833,8 @@ export function BrowseScreen({
           className="border-border grid gap-4 rounded-lg border p-4"
           aria-labelledby="browse-filters-heading"
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div>
+          <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-3">
+            <div className="min-w-0">
               <h2 id="browse-filters-heading" className="font-semibold">
                 Filter cards
               </h2>
@@ -881,7 +884,7 @@ export function BrowseScreen({
               </select>
             </label>
 
-            <label className="flex min-h-10 items-center gap-3 self-end pb-2">
+            <label className="flex min-h-11 items-center gap-3 self-end pb-2">
               <input
                 type="checkbox"
                 checked={filters.flagged}
@@ -966,8 +969,8 @@ export function BrowseScreen({
           className="border-border grid gap-3 rounded-lg border p-4"
           aria-label="Bulk card actions"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
               <h2 className="font-semibold">Select cards</h2>
               <p className="text-muted-foreground mt-1 text-sm">
                 {selectedContentRefs.size === 0
@@ -975,7 +978,7 @@ export function BrowseScreen({
                   : `${selectedContentRefs.size} selected${selectedVisibleCount < selectedContentRefs.size ? ` · ${selectedVisibleCount} visible` : ''}.`}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -997,7 +1000,7 @@ export function BrowseScreen({
             </div>
           </div>
           {selectedContentRefs.size > 0 && (
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="flex min-w-0 flex-wrap items-end gap-3">
               <Button
                 type="button"
                 size="sm"
@@ -1077,15 +1080,15 @@ export function BrowseScreen({
               const japanese = tileContent !== 'meaning'
               const accessibleLabel =
                 tileContent === 'kanji'
-                  ? `${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
-                  : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                  ? `${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                  : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
               return (
                 <div
                   key={card.contentRef}
                   className="relative min-w-0"
                   data-testid="browse-tile-shell"
                 >
-                  <label className="bg-background/90 absolute top-1 left-1 z-10 rounded p-1 shadow-sm">
+                  <label className="bg-background/90 absolute top-1 left-1 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded p-1 shadow-sm">
                     <span className="sr-only">Select {card.literal}</span>
                     <input
                       type="checkbox"
@@ -1177,10 +1180,10 @@ export function BrowseScreen({
                       data-content-ref={card.contentRef}
                       data-testid="browse-card"
                       role="article"
-                      aria-label={`${card.literal}, Level ${level}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
+                      aria-label={`${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
                     >
-                      <CardContent className="flex items-center gap-4 p-4 sm:p-5">
-                        <label className="shrink-0">
+                      <CardContent className="flex min-w-0 items-center gap-4 p-4 sm:p-5">
+                        <label className="flex min-h-11 min-w-11 shrink-0 items-center justify-center">
                           <span className="sr-only">Select {card.literal}</span>
                           <input
                             type="checkbox"
@@ -1195,15 +1198,15 @@ export function BrowseScreen({
                           data-level={level}
                           aria-hidden="true"
                         >
-                          <span className="font-jp-display">
+                          <span className="font-jp-display" lang="ja">
                             {card.literal}
                           </span>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                             <h2 className="font-jp-ui text-lg" lang="ja">
                               <Link
-                                className="text-primary underline underline-offset-2"
+                                className="text-primary inline-flex min-h-11 min-w-11 items-center underline underline-offset-2"
                                 href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
                                 aria-label={`View details for ${card.literal}`}
                               >
@@ -1219,7 +1222,10 @@ export function BrowseScreen({
                               </span>
                             )}
                           </div>
-                          <p className="font-jp-ui text-muted-foreground mt-1 text-sm">
+                          <p
+                            className="font-jp-ui text-muted-foreground mt-1 text-sm"
+                            lang="ja"
+                          >
                             {reading || 'No reading recorded'}
                           </p>
                           <p className="text-muted-foreground mt-1 truncate text-sm">

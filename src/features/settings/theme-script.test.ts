@@ -95,7 +95,7 @@ describe('pre-paint theme script', () => {
       dark: 'true',
       theme: 'dark',
       fontScale: 'default',
-      themeColor: '#1c1a17',
+      themeColor: '#16100d',
     })
   })
 
@@ -108,7 +108,7 @@ describe('pre-paint theme script', () => {
       dark: 'false',
       theme: 'light',
       fontScale: 'default',
-      themeColor: '#f7f4ec',
+      themeColor: '#e8e4dc',
     })
   })
 

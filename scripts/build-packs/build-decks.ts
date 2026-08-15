@@ -317,9 +317,11 @@ function deck(
  * unsorted in the app.
  */
 function classify(id: string): { category: DeckCategory; sortOrder: number } {
-  const jlptRank = (level: string) => levels.indexOf(level.toUpperCase() as Level)
+  const jlptRank = (level: string) =>
+    levels.indexOf(level.toUpperCase() as Level)
   const jlptKanji = /^jlpt-kanji-(n[1-5])$/.exec(id)
-  if (jlptKanji) return { category: 'jlpt', sortOrder: jlptRank(jlptKanji[1]) + 1 }
+  if (jlptKanji)
+    return { category: 'jlpt', sortOrder: jlptRank(jlptKanji[1]) + 1 }
   const jlptVocabulary = /^jlpt-vocabulary-(n[1-5])$/.exec(id)
   if (jlptVocabulary)
     return { category: 'jlpt', sortOrder: jlptRank(jlptVocabulary[1]) + 11 }
@@ -343,7 +345,9 @@ function withTaxonomy(drafts: DraftDeck[]): Deck[] {
     const { category, sortOrder } = classify(draft.id)
     const key = `${category} ${sortOrder}`
     if (seen.has(key))
-      fail(`duplicate shelf position ${category}#${sortOrder} at deck ${draft.id}`)
+      fail(
+        `duplicate shelf position ${category}#${sortOrder} at deck ${draft.id}`,
+      )
     seen.add(key)
     return {
       id: draft.id,
@@ -868,8 +872,7 @@ function writeCatalogAtomically(
         decks: [...shippedDecks].sort(
           (a, b) =>
             deckCategories.indexOf(a.category) -
-              deckCategories.indexOf(b.category) ||
-            a.sortOrder - b.sortOrder,
+              deckCategories.indexOf(b.category) || a.sortOrder - b.sortOrder,
         ),
       }) + '\n',
     )

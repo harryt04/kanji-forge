@@ -2215,11 +2215,61 @@ export function SettingsScreen(): React.ReactElement {
     )
 
   return (
-    <main className="mx-auto max-w-2xl p-6 sm:p-8">
-      <p className="font-jp-ui text-muted-foreground text-sm">環境設定</p>
+    <main className="reading-page w-full p-6 sm:p-8">
+      <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+        環境設定
+      </p>
       <h1 className="font-display mt-1 text-3xl font-bold">Settings</h1>
+      <nav
+        className="border-border bg-card mt-6 rounded-[var(--radius)] border p-4"
+        aria-label="Settings sections"
+      >
+        <p className="text-sm font-semibold">Jump to a section</p>
+        <ul className="mt-2 flex flex-wrap gap-1">
+          {[
+            ['appearance-heading', 'Appearance'],
+            ['text-size-heading', 'Text size'],
+            ['news-links-heading', 'Japanese news links'],
+            ['create-deck-heading', 'Create a deck'],
+            ['scheduler-heading', 'Scheduler'],
+            ['study-question-heading', 'Study question'],
+            ['study-answer-heading', 'Study answer'],
+            ['study-taps-heading', 'Study taps'],
+            ['study-audio-heading', 'Study audio'],
+            ['names-dictionary-heading', 'Optional names dictionary'],
+            ['full-dictionary-heading', 'Optional full dictionary'],
+            ['audio-packs-heading', 'Community audio packs'],
+            ['stroke-animation-heading', 'Stroke animation'],
+            ['saving-cards-heading', 'Saving cards'],
+            ['app-icon-badge-heading', 'App icon badge'],
+            ['study-reminder-heading', 'Study reminder'],
+            ['storage-protection-heading', 'Storage protection'],
+            ['deck-name-heading', 'Deck name'],
+            ['deck-organization-heading', 'Deck organization'],
+            ['delete-saved-heading', 'Delete Saved deck'],
+            ['reset-colors-heading', 'Reset colors'],
+            ['reset-statistics-heading', 'Reset statistics'],
+            ['transfer-progress-heading', 'Transfer progress'],
+            ['backup-restore-heading', 'Backup & restore'],
+          ].map(([id, label]) => (
+            <li key={id}>
+              <a
+                className="text-primary hover:bg-muted focus-visible:ring-ring inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                href={`#${id}`}
+              >
+                {label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
       <section className="border-border bg-card mt-8 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Appearance</h2>
+        <h2
+          id="appearance-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Appearance
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Choose how KanjiForge should look. Your choice is saved on this device
           and works offline.
@@ -2253,7 +2303,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Text size</h2>
+        <h2
+          id="text-size-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Text size
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Increase app text and controls for easier reading. This setting is
           saved on this device and works offline.
@@ -2284,7 +2339,12 @@ export function SettingsScreen(): React.ReactElement {
         </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Japanese news links</h2>
+        <h2
+          id="news-links-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Japanese news links
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Keep a personal list of RSS sources and open them in your browser.
           KanjiForge stores URLs only: it does not fetch, cache, or reproduce
@@ -2294,7 +2354,7 @@ export function SettingsScreen(): React.ReactElement {
           <p className="max-w-2xl">
             Try{' '}
             <a
-              className="text-primary font-medium underline-offset-4 hover:underline"
+              className="text-primary inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline"
               href="https://ja.wikinews.org/wiki/メインページ"
               target="_blank"
               rel="noopener noreferrer"
@@ -2359,7 +2419,7 @@ export function SettingsScreen(): React.ReactElement {
               >
                 <div className="min-w-0">
                   <a
-                    className="text-primary font-medium underline-offset-4 hover:underline"
+                    className="text-primary inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline"
                     href={feed.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -2390,7 +2450,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Create a deck</h2>
+        <h2
+          id="create-deck-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Create a deck
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Create a user-owned deck, optionally combining cards from existing
           decks. Duplicate cards are kept once in source order, and the result
@@ -2478,7 +2543,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Scheduler</h2>
+        <h2
+          id="scheduler-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Scheduler
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Adaptive intervals use your review history for due dates while keeping
           the visible five-level belt-rank progression unchanged.
@@ -2510,7 +2580,12 @@ export function SettingsScreen(): React.ReactElement {
         </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Study question</h2>
+        <h2
+          id="study-question-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Study question
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Choose what you recall before revealing the answer. This setting is
           saved on this device and works offline.
@@ -2542,7 +2617,12 @@ export function SettingsScreen(): React.ReactElement {
         </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Study answer</h2>
+        <h2
+          id="study-answer-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Study answer
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Choose which fields appear after revealing the answer. Keep at least
           one field selected. This setting is saved on this device and works
@@ -2583,7 +2663,12 @@ export function SettingsScreen(): React.ReactElement {
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Study taps</h2>
+        <h2
+          id="study-taps-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Study taps
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Use two taps to reveal a card in stages: the word, its readings, then
           all configured details. This overrides the question and answer field
@@ -2607,7 +2692,12 @@ export function SettingsScreen(): React.ReactElement {
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Study audio</h2>
+        <h2
+          id="study-audio-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Study audio
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Use your device&apos;s Japanese speech synthesis after revealing a
           card, or install a licensed community recording pack below.
@@ -2632,7 +2722,12 @@ export function SettingsScreen(): React.ReactElement {
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Optional names dictionary</h2>
+        <h2
+          id="names-dictionary-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Optional names dictionary
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Install the licensed JMnedict SQLite pack to search proper names and
           places offline. A raw names-v1.sqlite file uses the built-in JMnedict
@@ -2683,7 +2778,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Optional full dictionary</h2>
+        <h2
+          id="full-dictionary-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Optional full dictionary
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Install the larger full-JMdict SQLite pack to search less-common
           vocabulary offline. It extends the built-in dictionary without
@@ -2734,7 +2834,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Community audio packs</h2>
+        <h2
+          id="audio-packs-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Community audio packs
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Install a ZIP containing a manifest.json and recordings. Packs are
           stored only in this browser and must include their own license and
@@ -2891,7 +2996,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Stroke animation</h2>
+        <h2
+          id="stroke-animation-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Stroke animation
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Show the offline KanjiVG stroke-order player on kanji detail pages.
         </p>
@@ -2915,7 +3025,12 @@ export function SettingsScreen(): React.ReactElement {
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Saving cards</h2>
+        <h2
+          id="saving-cards-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Saving cards
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Choose whether saving a card to the Saved deck needs confirmation.
           This setting works offline.
@@ -2947,7 +3062,12 @@ export function SettingsScreen(): React.ReactElement {
         </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">App icon badge</h2>
+        <h2
+          id="app-icon-badge-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          App icon badge
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           On supported browsers, choose the number shown on the installed app
           icon. It uses your local deck and works offline.
@@ -2981,7 +3101,12 @@ export function SettingsScreen(): React.ReactElement {
         </div>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Study reminder</h2>
+        <h2
+          id="study-reminder-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Study reminder
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Ask this browser to remind you once a day when cards are due. The
           offline fallback runs while KanjiForge is open. When the server is
@@ -3074,7 +3199,12 @@ export function SettingsScreen(): React.ReactElement {
         ) : null}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Storage protection</h2>
+        <h2
+          id="storage-protection-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Storage protection
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           KanjiForge asks your browser to protect local study data from
           automatic eviction after your first completed study session.
@@ -3124,7 +3254,12 @@ export function SettingsScreen(): React.ReactElement {
         ) : null}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Deck name</h2>
+        <h2
+          id="deck-name-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Deck name
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Give the built-in starter deck a name that makes sense to you. The
           name is saved locally and works offline.
@@ -3167,7 +3302,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Deck organization</h2>
+        <h2
+          id="deck-organization-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Deck organization
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Group your decks into named folders. Folder labels are saved on this
           device and work offline; leave a label empty to keep a deck in
@@ -3255,7 +3395,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Delete Saved deck</h2>
+        <h2
+          id="delete-saved-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Delete Saved deck
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Remove the Saved deck and its cards, progress, notes, and review
           history from this device. The built-in starter deck is not affected;
@@ -3277,7 +3422,12 @@ export function SettingsScreen(): React.ReactElement {
         </Button>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Reset colors</h2>
+        <h2
+          id="reset-colors-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Reset colors
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Return every studied card in the starter deck to New without deleting
           review totals, flags, or history. This is useful when you want to
@@ -3299,7 +3449,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Reset statistics</h2>
+        <h2
+          id="reset-statistics-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Reset statistics
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Clear the starter deck&apos;s review history, daily activity, and
           study time, and return its touched cards to New. Flags and notes are
@@ -3322,7 +3477,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Transfer progress</h2>
+        <h2
+          id="transfer-progress-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Transfer progress
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Copy the starter deck&apos;s studied levels, schedules, and review
           totals to matching cards in Saved. Untouched cards are skipped, and
@@ -3346,7 +3506,12 @@ export function SettingsScreen(): React.ReactElement {
         )}
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
-        <h2 className="text-lg font-semibold">Backup &amp; restore</h2>
+        <h2
+          id="backup-restore-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Backup &amp; restore
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Keep an open JSON copy of your decks, settings, and complete review
           history. Restoring merges data and never removes newer local records.

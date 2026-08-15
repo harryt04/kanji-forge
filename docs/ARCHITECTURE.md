@@ -284,8 +284,8 @@ This is the highest-severity data-loss risk in the whole product. Budget real UX
   "start_url": "/?source=pwa",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f7f4ec",
-  "theme_color": "#f7f4ec",
+  "background_color": "#e8e4dc",
+  "theme_color": "#e8e4dc",
   "icons": [ /* 192, 512, maskable 512 */ ],
   "shortcuts": [
     { "name": "Study",     "url": "/study" },
@@ -314,32 +314,54 @@ This is the highest-severity data-loss risk in the whole product. Budget real UX
 
 ## 8. Stroke-order validation
 
-Given the user's drawn polyline and KanjiVG's expected path for stroke *i*:
+Given the user's drawn polyline and KanjiVG's expected path for stroke *i*
+(`src/core/stroke/match.ts`):
 
 ```
-1. Sample the expected SVG path into N=32 evenly-spaced points
-   (getPointAtLength on an offscreen path, done once and cached).
-2. Resample the user's raw pointer polyline to the same N points by arc length.
-3. Normalize both to the character's bounding box, [0,1]².
-4. Score four components:
-     startDist  = |u[0]  - e[0]|
-     endDist    = |u[N-1]- e[N-1]|
-     shapeDist  = mean over i of |u[i] - e[i]|        // point-to-point after resampling
-     dirCos     = cosine similarity of the two chord-direction sequences
-5. accept = startDist < 0.22
-         && endDist   < 0.22
-         && shapeDist < 0.14
-         && dirCos    > 0.70
-   (thresholds scaled by the leniency setting: strict 0.8×, forgiving 1.4×)
+1. Flatten the expected SVG path and resample it to N=32 arc-length points.
+2. Resample the user's raw pointer polyline to the same N points.
+3. Work in raw KanjiVG canvas units (109x109). Both the drawing surface and the
+   guides use that space, so no normalization step is needed.
+4. Reject outright on any hard gate — no leniency setting can bypass these:
+     length ratio below the profile floor      (stub, or wild overshoot)
+     net start-to-end cosine < 0.35            (drawn backwards)
+     centroid offset above the gate            (right shape, wrong place)
+     start distance above the gate             (started somewhere else)
+5. Otherwise score five components, each ramped linearly from 1 (exact) to 0
+   (at the tolerance), where tolerances scale with the expected stroke's length
+   between a floor and a ceiling:
+     startScore, endScore  — endpoint distances
+     shapeScore  — symmetric chamfer distance, averaged raw and centroid-aligned
+     lengthScore — arc-length ratio, measured on a smoothed user polyline
+     dirScore    — mean cosine of the chord-direction sequences
+6. accept = weighted sum >= the profile threshold
+     strict 0.84   normal 0.75   forgiving 0.64   (default: forgiving)
 ```
+
+Why a score rather than four independent thresholds: with hard gates a single
+marginal component rejects an otherwise good stroke, which is what learners
+experience as "I drew that correctly and it didn't count".
+
+Why chamfer distance rather than index-to-index distance: nearest-neighbour in
+both directions tolerates a user who over- or undershoots the end of a stroke,
+while the endpoint scores still judge the ends on their own.
+
+Why canvas units rather than a normalized box: normalizing per stroke, per
+axis, collapses the tolerance on thin strokes — a vertical stroke has almost no
+width, so horizontal error gets divided by roughly nothing. Comparing in one
+shared isotropic space keeps the tolerance uniform, and makes it mean something
+the user can feel: a fixed fraction of the canvas.
 
 Additional rules:
 - **Order matters.** Only compare against the expected *next* stroke, not any unwritten stroke. That's the whole point.
-- **But be forgiving about genuinely ambiguous order.** A small set of characters have accepted alternate stroke orders (e.g. 上, 必, 田-family variations, and the 右/左 first-stroke split). Maintain a curated exceptions table mapping character → sets of interchangeable stroke indices.
-- **Handle short strokes.** Dots (点) resample badly and produce noisy direction vectors. If the expected path length is below a threshold, score on start-point distance and length only.
-- **Never hard-block.** After 3 failures, animate the correct stroke and let the user trace it, then continue. A user stuck on stroke 7 of 14 will close the app.
+- **But be forgiving about genuinely ambiguous order.** A small set of characters have accepted alternate stroke orders (e.g. 上, 必, 田-family variations, and the 右/左 first-stroke split). Maintain a curated exceptions table mapping character → sets of interchangeable stroke indices (`src/core/stroke/order.ts`).
+- **Handle short strokes.** Dots (点) resample badly and produce noisy direction vectors. Below 0.14 × canvas, direction is dropped from the score and the endpoints carry more weight.
+- **Never hard-block.** After 3 failures the next attempt is accepted regardless, with the correct stroke animated to trace. A user stuck on stroke 7 of 14 will close the app.
 
-Point-to-point distance after arc-length resampling is essentially a cheap approximation of DTW and is sufficient here — real DTW is available if the simple version proves too strict in testing, but measure first.
+Changes to the matcher must be measured, not eyeballed. `scripts/stroke-match-benchmark.ts`
+replays synthetic traces of every stroke in the packs and reports accept rates
+for genuine attempts at several noise levels, alongside false-accept rates for
+reversed, mislocated, stubbed, overshot and wrong-shape strokes.
 
 ---
 

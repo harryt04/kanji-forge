@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { AppNavigation } from './app-navigation'
 
+const pathnameState = vi.hoisted(() => ({ current: '/home' }))
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathnameState.current,
+}))
+
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
@@ -26,6 +32,7 @@ let userId = 0
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fixtureFetch())
+  pathnameState.current = '/home'
   userId += 1
 })
 
@@ -75,6 +82,23 @@ describe('AppNavigation', () => {
     expect(screen.getByRole('link', { name: 'Browse' })).toBeInTheDocument()
   })
 
+  it('shows a visual overflow cue for the horizontal destination scroller', () => {
+    render(<AppNavigation userId="missing-user" />)
+
+    expect(screen.getByTestId('navigation-overflow-cue')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+  })
+
+  it('does not add a horizontal overflow cue to the desktop sidebar', () => {
+    render(<AppNavigation userId="missing-user" orientation="vertical" />)
+
+    expect(
+      screen.queryByTestId('navigation-overflow-cue'),
+    ).not.toBeInTheDocument()
+  })
+
   it('supports the persistent desktop sidebar orientation', async () => {
     const id = `navigation-${userId}`
     bootstrapUserRuntime(id)
@@ -91,5 +115,29 @@ describe('AppNavigation', () => {
     expect(screen.getByRole('link', { name: 'Dictionary' })).toHaveClass(
       'w-full',
     )
+  })
+
+  it.each([
+    ['/home', 'Home'],
+    ['/study', 'Study'],
+    ['/browse', 'Browse'],
+    ['/history', 'History'],
+    ['/dictionary', 'Dictionary'],
+    ['/writing', 'Writing'],
+    ['/help', 'Help'],
+  ])('marks %s as the current page', (pathname, label) => {
+    pathnameState.current = pathname
+
+    render(<AppNavigation userId="navigation-active" />)
+
+    const activeLink = screen.getByRole('link', { name: label })
+    expect(activeLink).toHaveAttribute('aria-current', 'page')
+    expect(activeLink).toHaveClass('bg-muted', 'text-foreground')
+    expect(
+      screen
+        .getAllByRole('link')
+        .filter((link) => link !== activeLink)
+        .every((link) => link.getAttribute('aria-current') !== 'page'),
+    ).toBe(true)
   })
 })

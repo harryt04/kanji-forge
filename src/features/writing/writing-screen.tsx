@@ -3,17 +3,19 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
+import { isKanjiLiteral } from '@/core/import/parse'
 import {
   getKanjiByLiterals,
   getKanjiStrokes,
-  parseContentRef,
+  loadDeckDefinitions,
   type KanjiRecord,
 } from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
-import { matchStroke } from '@/core/stroke/match'
+import { matchStroke, STROKE_CANVAS } from '@/core/stroke/match'
 import { nextStrokeIndexes } from '@/core/stroke/order'
 import { flattenSvgPath } from '@/core/stroke/resample'
+import { loadWritingQueue, type WritingQueueEntry } from './writing-queue'
 import {
   DEFAULT_WRITING_LENIENCY,
   isWritingLeniency,
@@ -29,29 +31,61 @@ interface Point {
   readonly y: number
 }
 
-const DEFAULT_CONTENT_REF = 'kanji:日'
+const DEFAULT_DECK_ID = 'dev-kanji'
 
-function contentRefFromLocation(): string {
-  if (typeof window === 'undefined') return DEFAULT_CONTENT_REF
-  return (
-    new URL(window.location.href).searchParams.get('contentRef') ??
-    DEFAULT_CONTENT_REF
-  )
+/**
+ * Rejected attempts allowed before the next stroke is taken regardless. A
+ * learner stuck on stroke 7 of 14 closes the app, so the trainer never blocks.
+ */
+const ASSIST_AFTER_FAILURES = 3
+
+/** How long the finished character stays on screen before the canvas resets. */
+const AUTO_CLEAR_DELAY_MS = 500
+
+interface DeckOption {
+  readonly id: string
+  readonly name: string
 }
 
+function deckIdFromLocation(fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  return new URL(window.location.href).searchParams.get('deckId') ?? fallback
+}
+
+function requestedContentRefFromLocation(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URL(window.location.href).searchParams.get('contentRef')
+}
+
+/** Extracts a literal from `kanji:<literal>`, or null for anything else. */
+function kanjiLiteralFromContentRef(ref: string): string | null {
+  if (!ref.startsWith('kanji:')) return null
+  const literal = ref.slice('kanji:'.length)
+  return isKanjiLiteral(literal) ? literal : null
+}
+
+/** Map a pointer position into the KanjiVG coordinate space the guides use. */
 function pointFromEvent(
   event: React.PointerEvent<SVGSVGElement>,
   surface: SVGSVGElement,
 ): Point {
   const bounds = surface.getBoundingClientRect()
+  const width = bounds.width || STROKE_CANVAS
+  const height = bounds.height || STROKE_CANVAS
   return {
     x: Math.max(
       0,
-      Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100),
+      Math.min(
+        STROKE_CANVAS,
+        ((event.clientX - bounds.left) / width) * STROKE_CANVAS,
+      ),
     ),
     y: Math.max(
       0,
-      Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100),
+      Math.min(
+        STROKE_CANVAS,
+        ((event.clientY - bounds.top) / height) * STROKE_CANVAS,
+      ),
     ),
   }
 }
@@ -62,7 +96,13 @@ function pointsAttribute(points: readonly Point[]): string {
 
 /** Offline writing practice surface with optional next-stroke validation. */
 export function WritingScreen(): React.ReactElement {
-  const [contentRef] = useState(contentRefFromLocation)
+  const [deckId, setDeckId] = useState(() =>
+    deckIdFromLocation(DEFAULT_DECK_ID),
+  )
+  const [deckOptions, setDeckOptions] = useState<readonly DeckOption[]>([])
+  const [deckName, setDeckName] = useState('')
+  const [queue, setQueue] = useState<readonly WritingQueueEntry[]>([])
+  const [index, setIndex] = useState(0)
   const [content, setContent] = useState<KanjiRecord | null>(null)
   const [paths, setPaths] = useState<readonly string[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -79,10 +119,48 @@ export function WritingScreen(): React.ReactElement {
   const [drillRepetitions, setDrillRepetitions] = useState(3)
   const [drillAttempt, setDrillAttempt] = useState(0)
   const [drillComplete, setDrillComplete] = useState(false)
+  // The `?contentRef=` a Detail link arrived with, honoured on the first deck
+  // load only. Held as state (not a mutable "used" ref) so the effect below
+  // computes the same result on every invocation — React 18 Strict Mode runs
+  // mount effects twice in development, and a ref that flips after first use
+  // would make the second invocation silently drop the requested character.
+  const [initialContentRef, setInitialContentRef] = useState(() =>
+    requestedContentRefFromLocation(),
+  )
   const surfaceRef = useRef<SVGSVGElement>(null)
   const activePointerId = useRef<number | null>(null)
   const draftStrokeRef = useRef<readonly Point[]>([])
 
+  // Populate the deck picker once: every built-in deck plus the user's own.
+  useEffect(() => {
+    const runtime = getActiveUserRuntime()
+    if (!runtime) return
+    let active = true
+    void (async () => {
+      await runtime.database.ready
+      const repositories = createUserRepositories(runtime.database)
+      const [definitions, decks] = await Promise.all([
+        loadDeckDefinitions(),
+        repositories.decks.list(),
+      ])
+      if (!active) return
+      const builtIn = definitions.map((definition) => ({
+        id: definition.id,
+        name: definition.name,
+      }))
+      const custom = decks
+        .filter((deck) => deck.kind === 'custom')
+        .map((deck) => ({ id: deck.id, name: deck.name }))
+      setDeckOptions([...builtIn, ...custom])
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Load the SRS-ordered kanji queue whenever the selected deck changes. The
+  // first load only may honour a `?contentRef=` passed in from Detail, even
+  // for a kanji outside the deck, so that link keeps working as before.
   useEffect(() => {
     const runtime = getActiveUserRuntime()
     if (!runtime) {
@@ -90,34 +168,84 @@ export function WritingScreen(): React.ReactElement {
       return
     }
     let active = true
+    setLoading(true)
+    setError(null)
+    void (async () => {
+      try {
+        await runtime.database.ready
+        const loaded = await loadWritingQueue(runtime.database, deckId)
+        if (loaded.entries.length === 0) {
+          throw new Error('This deck has no kanji to practice writing.')
+        }
+        const requested = initialContentRef
+        let entries = loaded.entries
+        let requestedIndex = requested
+          ? entries.findIndex((entry) => entry.contentRef === requested)
+          : -1
+        if (requestedIndex === -1 && requested) {
+          const literal = kanjiLiteralFromContentRef(requested)
+          if (literal) {
+            entries = [
+              { contentRef: requested, literal },
+              ...entries.filter((entry) => entry.literal !== literal),
+            ]
+            requestedIndex = 0
+          }
+        }
+        if (!active) return
+        setDeckName(loaded.deckName)
+        setQueue(entries)
+        setIndex(requestedIndex >= 0 ? requestedIndex : 0)
+      } catch (reason) {
+        if (active) {
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : 'Could not load writing practice.',
+          )
+          setLoading(false)
+        }
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [deckId, initialContentRef])
+
+  // Load the active character's record and stroke guide whenever the queue
+  // position changes, and reset the canvas so the previous character's
+  // strokes never bleed into the next one.
+  useEffect(() => {
+    const runtime = getActiveUserRuntime()
+    if (!runtime) return
+    const entry = queue[index]
+    if (!entry) return
+    let active = true
+    setLoading(true)
     void (async () => {
       try {
         await runtime.database.ready
         const repositories = createUserRepositories(runtime.database)
-        const { type, key } = parseContentRef(contentRef)
-        if (type !== 'kanji' || [...key].length !== 1) {
-          throw new Error(
-            'Writing practice is currently available for one kanji at a time.',
-          )
-        }
         const [records, strokePaths, savedValidation, savedLeniency] =
           await Promise.all([
-            getKanjiByLiterals([key]),
-            getKanjiStrokes(key),
+            getKanjiByLiterals([entry.literal]),
+            getKanjiStrokes(entry.literal),
             repositories.settings.get(WRITING_VALIDATION_SETTING),
             repositories.settings.get(WRITING_LENIENCY_SETTING),
           ])
-        const record = records.get(key)
+        const record = records.get(entry.literal)
         if (!record)
-          throw new Error(`Kanji ${key} was not found in the installed pack.`)
-        if (active) {
-          setContent(record)
-          setPaths(strokePaths)
-          setValidationEnabled(
-            isWritingValidationEnabled(savedValidation?.value),
+          throw new Error(
+            `Kanji ${entry.literal} was not found in the installed pack.`,
           )
-          setLeniency(parseWritingLeniency(savedLeniency?.value))
-        }
+        if (!active) return
+        setContent(record)
+        setPaths(strokePaths)
+        setValidationEnabled(isWritingValidationEnabled(savedValidation?.value))
+        setLeniency(parseWritingLeniency(savedLeniency?.value))
+        clearStrokes()
+        setDrillAttempt(0)
+        setDrillComplete(false)
       } catch (reason) {
         if (active)
           setError(
@@ -132,7 +260,32 @@ export function WritingScreen(): React.ReactElement {
     return () => {
       active = false
     }
-  }, [contentRef])
+  }, [queue, index])
+
+  // Keep the address bar in sync so refreshing or sharing the link returns to
+  // the same deck and character.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const entry = queue[index]
+    if (!entry) return
+    const url = new URL(window.location.href)
+    url.searchParams.set('deckId', deckId)
+    url.searchParams.set('contentRef', entry.contentRef)
+    window.history.replaceState({}, '', url)
+  }, [deckId, queue, index])
+
+  function changeDeck(nextDeckId: string): void {
+    // A manual deck switch always starts at the top of the new queue — only
+    // the very first load honours a `?contentRef=` carried in from Detail.
+    setInitialContentRef(null)
+    setDeckId(nextDeckId)
+    setIndex(0)
+  }
+
+  function goToIndex(nextIndex: number): void {
+    if (nextIndex < 0 || nextIndex >= queue.length) return
+    setIndex(nextIndex)
+  }
 
   function beginStroke(event: React.PointerEvent<SVGSVGElement>): void {
     if (!surfaceRef.current || activePointerId.current !== null) return
@@ -165,7 +318,7 @@ export function WritingScreen(): React.ReactElement {
         capturedStrokeIndexes,
         paths?.length ?? 0,
       )
-      const acceptedIndex = validationEnabled
+      const matchedIndex = validationEnabled
         ? expectedIndexes.find((index) => {
             const expectedPath = paths?.[index]
             return (
@@ -174,18 +327,28 @@ export function WritingScreen(): React.ReactElement {
             )
           })
         : (expectedIndexes[0] ?? capturedStrokeIndexes.length)
-      const accepted = acceptedIndex !== undefined
-      if (accepted) {
+      // Never hard-block: once the learner has missed ASSIST_AFTER_FAILURES
+      // times, take the stroke anyway so they can finish the character.
+      const assisted =
+        matchedIndex === undefined && failedAttempts >= ASSIST_AFTER_FAILURES
+      const acceptedIndex = assisted
+        ? (expectedIndexes[0] ?? capturedStrokeIndexes.length)
+        : matchedIndex
+      if (acceptedIndex !== undefined) {
         setCapturedStrokes((current) => [...current, [...stroke]])
         setCapturedStrokeIndexes((current) => [...current, acceptedIndex])
         setFailedAttempts(0)
-        setFeedback(null)
+        setFeedback(
+          assisted
+            ? 'Close enough — moving on. Trace the highlighted stroke to feel the shape.'
+            : null,
+        )
       } else {
         const nextFailures = failedAttempts + 1
         setFailedAttempts(nextFailures)
         setFeedback(
-          nextFailures >= 3
-            ? 'Hint: trace the animated stroke from its start.'
+          nextFailures >= ASSIST_AFTER_FAILURES
+            ? 'Trace the animated stroke — the next attempt will be accepted.'
             : nextFailures >= 2
               ? 'Hint: start at the highlighted dot, then follow the stroke.'
               : 'That stroke was not close enough. Try again from the highlighted start.',
@@ -195,6 +358,42 @@ export function WritingScreen(): React.ReactElement {
     draftStrokeRef.current = []
     setDraftStroke([])
   }
+
+  // Finishing the character just leaves it filled in with no way to go again
+  // short of clicking a button. Move on automatically once every stroke is
+  // captured, after a pause long enough to see the result: outside a drill
+  // that means clearing the canvas, and inside a drill it means the same
+  // advance the "Next repetition" / "Finish drill" button would trigger.
+  useEffect(() => {
+    if (!paths || paths.length === 0 || capturedStrokes.length < paths.length)
+      return
+    const inDrill = drillAttempt > 0 && !drillComplete
+    const lastRepetition = inDrill && drillAttempt >= drillRepetitions
+    setFeedback(
+      lastRepetition
+        ? 'Nicely drawn — drill complete.'
+        : inDrill
+          ? 'Nicely drawn — starting the next repetition.'
+          : 'Nicely drawn — clearing the canvas so you can try again.',
+    )
+    const timeout = window.setTimeout(() => {
+      if (lastRepetition) {
+        setDrillComplete(true)
+      } else if (inDrill) {
+        clearStrokes()
+        setDrillAttempt((current) => current + 1)
+      } else {
+        clearStrokes()
+      }
+    }, AUTO_CLEAR_DELAY_MS)
+    return () => window.clearTimeout(timeout)
+  }, [
+    capturedStrokes.length,
+    paths,
+    drillAttempt,
+    drillComplete,
+    drillRepetitions,
+  ])
 
   function clearStrokes(): void {
     activePointerId.current = null
@@ -270,16 +469,16 @@ export function WritingScreen(): React.ReactElement {
 
   if (!getActiveUserRuntime()) {
     return (
-      <main className="mx-auto grid min-h-[70vh] max-w-3xl place-items-center p-6">
+      <main className="reading-page grid min-h-[70vh] w-full place-items-center p-6">
         <p>Sign in to practice writing.</p>
       </main>
     )
   }
   if (loading)
-    return <main className="mx-auto max-w-3xl p-6" aria-busy="true" />
+    return <main className="reading-page w-full p-6" aria-busy="true" />
   if (error || !content) {
     return (
-      <main className="mx-auto grid min-h-[70vh] max-w-3xl place-items-center p-6">
+      <main className="reading-page grid min-h-[70vh] w-full place-items-center p-6">
         <p role="alert">{error ?? 'Writing practice is unavailable.'}</p>
       </main>
     )
@@ -295,12 +494,14 @@ export function WritingScreen(): React.ReactElement {
   )
   const expectedStrokeIndex = expectedStrokeIndexes[0]
 
+  const currentEntry = queue[index]
+
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-6">
+    <main className="reading-page w-full p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          className="text-primary text-sm underline-offset-4 hover:underline"
-          href={`/detail?contentRef=${encodeURIComponent(contentRef)}`}
+          className="text-primary inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"
+          href={`/detail?contentRef=${encodeURIComponent(currentEntry?.contentRef ?? `kanji:${content.literal}`)}`}
         >
           ← Back to Detail
         </Link>
@@ -316,6 +517,73 @@ export function WritingScreen(): React.ReactElement {
           clear them.
         </p>
       </header>
+
+      <section
+        className="border-border bg-card mt-6 grid gap-3 rounded-xl border p-4"
+        aria-labelledby="writing-deck-heading"
+      >
+        <div>
+          <h2 id="writing-deck-heading" className="font-semibold">
+            Deck
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Practice writing every kanji in a deck, ordered the same way Study
+            would show them.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1 text-sm" htmlFor="writing-deck">
+            <span className="font-medium">Deck</span>
+            <select
+              id="writing-deck"
+              value={deckId}
+              onChange={(event) => changeDeck(event.target.value)}
+              className="border-input bg-background focus-visible:ring-ring h-10 min-w-48 rounded-md border px-3 outline-none focus-visible:ring-2"
+            >
+              {deckOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm" htmlFor="writing-character">
+            <span className="font-medium">Character</span>
+            <select
+              id="writing-character"
+              value={index}
+              onChange={(event) => goToIndex(Number(event.target.value))}
+              className="border-input bg-background focus-visible:ring-ring font-jp-ui h-10 min-w-24 rounded-md border px-3 outline-none focus-visible:ring-2"
+              lang="ja"
+            >
+              {queue.map((entry, entryIndex) => (
+                <option key={entry.contentRef} value={entryIndex}>
+                  {entry.literal}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => goToIndex(index - 1)}
+            disabled={index <= 0}
+          >
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => goToIndex(index + 1)}
+            disabled={index >= queue.length - 1}
+          >
+            Next
+          </Button>
+        </div>
+        <p className="text-muted-foreground text-sm" role="status">
+          {deckName} · Character {index + 1} of {queue.length}
+        </p>
+      </section>
 
       <section
         className="border-border bg-card mt-6 grid gap-3 rounded-xl border p-4"
@@ -396,7 +664,7 @@ export function WritingScreen(): React.ReactElement {
           <svg
             ref={surfaceRef}
             className="bg-background aspect-square w-full touch-none select-none"
-            viewBox="0 0 100 100"
+            viewBox={`0 0 ${STROKE_CANVAS} ${STROKE_CANVAS}`}
             role="application"
             aria-label={`Writing canvas for ${content.literal}`}
             onPointerDown={beginStroke}
@@ -407,26 +675,26 @@ export function WritingScreen(): React.ReactElement {
             <rect
               x="0.5"
               y="0.5"
-              width="99"
-              height="99"
+              width={STROKE_CANVAS - 1}
+              height={STROKE_CANVAS - 1}
               fill="none"
               stroke="currentColor"
               opacity="0.25"
             />
             <line
-              x1="50"
+              x1={STROKE_CANVAS / 2}
               y1="0"
-              x2="50"
-              y2="100"
+              x2={STROKE_CANVAS / 2}
+              y2={STROKE_CANVAS}
               stroke="currentColor"
               strokeDasharray="1.5 1.5"
               opacity="0.2"
             />
             <line
               x1="0"
-              y1="50"
-              x2="100"
-              y2="50"
+              y1={STROKE_CANVAS / 2}
+              x2={STROKE_CANVAS}
+              y2={STROKE_CANVAS / 2}
               stroke="currentColor"
               strokeDasharray="1.5 1.5"
               opacity="0.2"
@@ -435,16 +703,20 @@ export function WritingScreen(): React.ReactElement {
               <path
                 key={`${index}-${path}`}
                 d={path}
-                fill="currentColor"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 opacity="0.1"
                 aria-hidden="true"
               />
             )) ?? (
               <text
-                x="50"
-                y="64"
+                x={STROKE_CANVAS / 2}
+                y="70"
                 textAnchor="middle"
-                fontSize="60"
+                fontSize="65"
                 fill="currentColor"
                 opacity="0.1"
                 lang="ja"
@@ -459,7 +731,11 @@ export function WritingScreen(): React.ReactElement {
                 <>
                   <path
                     d={paths[expectedStrokeIndex]}
-                    fill="var(--accent)"
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
                     className={
                       failedAttempts >= 3 ? 'writing-hint-animate' : undefined
@@ -537,7 +813,7 @@ export function WritingScreen(): React.ReactElement {
             </Button>
           </div>
         </div>
-        <label className="text-muted-foreground flex items-center gap-2 text-sm">
+        <label className="text-muted-foreground flex min-h-11 items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={validationEnabled}

@@ -25,5 +25,5 @@ d.classList.toggle('dark',t==='dark');
 d.dataset.theme=t;
 d.dataset.fontScale=f;
 var m=document.querySelector('meta[name="theme-color"]');
-if(m)m.content=t==='dark'?'#1c1a17':'#f7f4ec';
+if(m)m.content=t==='dark'?'#16100d':'#e8e4dc';
 }catch(e){}})()`

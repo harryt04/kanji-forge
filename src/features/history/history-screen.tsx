@@ -117,7 +117,7 @@ export function HistoryScreen(): React.ReactElement {
   const firstDayOffset = data.days[0]!.date.getDay()
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
+    <main className="reading-page flex w-full flex-col gap-6 p-6">
       <Card>
         <CardHeader>
           <CardTitle>Study history</CardTitle>

@@ -57,6 +57,7 @@ export function StudyScreen({
   const runtime = getActiveUserRuntime()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [coarsePointer, setCoarsePointer] = useState(false)
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [showTimer, setShowTimer] = useState(false)
@@ -84,6 +85,20 @@ export function StudyScreen({
     const requested = new URL(window.location.href).searchParams.get('deckId')
     setSelectedDeckId(requested || deckDefinitionId)
   }, [deckDefinitionId])
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    )
+      return
+
+    const pointerQuery = window.matchMedia('(pointer: coarse)')
+    const updatePointer = (): void => setCoarsePointer(pointerQuery.matches)
+    updatePointer()
+    pointerQuery.addEventListener('change', updatePointer)
+    return () => pointerQuery.removeEventListener('change', updatePointer)
+  }, [])
 
   const {
     deckName,
@@ -389,11 +404,12 @@ export function StudyScreen({
   const answerShows = (field: StudyAnswer): boolean =>
     twoTapStudy || studyAnswer.includes(field)
   const showingTwoTapReadings = twoTapStudy && !revealed && twoTapStage === 1
+  const spaceHint = coarsePointer ? '' : ' (Space)'
   const revealLabel = twoTapStudy
     ? showingTwoTapReadings
-      ? 'Show everything (Space)'
-      : 'Show readings (Space)'
-    : 'Reveal (Space)'
+      ? `Show everything${spaceHint}`
+      : `Show readings${spaceHint}`
+    : `Reveal${spaceHint}`
   const studyAnnouncement =
     queue.length === 0
       ? 'Nothing due right now.'
@@ -419,9 +435,9 @@ export function StudyScreen({
       >
         {studyAnnouncement}
       </p>
-      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-4 py-3 text-sm">
-        <span>{deckName}</span>
-        <div className="flex items-center gap-3">
+      <div className="border-border text-muted-foreground flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-3 text-sm">
+        <span className="min-w-0">{deckName}</span>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
           {!finished && (
             <>
               {showTimer && (
@@ -460,7 +476,7 @@ export function StudyScreen({
               )}
             </>
           )}
-          <span>{remaining} remaining</span>
+          <span data-testid="study-remaining">{remaining} remaining</span>
         </div>
       </div>
 
@@ -512,7 +528,7 @@ export function StudyScreen({
             <p
               className={
                 questionIsJapanese
-                  ? 'font-jp-display text-8xl'
+                  ? 'font-jp-display text-[length:var(--text-display)]'
                   : 'text-3xl font-semibold'
               }
               data-testid="study-question"
@@ -528,19 +544,19 @@ export function StudyScreen({
               >
                 {studyCard.contentType === 'word' ? (
                   studyCard.readings.length > 0 && (
-                    <p className="font-jp-ui text-lg">
+                    <p className="font-jp-ui text-lg" lang="ja">
                       読み: {studyCard.readings.join('、')}
                     </p>
                   )
                 ) : (
                   <>
                     {studyCard.onReadings.length > 0 && (
-                      <p className="font-jp-ui text-lg">
+                      <p className="font-jp-ui text-lg" lang="ja">
                         音: {studyCard.onReadings.join('、')}
                       </p>
                     )}
                     {studyCard.kunReadings.length > 0 && (
-                      <p className="font-jp-ui text-lg">
+                      <p className="font-jp-ui text-lg" lang="ja">
                         訓: {studyCard.kunReadings.join('、')}
                       </p>
                     )}
@@ -560,7 +576,7 @@ export function StudyScreen({
                 )}
                 {answerShows('reading') && studyCard.contentType === 'word' ? (
                   studyCard.readings.length > 0 && (
-                    <p className="font-jp-ui text-lg">
+                    <p className="font-jp-ui text-lg" lang="ja">
                       読み: {studyCard.readings.join('、')}
                     </p>
                   )
@@ -568,13 +584,13 @@ export function StudyScreen({
                   <>
                     {answerShows('reading') &&
                       studyCard.onReadings.length > 0 && (
-                        <p className="font-jp-ui text-lg">
+                        <p className="font-jp-ui text-lg" lang="ja">
                           音: {studyCard.onReadings.join('、')}
                         </p>
                       )}
                     {answerShows('reading') &&
                       studyCard.kunReadings.length > 0 && (
-                        <p className="font-jp-ui text-lg">
+                        <p className="font-jp-ui text-lg" lang="ja">
                           訓: {studyCard.kunReadings.join('、')}
                         </p>
                       )}
@@ -620,7 +636,9 @@ export function StudyScreen({
                                   className="text-muted-foreground mt-1 text-sm"
                                   data-testid="study-related-details"
                                 >
-                                  {word.readings.join('、')}
+                                  <span lang="ja">
+                                    {word.readings.join('、')}
+                                  </span>
                                   {word.readings.length > 0 &&
                                   word.meanings.length > 0
                                     ? ' — '
@@ -632,7 +650,7 @@ export function StudyScreen({
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  className="mt-1 h-auto px-0 text-sm"
+                                  className="mt-1 h-auto min-h-11 px-0 text-sm"
                                   aria-expanded={false}
                                   onClick={() =>
                                     setShownRelatedWordIds((current) => {
@@ -681,8 +699,10 @@ export function StudyScreen({
               >
                 Don&apos;t know (←)
               </Button>
-              <Button onClick={() => handleGrade('good')}>I know (→)</Button>
-              <Button variant="secondary" onClick={() => handleGrade('easy')}>
+              <Button variant="success" onClick={() => handleGrade('good')}>
+                I know (→)
+              </Button>
+              <Button variant="perfect" onClick={() => handleGrade('easy')}>
                 No problem (↑)
               </Button>
             </div>

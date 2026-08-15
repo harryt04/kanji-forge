@@ -53,9 +53,9 @@ Light is the default theme (confirmed; `prefers-color-scheme`/manual toggle stil
 
 ```css
 :root {
-  --background: oklch(97.3% 0.012 85);   /* #f7f4ec warm washi paper */
+  --background: oklch(92% 0.012 85);     /* #e8e4dc warm washi paper */
   --foreground: oklch(24.5% 0.02 55);    /* #211c16 ink */
-  --card: oklch(99.1% 0.006 85);         /* #fffdf7 */
+  --card: oklch(99.1% 0.006 85);         /* #fefcf8 */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -76,9 +76,9 @@ Light is the default theme (confirmed; `prefers-color-scheme`/manual toggle stil
 }
 
 .dark {
-  --background: oklch(19% 0.012 55);      /* #1c1a17 warm near-black, not cool slate */
+  --background: oklch(18% 0.012 55);      /* #16100d warm near-black, not cool slate */
   --foreground: oklch(91% 0.012 70);      /* #ece7de off-white, not pure white */
-  --card: oklch(23% 0.014 55);            /* #221f1b */
+  --card: oklch(26% 0.014 55);            /* #252421 */
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -127,16 +127,32 @@ Ships **always-on**, not a switchable "shapes + color mode" (PRD §4.17 asks for
 ```css
 .sticky-shape { position: relative; overflow: hidden; }
 .sticky-shape::before, .sticky-shape::after {
-  content: ''; position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid;
+  content: ''; position: absolute; top: 0; right: 0;
+  width: min(16px, 35%); height: min(16px, 35%);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
-.sticky-shape::before { border-color: transparent rgba(0,0,0,.32) transparent transparent; }
-.sticky-shape::after  { border-color: transparent rgba(255,255,255,.92) transparent transparent; }
-.sticky-shape.l0::before, .sticky-shape.l0::after { border-width: 0; }
-.sticky-shape.l1::before { border-width: 0 6px 6px 0; }  .sticky-shape.l1::after { border-width: 0 5px 5px 0; }
-.sticky-shape.l2::before { border-width: 0 9px 9px 0; }  .sticky-shape.l2::after { border-width: 0 8px 8px 0; }
-.sticky-shape.l3::before { border-width: 0 12px 12px 0; } .sticky-shape.l3::after { border-width: 0 11px 11px 0; }
-.sticky-shape.l4::before { border-width: 0 16px 16px 0; } .sticky-shape.l4::after { border-width: 0 15px 15px 0; }
+.sticky-shape::before { background: rgba(0,0,0,.32); }
+.sticky-shape::after {
+  width: min(15px, max(0px, calc(35% - 1px)));
+  height: min(15px, max(0px, calc(35% - 1px)));
+  background: rgba(255,255,255,.92);
+}
+.sticky-shape.l0::before, .sticky-shape.l0::after { width: 0; height: 0; }
+.sticky-shape.l1::before, .sticky-shape.l1::after { width: min(6px, 20%); height: min(6px, 20%); }
+.sticky-shape.l2::before, .sticky-shape.l2::after { width: min(9px, 25%); height: min(9px, 25%); }
+.sticky-shape.l3::before, .sticky-shape.l3::after { width: min(12px, 30%); height: min(12px, 30%); }
+.sticky-shape.l4::before, .sticky-shape.l4::after { width: min(16px, 35%); height: min(16px, 35%); }
+.sticky-shape.l1::after { width: min(5px, max(0px, calc(20% - 1px))); height: min(5px, max(0px, calc(20% - 1px))); }
+.sticky-shape.l2::after { width: min(8px, max(0px, calc(25% - 1px))); height: min(8px, max(0px, calc(25% - 1px))); }
+.sticky-shape.l3::after { width: min(11px, max(0px, calc(30% - 1px))); height: min(11px, max(0px, calc(30% - 1px))); }
+.sticky-shape.l4::after { width: min(15px, max(0px, calc(35% - 1px))); height: min(15px, max(0px, calc(35% - 1px))); }
 ```
+
+The fold keeps the level ladder's 6/9/12/16px maximums while scaling each level
+to 20/25/30/35% of the element's width and height on small ones. The visible
+triangle therefore uses less than 7% of a square swatch's area even at the
+minimum size, leaving the level ramp colour dominant. Canvas-rendered tile
+walls use the same per-level proportions and maximums.
 
 This reads by luminance contrast alone (black shadow + white fold), so it survives any CVD type and full greyscale. On the tile wall, hit-testing and rendering stay in the canvas layer per `ARCHITECTURE.md` §5 — draw the same two-triangle shape directly into the glyph atlas / dirty-rect pass rather than using real DOM elements at low zoom.
 
@@ -282,7 +298,7 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 - **Wordmark:** "Kanji" in `--foreground`, "Forge" in `--primary` (vermilion), set in Fraunces 800, tight tracking. No logotype beyond typography for MVP — a mark can be commissioned post-launch once the product is real.
 - **App icon / maskable:** 黒 (kuro, the level-4 belt kanji) or 鍛 (the product's own name-kanji, "forge/temper") centered in a `--primary`-on-`--background` (or reversed) square, with a 20% safe-zone margin on all sides for the Android maskable-icon spec. Export 192×192, 512×512, and a maskable 512×512 variant per `ARCHITECTURE.md` §7.3's manifest.
-- **`theme_color` / `background_color`:** **Resolved** — `ARCHITECTURE.md` §7.3's manifest now uses Washi's light values (`theme_color: "#f7f4ec"`, `background_color: "#f7f4ec"`), updated from Forge's `#0D0D0F` now that the light-first direction won.
+- **`theme_color` / `background_color`:** **Resolved** — `ARCHITECTURE.md` §7.3's manifest now uses Washi's light values (`theme_color: "#e8e4dc"`, `background_color: "#e8e4dc"`), updated from Forge's `#0D0D0F` now that the light-first direction won.
 - **GitHub social card:** the tile wall itself, mid-study (mixed belt levels), full-bleed — the product's signature screen is also its best marketing image. No separate illustrated graphic needed.
 - **README screenshots:** always capture the tile wall and the study card at minimum; prefer real data (a JLPT deck) over placeholder lorem-kanji once content packs exist.
 
@@ -298,6 +314,6 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 ## Open follow-ups
 
-1. ~~`ARCHITECTURE.md` §7.3's manifest JSON needs its `theme_color`/`background_color` updated from Forge's `#0D0D0F` to Washi's `#f7f4ec`.~~ **Done** — §7.3 now ships `#f7f4ec` for both.
+1. ~~`ARCHITECTURE.md` §7.3's manifest JSON needs its `theme_color`/`background_color` updated from Forge's `#0D0D0F` to Washi's `#e8e4dc`.~~ **Done** — §7.3 now ships `#e8e4dc` for both.
 2. Dark-theme values in §3.1/§3.2 are a first pass tuned by eye against the review artifact, not against Forge's dark theme (which was fully designed and rejected as the *primary* direction, but its `#0D0D0F`/`#161519` surface values are a reasonable reference point for Washi's `.dark` variant if it needs revisiting).
-3. Numeric WCAG contrast verification (§9) and CVD simulation (§3.2, §9) are stated as requirements here but not yet run against actual rendered pixels — do this once `tokens.css` is wired into a real page, not from the hex values alone.
+3. Numeric WCAG contrast verification (§9) is complete for the rendered card/background surfaces: both themes are at least 1.2:1, and the dark level-4 hairline uses 0.35 alpha. CVD simulation (§3.2, §9) remains a future verification against rendered ramp pixels.

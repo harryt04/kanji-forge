@@ -119,6 +119,14 @@ function buildGlyphAtlas(
  * Draw the fold-overlay shape at the top-right of a tile.
  * Encoded as two stacked triangles (shadow + highlight), sized by level.
  */
+export function getFoldSize(tileSize: number, level: number): number {
+  const foldSizes = [0, 6, 9, 12, 16] // maximum border-equivalent size per level
+  const foldRatios = [0, 0.2, 0.25, 0.3, 0.35]
+  const levelSize = foldSizes[level] || 0
+  const ratio = foldRatios[level] || 0
+  return Math.min(levelSize, Math.max(0, tileSize * ratio))
+}
+
 function drawFoldOverlay(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -128,8 +136,7 @@ function drawFoldOverlay(
 ) {
   if (level === 0) return // no fold for level 0
 
-  const foldSizes = [0, 6, 9, 12, 16] // border-width per level
-  const foldSize = foldSizes[level] || 0
+  const foldSize = getFoldSize(tileSize, level)
   if (foldSize === 0) return
 
   // Shadow triangle (dark)
@@ -144,8 +151,9 @@ function drawFoldOverlay(
   ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'
   ctx.beginPath()
   ctx.moveTo(x + tileSize, y)
-  ctx.lineTo(x + tileSize - (foldSize - 1), y)
-  ctx.lineTo(x + tileSize, y + (foldSize - 1))
+  const highlightSize = Math.max(0, foldSize - Math.min(1, foldSize))
+  ctx.lineTo(x + tileSize - highlightSize, y)
+  ctx.lineTo(x + tileSize, y + highlightSize)
   ctx.fill()
 }
 

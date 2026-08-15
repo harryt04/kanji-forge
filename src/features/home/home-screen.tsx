@@ -29,16 +29,10 @@ import {
   groupDecksByFolder,
   normalizeDeckFolder,
 } from '@/features/settings/deck-folders'
+import { BELT_NAMES, beltLevelLabel } from '@/features/level-rank'
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
-const BELT_NAMES = [
-  'white (Shiro)',
-  'yellow (Ki)',
-  'green (Midori)',
-  'blue (Ao)',
-  'black (Kuro)',
-] as const
 type LevelCounts = readonly [number, number, number, number, number]
 
 interface DeckShelfItem {
@@ -364,7 +358,7 @@ export function HomeScreen(): React.ReactElement {
   }
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
+    <main className="reading-page flex w-full flex-col gap-6 p-6">
       <Card>
         <CardHeader>
           <CardTitle>{deckName}</CardTitle>
@@ -387,6 +381,7 @@ export function HomeScreen(): React.ReactElement {
               <div
                 className={`level-swatch sticky-shape l${data.progressLevel} h-full rounded-full transition-all motion-reduce:transition-none`}
                 data-level={data.progressLevel}
+                aria-hidden="true"
                 style={{ width: `${data.progressPercent}%` }}
               />
             </div>
@@ -502,7 +497,7 @@ export function HomeScreen(): React.ReactElement {
                         <span
                           className="level-swatch sticky-shape h-8 w-8 shrink-0"
                           data-level={deck.progressLevel}
-                          aria-label={`Deck color: level ${deck.progressLevel}`}
+                          aria-label={`Deck color: ${beltLevelLabel(deck.progressLevel)}`}
                         />
                       </div>
                       <div className="mt-3 flex gap-2">
@@ -518,6 +513,13 @@ export function HomeScreen(): React.ReactElement {
                             href={`/browse?deckId=${encodeURIComponent(deck.id)}`}
                           >
                             Browse
+                          </Link>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link
+                            href={`/writing?deckId=${encodeURIComponent(deck.id)}`}
+                          >
+                            Practice writing
                           </Link>
                         </Button>
                       </div>
@@ -555,18 +557,23 @@ export function HomeScreen(): React.ReactElement {
                 <span
                   className="level-swatch sticky-shape h-8 w-8 shrink-0"
                   data-level={deck.progressLevel}
-                  aria-label={`Deck color: level ${deck.progressLevel}`}
+                  aria-label={`Deck color: ${beltLevelLabel(deck.progressLevel)}`}
                 />
               </div>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" asChild>
                   <Link href={`/study?deckId=${encodeURIComponent(deck.id)}`}>
-                    Study {deck.name}
+                    Study
                   </Link>
                 </Button>
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/browse?deckId=${encodeURIComponent(deck.id)}`}>
-                    Browse {deck.name}
+                    Browse
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/writing?deckId=${encodeURIComponent(deck.id)}`}>
+                    Practice writing
                   </Link>
                 </Button>
               </div>
@@ -657,7 +664,7 @@ export function HomeScreen(): React.ReactElement {
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <Link
-                        className="text-primary text-xl underline underline-offset-4"
+                        className="text-primary inline-flex min-h-11 min-w-11 items-center justify-center text-xl underline underline-offset-4"
                         href={`/detail?contentRef=${encodeURIComponent(leech.stickyId)}`}
                         lang="ja"
                         aria-label={`View details for ${card?.literal ?? leech.stickyId}`}

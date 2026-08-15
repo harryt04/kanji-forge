@@ -11,7 +11,7 @@ export const WRITING_LENIENCY_OPTIONS: ReadonlyArray<{
   {
     value: 'strict',
     label: 'Strict',
-    description: 'Requires a close match to the guide.',
+    description: 'Accepts only a close match to the guide.',
   },
   {
     value: 'normal',
@@ -21,11 +21,12 @@ export const WRITING_LENIENCY_OPTIONS: ReadonlyArray<{
   {
     value: 'forgiving',
     label: 'Forgiving',
-    description: 'Allows more variation in position and shape.',
+    description:
+      'Accepts a stroke that is roughly right in position, shape and direction.',
   },
 ]
 
-export const DEFAULT_WRITING_LENIENCY: StrokeLeniency = 'normal'
+export const DEFAULT_WRITING_LENIENCY: StrokeLeniency = 'forgiving'
 
 export function isWritingLeniency(
   value: string | undefined,

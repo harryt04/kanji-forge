@@ -6,13 +6,22 @@ export function Hero(): React.ReactElement {
   return (
     <section className="relative overflow-hidden">
       <MarketingTileWall />
-      <div className="relative mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 sm:py-32">
-        <h1 className="font-display text-4xl leading-[1.05] font-bold text-balance sm:text-6xl">
+      <div
+        className="marketing-hero-copy relative mx-auto flex max-w-3xl flex-col items-center rounded-2xl px-4 py-8 text-center sm:px-8 sm:py-10"
+        data-testid="marketing-hero-copy"
+      >
+        <h1
+          className="font-display text-4xl leading-[1.05] font-bold text-balance sm:text-6xl"
+          data-testid="marketing-hero-heading"
+        >
           Your whole deck,
           <br />
           as a wall of color.
         </h1>
-        <p className="text-muted-foreground mt-6 max-w-xl text-lg text-balance">
+        <p
+          className="text-foreground mt-6 max-w-xl text-lg text-balance"
+          data-testid="marketing-hero-subhead"
+        >
           A free, offline-first way to study kanji — the StickyStudy mechanic,
           open and yours.
         </p>

@@ -41,6 +41,7 @@ import {
 } from '@/features/study/audio'
 import { listAudioPacks } from '@/features/study/audio-pack'
 import { SAVE_BEHAVIOR_SETTING } from './save-behavior'
+import { beltLevelLabel } from '@/features/level-rank'
 
 const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
@@ -173,14 +174,16 @@ function WordDetailView({
 }: WordDetailViewProps): React.ReactElement {
   return (
     <main
-      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
+      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
     >
       <Link className="text-primary w-fit text-sm underline" href={backHref}>
         ← {backLabel}
       </Link>
       <Card data-testid="word-detail">
         <CardHeader>
-          <p className="font-jp-ui text-muted-foreground text-sm">単語の詳細</p>
+          <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+            単語の詳細
+          </p>
           <CardTitle className="font-jp-ui text-4xl" lang="ja">
             {word.forms.join('、') || word.readings.join('、')}
           </CardTitle>
@@ -312,6 +315,7 @@ export function DetailScreen({
     null,
   )
   const [error, setError] = useState<string | null>(null)
+  const [notFound, setNotFound] = useState(false)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
 
   useEffect(() => {
@@ -326,7 +330,7 @@ export function DetailScreen({
   }, [runtime])
 
   useEffect(() => {
-    if (!runtime || !contentRef) return
+    if (!runtime) return
     let active = true
     setDeck(null)
     setDetailCard(null)
@@ -342,10 +346,15 @@ export function DetailScreen({
     setSavedDeckIds(new Set())
     setAnnotationMessage(null)
     setError(null)
+    setNotFound(false)
     void (async () => {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
       const loaded = await loadStarterDeck(runtime.database)
+      if (!contentRef) {
+        if (active) setDeck(loaded)
+        return
+      }
       const [decks, savedStrokeSetting, savedSaveBehavior, savedAnnotation] =
         await Promise.all([
           repositories.decks.list(),
@@ -402,8 +411,13 @@ export function DetailScreen({
           const record = (await getKanjiByLiterals([parsed.key])).get(
             parsed.key,
           )
-          if (!record)
-            throw new Error('This card is not available in the installed pack.')
+          if (!record) {
+            if (active) {
+              setDeck(loaded)
+              setNotFound(true)
+            }
+            return
+          }
           literal = record.literal
           const state = await createUserRepositories(
             runtime.database,
@@ -439,10 +453,13 @@ export function DetailScreen({
               ? await getNameById(wordId)
               : await getWordById(wordId)
             : null
-          if (!word)
-            throw new Error(
-              'This entry is not available in the installed dictionary pack.',
-            )
+          if (!word) {
+            if (active) {
+              setDeck(loaded)
+              setNotFound(true)
+            }
+            return
+          }
           if (active) setWordDetail(word)
         } else {
           throw new Error('Unsupported detail type.')
@@ -486,14 +503,30 @@ export function DetailScreen({
   if (!runtime)
     return <p className="text-muted-foreground p-6">Sign in to view details.</p>
   if (error) return <p className="text-destructive p-6">{error}</p>
-  if (!deck || !contentRef || (!detailCard && !wordDetail))
+  if (!deck)
     return (
       <main className="p-6" aria-busy="true">
+        <p className="text-muted-foreground">Loading detail…</p>
+      </main>
+    )
+  if (notFound)
+    return (
+      <main className="grid gap-3 p-6" data-testid="detail-not-found">
+        <p>Couldn&apos;t find that card.</p>
+        <Link className="text-primary w-fit text-sm underline" href="/browse">
+          Back to Browse
+        </Link>
+      </main>
+    )
+  if (!contentRef || (!detailCard && !wordDetail))
+    return (
+      <main className="grid gap-3 p-6">
         <p className="text-muted-foreground">
-          {deck
-            ? 'Choose a card from Browse to view its details.'
-            : 'Loading detail…'}
+          Choose a card from Browse to view its details.
         </p>
+        <Link className="text-primary w-fit text-sm underline" href="/browse">
+          Back to Browse
+        </Link>
       </main>
     )
 
@@ -661,7 +694,7 @@ export function DetailScreen({
 
   return (
     <main
-      className={`mx-auto grid w-full gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
+      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${embedded ? 'max-w-none' : 'max-w-2xl'}`}
       onTouchStart={(event) =>
         setTouchStartX(event.touches[0]?.clientX ?? null)
       }
@@ -678,7 +711,7 @@ export function DetailScreen({
       </Link>
       {currentIndex >= 0 && (
         <nav
-          className="flex items-center justify-between gap-3"
+          className="flex min-w-0 items-center justify-between gap-3"
           aria-label="Detail navigation"
         >
           <Button
@@ -710,9 +743,12 @@ export function DetailScreen({
         className={`sticky-shape ${LEVEL_SHAPES[level]}`}
         data-level={level}
         data-testid="kanji-detail"
+        aria-label={beltLevelLabel(level)}
       >
         <CardHeader>
-          <p className="font-jp-ui text-muted-foreground text-sm">漢字の詳細</p>
+          <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
+            漢字の詳細
+          </p>
           <CardTitle className="font-jp-display text-7xl" lang="ja">
             {content.literal}
           </CardTitle>

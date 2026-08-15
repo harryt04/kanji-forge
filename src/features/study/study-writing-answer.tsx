@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getKanjiStrokes } from '@/data/packs'
+import { STROKE_CANVAS } from '@/core/stroke/match'
 import { Button } from '@/ui/button'
 
 interface Point {
@@ -9,21 +10,28 @@ interface Point {
   readonly y: number
 }
 
+/** Map a pointer position into the KanjiVG coordinate space the guides use. */
 function pointFromEvent(
   event: React.PointerEvent<SVGSVGElement>,
   surface: SVGSVGElement,
 ): Point {
   const bounds = surface.getBoundingClientRect()
-  const width = bounds.width || 100
-  const height = bounds.height || 100
+  const width = bounds.width || STROKE_CANVAS
+  const height = bounds.height || STROKE_CANVAS
   return {
     x: Math.max(
       0,
-      Math.min(100, ((event.clientX - bounds.left) / width) * 100),
+      Math.min(
+        STROKE_CANVAS,
+        ((event.clientX - bounds.left) / width) * STROKE_CANVAS,
+      ),
     ),
     y: Math.max(
       0,
-      Math.min(100, ((event.clientY - bounds.top) / height) * 100),
+      Math.min(
+        STROKE_CANVAS,
+        ((event.clientY - bounds.top) / height) * STROKE_CANVAS,
+      ),
     ),
   }
 }
@@ -131,7 +139,7 @@ export function StudyWritingAnswer({
       <svg
         ref={surfaceRef}
         className="bg-card mt-3 aspect-square w-full touch-none select-none"
-        viewBox="0 0 100 100"
+        viewBox={`0 0 ${STROKE_CANVAS} ${STROKE_CANVAS}`}
         role="application"
         aria-label={`Writing answer canvas for ${literal}`}
         onPointerDown={beginStroke}
@@ -142,26 +150,26 @@ export function StudyWritingAnswer({
         <rect
           x="0.5"
           y="0.5"
-          width="99"
-          height="99"
+          width={STROKE_CANVAS - 1}
+          height={STROKE_CANVAS - 1}
           fill="none"
           stroke="currentColor"
           opacity="0.25"
         />
         <line
-          x1="50"
+          x1={STROKE_CANVAS / 2}
           y1="0"
-          x2="50"
-          y2="100"
+          x2={STROKE_CANVAS / 2}
+          y2={STROKE_CANVAS}
           stroke="currentColor"
           strokeDasharray="1.5 1.5"
           opacity="0.2"
         />
         <line
           x1="0"
-          y1="50"
-          x2="100"
-          y2="50"
+          y1={STROKE_CANVAS / 2}
+          x2={STROKE_CANVAS}
+          y2={STROKE_CANVAS / 2}
           stroke="currentColor"
           strokeDasharray="1.5 1.5"
           opacity="0.2"
@@ -176,10 +184,10 @@ export function StudyWritingAnswer({
           />
         )) ?? (
           <text
-            x="50"
-            y="64"
+            x={STROKE_CANVAS / 2}
+            y="70"
             textAnchor="middle"
-            fontSize="60"
+            fontSize="65"
             fill="currentColor"
             opacity="0.1"
             lang="ja"

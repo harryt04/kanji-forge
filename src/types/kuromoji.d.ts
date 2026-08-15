@@ -26,3 +26,10 @@ declare module 'kuromoji' {
   const kuromoji: Kuromoji
   export default kuromoji
 }
+
+declare module 'kuromoji/build/kuromoji.js' {
+  import type { Kuromoji } from 'kuromoji'
+
+  const kuromoji: Kuromoji
+  export default kuromoji
+}
