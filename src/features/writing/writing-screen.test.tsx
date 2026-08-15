@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -67,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   clearUserRuntime()
+  vi.useRealTimers()
 })
 
 describe('WritingScreen', () => {
@@ -231,6 +233,66 @@ describe('WritingScreen', () => {
       expect(screen.getByText('1 stroke captured of 4')).toBeInTheDocument(),
     )
     expect(screen.getByText(/Close enough — moving on/)).toBeInTheDocument()
+  })
+
+  it('clears the canvas automatically once the kanji is finished outside a drill', async () => {
+    bootstrapUserRuntime('writing-autoclear-user')
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    mockCanvasBounds(surface)
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Check stroke order' }),
+    )
+
+    const drawStroke = (pointerId: number): void => {
+      fireEvent.pointerDown(surface, { pointerId, clientX: 20, clientY: 20 })
+      fireEvent.pointerMove(surface, { pointerId, clientX: 70, clientY: 70 })
+      fireEvent.pointerUp(surface, { pointerId, clientX: 80, clientY: 80 })
+    }
+
+    // Fake timers must be in place before the last stroke schedules the
+    // auto-clear timeout, or advancing them later has nothing to act on.
+    vi.useFakeTimers()
+    for (let index = 0; index < 4; index += 1) drawStroke(index + 1)
+    expect(screen.getByText('4 strokes captured of 4')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Nicely drawn — clearing the canvas/),
+    ).toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(1200))
+
+    expect(screen.getByText('0 strokes captured of 4')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Captured stroke/)).not.toBeInTheDocument()
+  })
+
+  it('leaves a finished drill repetition on screen for the drill controls', async () => {
+    bootstrapUserRuntime('writing-drill-noclear-user')
+    render(<WritingScreen />)
+
+    const surface = await screen.findByRole('application', {
+      name: 'Writing canvas for 日',
+    })
+    mockCanvasBounds(surface)
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Check stroke order' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Start drill' }))
+
+    const drawStroke = (pointerId: number): void => {
+      fireEvent.pointerDown(surface, { pointerId, clientX: 20, clientY: 20 })
+      fireEvent.pointerMove(surface, { pointerId, clientX: 70, clientY: 70 })
+      fireEvent.pointerUp(surface, { pointerId, clientX: 80, clientY: 80 })
+    }
+
+    for (let index = 0; index < 4; index += 1) drawStroke(index + 1)
+
+    expect(screen.getByText('4 strokes captured of 4')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Next repetition' }),
+    ).toBeEnabled()
   })
 
   it('escalates writing hints after repeated rejected strokes', async () => {

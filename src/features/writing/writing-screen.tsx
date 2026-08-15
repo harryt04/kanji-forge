@@ -37,6 +37,9 @@ const DEFAULT_CONTENT_REF = 'kanji:日'
  */
 const ASSIST_AFTER_FAILURES = 3
 
+/** How long the finished character stays on screen before the canvas resets. */
+const AUTO_CLEAR_DELAY_MS = 1200
+
 function contentRefFromLocation(): string {
   if (typeof window === 'undefined') return DEFAULT_CONTENT_REF
   return (
@@ -220,6 +223,22 @@ export function WritingScreen(): React.ReactElement {
     draftStrokeRef.current = []
     setDraftStroke([])
   }
+
+  // Outside a drill, finishing the character just leaves it filled in with no
+  // way to go again short of clicking "Clear all". Reset automatically once
+  // every stroke is captured, after a pause long enough to see the result.
+  // The drill flow is exempt: it manages its own reset between repetitions
+  // and ends on a summary rather than a blank canvas.
+  useEffect(() => {
+    if (drillAttempt > 0) return
+    if (!paths || paths.length === 0 || capturedStrokes.length < paths.length)
+      return
+    setFeedback('Nicely drawn — clearing the canvas so you can try again.')
+    const timeout = window.setTimeout(() => {
+      clearStrokes()
+    }, AUTO_CLEAR_DELAY_MS)
+    return () => window.clearTimeout(timeout)
+  }, [capturedStrokes.length, paths, drillAttempt])
 
   function clearStrokes(): void {
     activePointerId.current = null
