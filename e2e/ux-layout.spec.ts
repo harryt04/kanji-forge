@@ -15,7 +15,7 @@ test.describe('authenticated layout overflow', () => {
       for (const { route, readyTestId, readyHeading } of [
         {
           route: '/browse',
-          readyTestId: 'browse-card-list',
+          readyTestId: 'browse-cards',
         },
         {
           route: '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',

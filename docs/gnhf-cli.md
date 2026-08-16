@@ -14,3 +14,10 @@ gnhf "/Users/harry/Documents/git/kanji-forge/docs/gnhf-ux-prompt.md" \
     --current-branch --push \
     --max-iterations 40 \
     --max-tokens 5000000 \
+
+gnhf "/Users/harry/Documents/git/kanji-forge/docs/gnhf-browse-prompt.md" \
+    --agent codex \
+    --stop-when '/Users/harry/Documents/git/kanji-forge/docs/browse-workbench-backlog.md has every item in Loops F-J marked [x] or [!]' \
+    --current-branch --push \
+    --max-iterations 40 \
+    --max-tokens 5000000 \

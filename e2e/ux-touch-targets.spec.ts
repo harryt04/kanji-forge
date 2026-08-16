@@ -9,7 +9,7 @@ test.describe('authenticated touch targets', () => {
   const routes = [
     { path: '/home', ready: '[data-testid="builtin-deck-shelf"]' },
     { path: '/study', ready: '[data-testid="study-remaining"]' },
-    { path: '/browse', ready: '[data-testid="browse-card-list"]' },
+    { path: '/browse', ready: '[data-testid="browse-cards"]' },
     { path: '/settings', ready: 'h1' },
     { path: '/dictionary', ready: 'h1' },
     { path: '/writing', ready: '[role="application"]' },

@@ -4,7 +4,7 @@ import { SignUpScreen } from './sign-up-screen'
 export const metadata: Metadata = {
   title: 'Create your free account — KanjiForge',
   description:
-    'Create a free KanjiForge account. No payment, no tracking — your reviews stay on your device.',
+    'Create a free KanjiForge account. No payment; anonymous product analytics only. Your reviews stay on your device unless you enable sync.',
   alternates: { canonical: '/sign-up' },
 }
 

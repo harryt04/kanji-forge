@@ -7,6 +7,7 @@ import {
   Public_Sans,
 } from 'next/font/google'
 import './globals.css'
+import { PostHogInit } from '@/features/analytics/posthog-init'
 import { ThemeController } from '@/features/settings/theme-controller'
 import { THEME_INIT_SCRIPT } from '@/features/settings/theme-script'
 import { PwaRegistration } from '@/pwa'
@@ -167,6 +168,7 @@ export default function RootLayout({
       <body>
         <ThemeController />
         <PwaRegistration />
+        <PostHogInit />
         {children}
       </body>
     </html>

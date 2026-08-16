@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
 import { loadStarterDeck } from '@/features/study/deck-loader'
+import { isCardDue } from '@/core/srs/schedule'
 import { APP_BADGE_STATE_CHANGED_EVENT } from './events'
 
 export { APP_BADGE_STATE_CHANGED_EVENT } from './events'
@@ -31,14 +32,7 @@ export function countAppBadgeCards(
 ): number {
   if (preference === 'off') return 0
   if (preference === 'total') return cards.length
-  return cards.filter(
-    (card) =>
-      card.state === undefined ||
-      (card.state.level >= 1 &&
-        card.state.level <= 4 &&
-        card.state.dueAt !== null &&
-        card.state.dueAt <= now),
-  ).length
+  return cards.filter((card) => isCardDue(card.state, now)).length
 }
 
 type AppBadgeNavigator = Omit<Navigator, 'clearAppBadge' | 'setAppBadge'> & {

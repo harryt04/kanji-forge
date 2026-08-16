@@ -14,12 +14,7 @@ import {
 import { retentionByLevel, type RetentionLevel } from '@/core/srs/retention'
 import { identifyLeeches, type Leech } from '@/core/srs/leeches'
 import { emptyCardState } from '@/core/srs/types'
-import {
-  createUserRepositories,
-  type CardInDeck,
-  type CardState,
-  type UserRepositories,
-} from '@/data/repo'
+import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
@@ -30,31 +25,18 @@ import {
   normalizeDeckFolder,
 } from '@/features/settings/deck-folders'
 import { BELT_NAMES, beltLevelLabel } from '@/features/level-rank'
+import {
+  countCardsByLevel,
+  lastSessionEndedAt,
+  summarizeDeckCards,
+  type DeckSummary,
+  type LevelCounts,
+} from '@/features/decks/deck-summary'
 
 const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
-type LevelCounts = readonly [number, number, number, number, number]
 
-interface DeckShelfItem {
-  readonly id: string
-  readonly name: string
-  readonly cardCount: number
-  readonly progressPercent: number
-  readonly progressLevel: 0 | 1 | 2 | 3 | 4
-  readonly lastStudiedAt: number | null
-  readonly folder: string
-}
-
-function countCardsByLevel(
-  cards: readonly { state: CardState | undefined }[],
-): LevelCounts {
-  const counts: [number, number, number, number, number] = [0, 0, 0, 0, 0]
-  for (const card of cards) {
-    const level = card.state?.level ?? 0
-    counts[level] = counts[level]! + 1
-  }
-  return counts
-}
+type DeckShelfItem = DeckSummary
 
 function formatStudyDuration(durationMs: number): string {
   const totalSeconds = Math.floor(Math.max(0, durationMs) / 1000)
@@ -83,49 +65,6 @@ interface HomeData {
   readonly forecast: ReturnType<typeof reviewForecast>
   readonly builtInDecks: readonly DeckShelfItem[]
   readonly customDecks: readonly DeckShelfItem[]
-}
-
-async function summarizeDeck(
-  repo: UserRepositories,
-  deck: Pick<DeckShelfItem, 'id' | 'name'>,
-  cards: readonly CardInDeck[],
-  userId: string,
-  folder = '',
-): Promise<DeckShelfItem> {
-  const states = cards.map(({ contentRef, state }) =>
-    state ? toCoreState(state) : emptyCardState(deck.id, contentRef, userId),
-  )
-  const sessions = await repo.sessions.list(deck.id)
-  const lastReviewedAt = cards.reduce<number | null>(
-    (latest, card) =>
-      card.state?.lastReviewedAt &&
-      (latest === null || card.state.lastReviewedAt > latest)
-        ? card.state.lastReviewedAt
-        : latest,
-    null,
-  )
-  const lastSessionAt = sessions.reduce<number | null>(
-    (latest, session) =>
-      session.endedAt !== null && (latest === null || session.endedAt > latest)
-        ? session.endedAt
-        : latest,
-    null,
-  )
-
-  return {
-    id: deck.id,
-    name: deck.name,
-    cardCount: cards.length,
-    progressPercent: Math.round(computeProgress(cards.length, states) * 100),
-    progressLevel: computeProgressLevel(computeProgress(cards.length, states)),
-    lastStudiedAt:
-      lastReviewedAt === null
-        ? lastSessionAt
-        : lastSessionAt === null
-          ? lastReviewedAt
-          : Math.max(lastReviewedAt, lastSessionAt),
-    folder,
-  }
 }
 
 function localReviewDay(timestamp: number): string {
@@ -188,7 +127,18 @@ export function HomeScreen(): React.ReactElement {
         const cards = await repo.decks.listCards(deck.id, {
           contentRefsFor: () => definition.contentRefs,
         })
-        return summarizeDeck(repo, deck, cards, runtime.userId)
+        const lastSessionAt = lastSessionEndedAt(
+          await repo.sessions.list(deck.id),
+        )
+        return summarizeDeckCards({
+          deck: { id: deck.id, name: deck.name, kind: 'derived' },
+          contentRefs: cards.map((card) => card.contentRef),
+          states: cards
+            .map((card) => card.state)
+            .filter((state): state is CardState => state !== undefined),
+          userId: runtime.userId,
+          lastSessionAt,
+        })
       }),
     )
     const customDecks = await Promise.all(
@@ -196,17 +146,23 @@ export function HomeScreen(): React.ReactElement {
         .filter((candidate) => candidate.kind === 'custom')
         .map(async (candidate): Promise<DeckShelfItem> => {
           const customDeck = await loadDeck(runtime.database, candidate.id)
-          return summarizeDeck(
-            repo,
-            candidate,
-            customDeck.cards,
-            runtime.userId,
-            normalizeDeckFolder(
+          const lastSessionAt = lastSessionEndedAt(
+            await repo.sessions.list(candidate.id),
+          )
+          return summarizeDeckCards({
+            deck: { id: candidate.id, name: candidate.name, kind: 'custom' },
+            contentRefs: customDeck.cards.map((card) => card.contentRef),
+            states: customDeck.cards
+              .map((card) => card.state)
+              .filter((state): state is CardState => state !== undefined),
+            userId: runtime.userId,
+            folder: normalizeDeckFolder(
               settings.find(
                 (setting) => setting.key === `deck-folder:${candidate.id}`,
               )?.value,
             ),
-          )
+            lastSessionAt,
+          })
         }),
     )
 
