@@ -48,14 +48,63 @@ afterEach(() => {
   clearUserRuntime()
 })
 
+/** Tiles are now the default view (see the "defaults to the tile wall" test
+ * below); seed the per-deck list preference for tests whose subject is list
+ * view specifically. */
+async function seedListView(id: number) {
+  const runtime = bootstrapUserRuntime(`browse-${id}`)
+  await runtime.database.ready
+  const repo = createUserRepositories(runtime.database)
+  await repo.settings.set({
+    key: `${BROWSE_VIEW_SETTING}:dev-kanji`,
+    value: 'list',
+    updatedAt: Date.now(),
+  })
+  return { runtime, repo }
+}
+
 describe('BrowseScreen', () => {
   it('prompts anonymous users to sign in', () => {
     render(<BrowseScreen />)
     expect(screen.getByText('Sign in to browse.')).toBeInTheDocument()
   })
 
-  it('loads the deck into an accessible list of cards', async () => {
+  it('defaults to the tile wall when no view preference is saved', async () => {
     bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+    expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+  })
+
+  it('keeps a stable results wrapper across both views', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('browse-cards')).getByTestId(
+          'browse-tile-wall',
+        ),
+      ).toBeInTheDocument(),
+    )
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Show list view' }),
+    )
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('browse-cards')).getByTestId(
+          'browse-card-list',
+        ),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it('loads the deck into an accessible list of cards', async () => {
+    await seedListView(userId)
     render(<BrowseScreen />)
 
     expect(screen.getByText('Loading deck…')).toBeInTheDocument()
@@ -73,16 +122,16 @@ describe('BrowseScreen', () => {
   })
 
   it('switches to a compact tile wall and persists the selected view', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
-    await repo.settings.set({
-      key: BROWSE_VIEW_SETTING,
-      value: 'tiles',
-      updatedAt: Date.now(),
-    })
+    const { repo } = await seedListView(userId)
 
     render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Show tile view' }),
+    )
     await waitFor(() =>
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
@@ -131,7 +180,7 @@ describe('BrowseScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('browse-detail-pane')).toBeInTheDocument(),
     )
-    expect(screen.getByTestId('browse-card-list')).toBeInTheDocument()
+    expect(screen.getByTestId('browse-cards')).toBeInTheDocument()
     await waitFor(() =>
       expect(screen.getByTestId('kanji-detail')).toBeInTheDocument(),
     )
@@ -289,9 +338,7 @@ describe('BrowseScreen', () => {
   })
 
   it('shows each card level and flag state from the local database', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
+    const { repo } = await seedListView(userId)
     await repo.cardStates.upsert({
       deckId: 'dev-kanji',
       contentRef: 'kanji:日',
@@ -320,7 +367,7 @@ describe('BrowseScreen', () => {
   })
 
   it('filters cards by kanji, reading, and English meaning', async () => {
-    bootstrapUserRuntime(`browse-${userId}`)
+    await seedListView(userId)
     render(<BrowseScreen />)
 
     await waitFor(() =>
@@ -347,9 +394,7 @@ describe('BrowseScreen', () => {
   })
 
   it('sorts cards by level while preserving deck order for ties', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
+    const { repo } = await seedListView(userId)
     const now = Date.now()
     for (const [contentRef, level] of [
       ['kanji:日', 3],
@@ -394,9 +439,7 @@ describe('BrowseScreen', () => {
   })
 
   it('filters the rendered deck by level and flagged state', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
+    const { repo } = await seedListView(userId)
     const now = Date.now()
     for (const [contentRef, level, flagged] of [
       ['kanji:日', 3, true],
@@ -445,9 +488,7 @@ describe('BrowseScreen', () => {
   })
 
   it('sets a card level manually without changing review totals', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
+    const { repo } = await seedListView(userId)
     const reviewedAt = Date.now() - 86_400_000
     await repo.cardStates.upsert({
       deckId: 'dev-kanji',
@@ -494,9 +535,7 @@ describe('BrowseScreen', () => {
   })
 
   it('flags multiple selected cards in one local operation', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
+    const { repo } = await seedListView(userId)
 
     render(<BrowseScreen />)
     await waitFor(() =>
@@ -520,9 +559,7 @@ describe('BrowseScreen', () => {
   })
 
   it('sets multiple selected levels with manual-review history', async () => {
-    const runtime = bootstrapUserRuntime(`browse-${userId}`)
-    await runtime.database.ready
-    const repo = createUserRepositories(runtime.database)
+    const { repo } = await seedListView(userId)
 
     render(<BrowseScreen />)
     await waitFor(() =>
