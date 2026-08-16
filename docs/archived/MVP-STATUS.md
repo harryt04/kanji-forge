@@ -1,8 +1,8 @@
 # KanjiForge MVP Status
 
 **Status date:** 2026-08-02  
-**Scope source:** [`TRD.md`](./TRD.md)  
-**Long-term vision:** [`FEATURE-PARITY.md`](./FEATURE-PARITY.md)
+**Scope source:** [`TRD.md`](TRD.md)  
+**Long-term vision:** [`FEATURE-PARITY.md`](../FEATURE-PARITY.md)
 
 This document answers three questions:
 

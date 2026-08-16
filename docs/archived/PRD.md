@@ -365,7 +365,7 @@ StickyStudy's "Translation" feature: paste Japanese, get furigana and glosses, h
 
 ## 6. Design direction
 
-> **The concrete, shipped decisions — palette, ramp, type, components, motion, identity assets — live in [`BRAND-DESIGN-LANGUAGE.md`](./BRAND-DESIGN-LANGUAGE.md).** This section states the *requirements* that document must satisfy; treat the reference ramp and font suggestions below as the brief, not the final answer.
+> **The concrete, shipped decisions — palette, ramp, type, components, motion, identity assets — live in [`BRAND-DESIGN-LANGUAGE.md`](../BRAND-DESIGN-LANGUAGE.md).** This section states the *requirements* that document must satisfy; treat the reference ramp and font suggestions below as the brief, not the final answer.
 
 ### 6.1 The core visual metaphor
 
