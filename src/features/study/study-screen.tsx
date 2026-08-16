@@ -757,8 +757,21 @@ export function StudyScreen({
           </div>
         </div>
       ) : (
-        <div className="text-muted-foreground flex flex-1 items-center justify-center p-6">
-          {queue.length === 0 ? 'Nothing due right now — nice work.' : null}
+        <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-4 p-6">
+          <p>Nothing due right now — nice work.</p>
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!lastGrade}
+              onClick={() => repo && void undo(repo)}
+            >
+              Undo
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleFinish}>
+              Finish
+            </Button>
+          </div>
         </div>
       )}
 

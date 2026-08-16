@@ -52,9 +52,9 @@ describe('useStudyStore.start', () => {
     expect(state.finished).toBe(false)
   })
 
-  it('marks the session finished immediately for an empty deck', () => {
+  it('never auto-finishes an empty deck — there is just nothing to show', () => {
     useStudyStore.getState().start(loadedDeck(0))
-    expect(useStudyStore.getState().finished).toBe(true)
+    expect(useStudyStore.getState().finished).toBe(false)
   })
 })
 
@@ -174,10 +174,29 @@ describe('useStudyStore.grade', () => {
     expect(actualIndex).toBe(expectedIndex)
   })
 
-  it('finishes the session once the last card is graded', async () => {
+  it('never auto-finishes once the last available card is graded', async () => {
     useStudyStore.getState().start(loadedDeck(1))
     await useStudyStore.getState().grade(fakeRepo(), 'good')
-    expect(useStudyStore.getState().finished).toBe(true)
+    expect(useStudyStore.getState().finished).toBe(false)
+  })
+
+  it('pulls more of the deck into the queue once the session batch runs out', async () => {
+    // The initial queue is capped at newPerSession (10) new cards; this deck
+    // has more than that waiting, so exhausting the first batch should
+    // extend the queue instead of leaving the learner with nothing to study.
+    useStudyStore.getState().start(loadedDeck(15))
+    expect(useStudyStore.getState().queue).toHaveLength(10)
+
+    const repo = fakeRepo()
+    for (let index = 0; index < 10; index += 1) {
+      await useStudyStore.getState().grade(repo, 'good')
+    }
+
+    const state = useStudyStore.getState()
+    expect(state.finished).toBe(false)
+    expect(state.index).toBe(10)
+    expect(state.queue.length).toBeGreaterThan(10)
+    expect(state.queue[state.index]).toBeDefined()
   })
 
   it('does not touch the store when persistence fails, leaving the queue intact', async () => {
