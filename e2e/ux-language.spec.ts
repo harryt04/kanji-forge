@@ -14,7 +14,7 @@ test.describe('Japanese language metadata', () => {
     for (const { route, ready } of [
       { route: '/home', ready: '[data-testid="builtin-deck-shelf"]' },
       { route: '/study', ready: '[data-testid="study-question"]' },
-      { route: '/browse', ready: '[data-testid="browse-card-list"]' },
+      { route: '/browse', ready: '[data-testid="browse-cards"]' },
       {
         route: '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
         ready: '[data-testid="browse-detail-pane"]',

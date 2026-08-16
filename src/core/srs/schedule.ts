@@ -19,6 +19,20 @@ export function intervalDays(dueAt: number | null, reviewedAt: number): number {
   return dueAt === null ? 0 : Math.max(0, (dueAt - reviewedAt) / DAY_MS)
 }
 
+/** A card is due when it has never been seen, or its scheduled time has arrived. */
+export function isCardDue(
+  state: { readonly level: number; readonly dueAt: number | null } | undefined,
+  now: number,
+): boolean {
+  if (state === undefined) return true
+  return (
+    state.level >= 1 &&
+    state.level <= 4 &&
+    state.dueAt !== null &&
+    state.dueAt <= now
+  )
+}
+
 /** A small stable PRNG for replay and session ordering; it has no platform dependencies. */
 export function seededRandom(seed: string): () => number {
   let hash = 2166136261
