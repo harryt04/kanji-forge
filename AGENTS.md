@@ -18,7 +18,8 @@ Every subtree under `src/` and `scripts/build-packs/` also has its own `README.m
 |---|---|---|
 | [`docs/implemented-already.md`](docs/implemented-already.md) | Current, evidence-based snapshot of what is implemented, tested, or stubbed | First — before trusting any other doc's claims about current state |
 | [`docs/FEATURE-PARITY.md`](docs/FEATURE-PARITY.md) | StickyStudy inventory → **long-term vision and current feature backlog** | Picking up the next feature to build |
-| [`docs/ux-backlog.md`](docs/ux-backlog.md) | GNHF UX loop queue (Loops A–E), driven by [`docs/gnhf-ux-prompt.md`](docs/gnhf-ux-prompt.md) | Working a UX/accessibility/responsive fix |
+| [`docs/ux-backlog.md`](docs/ux-backlog.md) | GNHF UX loop queue (Loops A–E, all closed), driven by [`docs/gnhf-ux-prompt.md`](docs/gnhf-ux-prompt.md). Its Claim protocol and Traps sections govern every GNHF queue in this repo | Working a UX/accessibility/responsive fix |
+| [`docs/browse-workbench-backlog.md`](docs/browse-workbench-backlog.md) | GNHF queue for the `/browse` Wall Workbench menubar redesign (Loops F–J), driven by [`docs/gnhf-browse-prompt.md`](docs/gnhf-browse-prompt.md) | Working anything on `/browse` |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Short decision log from MVP scoping | When something feels "already decided" |
 | [`docs/BRAND-DESIGN-LANGUAGE.md`](docs/BRAND-DESIGN-LANGUAGE.md) | Palette, belt-rank ramp, type, components, motion, a11y | Before `src/ui/` or any styling change |
 | [`docs/SRS-SPEC.md`](docs/SRS-SPEC.md) | Scheduler in implementable detail | Before `src/core/srs` |
