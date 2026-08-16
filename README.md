@@ -105,12 +105,37 @@ Useful checks:
 pnpm test                 # unit tests
 pnpm test:coverage        # unit tests with coverage
 pnpm test:e2e             # Chromium and WebKit browser tests
-pnpm packs:verify         # reproducibility and fixture budget checks
-pnpm packs:test           # content-pipeline tests
+pnpm test:e2e:ui          # Playwright's interactive UI runner
+pnpm packs:verify         # fixture-only pack validation (what CI runs)
+pnpm packs:test           # content-pipeline unit tests
 pnpm ci                   # complete local CI sequence
 ```
 
 `npm run ci` is also supported for contributors who use npm to invoke package scripts. Without `NEXT_PUBLIC_API_URL`, the public E2E checks run without requiring Postgres and auth-dependent cases (including the offline-study flow) skip. With an API origin configured, make sure that backend is reachable and that any same-origin database has been migrated.
+
+### Content pipeline scripts
+
+These aren't part of `pnpm ci` (they touch network/upstream sources or gitignored full-size
+packs) but are used to regenerate content — see
+[`scripts/build-packs/README.md`](scripts/build-packs/README.md) for the full pipeline map:
+
+```sh
+pnpm fetch:sources         # pin/refresh upstream dictionary sources
+pnpm build:kanji           # and build:words-core, build:words-full, build:names,
+                            # build:strokes-pack, build:sentences-pack, build:similar,
+                            # build:decks — one script per content pack
+pnpm packs:refresh         # fetch + build every pack + full pipeline validation
+pnpm packs:full            # full-source pipeline validation only
+pnpm packs:repro           # reproducibility check on the locked full sources
+pnpm test:decks            # build-decks.test.ts, run separately (depends on gitignored packs/*.sqlite)
+```
+
+### Database scripts
+
+```sh
+pnpm db:generate           # drizzle-kit generate — after changing src/server/db/schema.ts
+pnpm db:migrate            # applies migrations; also runs automatically before `pnpm start`
+```
 
 The full CI definition is [`.github/workflows/ci.yml`](.github/workflows/ci.yml). If a check fails, include the failing command and relevant output in the pull request rather than hiding or weakening the check.
 
@@ -165,6 +190,15 @@ Do not add data from proprietary dictionaries, SKIP codes, Heisig RTK, commercia
 - [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md) — datasets, licenses, and pipeline rules
 - [`docs/implemented-already.md`](docs/implemented-already.md) — current implementation snapshot
 - [`deploy/README.md`](deploy/README.md) — Postgres, Electric, and Coolify setup
+
+Every major `src/` subtree and `scripts/build-packs/` also has its own `README.md` with the
+invariants, test files, and gotchas for that area — start with the one for whatever you're
+touching: [`src/core/`](src/core/README.md), [`src/data/`](src/data/README.md),
+[`src/server/`](src/server/README.md), [`src/app/`](src/app/README.md),
+[`src/features/`](src/features/README.md), [`src/auth/`](src/auth/README.md),
+[`src/pwa/`](src/pwa/README.md), [`src/ui/`](src/ui/README.md),
+[`src/prototype/tile-wall/`](src/prototype/tile-wall/README.md),
+[`scripts/build-packs/`](scripts/build-packs/README.md).
 
 ## License
 
