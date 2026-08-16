@@ -373,6 +373,88 @@ describe('BrowseScreen', () => {
     ).toBeInTheDocument()
   })
 
+  it('filters the wall to one level from a ramp segment', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.cardStates.upsert({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      dueAt: Date.now(),
+      lastReviewedAt: Date.now(),
+      correctStreak: 3,
+      totalReviews: 3,
+      totalCorrect: 3,
+      lapses: 0,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: Date.now(),
+      updatedBy: 'browse-ramp-filter-test',
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+    expect(screen.getAllByTestId('browse-tile')).toHaveLength(200)
+
+    const ramp = within(screen.getByTestId('browse-level-ramp'))
+    const segment = ramp.getByLabelText('Level 3, blue (Ao), Known, 1 cards')
+    fireEvent.click(segment)
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId('browse-tile')).toHaveLength(1),
+    )
+    expect(segment).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      (
+        screen.getByRole('combobox', {
+          name: 'Filter by level',
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe('3')
+  })
+
+  it('clears the level filter when the active segment is clicked again', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.cardStates.upsert({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      dueAt: Date.now(),
+      lastReviewedAt: Date.now(),
+      correctStreak: 3,
+      totalReviews: 3,
+      totalCorrect: 3,
+      lapses: 0,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: Date.now(),
+      updatedBy: 'browse-ramp-filter-test',
+    })
+
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    const ramp = within(screen.getByTestId('browse-level-ramp'))
+    const segment = ramp.getByLabelText('Level 3, blue (Ao), Known, 1 cards')
+    fireEvent.click(segment)
+    await waitFor(() =>
+      expect(screen.getAllByTestId('browse-tile')).toHaveLength(1),
+    )
+
+    fireEvent.click(segment)
+    await waitFor(() =>
+      expect(screen.getAllByTestId('browse-tile')).toHaveLength(200),
+    )
+    expect(segment).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('switches the wall to another deck from the rail', async () => {
     bootstrapUserRuntime(`browse-${userId}`)
     render(<BrowseScreen />)

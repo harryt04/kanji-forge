@@ -716,7 +716,14 @@ export function BrowseScreen({
         </header>
 
         <div data-testid="browse-level-ramp">
-          <LevelRamp counts={countCardsByLevel(cards)} total={cards.length} />
+          <LevelRamp
+            counts={countCardsByLevel(cards)}
+            total={cards.length}
+            selectedLevel={filters.level}
+            onSelectLevel={(level) =>
+              setFilters((current) => ({ ...current, level }))
+            }
+          />
         </div>
 
         <p
