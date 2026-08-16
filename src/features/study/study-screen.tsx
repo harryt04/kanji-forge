@@ -517,6 +517,22 @@ export function StudyScreen({
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
+          {revealed && (
+            <div className="grid w-full max-w-sm grid-cols-3 gap-3">
+              <Button
+                variant="destructive"
+                onClick={() => handleGrade('again')}
+              >
+                Don&apos;t know (←)
+              </Button>
+              <Button variant="success" onClick={() => handleGrade('good')}>
+                I know (→)
+              </Button>
+              <Button variant="perfect" onClick={() => handleGrade('easy')}>
+                No problem (↑)
+              </Button>
+            </div>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -720,25 +736,10 @@ export function StudyScreen({
             </p>
           </div>
 
-          {!revealed ? (
+          {!revealed && (
             <Button size="lg" onClick={handleReveal}>
               {revealLabel}
             </Button>
-          ) : (
-            <div className="grid w-full max-w-sm grid-cols-3 gap-3">
-              <Button
-                variant="destructive"
-                onClick={() => handleGrade('again')}
-              >
-                Don&apos;t know (←)
-              </Button>
-              <Button variant="success" onClick={() => handleGrade('good')}>
-                I know (→)
-              </Button>
-              <Button variant="perfect" onClick={() => handleGrade('easy')}>
-                No problem (↑)
-              </Button>
-            </div>
           )}
 
           <div className="flex gap-3">
