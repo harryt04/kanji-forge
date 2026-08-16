@@ -34,7 +34,7 @@ Code with real logic and an existing test file exercising it.
 ## Implemented, but not yet tested
 
 Real implementations with no corresponding test file today — see
-[`testing-coverage-plan.md`](./testing-coverage-plan.md) Phase 2/3 for the plan to close this.
+[`testing-coverage-plan.md`](archived/testing-coverage-plan.md) Phase 2/3 for the plan to close this.
 
 | Area | Files | What exists |
 |---|---|---|
@@ -63,7 +63,7 @@ Real implementations with no corresponding test file today — see
 
 Every file in this section is a small (typically 8–20 line) placeholder with a `TODO(Tx.x)` comment
 naming the future milestone. They are intentionally excluded from test-coverage targets in
-[`testing-coverage-plan.md`](./testing-coverage-plan.md) — writing tests against a constant export
+[`testing-coverage-plan.md`](archived/testing-coverage-plan.md) — writing tests against a constant export
 is busywork, and each stub's real implementation work is the trigger to add real tests.
 
 | Area | Files | Target milestone |

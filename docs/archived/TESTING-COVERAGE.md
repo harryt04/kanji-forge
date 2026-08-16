@@ -1,6 +1,6 @@
 # Testing Coverage — current state
 
-**As of:** 2026-08-08, after executing [`testing-coverage-plan.md`](../mvp-docs/testing-coverage-plan.md)
+**As of:** 2026-08-08, after executing [`testing-coverage-plan.md`](testing-coverage-plan.md)
 (Phases 0–6). This is a factual snapshot generated from a real `pnpm test:coverage` run — not a
 target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
@@ -21,7 +21,7 @@ target or an aspiration. Re-run `pnpm test:coverage` to refresh it.
 
 ## Per-directory coverage vs. gate
 
-Thresholds are enforced in [`vitest.config.ts`](../vitest.config.ts) (`coverage.thresholds`) and are a
+Thresholds are enforced in [`vitest.config.ts`](../../vitest.config.ts) (`coverage.thresholds`) and are a
 **ratchet**: raise a number when it's comfortably exceeded, never lower one.
 
 | Directory | Threshold | Actual (stmts / branch / funcs / lines) | Status |

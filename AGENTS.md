@@ -46,9 +46,11 @@ Documentation here is load-bearing: this repo is built largely by autonomous age
 
 ## MVP in one breath
 
+*(Historical: this and "Build order" below describe the original MVP plan. The MVP has shipped — see [`docs/implemented-already.md`](docs/implemented-already.md) for current status. Kept here because the phase language is still used as shorthand elsewhere in this file and in `docs/archived/TRD.md`.)*
+
 Sign in (no guests) → study **pre-built** decks with level/color SRS → **tile wall** + full dictionary/detail → **simple exam goal** → **local-first** grades with **Electric** multi-device sync when online → **full backup** file.
 
-**Not in first ship:** custom decks, import, writing trainer validation, history charts, text analyzer. See [`docs/TRD.md`](docs/TRD.md).
+**Not in first ship:** custom decks, import, writing trainer validation, history charts, text analyzer — several of these have since shipped or are in progress; check [`docs/implemented-already.md`](docs/implemented-already.md) rather than trusting this line. See [`docs/archived/TRD.md`](docs/archived/TRD.md).
 
 ## Build order (MVP)
 
@@ -61,13 +63,13 @@ Phase 0 is the data pipeline. Nothing else can be trusted until it is reproducib
 2.  All built-in decks + home + simple goals + browse (tile & list)
 3.  Full detail + dictionary + content pack manager
 4.  Electric read sync + write API hardened + multi-device E2E
-5.  Backup/export + PWA polish, persistence, a11y, perf   ← MVP ships
-─── post-MVP ───
+5.  Backup/export + PWA polish, persistence, a11y, perf   ← MVP shipped
+─── post-MVP (current work) ───
 v2. Custom decks + import/enrichment
 .  History charts, writing trainer, text analyzer, audio packs
 ```
 
-**Dogfood Phase 1 before Phase 2.** Feature-parity ambition is the main risk to shipping—`docs/FEATURE-PARITY.md` is the north star, and [`docs/TRD.md`](docs/TRD.md) is the runway.
+Post-MVP work is now driven by `docs/FEATURE-PARITY.md` and `docs/ux-backlog.md`, not by a phase sequence — the list above is a historical record of how the MVP was staged, not a queue to keep pulling from.
 
 ## Sync stance
 
@@ -76,13 +78,13 @@ v2. Custom decks + import/enrichment
 - **Write API + outbox** pushes local mutations to Postgres when online.
 - **better-auth**—account required, no anonymous. It and the write API are route handlers in this same Next.js app (`src/server/` + `src/app/api/`), not a separate service: one deployable per environment.
 - **Rocicorp Zero** is not used (no offline writes).
-- Details: `docs/ARCHITECTURE.md` §10, `docs/TRD.md` D2–D4.
+- Details: `docs/ARCHITECTURE.md` §10, `docs/archived/TRD.md` D2–D4.
 
 ## The three things most likely to go wrong
 
 1. **iOS evicts your users' data.** Request persistent storage; nag for backups; surface denial in Settings—`docs/ARCHITECTURE.md` §7.2.
-2. **The tile view is not fast enough.** Prototype in Phase 0 before committing the rest of browse.
-3. **Scope.** Do not build import/writing/history charts before the study loop is a daily driver (`docs/TRD.md` kill list).
+2. **The tile view is not fast enough.** See `src/prototype/tile-wall/README.md` for the Phase 0 spike; the same performance bar applies to any real Browse tile-view work.
+3. **Scope.** Check `docs/implemented-already.md` and `docs/FEATURE-PARITY.md` before assuming something is unbuilt — several items from the original TRD kill list (`docs/archived/TRD.md`) have since shipped.
 
 ## Licensing at a glance
 
@@ -95,7 +97,7 @@ v2. Custom decks + import/enrichment
 
 - **Attribution:** in-repo (`ATTRIBUTION.md`), in-app (Settings → About → Data sources, offline), and pack manifests.
 - **Not usable:** SKIP codes, Heisig RTK, commercial audio, NHK news text—see `docs/DATA-SOURCES.md`.
-- Full rationale: PRD §9.1.
+- Full rationale: `docs/archived/PRD.md` §9.1.
 
 ## Name
 
