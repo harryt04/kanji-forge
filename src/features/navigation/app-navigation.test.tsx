@@ -65,9 +65,10 @@ describe('AppNavigation', () => {
       'href',
       '/history',
     )
-    expect(
-      screen.queryByRole('link', { name: 'Writing' }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Writing' })).toHaveAttribute(
+      'href',
+      '/writing',
+    )
     expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute(
       'href',
       '/help',
@@ -119,6 +120,7 @@ describe('AppNavigation', () => {
   it.each([
     ['/home', 'Home'],
     ['/study', 'Study'],
+    ['/writing', 'Writing'],
     ['/browse', 'Browse'],
     ['/history', 'History'],
     ['/dictionary', 'Dictionary'],

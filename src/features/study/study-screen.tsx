@@ -37,7 +37,7 @@ import {
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
 import { useStudyStore } from './store'
-import { StudyWritingPanel } from './study-writing-panel'
+import { hasWritingPractice, StudyWritingPanel } from './study-writing-panel'
 import { requestStoragePersistenceAfterSession } from '@/pwa'
 import {
   DEFAULT_WRITING_LENIENCY,
@@ -529,7 +529,7 @@ export function StudyScreen({
             {flagged ? 'Flagged' : 'Flag'}
           </Button>
           <div
-            className={`bg-card w-full max-w-sm rounded-[var(--radius)] border-4 p-10 text-center shadow-[var(--shadow-card)] transition-colors motion-reduce:transition-none`}
+            className={`bg-card w-full max-w-sm rounded-[var(--radius)] border-4 p-10 text-center shadow-[var(--shadow-card)] transition-colors motion-reduce:transition-none ${revealed && hasWritingPractice(studyCard.literal) ? 'sm:max-w-md' : ''}`}
             style={{ borderColor: stickyColor }}
             data-grey-stickies={greyStickies}
             onClick={() => !revealed && handleReveal()}
@@ -550,18 +550,24 @@ export function StudyScreen({
                   : 'Reveal answer'
             }
           >
-            <p
-              className={
-                questionIsJapanese
-                  ? 'font-jp-display text-[length:var(--text-display)]'
-                  : 'text-3xl font-semibold'
-              }
-              data-testid="study-question"
-              data-study-question={twoTapStudy ? 'kanji' : studyQuestion}
-              lang={questionIsJapanese ? 'ja' : undefined}
-            >
-              {questionText}
-            </p>
+            {/* Once revealed, a writing-capable card replaces this glyph with
+                the canvas below (its ghost guide shows the same character),
+                so keeping both on screen would be a redundant duplicate that
+                pushes the canvas below the fold on short viewports. */}
+            {!(revealed && hasWritingPractice(studyCard.literal)) && (
+              <p
+                className={
+                  questionIsJapanese
+                    ? 'font-jp-display text-[length:var(--text-display)]'
+                    : 'text-3xl font-semibold'
+                }
+                data-testid="study-question"
+                data-study-question={twoTapStudy ? 'kanji' : studyQuestion}
+                lang={questionIsJapanese ? 'ja' : undefined}
+              >
+                {questionText}
+              </p>
+            )}
             {showingTwoTapReadings && (
               <div
                 className="mt-6 space-y-2 text-left"
@@ -591,9 +597,17 @@ export function StudyScreen({
             )}
             {revealed && (
               <div
-                className="mt-6 space-y-2 text-left"
+                className="mt-6 space-y-4 text-left"
                 data-testid="study-answer"
               >
+                {hasWritingPractice(studyCard.literal) && (
+                  <StudyWritingPanel
+                    contentRef={card.stickyId}
+                    literal={studyCard.literal}
+                    validationEnabled={writingValidationEnabled}
+                    leniency={writingLeniency}
+                  />
+                )}
                 {answerShows('kanji') && (
                   <p className="font-jp-display text-5xl" lang="ja">
                     {studyCard.literal}
@@ -705,15 +719,6 @@ export function StudyScreen({
               Level {level} — {LEVEL_LABELS[level]}
             </p>
           </div>
-
-          {revealed && answerShows('writing') && (
-            <StudyWritingPanel
-              contentRef={card.stickyId}
-              literal={studyCard.literal}
-              validationEnabled={writingValidationEnabled}
-              leniency={writingLeniency}
-            />
-          )}
 
           {!revealed ? (
             <Button size="lg" onClick={handleReveal}>

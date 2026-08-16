@@ -356,22 +356,12 @@ describe('StudyScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the opt-in writing pad on the answer side', async () => {
-    const runtime = getActiveUserRuntime()!
-    await createUserRepositories(runtime.database).settings.set({
-      key: STUDY_ANSWER_SETTING,
-      value: 'writing',
-      updatedAt: Date.now(),
-    })
-
+  it('renders writing practice on the answer side for every kanji card', async () => {
     await renderReady()
     await userEvent.click(
       screen.getByRole('button', { name: 'Reveal (Space)' }),
     )
 
-    expect(
-      screen.getByRole('heading', { name: 'Writing practice' }),
-    ).toBeInTheDocument()
     expect(
       screen.getByRole('application', { name: /Writing canvas for/ }),
     ).toBeInTheDocument()
@@ -413,11 +403,6 @@ describe('StudyScreen', () => {
       },
     })
     await repo.settings.set({
-      key: STUDY_ANSWER_SETTING,
-      value: 'writing',
-      updatedAt: Date.now(),
-    })
-    await repo.settings.set({
       key: STUDY_AUTO_PLAY_AUDIO_SETTING,
       value: 'true',
       updatedAt: Date.now(),
@@ -441,9 +426,6 @@ describe('StudyScreen', () => {
     )
 
     expect(screen.getByTestId('study-answer')).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Writing practice' }),
-    ).toBeInTheDocument()
     expect(
       screen.getByRole('application', { name: 'Writing canvas for 金' }),
     ).toBeInTheDocument()

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { StudyWritingPanel } from './study-writing-panel'
+import { hasWritingPractice, StudyWritingPanel } from './study-writing-panel'
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -131,5 +131,16 @@ describe('StudyWritingPanel', () => {
         screen.getByRole('radio', { name: 'Practice writing 中' }),
       ).toHaveAttribute('aria-checked', 'true'),
     )
+  })
+})
+
+describe('hasWritingPractice', () => {
+  it('is true when the literal contains at least one kanji', () => {
+    expect(hasWritingPractice('日')).toBe(true)
+    expect(hasWritingPractice('大人')).toBe(true)
+  })
+
+  it('is false for kana-only literals', () => {
+    expect(hasWritingPractice('おかね')).toBe(false)
   })
 })

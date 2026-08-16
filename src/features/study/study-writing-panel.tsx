@@ -18,6 +18,11 @@ function kanjiInLiteral(literal: string): readonly string[] {
   return kanji
 }
 
+/** Whether the study card face can offer writing practice for this literal. */
+export function hasWritingPractice(literal: string): boolean {
+  return kanjiInLiteral(literal).length > 0
+}
+
 interface StudyWritingPanelProps {
   readonly contentRef: string
   readonly literal: string
@@ -26,9 +31,10 @@ interface StudyWritingPanelProps {
 }
 
 /**
- * Stroke-order writing practice for the study answer side. A kanji card gets
- * one canvas; a word card gets a kanji picker (defaulting to the first
- * kanji) so the learner can practice each kanji in the compound.
+ * Stroke-order writing practice on the study card face. A kanji card gets one
+ * canvas; a word card gets a kanji picker (defaulting to the first kanji), so
+ * the learner can practice each character in the compound. Completed
+ * characters get a tick on their chip.
  */
 export function StudyWritingPanel({
   contentRef,
@@ -38,9 +44,11 @@ export function StudyWritingPanel({
 }: StudyWritingPanelProps): React.ReactElement | null {
   const kanji = kanjiInLiteral(literal)
   const [selected, setSelected] = useState(0)
+  const [completed, setCompleted] = useState<ReadonlySet<string>>(new Set())
 
   useEffect(() => {
     setSelected(0)
+    setCompleted(new Set())
   }, [contentRef])
 
   if (kanji.length === 0) return null
@@ -48,19 +56,10 @@ export function StudyWritingPanel({
   const active = kanji[Math.min(selected, kanji.length - 1)]!
 
   return (
-    <section
-      className="border-border bg-background w-full max-w-sm rounded-md border p-3"
-      aria-labelledby="study-writing-heading"
-      data-study-writing="true"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <h3 id="study-writing-heading" className="font-semibold">
-          Writing practice
-        </h3>
-      </div>
+    <div data-study-writing="true">
       {kanji.length > 1 && (
         <div
-          className="mt-2 flex flex-wrap gap-2"
+          className="mb-3 flex flex-wrap gap-2"
           role="radiogroup"
           aria-label="Kanji to practice writing"
         >
@@ -74,23 +73,29 @@ export function StudyWritingPanel({
               aria-checked={index === selected}
               lang="ja"
               className="min-h-11 min-w-11 text-lg"
-              aria-label={`Practice writing ${character}`}
+              aria-label={`Practice writing ${character}${completed.has(character) ? ', completed' : ''}`}
               onClick={() => setSelected(index)}
             >
               {character}
+              {completed.has(character) && (
+                <span aria-hidden="true" className="text-success ml-1">
+                  ✓
+                </span>
+              )}
             </Button>
           ))}
         </div>
       )}
-      <div className="mt-3">
-        <WritingPad
-          key={active}
-          literal={active}
-          validationEnabled={validationEnabled}
-          leniency={leniency}
-          compact
-        />
-      </div>
-    </section>
+      <WritingPad
+        key={active}
+        literal={active}
+        validationEnabled={validationEnabled}
+        leniency={leniency}
+        fill
+        onComplete={() =>
+          setCompleted((current) => new Set(current).add(active))
+        }
+      />
+    </div>
   )
 }

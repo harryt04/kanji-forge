@@ -65,6 +65,13 @@ export interface WritingPadProps {
   readonly autoClear?: boolean
   /** Tighter chrome for placement inside a study card. */
   readonly compact?: boolean
+  /**
+   * No inner card chrome — the canvas fills its container edge to edge and
+   * the stroke counter/Undo/Clear row wraps onto one line beneath it. For
+   * placement where the caller's own container already provides the frame
+   * (e.g. the study card face).
+   */
+  readonly fill?: boolean
 }
 
 /** A single character's stroke-order canvas, with optional order/shape validation. */
@@ -75,6 +82,7 @@ export function WritingPad({
   onComplete,
   autoClear = true,
   compact = false,
+  fill = false,
 }: WritingPadProps): React.ReactElement {
   const [paths, setPaths] = useState<readonly string[] | null | undefined>(
     undefined,
@@ -227,9 +235,11 @@ export function WritingPad({
     <div className="grid gap-3">
       <div
         className={
-          compact
-            ? 'border-border bg-card mx-auto w-full max-w-xs rounded-xl border p-2'
-            : 'border-border bg-card mx-auto w-full max-w-[28rem] rounded-xl border p-3 shadow-[var(--shadow-card)]'
+          fill
+            ? 'w-full'
+            : compact
+              ? 'border-border bg-card mx-auto w-full max-w-xs rounded-xl border p-2'
+              : 'border-border bg-card mx-auto w-full max-w-[28rem] rounded-xl border p-3 shadow-[var(--shadow-card)]'
         }
       >
         <svg
@@ -355,7 +365,13 @@ export function WritingPad({
           )}
         </svg>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        className={
+          fill
+            ? 'flex flex-wrap items-center justify-between gap-2'
+            : 'flex flex-wrap items-center justify-between gap-3'
+        }
+      >
         <p className="text-muted-foreground text-sm" role="status">
           {capturedStrokes.length}{' '}
           {capturedStrokes.length === 1 ? 'stroke' : 'strokes'} captured
@@ -365,7 +381,7 @@ export function WritingPad({
           <Button
             type="button"
             variant="outline"
-            size={compact ? 'sm' : 'default'}
+            size={compact || fill ? 'sm' : 'default'}
             onClick={undoStroke}
             disabled={capturedStrokes.length === 0}
           >
@@ -374,7 +390,7 @@ export function WritingPad({
           <Button
             type="button"
             variant="outline"
-            size={compact ? 'sm' : 'default'}
+            size={compact || fill ? 'sm' : 'default'}
             onClick={clearStrokes}
             disabled={capturedStrokes.length === 0 && draftStroke.length === 0}
           >

@@ -66,6 +66,9 @@ export function AppNavigation({
         <NavLink href="/study" orientation={orientation} pathname={pathname}>
           Study
         </NavLink>
+        <NavLink href="/writing" orientation={orientation} pathname={pathname}>
+          Writing
+        </NavLink>
         <Link
           className={navigationLinkClassName(
             orientation,
