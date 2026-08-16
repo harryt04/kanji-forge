@@ -66,7 +66,7 @@ Nothing in Loop G or later may be claimed until both items here are `[x]`. The
 whole reason this screen shipped broken is that no one had ever looked at it
 signed in.
 
-- [ ] **F1. `/browse` has never been verified in a real browser, and the test
+- [x] **F1. `/browse` has never been verified in a real browser, and the test
       setup makes that the default outcome.**
       Where: [`e2e/fixtures.ts:5`](../e2e/fixtures.ts#L5) — `API_URL` comes from
       `NEXT_PUBLIC_API_URL`, and every auth-gated spec does `test.skip(!API_URL)`.
@@ -86,6 +86,10 @@ signed in.
       a signed-in session, and the spec asserts at least one measurable
       condition on the tile wall (a `getBoundingClientRect()` dimension or a
       computed style) rather than mere presence.
+
+- Documented the local auth E2E environment in README.md and added
+  e2e/browse-workbench.spec.ts; its signed-in fixture asserts non-zero tile
+  width and height from getBoundingClientRect().
 
 - [ ] **F2. Record the before-numbers this queue is measured against.**
       Fix: with F1's harness, capture and write into this file, under this

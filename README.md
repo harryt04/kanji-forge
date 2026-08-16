@@ -114,6 +114,20 @@ pnpm ci                   # complete local CI sequence
 
 `npm run ci` is also supported for contributors who use npm to invoke package scripts. Without `NEXT_PUBLIC_API_URL`, the public E2E checks run without requiring Postgres and auth-dependent cases (including the offline-study flow) skip. With an API origin configured, make sure that backend is reachable and that any same-origin database has been migrated.
 
+To run the authenticated Browse Workbench check locally, keep Postgres running and set the
+following in the root .env.local (the auth and database variables are described above):
+
+    DATABASE_URL=postgresql://kanjiforge:<password>@localhost:5432/kanjiforge
+    BETTER_AUTH_SECRET=<at-least-32-character-random-secret>
+    BETTER_AUTH_URL=http://localhost:3000
+    NEXT_PUBLIC_API_URL=http://localhost:3000
+
+The non-empty NEXT_PUBLIC_API_URL enables auth-gated E2E cases, including this one; the
+existing e2e/fixtures.ts registers a fresh test user for each case, so TEST_ACCOUNT_EMAIL
+and TEST_ACCOUNT_PASSWORD are not required. Run the focused check with:
+
+    pnpm test:e2e e2e/browse-workbench.spec.ts
+
 ### Content pipeline scripts
 
 These aren't part of `pnpm ci` (they touch network/upstream sources or gitignored full-size
