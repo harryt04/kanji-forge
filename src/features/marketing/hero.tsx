@@ -43,17 +43,18 @@ export function Hero(): React.ReactElement {
           </Button>
         </div>
         <p className="text-muted-foreground mt-4 text-sm">
-          No payment, no tracking. Your reviews stay on your device.
+          No payment. Your reviews stay on your device; see our{' '}
+          <Link href="/privacy" className="underline">
+            privacy policy
+          </Link>
+          .
         </p>
         <p className="text-muted-foreground mt-6 text-sm">
           <Link href="/kanji" className="hover:text-foreground underline">
             Browse the kanji reference
           </Link>
           {' · '}
-          <Link
-            href="/kanji/lists"
-            className="hover:text-foreground underline"
-          >
+          <Link href="/kanji/lists" className="hover:text-foreground underline">
             JLPT &amp; jōyō lists
           </Link>
           {' · '}

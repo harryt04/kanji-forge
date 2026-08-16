@@ -53,6 +53,8 @@
     "kuromoji": "0.1.2",
     "next": "^15.0.0",
     "postgres": "3.4.9",
+    "posthog-js": "^1.356.1",
+    "posthog-node": "^4.18.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "serwist": "^9.5.0",

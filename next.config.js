@@ -8,6 +8,27 @@ const nextConfig = {
   images: { unoptimized: true },
   reactStrictMode: true,
   experimental: { optimizePackageImports: ['motion'] },
+
+  // Proxies the PostHog client SDK through this app's own origin so ad blockers
+  // that target posthog.com don't drop analytics requests.
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+      {
+        source: '/ingest/decide',
+        destination: 'https://us.i.posthog.com/decide',
+      },
+    ]
+  },
+  // Required to support PostHog's trailing-slash API requests through the rewrite above.
+  skipTrailingSlashRedirect: true,
 }
 
 const withSerwist = withSerwistInit({

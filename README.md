@@ -90,6 +90,7 @@ Optional public variables are:
 - `NEXT_PUBLIC_SITE_URL` — canonical site origin; defaults to `http://localhost:3000`. Used to build canonical URLs, Open Graph tags, and the sitemap, and it is a **build-time** value (`NEXT_PUBLIC_` prefix), so it must be set in the build environment, not only at runtime. Production must set this to `https://kanjiforge.app` exactly — `robots.ts` blocks indexing on any other host to avoid duplicate-content competition with production.
 - `NEXT_PUBLIC_API_URL` — an alternate authenticated API origin. Leave it empty for the recommended same-origin deployment. The auth-dependent E2E tests are skipped when it is empty.
 - `NEXT_PUBLIC_ELECTRIC_URL` — build-time client gate for the optional Electric read path.
+- `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` — PostHog analytics project key and host. Both are build-time values. The client initializes PostHog only in production, with autocaptured text and element attributes masked and session recording disabled; production builds must provide the key. Requests are proxied through `/ingest` (see `next.config.js`) so ad blockers targeting `posthog.com` don't drop them. In Coolify, changing either value requires a new image build and redeploy — changing the runtime environment alone does not update an already-built client bundle.
 
 ## Tests and CI
 
