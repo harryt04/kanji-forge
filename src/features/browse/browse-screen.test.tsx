@@ -260,7 +260,7 @@ describe('BrowseScreen', () => {
       '0.75',
     )
     expect(wall).toHaveStyle(
-      'grid-template-columns: repeat(auto-fill, minmax(42px, 1fr))',
+      'grid-template-columns: repeat(auto-fill, minmax(44px, 1fr))',
     )
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Tile zoom' }), {

@@ -1112,9 +1112,10 @@ export function BrowseScreen({
             <div
               className="grid gap-2"
               style={{
-                gridTemplateColumns: `repeat(auto-fill, minmax(${
-                  selectionMode ? Math.max(44, 56 * tileZoom) : 56 * tileZoom
-                }px, 1fr))`,
+                gridTemplateColumns: `repeat(auto-fill, minmax(${Math.max(
+                  44,
+                  56 * tileZoom,
+                )}px, 1fr))`,
               }}
               data-testid="browse-tile-wall"
               role="grid"

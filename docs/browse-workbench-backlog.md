@@ -155,7 +155,7 @@ The wall is the product. These are the defects visible in the user's screenshot.
       inset primary ring and non-opaque corner check; `e2e/browse-workbench.spec.ts`
       proves the acceptance measurements in Chromium and WebKit, light and dark.
 
-- [ ] **G2. Selection-mode tiles are 42px at 75% zoom — under the touch floor.**
+- [x] **G2. Selection-mode tiles are 42px at 75% zoom — under the touch floor.**
       Where: [`browse-screen.tsx:1115-1117`](../src/features/browse/browse-screen.tsx#L1115).
       Evidence: the grid clamps to `Math.max(44, 56 * tileZoom)` in selection
       mode, which is correct — but today the real target is the 44px overlay
@@ -168,6 +168,10 @@ The wall is the product. These are the defects visible in the user's screenshot.
       normal mode, every `[data-testid="browse-tile"]`
       `getBoundingClientRect()` is at least 44×44px, at 375px and 1440px.
       Blocked by G1 — mark `[!]` and take the next item if G1 is not `[x]`.
+
+      The tile-wall grid now clamps its minimum track to 44px in both normal
+      and selection modes; `browse-workbench.spec.ts` proves every tile meets
+      the floor in Chromium and WebKit at both required viewports and themes.
 
 - [ ] **G3. An out-of-range level renders an unstyled tile.**
       Where: [`browse-screen.tsx:1124`](../src/features/browse/browse-screen.tsx#L1124)

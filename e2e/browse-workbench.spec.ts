@@ -167,4 +167,50 @@ test.describe('Browse Workbench', () => {
       expect(after.overlaps).toBe(false)
     }
   })
+
+  test('compact tile targets stay at least 44px in both modes', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    for (const theme of ['light', 'dark'] as const) {
+      await page.evaluate((value) => {
+        window.localStorage.setItem('kanjiforge-theme', value)
+      }, theme)
+
+      for (const viewport of [
+        { width: 1440, height: 900 },
+        { width: 375, height: 667 },
+      ]) {
+        await page.setViewportSize(viewport)
+        await page.goto('/browse')
+        await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
+        await page.getByLabel('Tile zoom').selectOption('0.75')
+
+        for (const selectionMode of [false, true]) {
+          if (selectionMode) {
+            await page.getByRole('button', { name: 'Select cards' }).click()
+          }
+
+          const dimensions = await page
+            .getByTestId('browse-tile')
+            .evaluateAll((tiles) =>
+              tiles.map((tile) => {
+                const rect = tile.getBoundingClientRect()
+                return { width: rect.width, height: rect.height }
+              }),
+            )
+
+          expect(dimensions.length).toBeGreaterThan(0)
+          for (const dimension of dimensions) {
+            expect(dimension.width).toBeGreaterThanOrEqual(44)
+            expect(dimension.height).toBeGreaterThanOrEqual(44)
+          }
+
+          if (selectionMode) {
+            await page.getByRole('button', { name: 'Select cards' }).click()
+          }
+        }
+      }
+    }
+  })
 })
