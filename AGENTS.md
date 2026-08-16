@@ -8,20 +8,41 @@ Every study item is a **sticky** with a **color** (belt-rank ramp). New through 
 
 ## Documentation set
 
-Read in this order when working on the project:
+**The MVP shipped.** Work now is driven by [`docs/FEATURE-PARITY.md`](docs/FEATURE-PARITY.md) (feature backlog) and [`docs/ux-backlog.md`](docs/ux-backlog.md) (UX loop queue), not by the old TRD/PRD phase plan. Read the **Live** docs below for current work; the **Archived** docs are historical context only — read them to understand *why* something was decided, not to find out what to do next.
+
+Every subtree under `src/` and `scripts/build-packs/` also has its own `README.md` — read the one for the area you're touching before making changes; it names the invariants and test files an exploration would otherwise have to re-derive.
+
+### Live
 
 | Document | What it covers | Read it when |
 |---|---|---|
-| [`docs/TRD.md`](docs/TRD.md) | **Binding MVP ship list**, locked decisions, acceptance criteria, phases | Start here for implementation |
-| [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) | **Build playbook**—subagent task blocks and gates that implement the TRD | When actually building |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Short decision log from MVP scoping | When something feels “already decided” |
-| [`docs/PRD.md`](docs/PRD.md) | Product requirements, principles, full feature catalog (P0/P1/P2), screens | Product context; MVP cuts point at TRD |
-| [`docs/BRAND-DESIGN-LANGUAGE.md`](docs/BRAND-DESIGN-LANGUAGE.md) | Palette, belt-rank ramp, type, components, motion, a11y | Before `src/ui/` |
-| [`docs/FEATURE-PARITY.md`](docs/FEATURE-PARITY.md) | StickyStudy inventory → **long-term vision** (not the MVP cut list) | Eventual parity planning |
-| [`docs/SRS-SPEC.md`](docs/SRS-SPEC.md) | Scheduler in implementable detail | Before `core/srs` |
-| [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md) | Datasets, licenses, ETL | Phase 0 |
+| [`docs/implemented-already.md`](docs/implemented-already.md) | Current, evidence-based snapshot of what is implemented, tested, or stubbed | First — before trusting any other doc's claims about current state |
+| [`docs/FEATURE-PARITY.md`](docs/FEATURE-PARITY.md) | StickyStudy inventory → **long-term vision and current feature backlog** | Picking up the next feature to build |
+| [`docs/ux-backlog.md`](docs/ux-backlog.md) | GNHF UX loop queue (Loops A–E), driven by [`docs/gnhf-ux-prompt.md`](docs/gnhf-ux-prompt.md) | Working a UX/accessibility/responsive fix |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Short decision log from MVP scoping | When something feels "already decided" |
+| [`docs/BRAND-DESIGN-LANGUAGE.md`](docs/BRAND-DESIGN-LANGUAGE.md) | Palette, belt-rank ramp, type, components, motion, a11y | Before `src/ui/` or any styling change |
+| [`docs/SRS-SPEC.md`](docs/SRS-SPEC.md) | Scheduler in implementable detail | Before `src/core/srs` |
+| [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md) | Datasets, licenses, ETL | Before `scripts/build-packs/` |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Stack, storage, tiles, PWA, **Electric + outbox** sync | When building |
-| [`docs/implemented-already.md`](docs/implemented-already.md) | Current, evidence-based snapshot of what is implemented, tested, or stubbed | Before trusting `MVP-STATUS.md` dates |
+
+### Archived (historical context only — paths moved under `docs/archived/`)
+
+| Document | What it covers |
+|---|---|
+| [`docs/archived/TRD.md`](docs/archived/TRD.md) | The binding MVP ship list, locked decisions, acceptance criteria — MVP is shipped, this is now a historical record |
+| [`docs/archived/PRD.md`](docs/archived/PRD.md) | Original product requirements and full P0/P1/P2 catalog predating the MVP cut |
+| [`docs/archived/ORCHESTRATION.md`](docs/archived/ORCHESTRATION.md) | The subagent build playbook that implemented the TRD |
+| [`docs/archived/MVP-STATUS.md`](docs/archived/MVP-STATUS.md) | Superseded by `docs/implemented-already.md` — do not trust its dates |
+| [`docs/archived/TESTING-COVERAGE.md`](docs/archived/TESTING-COVERAGE.md), [`docs/archived/testing-coverage-plan.md`](docs/archived/testing-coverage-plan.md) | Historical testing-coverage planning |
+| [`docs/archived/PHASE0-HANDOFF.md`](docs/archived/PHASE0-HANDOFF.md) | Phase 0 data-pipeline handoff notes |
+
+## Documentation maintenance contract
+
+Documentation here is load-bearing: this repo is built largely by autonomous agent loops that read `AGENTS.md` first and follow its links with no human in the loop to notice a 404. Keep the graph correct:
+
+- When you touch a directory that has a `README.md`, update it if your change affects what it describes (a new invariant, a moved file, a changed contract). Don't leave the next agent to discover the change by diffing.
+- When you change observable behavior, update the relevant row in [`docs/implemented-already.md`](docs/implemented-already.md).
+- If you notice a broken link, a stale path, or a claim that no longer matches the code — anywhere in `docs/`, `AGENTS.md`, or a module `README.md` — fix it in the same session, even if it's unrelated to your task. It costs one edit now versus a wasted exploration for every future agent.
 
 ## MVP in one breath
 

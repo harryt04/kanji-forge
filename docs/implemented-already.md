@@ -1,14 +1,15 @@
 # What's Actually Implemented (current snapshot)
 
-**Status date:** 2026-08-08 — based on a direct read of the source tree, not committed history
-alone. This supersedes the stale rows in [`MVP-STATUS.md`](./MVP-STATUS.md) (dated 2026-08-02),
-which predates commits `831840d` ("Fix auth stack so login actually works end-to-end") and
-`8475b74` ("Build the first end-to-end local study loop (T1.6-T1.8)"). See "Corrections to
-MVP-STATUS.md" below for the specific rows that changed.
+**Status date:** 2026-08-16 — based on a direct read of the source tree, not committed history
+alone. This supersedes the stale rows in [`archived/MVP-STATUS.md`](archived/MVP-STATUS.md)
+(dated 2026-08-02), which predates commits `831840d` ("Fix auth stack so login actually works
+end-to-end") and `8475b74` ("Build the first end-to-end local study loop (T1.6-T1.8)"). See
+"Corrections to MVP-STATUS.md" below for the specific rows that changed.
 
-This is a factual inventory, not a roadmap. For what's planned next, see
-[`MVP-STATUS.md`](./MVP-STATUS.md) → "Remaining Build Sequence" and
-[`ORCHESTRATION.md`](./ORCHESTRATION.md).
+The MVP has shipped; there is no longer a "remaining build sequence" document. For what's
+planned next, see [`FEATURE-PARITY.md`](FEATURE-PARITY.md) (feature backlog) and
+[`ux-backlog.md`](ux-backlog.md) (UX loop queue). `archived/MVP-STATUS.md` and
+`archived/ORCHESTRATION.md` are historical records of the MVP build, not active planning docs.
 
 ---
 
@@ -18,7 +19,7 @@ Code with real logic and an existing test file exercising it.
 
 | Area | Files | What exists |
 |---|---|---|
-| SRS engine | `src/core/srs/{grade,schedule,queue,replay,goal,retention,types}.ts` | Pure functions for the five-level spaced-repetition system: grading state transitions, next-due scheduling with seeded fuzz, queue building/interleaving, requeue-after-lapse, idempotent review-log replay, goal/progress math, and study-answer retention by starting level. Zero I/O, zero React — enforced by `eslint.config.js`'s `no-restricted-imports` rule on `src/core/**`. Covered by `src/core/srs/srs.test.ts`. |
+| SRS engine | `src/core/srs/{grade,schedule,queue,replay,goal,retention,adaptive,leeches,types}.ts` | Pure functions for the five-level spaced-repetition system: grading state transitions, next-due scheduling with seeded fuzz, queue building/interleaving, requeue-after-lapse, idempotent review-log replay, goal/progress math, study-answer retention by starting level, an optional adaptive `dueAt`-only scheduling mode layered on the same level model (never rewrites study history), and leech detection for cards with repeated lapses. Zero I/O, zero React — enforced by `eslint.config.js`'s `no-restricted-imports` rule on `src/core/**`. Covered by `src/core/srs/srs.test.ts` and `src/core/srs/adaptive.test.ts`. See [`src/core/README.md`](../src/core/README.md). |
 | Local database | `src/data/db/{index,migrations,schema}.ts` | SQLite-WASM (`sql.js`) per-user local database, persisted to the browser's Origin Private File System with a graceful in-memory fallback if OPFS is unavailable (e.g. private browsing). Serializes writes through a chain so concurrent grades can't interleave. Versioned migrations create 10 tables: `decks`, `deck_membership`, `card_states`, `reviews`, `sessions`, `settings`, `daily_stats`, `outbox`, plus `schema_migrations`. Database name is namespaced per `userId`; opening with an empty id throws. |
 | Local repositories | `src/data/repo/index.ts` | Typed CRUD over the local database: decks, card states, reviews, sessions, settings, daily stats, outbox rows. Sessions support start/end/list for local study-time totals. `recordGrade()` writes a review, its derived card state, a daily-stat increment, and an outbox row in one atomic transaction. Covered by `src/data/repo/index.test.ts`. |
 | Auth runtime isolation | `src/auth/runtime.ts` | `bootstrapUserRuntime(userId)` opens a user-scoped local database and starts the outbox worker plus Electric sync lifecycle seam; `clearUserRuntime()` tears everything down on sign-out; switching accounts closes the old database before opening the new one. Every entry point rejects an empty `userId`. Covered by `runtime.test.ts`, `index.test.ts`, and `no-anonymous.test.ts`. |
@@ -68,7 +69,7 @@ is busywork, and each stub's real implementation work is the trigger to add real
 | Area | Files | Target milestone |
 |---|---|---|
 | Electric sync | `src/data/sync/{index,electric-shape}.ts`, `src/server/electric.ts` | The authenticated read path consumes the proxied Electric shape stream when configured, materializes rows through the shared local merge contract, and falls back to the API snapshot; the server proxy injects the authenticated `user_id` predicate and forwards the stream. | T4.0 |
-| Mutation write API | `src/server/index.ts` (`POST /api/mutations`) | Authenticated route validates and applies supported review/deck/settings/membership mutations with idempotency and LWW metadata semantics. | T1.4 |
+| Mutation write API | `src/app/api/mutations/route.ts` (`POST /api/mutations`), calling `src/server/{context,mutations}.ts` | Authenticated route validates and applies supported review/deck/settings/membership mutations with idempotency and LWW metadata semantics. | T1.4 |
 | Text processing | `src/core/text/{detect,furigana,romaji}.ts` | Input-type detection now classifies kanji, kana, romaji, English, mixed-script, and other queries for the dictionary UI. Furigana alignment parsing is implemented and shared by sentence-pack access, with malformed-data fallback and focused tests. `romaji.ts` is implemented and used by dictionary search. | |
 | Import/enrichment | `src/core/import/{parse,enrich,apkg}.ts`, `src/data/packs/index.ts` | Pure CSV/TSV/line parsers handle quoted cells, multiline values, BOMs, comments, and compact kanji lists. Pure enrichment helpers deduplicate content identities, merge duplicate tags, and classify matched, already-in-target, and unresolved entries; offline analyzer segmentation turns Japanese phrases into dictionary-backed import cards; Anki `.apkg` parsing preserves Japanese word runs, individual kanji, and note tags for offline dictionary preview and sticky-annotation import. Covered by `src/core/import/import.test.ts`, `src/data/packs/index.test.ts`, and `deck-import.test.ts`. | Anki scheduling and card templates remain intentionally unmigrated |
 | PWA registration, storage protection, app badge, and reminders | `src/pwa/index.ts`, `src/pwa/{app-badge,daily-reminder,events,storage-persistence}.ts`, `src/pwa/sw.ts`, `next.config.js` | Registers the build-generated Serwist worker in the browser; the worker precaches build assets and caches visited navigations for offline reloads. Updated workers wait rather than interrupting an active study session. After the first non-empty completed study session, the app requests durable browser storage and Settings warns when the browser cannot protect local data. On supported installed browsers, a persisted per-user setting controls an app-icon badge showing due/new cards, total cards, or no badge; local study grades and undo operations request an immediate refresh, and browsers without the Badging API—or browsers that expose it but reject a runtime update—get the same count in both the browser-tab title and a reversible favicon badge. The foreground daily reminder prefers a service-worker notification for installed PWAs and falls back to a page notification in ordinary browser tabs; both paths open Study, while configured background Web Push uses the service worker click-through and refreshes the stored timezone when an enabled reminder's time changes. On non-standalone iOS Safari, Settings now explains that the PWA must be installed before reminders can be delivered reliably. | T5.0 |
