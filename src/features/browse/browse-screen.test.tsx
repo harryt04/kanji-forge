@@ -642,6 +642,7 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
     fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
@@ -666,6 +667,7 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
     fireEvent.change(
@@ -693,5 +695,74 @@ describe('BrowseScreen', () => {
     expect(await repo.reviews.list('dev-kanji')).toHaveLength(2)
     expect(await repo.dailyStats.list()).toEqual([])
     expect(await repo.outbox.pending()).toHaveLength(2)
+  })
+
+  it('renders exactly one live region while several messages are pending', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Use these settings for all decks' }),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'default for all decks',
+      ),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
+    )
+    expect(screen.getAllByRole('status')).toHaveLength(1)
+  })
+
+  it('shows bulk actions only when cards are selected', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(
+      screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    expect(
+      screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    expect(
+      screen.getByRole('toolbar', { name: 'Bulk card actions' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps advanced filter controls out of the DOM while collapsed', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Minimum stroke count' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('More filters'))
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
+      ).toBeInTheDocument(),
+    )
   })
 })

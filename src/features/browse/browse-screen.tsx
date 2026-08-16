@@ -196,12 +196,10 @@ export function BrowseScreen({
   )
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkLevel, setBulkLevel] = useState<CardState['level'] | 'all'>('all')
-  const [bulkMessage, setBulkMessage] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [viewError, setViewError] = useState<string | null>(null)
   const [tileContentError, setTileContentError] = useState<string | null>(null)
   const [tileZoomError, setTileZoomError] = useState<string | null>(null)
-  const [defaultsMessage, setDefaultsMessage] = useState<string | null>(null)
   const [selectedDeckId, setSelectedDeckId] = useState(deckDefinitionId)
   const [selectedContentRef, setSelectedContentRef] = useState<string | null>(
     requestedContentRef,
@@ -212,6 +210,9 @@ export function BrowseScreen({
     readonly custom: readonly DeckSummary[]
   } | null>(null)
   const [summaryVersion, setSummaryVersion] = useState(0)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -469,7 +470,7 @@ export function BrowseScreen({
 
   function clearSelection(): void {
     setSelectedContentRefs(new Set())
-    setBulkMessage(null)
+    setStatusMessage(null)
   }
 
   function applyStateUpdates(updates: readonly { state: CardState }[]): void {
@@ -493,7 +494,7 @@ export function BrowseScreen({
     if (!runtime || !deck || selectedCards.length === 0 || bulkBusy) return
     const now = Date.now()
     setBulkBusy(true)
-    setBulkMessage(null)
+    setStatusMessage(null)
     try {
       const updates = buildBulkFlagUpdates(selectedCards, flagged, {
         deckId: deck.deckId,
@@ -505,11 +506,11 @@ export function BrowseScreen({
       applyStateUpdates(updates)
       setSelectedContentRefs(new Set())
       setSummaryVersion((v) => v + 1)
-      setBulkMessage(
+      setStatusMessage(
         `${updates.length} card${updates.length === 1 ? '' : 's'} ${flagged ? 'flagged' : 'unflagged'}.`,
       )
     } catch (reason: unknown) {
-      setBulkMessage(
+      setStatusMessage(
         reason instanceof Error ? reason.message : 'Could not update cards.',
       )
     } finally {
@@ -521,7 +522,7 @@ export function BrowseScreen({
     if (!runtime || !deck || selectedCards.length === 0 || bulkBusy) return
     const now = Date.now()
     setBulkBusy(true)
-    setBulkMessage(null)
+    setStatusMessage(null)
     try {
       const updates = buildBulkLevelOverrides(selectedCards, level, {
         deckId: deck.deckId,
@@ -536,11 +537,11 @@ export function BrowseScreen({
       setSelectedContentRefs(new Set())
       setBulkLevel('all')
       setSummaryVersion((v) => v + 1)
-      setBulkMessage(
+      setStatusMessage(
         `${updates.length} card${updates.length === 1 ? '' : 's'} set to Level ${level} · ${LEVEL_NAMES[level]}.`,
       )
     } catch (reason: unknown) {
-      setBulkMessage(
+      setStatusMessage(
         reason instanceof Error ? reason.message : 'Could not update cards.',
       )
     } finally {
@@ -648,18 +649,18 @@ export function BrowseScreen({
 
   async function saveBrowseDefaults(): Promise<void> {
     if (!runtime) return
-    setDefaultsMessage(null)
+    setStatusMessage(null)
     try {
       await createUserRepositories(runtime.database).settings.set({
         key: BROWSE_DEFAULTS_SETTING,
         value: JSON.stringify({ view, tileContent, tileZoom }),
         updatedAt: Date.now(),
       })
-      setDefaultsMessage(
+      setStatusMessage(
         'These Browse settings are now the default for all decks.',
       )
     } catch (reason: unknown) {
-      setDefaultsMessage(
+      setStatusMessage(
         reason instanceof Error
           ? reason.message
           : 'Could not save Browse defaults.',
@@ -718,99 +719,13 @@ export function BrowseScreen({
           <LevelRamp counts={countCardsByLevel(cards)} total={cards.length} />
         </div>
 
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold">View</h2>
-            <p className="text-muted-foreground text-sm">
-              Tiles make the filtered deck visible at a glance.
-            </p>
-          </div>
-          <div className="flex min-w-0 flex-wrap items-end gap-3">
-            <label className="grid gap-1" htmlFor="browse-tile-content">
-              <span className="text-muted-foreground text-xs">
-                Tile content
-              </span>
-              <select
-                id="browse-tile-content"
-                value={tileContent}
-                onChange={(event) =>
-                  void chooseTileContent(
-                    event.target.value as BrowseTileContent,
-                  )
-                }
-                aria-label="Tile content"
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-              >
-                <option value="kanji">Kanji</option>
-                <option value="reading">Reading</option>
-                <option value="meaning">Meaning</option>
-              </select>
-            </label>
-            <label className="grid gap-1" htmlFor="browse-tile-zoom">
-              <span className="text-muted-foreground text-xs">Tile zoom</span>
-              <select
-                id="browse-tile-zoom"
-                value={tileZoom}
-                onChange={(event) =>
-                  void chooseTileZoom(
-                    Number(event.target.value) as BrowseTileZoom,
-                  )
-                }
-                aria-label="Tile zoom"
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-              >
-                <option value="0.75">75% · Compact</option>
-                <option value="1">100% · Standard</option>
-                <option value="1.5">150% · Large</option>
-              </select>
-            </label>
-            <div
-              className="border-border inline-flex rounded-md border p-1"
-              role="group"
-              aria-label="Browse view"
-            >
-              <Button
-                type="button"
-                size="sm"
-                variant={view === 'list' ? 'secondary' : 'ghost'}
-                aria-pressed={view === 'list'}
-                aria-label="Show list view"
-                onClick={() => void chooseView('list')}
-              >
-                List
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={view === 'tiles' ? 'secondary' : 'ghost'}
-                aria-pressed={view === 'tiles'}
-                aria-label="Show tile view"
-                onClick={() => void chooseView('tiles')}
-              >
-                Tiles
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-border flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-          <p className="text-muted-foreground text-sm">
-            Choose the same view, tile content, and zoom automatically for
-            future decks.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void saveBrowseDefaults()}
-          >
-            Use these settings for all decks
-          </Button>
-        </div>
-        {defaultsMessage && (
-          <p className="text-muted-foreground text-sm" role="status">
-            {defaultsMessage}
-          </p>
-        )}
+        <p
+          className="text-muted-foreground min-h-5 text-sm"
+          role="status"
+          data-testid="browse-status"
+        >
+          {statusMessage}
+        </p>
 
         {viewError && (
           <p className="text-destructive" role="alert">
@@ -836,275 +751,338 @@ export function BrowseScreen({
           </p>
         )}
 
-        {bulkMessage && (
-          <p className="text-muted-foreground" role="status">
-            {bulkMessage}
-          </p>
-        )}
-
-        <label className="grid gap-2" htmlFor="browse-search">
-          <span className="text-sm font-semibold">Search this deck</span>
-          <input
-            id="browse-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Kanji, reading, or meaning"
-            aria-label="Search this deck"
-            className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            aria-describedby="browse-search-help"
-          />
-          <span
-            id="browse-search-help"
-            className="text-muted-foreground text-sm"
-          >
-            Search matches kanji, kana readings, and English meanings.
-          </span>
-        </label>
-
-        <label className="grid max-w-sm gap-2" htmlFor="browse-sort">
-          <span className="text-sm font-semibold">Sort cards</span>
-          <select
-            id="browse-sort"
-            value={sort}
-            onChange={(event) => setSort(event.target.value as BrowseSort)}
-            aria-label="Sort cards"
-            className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            aria-describedby="browse-sort-help"
-          >
-            <option value="deck-order">Deck order</option>
-            <option value="level">Level (new → mastered)</option>
-            <option value="stroke-count">Stroke count</option>
-            <option value="frequency">Frequency rank</option>
-            <option value="jlpt">JLPT level (N5 → N1)</option>
-            <option value="grade">School grade</option>
-            <option value="times-reviewed">Times reviewed</option>
-            <option value="last-reviewed">Last reviewed</option>
-            <option value="kana">Kana alphabetical</option>
-          </select>
-          <span id="browse-sort-help" className="text-muted-foreground text-sm">
-            Missing metadata is placed after cards with a value. Ties keep deck
-            order.
-          </span>
-        </label>
-
-        <section
-          className="border-border grid gap-4 rounded-lg border p-4"
-          aria-labelledby="browse-filters-heading"
+        <div
+          className="flex min-w-0 flex-wrap items-end gap-3"
+          role="group"
+          aria-label="Browse controls"
         >
-          <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-3">
-            <div className="min-w-0">
-              <h2 id="browse-filters-heading" className="font-semibold">
-                Filter cards
-              </h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Filters combine with search. Leave a field empty to include all
-                values.
-              </p>
-            </div>
-            {hasFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilters(DEFAULT_BROWSE_FILTERS)}
-              >
-                Clear filters
-              </Button>
-            )}
+          <label className="grid gap-1" htmlFor="browse-search">
+            <span className="text-muted-foreground text-xs">
+              Search this deck
+            </span>
+            <input
+              id="browse-search"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Kanji, reading, or meaning"
+              aria-label="Search this deck"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            />
+          </label>
+
+          <label className="grid gap-1" htmlFor="browse-sort">
+            <span className="text-muted-foreground text-xs">Sort cards</span>
+            <select
+              id="browse-sort"
+              value={sort}
+              onChange={(event) => setSort(event.target.value as BrowseSort)}
+              aria-label="Sort cards"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="deck-order">Deck order</option>
+              <option value="level">Level (new → mastered)</option>
+              <option value="stroke-count">Stroke count</option>
+              <option value="frequency">Frequency rank</option>
+              <option value="jlpt">JLPT level (N5 → N1)</option>
+              <option value="grade">School grade</option>
+              <option value="times-reviewed">Times reviewed</option>
+              <option value="last-reviewed">Last reviewed</option>
+              <option value="kana">Kana alphabetical</option>
+            </select>
+          </label>
+
+          <label className="grid gap-1" htmlFor="browse-level-filter">
+            <span className="text-muted-foreground text-xs">Level</span>
+            <select
+              id="browse-level-filter"
+              value={filters.level ?? 'all'}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  level:
+                    event.target.value === 'all'
+                      ? null
+                      : (Number(event.target.value) as BrowseFilters['level']),
+                }))
+              }
+              aria-label="Filter by level"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="all">All levels</option>
+              {LEVEL_NAMES.map((name, level) => (
+                <option key={name} value={level}>
+                  {level} · {name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex min-h-11 items-center gap-3">
+            <input
+              type="checkbox"
+              checked={filters.flagged}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  flagged: event.target.checked,
+                }))
+              }
+              aria-label="Show flagged only"
+              className="accent-primary h-4 w-4"
+            />
+            <span className="text-sm font-semibold">Show flagged only</span>
+          </label>
+
+          {hasFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilters(DEFAULT_BROWSE_FILTERS)}
+            >
+              Clear filters
+            </Button>
+          )}
+
+          <label className="grid gap-1" htmlFor="browse-tile-content">
+            <span className="text-muted-foreground text-xs">Tile content</span>
+            <select
+              id="browse-tile-content"
+              value={tileContent}
+              onChange={(event) =>
+                void chooseTileContent(event.target.value as BrowseTileContent)
+              }
+              aria-label="Tile content"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="kanji">Kanji</option>
+              <option value="reading">Reading</option>
+              <option value="meaning">Meaning</option>
+            </select>
+          </label>
+
+          <label className="grid gap-1" htmlFor="browse-tile-zoom">
+            <span className="text-muted-foreground text-xs">Tile zoom</span>
+            <select
+              id="browse-tile-zoom"
+              value={tileZoom}
+              onChange={(event) =>
+                void chooseTileZoom(
+                  Number(event.target.value) as BrowseTileZoom,
+                )
+              }
+              aria-label="Tile zoom"
+              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+            >
+              <option value="0.75">75% · Compact</option>
+              <option value="1">100% · Standard</option>
+              <option value="1.5">150% · Large</option>
+            </select>
+          </label>
+
+          <div
+            className="border-border inline-flex rounded-md border p-1"
+            role="group"
+            aria-label="Browse view"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={view === 'list' ? 'secondary' : 'ghost'}
+              aria-pressed={view === 'list'}
+              aria-label="Show list view"
+              onClick={() => void chooseView('list')}
+            >
+              List
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === 'tiles' ? 'secondary' : 'ghost'}
+              aria-pressed={view === 'tiles'}
+              aria-label="Show tile view"
+              onClick={() => void chooseView('tiles')}
+            >
+              Tiles
+            </Button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2" htmlFor="browse-level-filter">
-              <span className="text-sm font-semibold">Level</span>
+          <Button
+            type="button"
+            size="sm"
+            variant={selectionMode ? 'secondary' : 'outline'}
+            aria-pressed={selectionMode}
+            onClick={() => {
+              setSelectionMode((current) => !current)
+              if (selectionMode) clearSelection()
+            }}
+          >
+            Select cards
+          </Button>
+
+          <details
+            className="min-w-0"
+            open={filtersOpen}
+            onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+          >
+            <summary className="text-primary flex min-h-11 cursor-pointer items-center text-sm font-medium select-none">
+              More filters
+            </summary>
+            {filtersOpen && (
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2" htmlFor="browse-min-strokes">
+                  <span className="text-sm font-semibold">Minimum strokes</span>
+                  <input
+                    id="browse-min-strokes"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    value={filters.minStrokeCount ?? ''}
+                    onChange={(event) =>
+                      setNumericFilter('minStrokeCount', event.target.value)
+                    }
+                    aria-label="Minimum stroke count"
+                    placeholder="Any"
+                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                  />
+                </label>
+
+                <label className="grid gap-2" htmlFor="browse-max-strokes">
+                  <span className="text-sm font-semibold">Maximum strokes</span>
+                  <input
+                    id="browse-max-strokes"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    value={filters.maxStrokeCount ?? ''}
+                    onChange={(event) =>
+                      setNumericFilter('maxStrokeCount', event.target.value)
+                    }
+                    aria-label="Maximum stroke count"
+                    placeholder="Any"
+                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                  />
+                </label>
+
+                <label
+                  className="grid gap-2 sm:max-w-sm"
+                  htmlFor="browse-jlpt-filter"
+                >
+                  <span className="text-sm font-semibold">JLPT level</span>
+                  <select
+                    id="browse-jlpt-filter"
+                    value={filters.jlptLegacy ?? 'all'}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        jlptLegacy:
+                          event.target.value === 'all'
+                            ? null
+                            : Number(event.target.value),
+                      }))
+                    }
+                    aria-label="Filter by JLPT level"
+                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                  >
+                    <option value="all">All JLPT levels</option>
+                    <option value="5">N5</option>
+                    <option value="4">N4</option>
+                    <option value="3">N3</option>
+                    <option value="2">N2</option>
+                    <option value="1">N1</option>
+                  </select>
+                </label>
+              </div>
+            )}
+          </details>
+        </div>
+
+        <div className="border-border flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+          <p className="text-muted-foreground text-sm">
+            Choose the same view, tile content, and zoom automatically for
+            future decks.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void saveBrowseDefaults()}
+          >
+            Use these settings for all decks
+          </Button>
+        </div>
+
+        {selectionMode && selectedContentRefs.size > 0 && (
+          <div
+            role="toolbar"
+            aria-label="Bulk card actions"
+            className="border-border bg-card sticky bottom-2 z-10 flex min-w-0 flex-wrap items-end gap-3 rounded-md border p-3 shadow-sm"
+          >
+            <p className="text-muted-foreground min-w-0 basis-full text-sm">
+              {`${selectedContentRefs.size} selected${selectedVisibleCount < selectedContentRefs.size ? ` · ${selectedVisibleCount} visible` : ''}.`}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={selectVisibleCards}
+              disabled={bulkBusy}
+            >
+              Select visible
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={clearSelection}
+              disabled={bulkBusy}
+            >
+              Clear selection
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void bulkSetFlagged(true)}
+              disabled={bulkBusy}
+            >
+              Flag selected
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void bulkSetFlagged(false)}
+              disabled={bulkBusy}
+            >
+              Unflag selected
+            </Button>
+            <label className="grid gap-1" htmlFor="browse-bulk-level">
+              <span className="text-muted-foreground text-xs">
+                Set selected level
+              </span>
               <select
-                id="browse-level-filter"
-                value={filters.level ?? 'all'}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    level:
-                      event.target.value === 'all'
-                        ? null
-                        : (Number(
-                            event.target.value,
-                          ) as BrowseFilters['level']),
-                  }))
-                }
-                aria-label="Filter by level"
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                id="browse-bulk-level"
+                value={bulkLevel}
+                disabled={bulkBusy}
+                onChange={(event) => {
+                  const value = event.target.value
+                  if (value !== 'all')
+                    void bulkSetLevel(Number(value) as CardState['level'])
+                }}
+                aria-label="Set selected level"
+                className="border-input bg-background focus-visible:ring-ring h-10 min-w-32 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
               >
-                <option value="all">All levels</option>
-                {LEVEL_NAMES.map((name, level) => (
-                  <option key={name} value={level}>
-                    {level} · {name}
+                <option value="all">Choose level…</option>
+                {LEVEL_NAMES.map((name, candidateLevel) => (
+                  <option key={name} value={candidateLevel}>
+                    {candidateLevel} · {name}
                   </option>
                 ))}
               </select>
             </label>
-
-            <label className="flex min-h-11 items-center gap-3 self-end pb-2">
-              <input
-                type="checkbox"
-                checked={filters.flagged}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    flagged: event.target.checked,
-                  }))
-                }
-                aria-label="Show flagged only"
-                className="accent-primary h-4 w-4"
-              />
-              <span className="text-sm font-semibold">Show flagged only</span>
-            </label>
-
-            <label className="grid gap-2" htmlFor="browse-min-strokes">
-              <span className="text-sm font-semibold">Minimum strokes</span>
-              <input
-                id="browse-min-strokes"
-                type="number"
-                min="1"
-                inputMode="numeric"
-                value={filters.minStrokeCount ?? ''}
-                onChange={(event) =>
-                  setNumericFilter('minStrokeCount', event.target.value)
-                }
-                aria-label="Minimum stroke count"
-                placeholder="Any"
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-              />
-            </label>
-
-            <label className="grid gap-2" htmlFor="browse-max-strokes">
-              <span className="text-sm font-semibold">Maximum strokes</span>
-              <input
-                id="browse-max-strokes"
-                type="number"
-                min="1"
-                inputMode="numeric"
-                value={filters.maxStrokeCount ?? ''}
-                onChange={(event) =>
-                  setNumericFilter('maxStrokeCount', event.target.value)
-                }
-                aria-label="Maximum stroke count"
-                placeholder="Any"
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-              />
-            </label>
-
-            <label
-              className="grid gap-2 sm:max-w-sm"
-              htmlFor="browse-jlpt-filter"
-            >
-              <span className="text-sm font-semibold">JLPT level</span>
-              <select
-                id="browse-jlpt-filter"
-                value={filters.jlptLegacy ?? 'all'}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    jlptLegacy:
-                      event.target.value === 'all'
-                        ? null
-                        : Number(event.target.value),
-                  }))
-                }
-                aria-label="Filter by JLPT level"
-                className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-              >
-                <option value="all">All JLPT levels</option>
-                <option value="5">N5</option>
-                <option value="4">N4</option>
-                <option value="3">N3</option>
-                <option value="2">N2</option>
-                <option value="1">N1</option>
-              </select>
-            </label>
           </div>
-        </section>
-
-        <section
-          className="border-border grid gap-3 rounded-lg border p-4"
-          aria-label="Bulk card actions"
-        >
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="font-semibold">Select cards</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {selectedContentRefs.size === 0
-                  ? 'Select cards to flag or set their level together.'
-                  : `${selectedContentRefs.size} selected${selectedVisibleCount < selectedContentRefs.size ? ` · ${selectedVisibleCount} visible` : ''}.`}
-              </p>
-            </div>
-            <div className="flex min-w-0 flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={selectVisibleCards}
-                disabled={bulkBusy}
-              >
-                Select visible
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={clearSelection}
-                disabled={selectedContentRefs.size === 0 || bulkBusy}
-              >
-                Clear selection
-              </Button>
-            </div>
-          </div>
-          {selectedContentRefs.size > 0 && (
-            <div className="flex min-w-0 flex-wrap items-end gap-3">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => void bulkSetFlagged(true)}
-                disabled={bulkBusy}
-              >
-                Flag selected
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => void bulkSetFlagged(false)}
-                disabled={bulkBusy}
-              >
-                Unflag selected
-              </Button>
-              <label className="grid gap-1" htmlFor="browse-bulk-level">
-                <span className="text-muted-foreground text-xs">
-                  Set selected level
-                </span>
-                <select
-                  id="browse-bulk-level"
-                  value={bulkLevel}
-                  disabled={bulkBusy}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    if (value !== 'all')
-                      void bulkSetLevel(Number(value) as CardState['level'])
-                  }}
-                  aria-label="Set selected level"
-                  className="border-input bg-background focus-visible:ring-ring h-10 min-w-32 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
-                >
-                  <option value="all">Choose level…</option>
-                  {LEVEL_NAMES.map((name, candidateLevel) => (
-                    <option key={name} value={candidateLevel}>
-                      {candidateLevel} · {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-        </section>
+        )}
 
         <div className="min-w-0" data-testid="browse-cards">
           {cards.length === 0 ? (
@@ -1127,7 +1105,9 @@ export function BrowseScreen({
             <div
               className="grid gap-2"
               style={{
-                gridTemplateColumns: `repeat(auto-fill, minmax(${56 * tileZoom}px, 1fr))`,
+                gridTemplateColumns: `repeat(auto-fill, minmax(${
+                  selectionMode ? Math.max(44, 56 * tileZoom) : 56 * tileZoom
+                }px, 1fr))`,
               }}
               data-testid="browse-tile-wall"
               role="grid"
@@ -1148,16 +1128,18 @@ export function BrowseScreen({
                     className="relative min-w-0"
                     data-testid="browse-tile-shell"
                   >
-                    <label className="bg-background/90 absolute top-1 left-1 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded p-1 shadow-sm">
-                      <span className="sr-only">Select {card.literal}</span>
-                      <input
-                        type="checkbox"
-                        checked={selectedContentRefs.has(card.contentRef)}
-                        onChange={() => toggleSelection(card.contentRef)}
-                        aria-label={`Select ${card.literal}`}
-                        className="accent-primary h-4 w-4"
-                      />
-                    </label>
+                    {selectionMode && (
+                      <label className="bg-background/90 absolute top-1 left-1 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded p-1 shadow-sm">
+                        <span className="sr-only">Select {card.literal}</span>
+                        <input
+                          type="checkbox"
+                          checked={selectedContentRefs.has(card.contentRef)}
+                          onChange={() => toggleSelection(card.contentRef)}
+                          aria-label={`Select ${card.literal}`}
+                          className="accent-primary h-4 w-4"
+                        />
+                      </label>
+                    )}
                     <Link
                       href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
                       className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none`}
@@ -1244,18 +1226,24 @@ export function BrowseScreen({
                         aria-label={`${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`}
                       >
                         <CardContent className="flex min-w-0 items-center gap-4 p-4 sm:p-5">
-                          <label className="flex min-h-11 min-w-11 shrink-0 items-center justify-center">
-                            <span className="sr-only">
-                              Select {card.literal}
-                            </span>
-                            <input
-                              type="checkbox"
-                              checked={selectedContentRefs.has(card.contentRef)}
-                              onChange={() => toggleSelection(card.contentRef)}
-                              aria-label={`Select ${card.literal}`}
-                              className="accent-primary h-5 w-5"
-                            />
-                          </label>
+                          {selectionMode && (
+                            <label className="flex min-h-11 min-w-11 shrink-0 items-center justify-center">
+                              <span className="sr-only">
+                                Select {card.literal}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={selectedContentRefs.has(
+                                  card.contentRef,
+                                )}
+                                onChange={() =>
+                                  toggleSelection(card.contentRef)
+                                }
+                                aria-label={`Select ${card.literal}`}
+                                className="accent-primary h-5 w-5"
+                              />
+                            </label>
+                          )}
                           <div
                             className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} grid h-14 w-14 shrink-0 place-items-center rounded-md text-3xl`}
                             data-level={level}
