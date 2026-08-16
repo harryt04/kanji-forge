@@ -11,6 +11,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import * as deckLoader from '@/features/study/deck-loader'
+import type { LoadedDeck } from '@/features/study/deck-loader'
 import {
   BROWSE_TILE_CONTENT_SETTING,
   BROWSE_DEFAULTS_SETTING,
@@ -18,6 +20,12 @@ import {
   BrowseScreen,
   BROWSE_TILE_ZOOM_SETTING,
 } from './browse-screen'
+
+vi.mock('@/features/study/deck-loader', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/study/deck-loader')>()
+  return { ...actual, loadDeck: vi.fn(actual.loadDeck) }
+})
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -80,6 +88,79 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+  })
+
+  it('falls back to level 0 styling and labels for an out-of-range level', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    const contentRef = 'kanji:日'
+    const invalidDeck = {
+      deckId: 'dev-kanji',
+      name: 'Development Kanji',
+      cards: [
+        {
+          deckId: 'dev-kanji',
+          contentRef,
+          state: {
+            deckId: 'dev-kanji',
+            contentRef,
+            level: 7,
+            dueAt: null,
+            lastReviewedAt: null,
+            correctStreak: 0,
+            totalReviews: 0,
+            totalCorrect: 0,
+            lapses: 0,
+            flagged: false,
+            manualOverride: false,
+            updatedAt: Date.now(),
+            updatedBy: 'browse-test',
+          },
+        },
+      ],
+      content: new Map([
+        [
+          contentRef,
+          {
+            contentRef,
+            contentType: 'kanji',
+            literal: '日',
+            readings: ['ひ'],
+            strokeCount: 4,
+            frequency: null,
+            jlptLegacy: 5,
+            grade: 1,
+            nanori: [],
+            meanings: ['day; sun; Japan'],
+            onReadings: ['ニチ'],
+            kunReadings: ['ひ'],
+          },
+        ],
+      ]),
+    } as unknown as LoadedDeck
+    vi.mocked(deckLoader.loadDeck).mockResolvedValueOnce(invalidDeck)
+
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile')).toBeInTheDocument(),
+    )
+    const tile = screen.getByTestId('browse-tile')
+    expect(tile).toHaveAttribute('data-level', '0')
+    expect(tile).toHaveClass('l0')
+    expect(tile).toHaveAccessibleName('日, Level 0, white (Shiro), New')
+    expect(tile.getAttribute('aria-label')).not.toContain('undefined')
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Show list view' }),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+    const card = screen.getByTestId('browse-card')
+    expect(card).toHaveAttribute('data-level', '0')
+    expect(card).toHaveClass('l0')
+    expect(card).toHaveAccessibleName('日, Level 0, white (Shiro), New')
+    expect(card.getAttribute('aria-label')).not.toContain('undefined')
   })
 
   it('keeps a stable results wrapper across both views', async () => {

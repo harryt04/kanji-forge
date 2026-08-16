@@ -19,7 +19,11 @@ import {
 } from './browse-filter'
 import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
-import { beltLevelLabel, LEVEL_NAMES } from '@/features/level-rank'
+import {
+  beltLevelLabel,
+  LEVEL_NAMES,
+  normalizeLevel,
+} from '@/features/level-rank'
 import {
   BROWSE_LIST_ROW_HEIGHT,
   BROWSE_LIST_VIEWPORT_HEIGHT,
@@ -1122,7 +1126,7 @@ export function BrowseScreen({
               aria-label={`${deck.name} tile wall`}
             >
               {sortedCards.map((card) => {
-                const level = card.state?.level ?? 0
+                const level = normalizeLevel(card.state?.level ?? 0)
                 const flagged = card.state?.flagged ?? false
                 const selected = selectedContentRefs.has(card.contentRef)
                 const text = tileText(card, tileContent)
@@ -1228,7 +1232,7 @@ export function BrowseScreen({
               >
                 {visibleListCards.map((card, visibleIndex) => {
                   const cardIndex = listRange.start + visibleIndex
-                  const level = card.state?.level ?? 0
+                  const level = normalizeLevel(card.state?.level ?? 0)
                   const flagged = card.state?.flagged ?? false
                   const reading = [
                     ...card.onReadings,

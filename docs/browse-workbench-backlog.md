@@ -173,7 +173,7 @@ The wall is the product. These are the defects visible in the user's screenshot.
       and selection modes; `browse-workbench.spec.ts` proves every tile meets
       the floor in Chromium and WebKit at both required viewports and themes.
 
-- [ ] **G3. An out-of-range level renders an unstyled tile.**
+- [x] **G3. An out-of-range level renders an unstyled tile.**
       Where: [`browse-screen.tsx:1124`](../src/features/browse/browse-screen.tsx#L1124)
       and [`:1204`](../src/features/browse/browse-screen.tsx#L1204).
       Evidence: `const level = card.state?.level ?? 0` is not bounded.
@@ -189,6 +189,10 @@ The wall is the product. These are the defects visible in the user's screenshot.
       renders with the level-0 swatch, a valid `LEVEL_SHAPES` class, and an
       `aria-label` containing no `"undefined"` — proven by a unit test in
       `browse-screen.test.tsx`, not by inspection.
+
+      `normalizeLevel` now maps invalid persisted values to level 0 before both
+      Browse render branches; `browse-screen.test.tsx` proves the swatch,
+      shape class, and accessible label in tile and list views.
 
 - [ ] **G4. Four stacked `role="alert"` regions sit between the heading and the
       controls.**
