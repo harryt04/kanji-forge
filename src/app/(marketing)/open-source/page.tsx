@@ -57,8 +57,8 @@ export default function OpenSourcePage(): React.ReactElement {
       </h2>
       <p className="text-muted-foreground mt-4">
         The repository, issue tracker, and full commit history are on GitHub.
-        Complete per-source attribution — including pinned versions and
-        source hashes for every data pack — is in the repository&apos;s{' '}
+        Complete per-source attribution — including pinned versions and source
+        hashes for every data pack — is in the repository&apos;s{' '}
         <code className="bg-muted rounded px-1 py-0.5 text-sm">
           ATTRIBUTION.md
         </code>

@@ -56,26 +56,11 @@ test.describe('Browse Workbench', () => {
 
         await page.getByLabel('Tile zoom').selectOption('1')
         await page.getByRole('button', { name: 'Select cards' }).click()
-        const selectionCoverage = await page
-          .getByTestId('browse-tile')
-          .first()
-          .evaluate((tile) => {
-            const tileRect = tile.getBoundingClientRect()
-            const overlay = tile.parentElement?.querySelector('label')
-            if (!overlay) throw new Error('Selection overlay was not rendered')
-            const overlayRect = overlay.getBoundingClientRect()
-            const width = Math.max(
-              0,
-              Math.min(tileRect.right, overlayRect.right) -
-                Math.max(tileRect.left, overlayRect.left),
-            )
-            const height = Math.max(
-              0,
-              Math.min(tileRect.bottom, overlayRect.bottom) -
-                Math.max(tileRect.top, overlayRect.top),
-            )
-            return (width * height) / (tileRect.width * tileRect.height)
-          })
+        const selectionTile = await page.getByTestId('browse-tile').first()
+        const selectionGeometry = await selectionTile.evaluate((tile) => {
+          const rect = tile.getBoundingClientRect()
+          return { width: rect.width, height: rect.height }
+        })
 
         await page.getByRole('button', { name: 'Select cards' }).click()
         await page.getByLabel('Tile zoom').selectOption('0.75')
@@ -91,7 +76,8 @@ test.describe('Browse Workbench', () => {
           theme,
           viewport: viewport.name,
           chromeTop: chrome,
-          selectionCoverage,
+          selectionTileWidth: selectionGeometry.width,
+          selectionTileHeight: selectionGeometry.height,
           compactTileWidth: compactTile.width,
           compactTileHeight: compactTile.height,
         })
@@ -99,5 +85,86 @@ test.describe('Browse Workbench', () => {
     }
 
     console.log(`BROWSE_BASELINE ${JSON.stringify(measurements)}`)
+  })
+
+  test('selection tiles stay visible and become the checkbox control', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    for (const theme of ['light', 'dark'] as const) {
+      await page.evaluate((value) => {
+        window.localStorage.setItem('kanjiforge-theme', value)
+      }, theme)
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await page.goto('/browse')
+      await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
+      await page.getByLabel('Tile zoom').selectOption('1')
+      await page.getByRole('button', { name: 'Select cards' }).click()
+
+      const tile = page.getByTestId('browse-tile').first()
+      await expect(tile).toHaveRole('checkbox')
+      await expect(tile).toHaveAttribute('aria-checked', 'false')
+
+      const before = await tile.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return { background: style.backgroundColor, boxShadow: style.boxShadow }
+      })
+
+      const unpaintedDescendantBackgrounds = await tile.evaluate((element) =>
+        [...element.querySelectorAll('*')]
+          .map((descendant) => getComputedStyle(descendant).backgroundColor)
+          .filter((background) => {
+            if (background === 'transparent') return false
+            const alpha = background.match(
+              /rgba?\([^,]+,[^,]+,[^,]+,\s*([^)]+)\)/,
+            )
+            return alpha ? Number(alpha[1]) > 0 : true
+          }),
+      )
+      expect(unpaintedDescendantBackgrounds).toEqual([])
+
+      const expectedLevelBackground = await tile.evaluate((element) => {
+        const level = element.getAttribute('data-level')
+        const token = getComputedStyle(document.documentElement)
+          .getPropertyValue(`--level-${level}`)
+          .trim()
+        const probe = document.createElement('span')
+        probe.style.backgroundColor = token
+        document.body.append(probe)
+        const background = getComputedStyle(probe).backgroundColor
+        probe.remove()
+        return { background, token }
+      })
+      expect(before.background).toBe(expectedLevelBackground.background)
+
+      await tile.click()
+      await expect(tile).toHaveAttribute('aria-checked', 'true')
+      await expect(
+        tile.getByTestId('browse-tile-selection-check'),
+      ).toBeVisible()
+
+      const after = await tile.evaluate((element) => {
+        const glyph = element.querySelector('span')
+        if (!glyph) throw new Error('Tile glyph is missing')
+        const glyphRect = glyph.getBoundingClientRect()
+        const overlaps = [...element.querySelectorAll('*')]
+          .filter((descendant) => descendant !== glyph)
+          .some((descendant) => {
+            const rect = descendant.getBoundingClientRect()
+            return (
+              rect.left < glyphRect.right &&
+              rect.right > glyphRect.left &&
+              rect.top < glyphRect.bottom &&
+              rect.bottom > glyphRect.top
+            )
+          })
+        return {
+          boxShadow: getComputedStyle(element).boxShadow,
+          overlaps,
+        }
+      })
+      expect(after.boxShadow).not.toBe(before.boxShadow)
+      expect(after.overlaps).toBe(false)
+    }
   })
 })

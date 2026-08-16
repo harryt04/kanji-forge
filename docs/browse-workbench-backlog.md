@@ -128,7 +128,7 @@ signed in.
 
 The wall is the product. These are the defects visible in the user's screenshot.
 
-- [ ] **G1. The selection checkbox covers the card it selects.**
+- [x] **G1. The selection checkbox covers the card it selects.**
       Where: [`browse-screen.tsx:1138-1149`](../src/features/browse/browse-screen.tsx#L1138).
       Evidence: in selection mode every tile gets an absolutely-positioned
       `<label>` at `top-1 left-1`, sized `min-h-11 min-w-11` (44×44px), filled
@@ -151,6 +151,9 @@ The wall is the product. These are the defects visible in the user's screenshot.
       themes, and the glyph `<span>`'s bounding box is not intersected by any
       other element's box. Selected and unselected tiles are distinguishable by
       a measured computed-style difference, not by opacity alone.
+      Selection mode now makes the tile a full-size checkbox button with an
+      inset primary ring and non-opaque corner check; `e2e/browse-workbench.spec.ts`
+      proves the acceptance measurements in Chromium and WebKit, light and dark.
 
 - [ ] **G2. Selection-mode tiles are 42px at 75% zoom — under the touch floor.**
       Where: [`browse-screen.tsx:1115-1117`](../src/features/browse/browse-screen.tsx#L1115).

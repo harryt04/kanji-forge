@@ -30,9 +30,7 @@ function loadCatalog(): DeckCatalog {
       'decks',
       'catalog.json',
     )
-    catalogCache = JSON.parse(
-      readFileSync(catalogPath, 'utf-8'),
-    ) as DeckCatalog
+    catalogCache = JSON.parse(readFileSync(catalogPath, 'utf-8')) as DeckCatalog
   }
   return catalogCache
 }
@@ -44,8 +42,7 @@ export function parseContentRef(contentRef: string): {
   readonly key: string
 } {
   const separatorIndex = contentRef.indexOf(':')
-  if (separatorIndex < 0)
-    throw new Error(`Malformed contentRef: ${contentRef}`)
+  if (separatorIndex < 0) throw new Error(`Malformed contentRef: ${contentRef}`)
   return {
     type: contentRef.slice(0, separatorIndex),
     key: contentRef.slice(separatorIndex + 1),

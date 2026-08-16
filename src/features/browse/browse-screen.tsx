@@ -1123,54 +1123,80 @@ export function BrowseScreen({
               {sortedCards.map((card) => {
                 const level = card.state?.level ?? 0
                 const flagged = card.state?.flagged ?? false
+                const selected = selectedContentRefs.has(card.contentRef)
                 const text = tileText(card, tileContent)
                 const japanese = tileContent !== 'meaning'
                 const accessibleLabel =
                   tileContent === 'kanji'
                     ? `${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
                     : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                const tileClassName = `level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square w-full min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none ${selectionMode && selected ? 'ring-primary ring-3 ring-inset pr-5' : ''}`
+                const tileContents = (
+                  <>
+                    <span
+                      className={japanese ? 'font-jp-display' : undefined}
+                      lang={japanese ? 'ja' : undefined}
+                    >
+                      {text}
+                    </span>
+                    {flagged && (
+                      <span
+                        className="text-primary absolute right-1 bottom-0 text-xs"
+                        aria-hidden="true"
+                      >
+                        ⚑
+                      </span>
+                    )}
+                    {selectionMode && selected && (
+                      <span
+                        className="text-primary absolute top-1 right-1 text-sm leading-none font-bold"
+                        aria-hidden="true"
+                        data-testid="browse-tile-selection-check"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </>
+                )
                 return (
                   <div
                     key={card.contentRef}
                     className="relative min-w-0"
                     data-testid="browse-tile-shell"
                   >
-                    {selectionMode && (
-                      <label className="bg-background/90 absolute top-1 left-1 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded p-1 shadow-sm">
-                        <span className="sr-only">Select {card.literal}</span>
-                        <input
-                          type="checkbox"
-                          checked={selectedContentRefs.has(card.contentRef)}
-                          onChange={() => toggleSelection(card.contentRef)}
-                          aria-label={`Select ${card.literal}`}
-                          className="accent-primary h-4 w-4"
-                        />
-                      </label>
-                    )}
-                    <Link
-                      href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
-                      className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none`}
-                      data-level={level}
-                      data-content-ref={card.contentRef}
-                      data-testid="browse-tile"
-                      role="gridcell"
-                      aria-label={accessibleLabel}
-                    >
-                      <span
-                        className={japanese ? 'font-jp-display' : undefined}
-                        lang={japanese ? 'ja' : undefined}
+                    {selectionMode ? (
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={selected}
+                        aria-label={accessibleLabel}
+                        className={tileClassName}
+                        data-level={level}
+                        data-content-ref={card.contentRef}
+                        data-selected={selected}
+                        data-testid="browse-tile"
+                        style={
+                          selectionMode && selected
+                            ? { boxShadow: 'inset 0 0 0 3px var(--primary)' }
+                            : undefined
+                        }
+                        onClick={() => toggleSelection(card.contentRef)}
                       >
-                        {text}
-                      </span>
-                      {flagged && (
-                        <span
-                          className="text-primary absolute right-1 bottom-0 text-xs"
-                          aria-hidden="true"
-                        >
-                          ⚑
-                        </span>
-                      )}
-                    </Link>
+                        {tileContents}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
+                        className={tileClassName}
+                        data-level={level}
+                        data-content-ref={card.contentRef}
+                        data-testid="browse-tile"
+                        role="gridcell"
+                        aria-label={accessibleLabel}
+                      >
+                        {tileContents}
+                      </Link>
+                    )}
                   </div>
                 )
               })}

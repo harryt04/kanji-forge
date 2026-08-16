@@ -65,8 +65,8 @@ describe('middleware', () => {
   })
 
   it('excludes /kanji from the middleware matcher entirely', () => {
-    expect(
-      config.matcher.some((pattern) => pattern.startsWith('/kanji')),
-    ).toBe(false)
+    expect(config.matcher.some((pattern) => pattern.startsWith('/kanji'))).toBe(
+      false,
+    )
   })
 })

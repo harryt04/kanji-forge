@@ -94,10 +94,9 @@ let frequencyLiteralsCache: readonly string[] | undefined
 /** Every literal carrying a KANJIDIC frequency rank (freq IS NOT NULL). */
 export function getFrequencyRankedLiterals(): readonly string[] {
   frequencyLiteralsCache ??= getDb()
-    .prepare<
-      [],
-      { literal: string }
-    >('SELECT literal FROM kanji WHERE freq IS NOT NULL')
+    .prepare<[], { literal: string }>(
+      'SELECT literal FROM kanji WHERE freq IS NOT NULL',
+    )
     .all()
     .map((row) => row.literal)
   return frequencyLiteralsCache
