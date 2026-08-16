@@ -1,9 +1,33 @@
-import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { progress } from '@/core/srs/goal'
 import { emptyCardState } from '@/core/srs/types'
-import type { CardState } from '@/data/repo'
+import { createUserRepositories, type CardState } from '@/data/repo'
 import { toCoreState } from '@/features/study/adapters'
-import { countCardsByLevel, summarizeDeckCards } from './deck-summary'
+import {
+  countCardsByLevel,
+  loadDeckSummaries,
+  summarizeDeckCards,
+} from './deck-summary'
+
+const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
+
+function fixtureFetch(): typeof fetch {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const path = String(input).replace(/^\/packs-dev\//, '')
+    try {
+      const buffer = readFileSync(join(FIXTURE_ROOT, path))
+      const body = path.endsWith('.json')
+        ? buffer.toString('utf8')
+        : new Uint8Array(buffer)
+      return new Response(body as BodyInit, { status: 200 })
+    } catch {
+      return new Response('not found', { status: 404 })
+    }
+  }) as unknown as typeof fetch
+}
 
 function cardState(contentRef: string, level: CardState['level']): CardState {
   return {
@@ -126,5 +150,117 @@ describe('summarizeDeckCards', () => {
       states: [],
     })
     expect(summary.folder).toBe('')
+  })
+})
+
+describe('loadDeckSummaries', () => {
+  let userId = 0
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fixtureFetch())
+    userId += 1
+  })
+
+  afterEach(() => {
+    clearUserRuntime()
+  })
+
+  it('summarizes every built-in and custom deck without a per-card query', async () => {
+    const runtime = bootstrapUserRuntime(`deck-summaries-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.decks.upsert({
+      id: 'my-custom-deck',
+      name: 'My Custom Deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repo.deckMembership.save({
+      deckId: 'my-custom-deck',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+
+    const originalRead = runtime.database.read.bind(runtime.database)
+    const calls: string[] = []
+    Object.assign(runtime.database, {
+      read: async (sql: string, parameters?: readonly unknown[]) => {
+        calls.push(sql)
+        return originalRead(sql, parameters as never)
+      },
+    })
+
+    const summaries = await loadDeckSummaries(runtime.database, runtime.userId)
+
+    expect(summaries.builtIn.length).toBeGreaterThan(0)
+    expect(summaries.custom).toEqual([
+      expect.objectContaining({ id: 'my-custom-deck', cardCount: 1 }),
+    ])
+
+    const perCardQueries = calls.filter(
+      (sql) =>
+        sql ===
+        'SELECT * FROM card_states WHERE deck_id = ? AND content_ref = ?',
+    )
+    expect(perCardQueries).toHaveLength(0)
+    expect(calls.length).toBeLessThan(20)
+  })
+
+  it('groups a custom deck under its saved folder setting', async () => {
+    const runtime = bootstrapUserRuntime(`deck-summaries-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.decks.upsert({
+      id: 'my-custom-deck',
+      name: 'My Custom Deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repo.settings.set({
+      key: 'deck-folder:my-custom-deck',
+      value: 'JLPT prep',
+      updatedAt: Date.now(),
+    })
+
+    const summaries = await loadDeckSummaries(runtime.database, runtime.userId)
+    expect(summaries.custom[0]).toMatchObject({ folder: 'JLPT prep' })
+  })
+
+  it('omits session lookups unless includeSessions is requested', async () => {
+    const runtime = bootstrapUserRuntime(`deck-summaries-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.sessions.start({
+      id: 's1',
+      deckId: 'dev-kanji',
+      startedAt: 1000,
+      endedAt: null,
+    })
+    await repo.sessions.end('s1', 2000)
+
+    const withoutSessions = await loadDeckSummaries(
+      runtime.database,
+      runtime.userId,
+    )
+    const devKanjiWithout = withoutSessions.builtIn.find(
+      (summary) => summary.id === 'dev-kanji',
+    )
+    expect(devKanjiWithout?.lastStudiedAt).toBeNull()
+
+    const withSessions = await loadDeckSummaries(
+      runtime.database,
+      runtime.userId,
+      {
+        includeSessions: true,
+      },
+    )
+    const devKanjiWith = withSessions.builtIn.find(
+      (summary) => summary.id === 'dev-kanji',
+    )
+    expect(devKanjiWith?.lastStudiedAt).toBe(2000)
   })
 })

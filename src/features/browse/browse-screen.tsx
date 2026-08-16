@@ -26,8 +26,13 @@ import {
   BROWSE_LIST_VIRTUALIZATION_THRESHOLD,
   getBrowseVirtualRange,
 } from './browse-virtual'
-import { countCardsByLevel } from '@/features/decks/deck-summary'
+import {
+  countCardsByLevel,
+  loadDeckSummaries,
+  type DeckSummary,
+} from '@/features/decks/deck-summary'
 import { LevelRamp } from './level-ramp'
+import { DeckRail } from './deck-rail'
 
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 export const BROWSE_VIEW_SETTING = 'browse.view'
@@ -202,6 +207,11 @@ export function BrowseScreen({
     requestedContentRef,
   )
   const [listScrollTop, setListScrollTop] = useState(0)
+  const [summaries, setSummaries] = useState<{
+    readonly builtIn: readonly DeckSummary[]
+    readonly custom: readonly DeckSummary[]
+  } | null>(null)
+  const [summaryVersion, setSummaryVersion] = useState(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -277,6 +287,35 @@ export function BrowseScreen({
       active = false
     }
   }, [runtime, deckDefinitionId, selectedDeckId])
+
+  useEffect(() => {
+    if (!runtime) return
+    let active = true
+    void runtime.database.ready
+      .then(() =>
+        loadDeckSummaries(runtime.database, runtime.userId, {
+          includeSessions: false,
+        }),
+      )
+      .then((loaded) => {
+        if (active) setSummaries(loaded)
+      })
+    return () => {
+      active = false
+    }
+  }, [runtime, summaryVersion])
+
+  function selectDeck(nextDeckId: string): void {
+    if (nextDeckId === selectedDeckId) return
+    setSelectedDeckId(nextDeckId)
+    setSelectedContentRef(null)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('deckId', nextDeckId)
+      url.searchParams.delete('contentRef')
+      window.history.pushState({}, '', url)
+    }
+  }
 
   const cards = useMemo(() => (deck ? toBrowseCards(deck) : []), [deck])
   const filteredCards = useMemo(() => {
@@ -399,6 +438,7 @@ export function BrowseScreen({
             }
           : current,
       )
+      setSummaryVersion((v) => v + 1)
     } catch (reason: unknown) {
       setEditError(
         reason instanceof Error
@@ -464,6 +504,7 @@ export function BrowseScreen({
       await createUserRepositories(runtime.database).recordCardStates(updates)
       applyStateUpdates(updates)
       setSelectedContentRefs(new Set())
+      setSummaryVersion((v) => v + 1)
       setBulkMessage(
         `${updates.length} card${updates.length === 1 ? '' : 's'} ${flagged ? 'flagged' : 'unflagged'}.`,
       )
@@ -494,6 +535,7 @@ export function BrowseScreen({
       applyStateUpdates(updates.map(({ nextState }) => ({ state: nextState })))
       setSelectedContentRefs(new Set())
       setBulkLevel('all')
+      setSummaryVersion((v) => v + 1)
       setBulkMessage(
         `${updates.length} card${updates.length === 1 ? '' : 's'} set to Level ${level} · ${LEVEL_NAMES[level]}.`,
       )
@@ -639,8 +681,20 @@ export function BrowseScreen({
 
   return (
     <main
-      className={`mx-auto grid w-full min-w-0 gap-6 px-4 py-8 sm:px-6 ${hasDetailPane ? 'max-w-[96rem] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start' : 'max-w-3xl'}`}
+      className={`grid w-full min-w-0 gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start ${hasDetailPane ? 'xl:grid-cols-[15rem_minmax(0,1fr)_22.5rem]' : ''}`}
     >
+      <div className="min-w-0">
+        {summaries ? (
+          <DeckRail
+            builtIn={summaries.builtIn}
+            custom={summaries.custom}
+            selectedDeckId={selectedDeckId}
+            onSelectDeck={selectDeck}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">Loading decks…</p>
+        )}
+      </div>
       <section className="grid min-w-0 gap-6">
         <header className="flex min-w-0 flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
@@ -660,7 +714,9 @@ export function BrowseScreen({
           </Button>
         </header>
 
-        <LevelRamp counts={countCardsByLevel(cards)} total={cards.length} />
+        <div data-testid="browse-level-ramp">
+          <LevelRamp counts={countCardsByLevel(cards)} total={cards.length} />
+        </div>
 
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">

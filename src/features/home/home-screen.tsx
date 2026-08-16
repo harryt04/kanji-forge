@@ -14,11 +14,7 @@ import {
 import { retentionByLevel, type RetentionLevel } from '@/core/srs/retention'
 import { identifyLeeches, type Leech } from '@/core/srs/leeches'
 import { emptyCardState } from '@/core/srs/types'
-import {
-  createUserRepositories,
-  type CardState,
-  type StudySession,
-} from '@/data/repo'
+import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
@@ -31,6 +27,7 @@ import {
 import { BELT_NAMES, beltLevelLabel } from '@/features/level-rank'
 import {
   countCardsByLevel,
+  lastSessionEndedAt,
   summarizeDeckCards,
   type DeckSummary,
   type LevelCounts,
@@ -40,17 +37,6 @@ const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
 
 type DeckShelfItem = DeckSummary
-
-/** The later of a deck's last review and its last completed study session. */
-function lastSessionEndedAt(sessions: readonly StudySession[]): number | null {
-  return sessions.reduce<number | null>(
-    (latest, session) =>
-      session.endedAt !== null && (latest === null || session.endedAt > latest)
-        ? session.endedAt
-        : latest,
-    null,
-  )
-}
 
 function formatStudyDuration(durationMs: number): string {
   const totalSeconds = Math.floor(Math.max(0, durationMs) / 1000)

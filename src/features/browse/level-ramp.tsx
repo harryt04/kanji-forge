@@ -27,7 +27,7 @@ export function LevelRamp({
   const denominator = total > 0 ? total : 1
 
   return (
-    <div className="grid gap-2" data-testid="browse-level-ramp">
+    <div className="grid gap-2">
       <div className="border-border flex h-3 overflow-hidden rounded-full border">
         {LEVELS.map((level) => {
           const count = counts[level]

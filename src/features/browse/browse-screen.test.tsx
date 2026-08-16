@@ -46,6 +46,9 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   clearUserRuntime()
+  // The deck rail pushes ?deckId= onto history on selection; reset it so a
+  // test that switches decks can't leak its URL into the next test.
+  window.history.replaceState({}, '', '/browse')
 })
 
 /** Tiles are now the default view (see the "defaults to the tile wall" test
@@ -112,8 +115,9 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    expect(screen.getByText(/Development Kanji/)).toBeInTheDocument()
-    expect(screen.getByText(/200 cards/)).toBeInTheDocument()
+    expect(
+      screen.getByText('Development Kanji · 200 cards'),
+    ).toBeInTheDocument()
     expect(screen.getAllByText('日')).not.toHaveLength(0)
     expect(
       screen.getByText('day; sun; Japan; counter for days'),
@@ -360,11 +364,76 @@ describe('BrowseScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('browse-level-ramp')).toBeInTheDocument(),
     )
+    const ramp = within(screen.getByTestId('browse-level-ramp'))
     expect(
-      screen.getByLabelText('Level 3, blue (Ao), Known, 1 cards'),
+      ramp.getByLabelText('Level 3, blue (Ao), Known, 1 cards'),
     ).toBeInTheDocument()
     expect(
-      screen.getByLabelText('Level 0, white (Shiro), New, 199 cards'),
+      ramp.getByLabelText('Level 0, white (Shiro), New, 199 cards'),
+    ).toBeInTheDocument()
+  })
+
+  it('switches the wall to another deck from the rail', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-deck-rail')).toBeInTheDocument(),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /^Kanji Kentei 10,/ }),
+      ).toBeInTheDocument(),
+    )
+    expect(
+      screen.getByText('Development Kanji · 200 cards'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Kanji Kentei 10,/ }))
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('Kanji Kentei 10 · 43 cards'),
+      ).toBeInTheDocument(),
+    )
+    await waitFor(() =>
+      expect(screen.getAllByTestId('browse-tile')).toHaveLength(43),
+    )
+  })
+
+  it('groups custom decks by folder in the rail', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    await repo.decks.upsert({
+      id: 'my-jlpt-deck',
+      name: 'My JLPT Deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await repo.deckMembership.save({
+      deckId: 'my-jlpt-deck',
+      contentRef: 'kanji:日',
+      sortOrder: 0,
+      addedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    await repo.settings.set({
+      key: 'deck-folder:my-jlpt-deck',
+      value: 'JLPT prep',
+      updatedAt: Date.now(),
+    })
+
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('browse-deck-rail')).getByText('JLPT prep'),
+      ).toBeInTheDocument(),
+    )
+    expect(
+      screen.getByRole('button', { name: /^My JLPT Deck,/ }),
     ).toBeInTheDocument()
   })
 
