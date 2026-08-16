@@ -56,6 +56,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title,
   description,
+  applicationName: 'KanjiForge',
+  authors: [{ name: 'KanjiForge contributors' }],
+  creator: 'KanjiForge contributors',
+  publisher: 'KanjiForge contributors',
+  formatDetection: { telephone: false },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -69,12 +74,40 @@ export const metadata: Metadata = {
     siteName: 'KanjiForge',
     title,
     description,
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description,
+    images: ['/opengraph-image'],
   },
+  // Tokens live in env vars so they never need committing. Unset in
+  // development/beta; set them on the production Coolify app once the sites
+  // are registered in Search Console / Bing Webmaster Tools.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+    other: process.env.BING_SITE_VERIFICATION
+      ? { 'msvalidate.01': process.env.BING_SITE_VERIFICATION }
+      : undefined,
+  },
+}
+
+const WEBSITE_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'KanjiForge',
+  url: SITE_URL,
+  description,
+}
+
+const ORGANIZATION_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'KanjiForge',
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon-512.png`,
+  sameAs: ['https://github.com/harryt04/kanji-forge'],
 }
 
 export const viewport: Viewport = {
@@ -115,14 +148,21 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <meta name="color-scheme" content="light dark" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link
-          rel="icon"
-          type="image/svg+xml"
-          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Ctext x='96' y='120' font-size='120' font-family='serif' text-anchor='middle' dominant-baseline='middle'%3E鍛%3C/text%3E%3C/svg%3E"
-        />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="application-name" content="KanjiForge" />
         <meta name="apple-mobile-web-app-title" content="KanjiForge" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(ORGANIZATION_JSON_LD),
+          }}
+        />
       </head>
       <body>
         <ThemeController />

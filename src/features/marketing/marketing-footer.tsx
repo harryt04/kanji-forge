@@ -17,6 +17,12 @@ export function MarketingFooter(): React.ReactElement {
             className="grid grid-cols-2 gap-x-10 gap-y-3 text-sm sm:flex sm:gap-10"
             aria-label="Footer"
           >
+            <Link
+              className="text-muted-foreground hover:text-foreground"
+              href="/kanji"
+            >
+              Kanji reference
+            </Link>
             <a
               className="text-muted-foreground hover:text-foreground"
               href="https://github.com/harryt04/kanji-forge"
@@ -25,12 +31,30 @@ export function MarketingFooter(): React.ReactElement {
             >
               GitHub
             </a>
-            <a
+            <Link
               className="text-muted-foreground hover:text-foreground"
-              href="#licensing"
+              href="/open-source"
             >
               Licensing
-            </a>
+            </Link>
+            <Link
+              className="text-muted-foreground hover:text-foreground"
+              href="/about"
+            >
+              About
+            </Link>
+            <Link
+              className="text-muted-foreground hover:text-foreground"
+              href="/privacy"
+            >
+              Privacy
+            </Link>
+            <Link
+              className="text-muted-foreground hover:text-foreground"
+              href="/terms"
+            >
+              Terms
+            </Link>
             <Link
               className="text-muted-foreground hover:text-foreground"
               href="/sign-in"
