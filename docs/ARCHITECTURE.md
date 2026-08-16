@@ -28,7 +28,7 @@ Implementation guidance for the PRD. Opinionated where a decision would otherwis
 - **No SSR, no server components doing data work — with one deliberate exception.** All *study* data is on-device and derived by client-side `replay()`; server components render only the shell. The exception is accounts and sync: better-auth and the write API are a real, mandatory backend. They run as route handlers inside this same Next.js app (§2), not as a separate service.
 - **No ORM for content packs.** Hand-written SQL over SQLite-WASM. Server Postgres uses Drizzle via better-auth / app migrations.
 - **No heavy component library.** shadcn/ui-style copy-in primitives (`BRAND-DESIGN-LANGUAGE.md`).
-- **No analytics SDK.** See PRD §7.3.
+- **Product analytics.** PostHog runs only in production through the standalone `PostHogInit` client component. It captures pageviews manually and uses its default autocapture with text and element attributes masked; session recording is disabled. The browser SDK sends through the same-origin `/ingest` rewrite. `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are build-time values, so changing them requires rebuilding the deployment image.
 - **No Rocicorp Zero.** Offline writes are rejected by design — disqualifying (see §10).
 - **No PowerSync** as the chosen engine (Electric + outbox is the locked stack per TRD D2).
 

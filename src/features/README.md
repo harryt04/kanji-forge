@@ -25,6 +25,7 @@ not the house pattern.
 | `navigation` | n/a (shell component) | `app-navigation.tsx` | Primary nav, mounted by `src/auth/auth-gate.tsx`; sidebar on tablet/desktop, compact header on mobile. |
 | `help` | `/help` | `help-screen.tsx` | Static offline help content, no data dependency. |
 | `marketing` | `(marketing)/` route group | `hero.tsx`, `feature-highlights.tsx`, `marketing-tile-wall.tsx`, `install-pwa.tsx`, `licensing-honesty.tsx`, `offline-ownership.tsx`, `signed-in-redirect.tsx`, etc. | Public landing-page sections. |
+| `analytics` | n/a (root shell concern) | `posthog-init.tsx` | Production-only PostHog initialization. Autocaptured text and element attributes are masked, session recording is disabled, and App Router pageviews are captured manually. The component is mounted as a sibling in `src/app/layout.tsx`, not as a provider wrapper. |
 
 ## Coverage gap in the product docs
 

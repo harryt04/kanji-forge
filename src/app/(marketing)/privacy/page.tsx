@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'Privacy — KanjiForge',
   description:
-    'KanjiForge runs no client-side analytics or tracking. Study data stays on your device by default; account sync is opt-in.',
+    'KanjiForge uses anonymous product analytics; study data stays on your device by default and account sync is opt-in.',
   alternates: { canonical: '/privacy' },
 }
 
@@ -18,11 +18,23 @@ export default function PrivacyPage(): React.ReactElement {
 
       <div className="mt-10 grid gap-8">
         <section>
-          <h2 className="font-semibold">No client-side tracking</h2>
+          <h2 className="font-semibold">Product analytics</h2>
           <p className="text-muted-foreground mt-2">
-            KanjiForge runs no analytics, advertising, or third-party
-            tracking scripts. Nothing about how you use the app is collected
-            or sent anywhere.
+            KanjiForge uses{' '}
+            <a
+              href="https://posthog.com"
+              rel="noreferrer"
+              target="_blank"
+              className="text-primary underline"
+            >
+              PostHog
+            </a>{' '}
+            to understand how the app is used — page views and interaction
+            events such as clicks. This never includes the kanji, decks, or
+            sentences you study, and never includes your account credentials.
+            Autocaptured text and element attributes are masked, and session
+            recording is disabled. KanjiForge runs no advertising or third-party
+            tracking beyond this.
           </p>
         </section>
 
@@ -30,8 +42,8 @@ export default function PrivacyPage(): React.ReactElement {
           <h2 className="font-semibold">Your study data</h2>
           <p className="text-muted-foreground mt-2">
             Decks, review history, and settings are stored locally in your
-            browser by default and never leave your device. If you create a
-            free account and turn on sync, that data is sent to KanjiForge&apos;s
+            browser by default and never leave your device. If you create a free
+            account and turn on sync, that data is sent to KanjiForge&apos;s
             server so it can follow you across devices — and only that data,
             scoped to your account.
           </p>
@@ -40,19 +52,19 @@ export default function PrivacyPage(): React.ReactElement {
         <section>
           <h2 className="font-semibold">Account and authentication</h2>
           <p className="text-muted-foreground mt-2">
-            Creating an account stores an email address, a hashed password
-            (or OAuth identity), and a session cookie used to keep you signed
-            in. This is used solely to authenticate you and is not shared
-            with third parties.
+            Creating an account stores an email address, a hashed password (or
+            OAuth identity), and a session cookie used to keep you signed in.
+            This is used solely to authenticate you and is not shared with third
+            parties.
           </p>
         </section>
 
         <section>
           <h2 className="font-semibold">Optional push notifications</h2>
           <p className="text-muted-foreground mt-2">
-            If you opt into study reminders, your browser&apos;s push subscription
-            endpoint is stored so KanjiForge&apos;s server can deliver
-            reminders. You can revoke this at any time in Settings.
+            If you opt into study reminders, your browser&apos;s push
+            subscription endpoint is stored so KanjiForge&apos;s server can
+            deliver reminders. You can revoke this at any time in Settings.
           </p>
         </section>
 
@@ -68,8 +80,8 @@ export default function PrivacyPage(): React.ReactElement {
         <section>
           <h2 className="font-semibold">Open source</h2>
           <p className="text-muted-foreground mt-2">
-            KanjiForge&apos;s code is public — you don&apos;t have to take these claims
-            on faith. See{' '}
+            KanjiForge&apos;s code is public — you don&apos;t have to take these
+            claims on faith. See{' '}
             <a
               href="https://github.com/harryt04/kanji-forge"
               rel="noreferrer"

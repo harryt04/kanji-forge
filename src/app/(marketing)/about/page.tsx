@@ -33,7 +33,7 @@ const FAQ = [
   {
     question: 'Does it track me?',
     answer:
-      'No client-side analytics run on KanjiForge. Your study data stays on your device unless you opt into account sync.',
+      'KanjiForge uses PostHog for anonymous product analytics — page views and interaction events, not what you study. Your kanji, decks, and review history stay on your device unless you opt into account sync. See the Privacy page for details.',
   },
 ] as const
 
@@ -57,8 +57,8 @@ export default function AboutPage(): React.ReactElement {
       </p>
       <p className="text-muted-foreground mt-4 text-lg">
         It&apos;s built for independent learners who want offline study with
-        optional account sync, not a subscription. The application code is
-        MIT licensed; the kanji and dictionary data are CC BY-SA. See{' '}
+        optional account sync, not a subscription. The application code is MIT
+        licensed; the kanji and dictionary data are CC BY-SA. See{' '}
         <Link href="/open-source" className="text-primary underline">
           Open Source
         </Link>{' '}
