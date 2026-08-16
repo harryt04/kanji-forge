@@ -217,6 +217,8 @@ export function BrowseScreen({
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [selectionMode, setSelectionMode] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const browseError =
+    viewError ?? tileContentError ?? tileZoomError ?? editError
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -738,29 +740,9 @@ export function BrowseScreen({
           {statusMessage}
         </p>
 
-        {viewError && (
-          <p className="text-destructive" role="alert">
-            {viewError}
-          </p>
-        )}
-
-        {tileContentError && (
-          <p className="text-destructive" role="alert">
-            {tileContentError}
-          </p>
-        )}
-
-        {tileZoomError && (
-          <p className="text-destructive" role="alert">
-            {tileZoomError}
-          </p>
-        )}
-
-        {editError && (
-          <p className="text-destructive" role="alert">
-            {editError}
-          </p>
-        )}
+        <p className="text-destructive min-h-5" role="alert">
+          {browseError}
+        </p>
 
         <div
           className="flex min-w-0 flex-wrap items-end gap-3"

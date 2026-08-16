@@ -935,6 +935,9 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByRole('alert')).toHaveTextContent('')
+
     fireEvent.click(
       screen.getByRole('button', { name: 'Use these settings for all decks' }),
     )
@@ -953,6 +956,93 @@ describe('BrowseScreen', () => {
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
     )
     expect(screen.getAllByRole('status')).toHaveLength(1)
+  })
+
+  it('renders view-setting failures in the single alert region', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'write').mockRejectedValue(
+      new Error('View settings failed.'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Show list view' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'View settings failed.',
+      ),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('renders tile-content failures in the single alert region', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'write').mockRejectedValue(
+      new Error('Tile content settings failed.'),
+    )
+    fireEvent.change(screen.getByRole('combobox', { name: 'Tile content' }), {
+      target: { value: 'reading' },
+    })
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Tile content settings failed.',
+      ),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('renders tile-zoom failures in the single alert region', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'write').mockRejectedValue(
+      new Error('Tile zoom settings failed.'),
+    )
+    fireEvent.change(screen.getByRole('combobox', { name: 'Tile zoom' }), {
+      target: { value: '0.75' },
+    })
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Tile zoom settings failed.',
+      ),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('renders edit failures in the single alert region', async () => {
+    const { runtime } = await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Set level for 日' }),
+      ).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'transaction').mockRejectedValue(
+      new Error('Card edit failed.'),
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Set level for 日' }),
+      { target: { value: '4' } },
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Card edit failed.'),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
   })
 
   it('shows bulk actions only when cards are selected', async () => {

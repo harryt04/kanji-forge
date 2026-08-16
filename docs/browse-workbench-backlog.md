@@ -194,7 +194,7 @@ The wall is the product. These are the defects visible in the user's screenshot.
       Browse render branches; `browse-screen.test.tsx` proves the swatch,
       shape class, and accessible label in tile and list views.
 
-- [ ] **G4. Four stacked `role="alert"` regions sit between the heading and the
+- [x] **G4. Four stacked `role="alert"` regions sit between the heading and the
       controls.**
       Where: [`browse-screen.tsx:737-759`](../src/features/browse/browse-screen.tsx#L737)
       — separate paragraphs for `viewError`, `tileContentError`,
@@ -210,6 +210,10 @@ The wall is the product. These are the defects visible in the user's screenshot.
       element, it is empty when no error is set, and each of the four error
       states still renders its own message text — proven by four assertions in
       `browse-screen.test.tsx`.
+
+      Browse now renders one stable alert region from the four existing error
+      states; `browse-screen.test.tsx` proves the empty state and each error
+      message while preserving exactly one alert.
 
 ---
 
