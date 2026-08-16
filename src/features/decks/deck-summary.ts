@@ -7,6 +7,7 @@ import {
   progress as computeProgress,
   progressLevel as computeProgressLevel,
 } from '@/core/srs/goal'
+import { isCardDue } from '@/core/srs/schedule'
 import { emptyCardState } from '@/core/srs/types'
 import type { LocalUserDatabase } from '@/data/db'
 import {
@@ -29,6 +30,7 @@ export interface DeckSummary {
   readonly kind: 'derived' | 'custom'
   readonly cardCount: number
   readonly levelCounts: LevelCounts
+  readonly dueCount: number
   readonly progressPercent: number
   readonly progressLevel: 0 | 1 | 2 | 3 | 4
   readonly lastStudiedAt: number | null
@@ -63,6 +65,7 @@ export function summarizeDeckCards(input: {
   readonly userId: string
   readonly folder?: string
   readonly lastSessionAt?: number | null
+  readonly now?: number
 }): DeckSummary {
   const stateByRef = new Map(
     input.states.map((state) => [state.contentRef, state]),
@@ -73,6 +76,8 @@ export function summarizeDeckCards(input: {
   }))
 
   const levelCounts = countCardsByLevel(cards)
+  const now = input.now ?? Date.now()
+  const dueCount = cards.filter((card) => isCardDue(card.state, now)).length
   const coreStates = cards.map(({ contentRef, state }) =>
     state
       ? toCoreState(state)
@@ -102,6 +107,7 @@ export function summarizeDeckCards(input: {
     kind: input.deck.kind,
     cardCount: cards.length,
     levelCounts,
+    dueCount,
     progressPercent: Math.round(progressValue * 100),
     progressLevel: computeProgressLevel(progressValue),
     lastStudiedAt,
@@ -173,6 +179,7 @@ export async function loadDeckSummaries(
         states,
         userId,
         lastSessionAt,
+        now: options?.now,
       })
     }),
   )
@@ -192,6 +199,7 @@ export async function loadDeckSummaries(
         userId,
         folder: normalizeDeckFolder(folderByDeckId.get(deck.id)),
         lastSessionAt,
+        now: options?.now,
       })
     }),
   )

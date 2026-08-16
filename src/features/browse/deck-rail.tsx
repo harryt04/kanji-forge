@@ -12,17 +12,20 @@ function DeckButton({
   readonly selected: boolean
   readonly onSelectDeck: (deckId: string) => void
 }): React.ReactElement {
+  const dueText =
+    deck.dueCount > 0 ? `${deck.dueCount} due today` : 'Nothing due today'
+
   return (
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={`${deck.name}, ${deck.cardCount} cards, ${deck.progressPercent}% complete`}
+      aria-label={`${deck.name}, ${deck.cardCount} cards, ${deck.progressPercent}% complete, ${dueText}`}
       onClick={() => onSelectDeck(deck.id)}
       className={`border-border h-auto min-h-14 w-full min-w-0 rounded-md border p-3 text-left ${selected ? 'bg-secondary' : 'bg-card'}`}
     >
       <span className="block truncate text-sm font-medium">{deck.name}</span>
       <span className="text-muted-foreground block text-xs">
-        {deck.cardCount} {deck.cardCount === 1 ? 'card' : 'cards'}
+        {deck.cardCount} {deck.cardCount === 1 ? 'card' : 'cards'} · {dueText}
       </span>
       <span className="mt-1.5 block" aria-hidden="true">
         <LevelRamp counts={deck.levelCounts} total={deck.cardCount} />

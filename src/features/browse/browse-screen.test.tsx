@@ -455,6 +455,74 @@ describe('BrowseScreen', () => {
     expect(segment).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('shows a due-today count on each deck in the rail', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    await repo.decks.upsert({
+      id: 'my-due-deck',
+      name: 'My Due Deck',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: now,
+    })
+    for (const [contentRef, order] of [
+      ['kanji:日', 0],
+      ['kanji:一', 1],
+      ['kanji:国', 2],
+    ] as const) {
+      await repo.deckMembership.save({
+        deckId: 'my-due-deck',
+        contentRef,
+        sortOrder: order,
+        addedAt: now,
+        updatedAt: now,
+      })
+    }
+    // 日 and 一 are overdue (due); 国 is not due until tomorrow.
+    for (const contentRef of ['kanji:日', 'kanji:一']) {
+      await repo.cardStates.upsert({
+        deckId: 'my-due-deck',
+        contentRef,
+        level: 2,
+        dueAt: now - 1000,
+        lastReviewedAt: now - 1000,
+        correctStreak: 1,
+        totalReviews: 1,
+        totalCorrect: 1,
+        lapses: 0,
+        flagged: false,
+        manualOverride: false,
+        updatedAt: now,
+        updatedBy: 'browse-due-test',
+      })
+    }
+    await repo.cardStates.upsert({
+      deckId: 'my-due-deck',
+      contentRef: 'kanji:国',
+      level: 2,
+      dueAt: now + 86_400_000,
+      lastReviewedAt: now,
+      correctStreak: 1,
+      totalReviews: 1,
+      totalCorrect: 1,
+      lapses: 0,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: now,
+      updatedBy: 'browse-due-test',
+    })
+
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /My Due Deck.*2 due today/ }),
+      ).toBeInTheDocument(),
+    )
+  })
+
   it('switches the wall to another deck from the rail', async () => {
     bootstrapUserRuntime(`browse-${userId}`)
     render(<BrowseScreen />)

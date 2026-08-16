@@ -24,7 +24,7 @@ import {
   type QueueCard,
 } from './queue'
 import { replay } from './replay'
-import { DAY_MS, intervalDays, nextDue } from './schedule'
+import { DAY_MS, intervalDays, isCardDue, nextDue } from './schedule'
 import { DEFAULT_SRS_CONFIG, isCardLevel } from './types'
 
 describe('SRS-SPEC §10', () => {
@@ -416,5 +416,28 @@ describe('SRS properties and edge cases', () => {
         config: cfg,
       }).get('deck\u0000a')?.level,
     ).toBe(2)
+  })
+})
+
+describe('isCardDue', () => {
+  it('treats an untouched card (no state) as due', () => {
+    expect(isCardDue(undefined, now)).toBe(true)
+  })
+
+  it('treats a level 0 card as not due, even with a past dueAt', () => {
+    expect(isCardDue({ level: 0, dueAt: now - DAY_MS }, now)).toBe(false)
+  })
+
+  it('treats a level 1-4 card as due once its dueAt has arrived', () => {
+    expect(isCardDue({ level: 2, dueAt: now }, now)).toBe(true)
+    expect(isCardDue({ level: 2, dueAt: now - 1 }, now)).toBe(true)
+  })
+
+  it('treats a level 1-4 card as not due while its dueAt is in the future', () => {
+    expect(isCardDue({ level: 2, dueAt: now + DAY_MS }, now)).toBe(false)
+  })
+
+  it('treats a level 1-4 card with no dueAt as not due', () => {
+    expect(isCardDue({ level: 2, dueAt: null }, now)).toBe(false)
   })
 })

@@ -151,6 +151,34 @@ describe('summarizeDeckCards', () => {
     })
     expect(summary.folder).toBe('')
   })
+
+  it('counts new and overdue cards as due today', () => {
+    const now = 10_000
+    const contentRefs = ['kanji:a', 'kanji:b', 'kanji:c']
+    const states = [
+      { ...cardState('kanji:b', 2), dueAt: now - 1000 },
+      { ...cardState('kanji:c', 2), dueAt: now + 1000 },
+      // kanji:a has no state row — untouched, counts as due
+    ]
+
+    const summary = summarizeDeckCards({
+      ...baseInput,
+      contentRefs,
+      states,
+      now,
+    })
+
+    expect(summary.dueCount).toBe(2)
+  })
+
+  it('defaults now to the current time when not provided', () => {
+    const summary = summarizeDeckCards({
+      ...baseInput,
+      contentRefs: ['kanji:a'],
+      states: [],
+    })
+    expect(summary.dueCount).toBe(1)
+  })
 })
 
 describe('loadDeckSummaries', () => {
@@ -262,5 +290,51 @@ describe('loadDeckSummaries', () => {
       (summary) => summary.id === 'dev-kanji',
     )
     expect(devKanjiWith?.lastStudiedAt).toBe(2000)
+  })
+
+  it('agrees with the app badge on how many cards are due', async () => {
+    const runtime = bootstrapUserRuntime(`deck-summaries-${userId}`)
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    const now = Date.now()
+    await repo.cardStates.upsert({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 2,
+      dueAt: now - 1000,
+      lastReviewedAt: now - 1000,
+      correctStreak: 1,
+      totalReviews: 1,
+      totalCorrect: 1,
+      lapses: 0,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: now,
+      updatedBy: 'deck-summary-test',
+    })
+
+    const summaries = await loadDeckSummaries(
+      runtime.database,
+      runtime.userId,
+      {
+        now,
+      },
+    )
+    const devKanji = summaries.builtIn.find(
+      (summary) => summary.id === 'dev-kanji',
+    )
+    expect(devKanji).toBeDefined()
+
+    const { countAppBadgeCards } = await import('@/pwa/app-badge')
+    const definitions = (await import('@/data/packs')).loadDeckDefinitions
+    const definition = (await definitions()).find((d) => d.id === 'dev-kanji')
+    expect(definition).toBeDefined()
+    const states = await repo.cardStates.list('dev-kanji')
+    const stateByRef = new Map(states.map((state) => [state.contentRef, state]))
+    const cards = definition!.contentRefs.map((contentRef) => ({
+      state: stateByRef.get(contentRef),
+    }))
+
+    expect(devKanji!.dueCount).toBe(countAppBadgeCards(cards, 'due', now))
   })
 })
