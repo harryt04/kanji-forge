@@ -58,7 +58,13 @@ For each environment's app, in Coolify:
    DATABASE_URL=<internal connection string to that environment's Postgres>
    BETTER_AUTH_SECRET=<generate below — unique to this environment>
    BETTER_AUTH_URL=<this app's own public HTTPS origin, e.g. https://beta.kanjiforge.app>
+   NEXT_PUBLIC_SITE_URL=<this app's own public HTTPS origin — must match exactly>
    ```
+   `NEXT_PUBLIC_SITE_URL` is build-time and drives canonical URLs, Open Graph tags, and the
+   sitemap. Only `https://kanjiforge.app` is treated as the production/indexable host; every other
+   value (including `https://beta.kanjiforge.app`) gets a blanket `robots.txt` disallow so beta
+   never competes with production in search results.
+
    Generate a secret with:
    ```bash
    openssl rand -base64 48

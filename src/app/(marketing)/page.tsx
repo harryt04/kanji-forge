@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import packageJson from '../../../package.json'
 import { BeltRampExplainer } from '@/features/marketing/belt-ramp-explainer'
 import { FeatureHighlights } from '@/features/marketing/feature-highlights'
 import { Hero } from '@/features/marketing/hero'
@@ -22,6 +23,10 @@ const JSON_LD = {
   operatingSystem: 'Web',
   description:
     'A free, offline-first Japanese kanji study app using a level-and-color spaced-repetition system.',
+  isAccessibleForFree: true,
+  license: 'https://github.com/harryt04/kanji-forge/blob/master/LICENSE',
+  codeRepository: 'https://github.com/harryt04/kanji-forge',
+  softwareVersion: packageJson.version,
   offers: {
     '@type': 'Offer',
     price: '0',

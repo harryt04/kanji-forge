@@ -12,18 +12,24 @@ export function MarketingHeader(): React.ReactElement {
           className="hidden items-center gap-6 sm:flex"
           aria-label="Marketing"
         >
-          <a
+          <Link
             className="text-muted-foreground hover:text-foreground text-sm"
-            href="#how-it-works"
+            href="/#how-it-works"
           >
             How it works
-          </a>
-          <a
+          </Link>
+          <Link
             className="text-muted-foreground hover:text-foreground text-sm"
-            href="#licensing"
+            href="/kanji"
+          >
+            Kanji
+          </Link>
+          <Link
+            className="text-muted-foreground hover:text-foreground text-sm"
+            href="/open-source"
           >
             Licensing
-          </a>
+          </Link>
           <a
             className="text-muted-foreground hover:text-foreground text-sm"
             href="https://github.com/harryt04/kanji-forge"

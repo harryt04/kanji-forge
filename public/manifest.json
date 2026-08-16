@@ -47,13 +47,5 @@
       "title": "title",
       "url": "url"
     }
-  },
-  "file_handlers": [
-    {
-      "action": "/import",
-      "accept": {
-        "application/json": [".kanjiforge", ".json"]
-      }
-    }
-  ]
+  }
 }
