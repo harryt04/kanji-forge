@@ -85,6 +85,16 @@ import {
   type StudyQuestion,
 } from '@/features/study/study-style'
 import {
+  DEFAULT_WRITING_LENIENCY,
+  isWritingLeniency,
+  isWritingValidationEnabled,
+  parseWritingLeniency,
+  WRITING_LENIENCY_OPTIONS,
+  WRITING_LENIENCY_SETTING,
+  WRITING_VALIDATION_SETTING,
+} from '@/features/writing'
+import type { StrokeLeniency } from '@/core/stroke/match'
+import {
   BACKUP_LAST_EXPORTED_SETTING,
   createBackup,
   getBackupReminder,
@@ -320,6 +330,10 @@ export function SettingsScreen(): React.ReactElement {
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [srsMode, setSrsMode] = useState<SrsMode>(DEFAULT_SRS_MODE)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [writingValidationEnabled, setWritingValidationEnabled] = useState(true)
+  const [writingLeniency, setWritingLeniency] = useState<StrokeLeniency>(
+    DEFAULT_WRITING_LENIENCY,
+  )
   const [audioPackPreference, setAudioPackPreference] = useState(
     AUDIO_PACK_PREFERENCE_AUTO,
   )
@@ -428,6 +442,8 @@ export function SettingsScreen(): React.ReactElement {
         savedTwoTap,
         savedSrsMode,
         savedAutoPlayAudio,
+        savedWritingValidation,
+        savedWritingLeniency,
         savedAudioPackPreference,
         savedStrokeAnimation,
         savedSaveBehavior,
@@ -448,6 +464,8 @@ export function SettingsScreen(): React.ReactElement {
         repositories.settings.get(STUDY_TWO_TAP_SETTING),
         repositories.settings.get(SRS_MODE_SETTING),
         repositories.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
+        repositories.settings.get(WRITING_VALIDATION_SETTING),
+        repositories.settings.get(WRITING_LENIENCY_SETTING),
         repositories.settings.get(AUDIO_PACK_PREFERENCE_SETTING),
         repositories.settings.get(STROKE_ANIMATION_SETTING),
         repositories.settings.get(SAVE_BEHAVIOR_SETTING),
@@ -482,6 +500,10 @@ export function SettingsScreen(): React.ReactElement {
       if (savedSrsMode && isSrsMode(savedSrsMode.value))
         setSrsMode(savedSrsMode.value)
       setAutoPlayAudio(savedAutoPlayAudio?.value === 'true')
+      setWritingValidationEnabled(
+        isWritingValidationEnabled(savedWritingValidation?.value),
+      )
+      setWritingLeniency(parseWritingLeniency(savedWritingLeniency?.value))
       setAudioPackPreference(
         savedAudioPackPreference?.value || AUDIO_PACK_PREFERENCE_AUTO,
       )
@@ -897,6 +919,61 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save the scheduler setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleWritingValidation(): Promise<void> {
+    if (!runtime || saving) return
+    const previous = writingValidationEnabled
+    const next = !previous
+    setWritingValidationEnabled(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: WRITING_VALIDATION_SETTING,
+        value: String(next),
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setWritingValidationEnabled(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the writing practice setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseWritingLeniency(value: string): Promise<void> {
+    if (
+      !runtime ||
+      !isWritingLeniency(value) ||
+      value === writingLeniency ||
+      saving
+    )
+      return
+    const previous = writingLeniency
+    setWritingLeniency(value)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: WRITING_LENIENCY_SETTING,
+        value,
+        updatedAt: Date.now(),
+      })
+    } catch (reason: unknown) {
+      setWritingLeniency(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save the writing tolerance setting.',
       )
     } finally {
       setSaving(false)
@@ -2235,6 +2312,7 @@ export function SettingsScreen(): React.ReactElement {
             ['study-question-heading', 'Study question'],
             ['study-answer-heading', 'Study answer'],
             ['study-taps-heading', 'Study taps'],
+            ['writing-practice-heading', 'Writing practice'],
             ['study-audio-heading', 'Study audio'],
             ['names-dictionary-heading', 'Optional names dictionary'],
             ['full-dictionary-heading', 'Optional full dictionary'],
@@ -2690,6 +2768,53 @@ export function SettingsScreen(): React.ReactElement {
             </span>
           </span>
         </Button>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2
+          id="writing-practice-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Writing practice
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Controls the stroke-order canvas that appears on the study answer side
+          and on a kanji&apos;s Detail page.
+        </p>
+        <Button
+          type="button"
+          variant={writingValidationEnabled ? 'secondary' : 'outline'}
+          aria-checked={writingValidationEnabled}
+          role="checkbox"
+          disabled={saving}
+          className="mt-5 h-auto min-h-14 justify-start px-4 py-3 text-left"
+          onClick={() => void toggleWritingValidation()}
+        >
+          <span>
+            <span className="block font-semibold">Check stroke order</span>
+            <span className="text-muted-foreground block text-sm font-normal">
+              Reject strokes that are drawn out of order or the wrong shape.
+            </span>
+          </span>
+        </Button>
+        <label
+          className="text-muted-foreground mt-4 grid max-w-sm gap-2 text-sm"
+          htmlFor="writing-leniency"
+        >
+          <span>Stroke matching tolerance</span>
+          <select
+            id="writing-leniency"
+            value={writingLeniency}
+            onChange={(event) => void chooseWritingLeniency(event.target.value)}
+            disabled={saving || !writingValidationEnabled}
+            className="border-input bg-background focus-visible:ring-ring text-foreground h-10 rounded-md border px-3 outline-none focus-visible:ring-2"
+          >
+            {WRITING_LENIENCY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} — {option.description}
+              </option>
+            ))}
+          </select>
+        </label>
       </section>
       <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
         <h2

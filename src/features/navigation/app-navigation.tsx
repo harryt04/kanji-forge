@@ -101,9 +101,6 @@ export function AppNavigation({
         >
           Dictionary
         </NavLink>
-        <NavLink href="/writing" orientation={orientation} pathname={pathname}>
-          Writing
-        </NavLink>
         <NavLink href="/help" orientation={orientation} pathname={pathname}>
           Help
         </NavLink>

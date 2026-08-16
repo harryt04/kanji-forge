@@ -70,7 +70,7 @@ export const STUDY_ANSWER_OPTIONS = [
   {
     value: 'writing',
     label: 'Writing pad',
-    description: 'Practice writing the kanji after reveal.',
+    description: 'Practice stroke order for the kanji after reveal.',
   },
 ] as const
 

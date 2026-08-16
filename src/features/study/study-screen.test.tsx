@@ -370,17 +370,17 @@ describe('StudyScreen', () => {
     )
 
     expect(
-      screen.getByRole('heading', { name: 'Writing answer' }),
+      screen.getByRole('heading', { name: 'Writing practice' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('application', { name: /Writing answer canvas/ }),
+      screen.getByRole('application', { name: /Writing canvas for/ }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Clear writing' }),
+      screen.getByRole('button', { name: 'Clear all' }),
     ).toBeInTheDocument()
   })
 
-  it('keeps word-only cards studyable while ignoring the writing answer', async () => {
+  it('offers writing practice for the kanji inside a word card', async () => {
     const entry = await findDictionaryEntry('お金')
     if (!entry || entry.type !== 'word') throw new Error('word fixture missing')
     const runtime = getActiveUserRuntime()!
@@ -442,7 +442,13 @@ describe('StudyScreen', () => {
 
     expect(screen.getByTestId('study-answer')).toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'Writing answer' }),
+      screen.getByRole('heading', { name: 'Writing practice' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('application', { name: 'Writing canvas for 金' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('radiogroup', { name: 'Kanji to practice writing' }),
     ).not.toBeInTheDocument()
     await waitFor(() => expect(speak).toHaveBeenCalledOnce())
   })

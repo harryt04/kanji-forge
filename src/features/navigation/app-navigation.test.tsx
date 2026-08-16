@@ -65,10 +65,9 @@ describe('AppNavigation', () => {
       'href',
       '/history',
     )
-    expect(screen.getByRole('link', { name: 'Writing' })).toHaveAttribute(
-      'href',
-      '/writing',
-    )
+    expect(
+      screen.queryByRole('link', { name: 'Writing' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute(
       'href',
       '/help',
@@ -123,7 +122,6 @@ describe('AppNavigation', () => {
     ['/browse', 'Browse'],
     ['/history', 'History'],
     ['/dictionary', 'Dictionary'],
-    ['/writing', 'Writing'],
     ['/help', 'Help'],
   ])('marks %s as the current page', (pathname, label) => {
     pathnameState.current = pathname

@@ -515,13 +515,6 @@ export function HomeScreen(): React.ReactElement {
                             Browse
                           </Link>
                         </Button>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link
-                            href={`/writing?deckId=${encodeURIComponent(deck.id)}`}
-                          >
-                            Practice writing
-                          </Link>
-                        </Button>
                       </div>
                     </div>
                   ))}
@@ -569,11 +562,6 @@ export function HomeScreen(): React.ReactElement {
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/browse?deckId=${encodeURIComponent(deck.id)}`}>
                     Browse
-                  </Link>
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/writing?deckId=${encodeURIComponent(deck.id)}`}>
-                    Practice writing
                   </Link>
                 </Button>
               </div>

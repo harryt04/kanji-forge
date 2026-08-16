@@ -37,8 +37,16 @@ import {
   STUDY_AUTO_PLAY_AUDIO_SETTING,
 } from './audio'
 import { useStudyStore } from './store'
-import { StudyWritingAnswer } from './study-writing-answer'
+import { StudyWritingPanel } from './study-writing-panel'
 import { requestStoragePersistenceAfterSession } from '@/pwa'
+import {
+  DEFAULT_WRITING_LENIENCY,
+  isWritingValidationEnabled,
+  parseWritingLeniency,
+  WRITING_LENIENCY_SETTING,
+  WRITING_VALIDATION_SETTING,
+} from '@/features/writing'
+import type { StrokeLeniency } from '@/core/stroke/match'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 export const GREY_STICKIES_SETTING = 'study.greyStickies'
@@ -68,6 +76,10 @@ export function StudyScreen({
   const [twoTapStudy, setTwoTapStudy] = useState(false)
   const [twoTapStage, setTwoTapStage] = useState<0 | 1 | 2>(0)
   const [autoPlayAudio, setAutoPlayAudio] = useState(false)
+  const [writingValidationEnabled, setWritingValidationEnabled] = useState(true)
+  const [writingLeniency, setWritingLeniency] = useState<StrokeLeniency>(
+    DEFAULT_WRITING_LENIENCY,
+  )
   const [hasAudioRecording, setHasAudioRecording] = useState(false)
   const [relatedWords, setRelatedWords] = useState<readonly WordRecord[]>([])
   const [relatedWordsLoading, setRelatedWordsLoading] = useState(false)
@@ -143,6 +155,8 @@ export function StudyScreen({
         twoTapSetting,
         autoPlayAudioSetting,
         srsModeSetting,
+        writingValidationSetting,
+        writingLeniencySetting,
       ] = await Promise.all([
         repoForSession.settings.get(GREY_STICKIES_SETTING),
         repoForSession.settings.get(STUDY_QUESTION_SETTING),
@@ -150,6 +164,8 @@ export function StudyScreen({
         repoForSession.settings.get(STUDY_TWO_TAP_SETTING),
         repoForSession.settings.get(STUDY_AUTO_PLAY_AUDIO_SETTING),
         repoForSession.settings.get(SRS_MODE_SETTING),
+        repoForSession.settings.get(WRITING_VALIDATION_SETTING),
+        repoForSession.settings.get(WRITING_LENIENCY_SETTING),
       ])
       const startedAt = Date.now()
       const startedSessionId = crypto.randomUUID()
@@ -183,6 +199,10 @@ export function StudyScreen({
         setTwoTapStudy(parseStudyTwoTap(twoTapSetting?.value))
         setTwoTapStage(0)
         setAutoPlayAudio(autoPlayAudioSetting?.value === 'true')
+        setWritingValidationEnabled(
+          isWritingValidationEnabled(writingValidationSetting?.value),
+        )
+        setWritingLeniency(parseWritingLeniency(writingLeniencySetting?.value))
         setHasAudioRecording(false)
         setPreferenceError(null)
         setLoading(false)
@@ -348,6 +368,11 @@ export function StudyScreen({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-study-writing]')
+      )
+        return
       if (event.key === ' ') {
         event.preventDefault()
         if (!revealed) handleReveal()
@@ -681,11 +706,14 @@ export function StudyScreen({
             </p>
           </div>
 
-          {revealed &&
-            answerShows('writing') &&
-            studyCard.contentType === 'kanji' && (
-              <StudyWritingAnswer literal={studyCard.literal} />
-            )}
+          {revealed && answerShows('writing') && (
+            <StudyWritingPanel
+              contentRef={card.stickyId}
+              literal={studyCard.literal}
+              validationEnabled={writingValidationEnabled}
+              leniency={writingLeniency}
+            />
+          )}
 
           {!revealed ? (
             <Button size="lg" onClick={handleReveal}>
