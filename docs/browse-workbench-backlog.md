@@ -91,7 +91,7 @@ signed in.
   e2e/browse-workbench.spec.ts; its signed-in fixture asserts non-zero tile
   width and height from getBoundingClientRect().
 
-- [ ] **F2. Record the before-numbers this queue is measured against.**
+- [x] **F2. Record the before-numbers this queue is measured against.**
       Fix: with F1's harness, capture and write into this file, under this
       item, at 1440px and 375px, dark and light:
       (a) `document.querySelector('[data-testid="browse-cards"]').getBoundingClientRect().top`
@@ -106,6 +106,21 @@ signed in.
       **Acceptance line:** the three measurements are written into this file as
       literal numbers with their viewport and theme, and G1/G3's acceptance
       lines are checked against them rather than against the predictions above.
+
+      Baseline captured by `e2e/browse-workbench.spec.ts` in Chromium with the
+      signed-in local stack:
+
+      | Theme | Viewport | Cards top (px) | Selection overlay coverage at 1× | Tile at 0.75× (px) |
+      | --- | ---: | ---: | ---: | ---: |
+      | light | 1440×900 | 518 | 0.6051292696 (60.5129%) | 42.21875×42.21875 |
+      | dark | 1440×900 | 518 | 0.6051292696 (60.5129%) | 42.21875×42.21875 |
+      | light | 375×667 | 1213 | 0.5006095806 (50.0610%) | 42.140625×42.140625 |
+      | dark | 375×667 | 1213 | 0.5006095806 (50.0610%) | 42.140625×42.140625 |
+
+      The measured overlay coverage is lower than the static 86% prediction
+      because the responsive grid expands each tile beyond its 56px base size;
+      the compact tiles still measure below the 44px touch floor in both themes.
+      The focused Playwright test passes in Chromium (2 passed, 0 skipped).
 
 ---
 
