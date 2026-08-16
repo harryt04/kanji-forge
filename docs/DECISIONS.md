@@ -1,7 +1,7 @@
 # KanjiForge — Decision log (MVP scoping)
 
 **Date:** 2026-07-22  
-**Binding detail:** [`TRD.md`](./TRD.md)  
+**Binding detail:** [`TRD.md`](archived/TRD.md) (archived — MVP shipped)  
 **Long-term vision (unchanged):** [`FEATURE-PARITY.md`](./FEATURE-PARITY.md)
 
 This log captures product/architecture choices from the MVP scoping session so they are not re-litigated casually. Prefer TRD for implementation requirements.

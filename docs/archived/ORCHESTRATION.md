@@ -4,10 +4,10 @@
 work to user-level subagents. **Not** a human runbook — each task block is written so a *cold*
 subagent can execute it with only the block + the named spec sections in front of it.
 
-**Build contract:** [`TRD.md`](./TRD.md) (binding). Depth specs: [`SRS-SPEC.md`](./SRS-SPEC.md),
-[`DATA-SOURCES.md`](./DATA-SOURCES.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md),
-[`BRAND-DESIGN-LANGUAGE.md`](./BRAND-DESIGN-LANGUAGE.md). Vision (never the MVP cut list):
-[`FEATURE-PARITY.md`](./FEATURE-PARITY.md).
+**Build contract:** [`TRD.md`](TRD.md) (binding). Depth specs: [`SRS-SPEC.md`](../SRS-SPEC.md),
+[`DATA-SOURCES.md`](../DATA-SOURCES.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md),
+[`BRAND-DESIGN-LANGUAGE.md`](../BRAND-DESIGN-LANGUAGE.md). Vision (never the MVP cut list):
+[`FEATURE-PARITY.md`](../FEATURE-PARITY.md).
 
 **Scope of this doc:** Phase 0 and Phase 1 are fully decomposed into dispatchable task blocks.
 Phases 2–5 are outlined at task-block granularity and are **expanded only when reached** — the
