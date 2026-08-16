@@ -337,6 +337,37 @@ describe('BrowseScreen', () => {
     )
   })
 
+  it('shows a level ramp with a labelled segment for every level', async () => {
+    const { repo } = await seedListView(userId)
+    await repo.cardStates.upsert({
+      deckId: 'dev-kanji',
+      contentRef: 'kanji:日',
+      level: 3,
+      dueAt: Date.now(),
+      lastReviewedAt: Date.now(),
+      correctStreak: 3,
+      totalReviews: 3,
+      totalCorrect: 3,
+      lapses: 0,
+      flagged: false,
+      manualOverride: false,
+      updatedAt: Date.now(),
+      updatedBy: 'browse-ramp-test',
+    })
+
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-level-ramp')).toBeInTheDocument(),
+    )
+    expect(
+      screen.getByLabelText('Level 3, blue (Ao), Known, 1 cards'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Level 0, white (Shiro), New, 199 cards'),
+    ).toBeInTheDocument()
+  })
+
   it('shows each card level and flag state from the local database', async () => {
     const { repo } = await seedListView(userId)
     await repo.cardStates.upsert({

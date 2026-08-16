@@ -19,15 +19,16 @@ import {
 } from './browse-filter'
 import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
-import { beltLevelLabel } from '@/features/level-rank'
+import { beltLevelLabel, LEVEL_NAMES } from '@/features/level-rank'
 import {
   BROWSE_LIST_ROW_HEIGHT,
   BROWSE_LIST_VIEWPORT_HEIGHT,
   BROWSE_LIST_VIRTUALIZATION_THRESHOLD,
   getBrowseVirtualRange,
 } from './browse-virtual'
+import { countCardsByLevel } from '@/features/decks/deck-summary'
+import { LevelRamp } from './level-ramp'
 
-const LEVEL_NAMES = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 export const BROWSE_VIEW_SETTING = 'browse.view'
 export const BROWSE_TILE_CONTENT_SETTING = 'browse.tile-content'
@@ -658,6 +659,8 @@ export function BrowseScreen({
             <Link href="/study">Study this deck</Link>
           </Button>
         </header>
+
+        <LevelRamp counts={countCardsByLevel(cards)} total={cards.length} />
 
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
