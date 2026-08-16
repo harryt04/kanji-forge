@@ -1,21 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getActiveUserRuntime } from '@/auth/runtime'
 import { isKanjiLiteral } from '@/core/import/parse'
 import {
   getKanjiByLiterals,
-  getKanjiStrokes,
   loadDeckDefinitions,
   type KanjiRecord,
 } from '@/data/packs'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
-import { matchStroke, STROKE_CANVAS } from '@/core/stroke/match'
-import { nextStrokeIndexes } from '@/core/stroke/order'
-import { flattenSvgPath } from '@/core/stroke/resample'
 import { loadWritingQueue, type WritingQueueEntry } from './writing-queue'
+import { WritingPad } from './writing-pad'
 import {
   DEFAULT_WRITING_LENIENCY,
   isWritingLeniency,
@@ -26,20 +23,9 @@ import {
   WRITING_VALIDATION_SETTING,
 } from './settings'
 
-interface Point {
-  readonly x: number
-  readonly y: number
-}
-
 const DEFAULT_DECK_ID = 'dev-kanji'
 
-/**
- * Rejected attempts allowed before the next stroke is taken regardless. A
- * learner stuck on stroke 7 of 14 closes the app, so the trainer never blocks.
- */
-const ASSIST_AFTER_FAILURES = 3
-
-/** How long the finished character stays on screen before the canvas resets. */
+/** How long the finished repetition stays on screen before the drill advances. */
 const AUTO_CLEAR_DELAY_MS = 500
 
 interface DeckOption {
@@ -64,36 +50,6 @@ function kanjiLiteralFromContentRef(ref: string): string | null {
   return isKanjiLiteral(literal) ? literal : null
 }
 
-/** Map a pointer position into the KanjiVG coordinate space the guides use. */
-function pointFromEvent(
-  event: React.PointerEvent<SVGSVGElement>,
-  surface: SVGSVGElement,
-): Point {
-  const bounds = surface.getBoundingClientRect()
-  const width = bounds.width || STROKE_CANVAS
-  const height = bounds.height || STROKE_CANVAS
-  return {
-    x: Math.max(
-      0,
-      Math.min(
-        STROKE_CANVAS,
-        ((event.clientX - bounds.left) / width) * STROKE_CANVAS,
-      ),
-    ),
-    y: Math.max(
-      0,
-      Math.min(
-        STROKE_CANVAS,
-        ((event.clientY - bounds.top) / height) * STROKE_CANVAS,
-      ),
-    ),
-  }
-}
-
-function pointsAttribute(points: readonly Point[]): string {
-  return points.map((point) => `${point.x},${point.y}`).join(' ')
-}
-
 /** Offline writing practice surface with optional next-stroke validation. */
 export function WritingScreen(): React.ReactElement {
   const [deckId, setDeckId] = useState(() =>
@@ -104,21 +60,14 @@ export function WritingScreen(): React.ReactElement {
   const [queue, setQueue] = useState<readonly WritingQueueEntry[]>([])
   const [index, setIndex] = useState(0)
   const [content, setContent] = useState<KanjiRecord | null>(null)
-  const [paths, setPaths] = useState<readonly string[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [capturedStrokes, setCapturedStrokes] = useState<readonly Point[][]>([])
-  const [capturedStrokeIndexes, setCapturedStrokeIndexes] = useState<
-    readonly number[]
-  >([])
-  const [draftStroke, setDraftStroke] = useState<readonly Point[]>([])
   const [validationEnabled, setValidationEnabled] = useState(true)
   const [leniency, setLeniency] = useState(DEFAULT_WRITING_LENIENCY)
-  const [failedAttempts, setFailedAttempts] = useState(0)
-  const [feedback, setFeedback] = useState<string | null>(null)
   const [drillRepetitions, setDrillRepetitions] = useState(3)
   const [drillAttempt, setDrillAttempt] = useState(0)
   const [drillComplete, setDrillComplete] = useState(false)
+  const [repetitionComplete, setRepetitionComplete] = useState(false)
   // The `?contentRef=` a Detail link arrived with, honoured on the first deck
   // load only. Held as state (not a mutable "used" ref) so the effect below
   // computes the same result on every invocation — React 18 Strict Mode runs
@@ -127,9 +76,6 @@ export function WritingScreen(): React.ReactElement {
   const [initialContentRef, setInitialContentRef] = useState(() =>
     requestedContentRefFromLocation(),
   )
-  const surfaceRef = useRef<SVGSVGElement>(null)
-  const activePointerId = useRef<number | null>(null)
-  const draftStrokeRef = useRef<readonly Point[]>([])
 
   // Populate the deck picker once: every built-in deck plus the user's own.
   useEffect(() => {
@@ -226,13 +172,11 @@ export function WritingScreen(): React.ReactElement {
       try {
         await runtime.database.ready
         const repositories = createUserRepositories(runtime.database)
-        const [records, strokePaths, savedValidation, savedLeniency] =
-          await Promise.all([
-            getKanjiByLiterals([entry.literal]),
-            getKanjiStrokes(entry.literal),
-            repositories.settings.get(WRITING_VALIDATION_SETTING),
-            repositories.settings.get(WRITING_LENIENCY_SETTING),
-          ])
+        const [records, savedValidation, savedLeniency] = await Promise.all([
+          getKanjiByLiterals([entry.literal]),
+          repositories.settings.get(WRITING_VALIDATION_SETTING),
+          repositories.settings.get(WRITING_LENIENCY_SETTING),
+        ])
         const record = records.get(entry.literal)
         if (!record)
           throw new Error(
@@ -240,12 +184,11 @@ export function WritingScreen(): React.ReactElement {
           )
         if (!active) return
         setContent(record)
-        setPaths(strokePaths)
         setValidationEnabled(isWritingValidationEnabled(savedValidation?.value))
         setLeniency(parseWritingLeniency(savedLeniency?.value))
-        clearStrokes()
         setDrillAttempt(0)
         setDrillComplete(false)
+        setRepetitionComplete(false)
       } catch (reason) {
         if (active)
           setError(
@@ -287,122 +230,23 @@ export function WritingScreen(): React.ReactElement {
     setIndex(nextIndex)
   }
 
-  function beginStroke(event: React.PointerEvent<SVGSVGElement>): void {
-    if (!surfaceRef.current || activePointerId.current !== null) return
-    activePointerId.current = event.pointerId
-    surfaceRef.current.setPointerCapture?.(event.pointerId)
-    const point = pointFromEvent(event, surfaceRef.current)
-    draftStrokeRef.current = [point]
-    setDraftStroke(draftStrokeRef.current)
-  }
-
-  function continueStroke(event: React.PointerEvent<SVGSVGElement>): void {
-    if (
-      !surfaceRef.current ||
-      activePointerId.current !== event.pointerId ||
-      draftStrokeRef.current.length === 0
-    )
-      return
-    const point = pointFromEvent(event, surfaceRef.current)
-    draftStrokeRef.current = [...draftStrokeRef.current, point]
-    setDraftStroke(draftStrokeRef.current)
-  }
-
-  function endStroke(event: React.PointerEvent<SVGSVGElement>): void {
-    if (activePointerId.current !== event.pointerId) return
-    activePointerId.current = null
-    const stroke = draftStrokeRef.current
-    if (stroke.length > 1) {
-      const expectedIndexes = nextStrokeIndexes(
-        content?.literal ?? '',
-        capturedStrokeIndexes,
-        paths?.length ?? 0,
-      )
-      const matchedIndex = validationEnabled
-        ? expectedIndexes.find((index) => {
-            const expectedPath = paths?.[index]
-            return (
-              !expectedPath ||
-              matchStroke(stroke, expectedPath, leniency).accepted
-            )
-          })
-        : (expectedIndexes[0] ?? capturedStrokeIndexes.length)
-      // Never hard-block: once the learner has missed ASSIST_AFTER_FAILURES
-      // times, take the stroke anyway so they can finish the character.
-      const assisted =
-        matchedIndex === undefined && failedAttempts >= ASSIST_AFTER_FAILURES
-      const acceptedIndex = assisted
-        ? (expectedIndexes[0] ?? capturedStrokeIndexes.length)
-        : matchedIndex
-      if (acceptedIndex !== undefined) {
-        setCapturedStrokes((current) => [...current, [...stroke]])
-        setCapturedStrokeIndexes((current) => [...current, acceptedIndex])
-        setFailedAttempts(0)
-        setFeedback(
-          assisted
-            ? 'Close enough — moving on. Trace the highlighted stroke to feel the shape.'
-            : null,
-        )
-      } else {
-        const nextFailures = failedAttempts + 1
-        setFailedAttempts(nextFailures)
-        setFeedback(
-          nextFailures >= ASSIST_AFTER_FAILURES
-            ? 'Trace the animated stroke — the next attempt will be accepted.'
-            : nextFailures >= 2
-              ? 'Hint: start at the highlighted dot, then follow the stroke.'
-              : 'That stroke was not close enough. Try again from the highlighted start.',
-        )
-      }
-    }
-    draftStrokeRef.current = []
-    setDraftStroke([])
-  }
-
   // Finishing the character just leaves it filled in with no way to go again
-  // short of clicking a button. Move on automatically once every stroke is
-  // captured, after a pause long enough to see the result: outside a drill
-  // that means clearing the canvas, and inside a drill it means the same
-  // advance the "Next repetition" / "Finish drill" button would trigger.
-  useEffect(() => {
-    if (!paths || paths.length === 0 || capturedStrokes.length < paths.length)
-      return
-    const inDrill = drillAttempt > 0 && !drillComplete
-    const lastRepetition = inDrill && drillAttempt >= drillRepetitions
-    setFeedback(
-      lastRepetition
-        ? 'Nicely drawn — drill complete.'
-        : inDrill
-          ? 'Nicely drawn — starting the next repetition.'
-          : 'Nicely drawn — clearing the canvas so you can try again.',
-    )
-    const timeout = window.setTimeout(() => {
+  // short of clicking a button. During a drill, move on automatically once
+  // every stroke is captured: the pad reports completion, and this advances
+  // the repetition (or completes the drill) after a pause long enough to see
+  // the result. Outside a drill the pad clears itself.
+  function handlePadComplete(): void {
+    if (drillAttempt === 0 || drillComplete) return
+    setRepetitionComplete(true)
+    const lastRepetition = drillAttempt >= drillRepetitions
+    window.setTimeout(() => {
       if (lastRepetition) {
         setDrillComplete(true)
-      } else if (inDrill) {
-        clearStrokes()
-        setDrillAttempt((current) => current + 1)
       } else {
-        clearStrokes()
+        setDrillAttempt((current) => current + 1)
+        setRepetitionComplete(false)
       }
     }, AUTO_CLEAR_DELAY_MS)
-    return () => window.clearTimeout(timeout)
-  }, [
-    capturedStrokes.length,
-    paths,
-    drillAttempt,
-    drillComplete,
-    drillRepetitions,
-  ])
-
-  function clearStrokes(): void {
-    activePointerId.current = null
-    draftStrokeRef.current = []
-    setDraftStroke([])
-    setCapturedStrokes([])
-    setCapturedStrokeIndexes([])
-    setFailedAttempts(0)
-    setFeedback(null)
   }
 
   function startDrill(): void {
@@ -410,36 +254,27 @@ export function WritingScreen(): React.ReactElement {
     setDrillRepetitions(repetitions)
     setDrillAttempt(1)
     setDrillComplete(false)
-    clearStrokes()
+    setRepetitionComplete(false)
   }
 
   function exitDrill(): void {
     setDrillAttempt(0)
     setDrillComplete(false)
-    clearStrokes()
+    setRepetitionComplete(false)
   }
 
   function finishDrillRepetition(): void {
-    if (!paths || capturedStrokes.length < paths.length) return
+    if (!repetitionComplete) return
     if (drillAttempt >= drillRepetitions) {
       setDrillComplete(true)
       return
     }
-    clearStrokes()
     setDrillAttempt((current) => current + 1)
-  }
-
-  function undoStroke(): void {
-    setCapturedStrokes((current) => current.slice(0, -1))
-    setCapturedStrokeIndexes((current) => current.slice(0, -1))
-    setFailedAttempts(0)
-    setFeedback(null)
+    setRepetitionComplete(false)
   }
 
   function toggleValidation(enabled: boolean): void {
     setValidationEnabled(enabled)
-    setFailedAttempts(0)
-    setFeedback(null)
     const runtime = getActiveUserRuntime()
     if (!runtime) return
     void runtime.database.ready.then(() =>
@@ -454,8 +289,6 @@ export function WritingScreen(): React.ReactElement {
   function changeLeniency(value: string): void {
     if (!isWritingLeniency(value)) return
     setLeniency(value)
-    setFailedAttempts(0)
-    setFeedback(null)
     const runtime = getActiveUserRuntime()
     if (!runtime) return
     void runtime.database.ready.then(() =>
@@ -485,14 +318,6 @@ export function WritingScreen(): React.ReactElement {
   }
 
   const drillActive = drillAttempt > 0 && !drillComplete
-  const repetitionComplete =
-    Boolean(paths) && capturedStrokes.length >= (paths?.length ?? 0)
-  const expectedStrokeIndexes = nextStrokeIndexes(
-    content.literal,
-    capturedStrokeIndexes,
-    paths?.length ?? 0,
-  )
-  const expectedStrokeIndex = expectedStrokeIndexes[0]
 
   const currentEntry = queue[index]
 
@@ -623,7 +448,11 @@ export function WritingScreen(): React.ReactElement {
         {drillActive && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm" role="status">
-              Repetition {drillAttempt} of {drillRepetitions}
+              {repetitionComplete
+                ? drillAttempt === drillRepetitions
+                  ? 'Nicely drawn — drill complete.'
+                  : 'Nicely drawn — starting the next repetition.'
+                : `Repetition ${drillAttempt} of ${drillRepetitions}`}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" onClick={exitDrill}>
@@ -660,159 +489,14 @@ export function WritingScreen(): React.ReactElement {
         <h2 id="writing-canvas-heading" className="sr-only">
           Writing canvas
         </h2>
-        <div className="border-border bg-card mx-auto w-full max-w-[28rem] rounded-xl border p-3 shadow-[var(--shadow-card)]">
-          <svg
-            ref={surfaceRef}
-            className="bg-background aspect-square w-full touch-none select-none"
-            viewBox={`0 0 ${STROKE_CANVAS} ${STROKE_CANVAS}`}
-            role="application"
-            aria-label={`Writing canvas for ${content.literal}`}
-            onPointerDown={beginStroke}
-            onPointerMove={continueStroke}
-            onPointerUp={endStroke}
-            onPointerCancel={endStroke}
-          >
-            <rect
-              x="0.5"
-              y="0.5"
-              width={STROKE_CANVAS - 1}
-              height={STROKE_CANVAS - 1}
-              fill="none"
-              stroke="currentColor"
-              opacity="0.25"
-            />
-            <line
-              x1={STROKE_CANVAS / 2}
-              y1="0"
-              x2={STROKE_CANVAS / 2}
-              y2={STROKE_CANVAS}
-              stroke="currentColor"
-              strokeDasharray="1.5 1.5"
-              opacity="0.2"
-            />
-            <line
-              x1="0"
-              y1={STROKE_CANVAS / 2}
-              x2={STROKE_CANVAS}
-              y2={STROKE_CANVAS / 2}
-              stroke="currentColor"
-              strokeDasharray="1.5 1.5"
-              opacity="0.2"
-            />
-            {paths?.map((path, index) => (
-              <path
-                key={`${index}-${path}`}
-                d={path}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.1"
-                aria-hidden="true"
-              />
-            )) ?? (
-              <text
-                x={STROKE_CANVAS / 2}
-                y="70"
-                textAnchor="middle"
-                fontSize="65"
-                fill="currentColor"
-                opacity="0.1"
-                lang="ja"
-              >
-                {content.literal}
-              </text>
-            )}
-            {validationEnabled &&
-              expectedStrokeIndex !== undefined &&
-              paths?.[expectedStrokeIndex] &&
-              failedAttempts > 0 && (
-                <>
-                  <path
-                    d={paths[expectedStrokeIndex]}
-                    fill="none"
-                    stroke="var(--accent)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    opacity={failedAttempts >= 3 ? '0.28' : '0.16'}
-                    className={
-                      failedAttempts >= 3 ? 'writing-hint-animate' : undefined
-                    }
-                    data-testid="writing-hint-stroke"
-                    aria-hidden="true"
-                  />
-                  {failedAttempts >= 2 &&
-                    (() => {
-                      const start = flattenSvgPath(
-                        paths[expectedStrokeIndex]!,
-                      )[0]
-                      return start ? (
-                        <circle
-                          cx={start.x}
-                          cy={start.y}
-                          r="3"
-                          fill="var(--accent)"
-                          data-testid="writing-hint-start"
-                          aria-hidden="true"
-                        />
-                      ) : null
-                    })()}
-                </>
-              )}
-            {capturedStrokes.map((stroke, index) => (
-              <polyline
-                key={`captured-${index}`}
-                points={pointsAttribute(stroke)}
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-label={`Captured stroke ${index + 1}`}
-              />
-            ))}
-            {draftStroke.length > 0 && (
-              <polyline
-                points={pointsAttribute(draftStroke)}
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              />
-            )}
-          </svg>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-muted-foreground text-sm" role="status">
-            {capturedStrokes.length}{' '}
-            {capturedStrokes.length === 1 ? 'stroke' : 'strokes'} captured
-            {paths ? ` of ${paths.length}` : ''}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={undoStroke}
-              disabled={capturedStrokes.length === 0}
-            >
-              Undo stroke
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={clearStrokes}
-              disabled={
-                capturedStrokes.length === 0 && draftStroke.length === 0
-              }
-            >
-              Clear all
-            </Button>
-          </div>
-        </div>
+        <WritingPad
+          key={`${content.literal}-${Math.max(drillAttempt, 1)}`}
+          literal={content.literal}
+          validationEnabled={validationEnabled}
+          leniency={leniency}
+          autoClear={!drillActive}
+          onComplete={handlePadComplete}
+        />
         <label className="text-muted-foreground flex min-h-11 items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -840,12 +524,6 @@ export function WritingScreen(): React.ReactElement {
             ))}
           </select>
         </label>
-        <p className="text-muted-foreground text-xs" role="status">
-          {feedback ??
-            (validationEnabled
-              ? 'Draw the highlighted strokes in order. Incorrect strokes are rejected.'
-              : 'Stroke checks are off; every captured stroke is kept.')}
-        </p>
       </section>
     </main>
   )

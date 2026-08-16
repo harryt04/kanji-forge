@@ -36,6 +36,10 @@ interface StudyState {
   deckId: string | null
   deckName: string
   content: ReadonlyMap<string, StudyCard>
+  /** Every card in the deck, independent of the session's queue selection — used
+   *  to pull in more cards once the queue runs out, so a session never ends
+   *  on its own. */
+  pool: QueueCard[]
   queue: QueueCard[]
   index: number
   revealed: boolean
@@ -63,6 +67,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   deckId: null,
   deckName: '',
   content: new Map(),
+  pool: [],
   queue: [],
   index: 0,
   revealed: false,
@@ -91,10 +96,13 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       deckId: loaded.deckId,
       deckName: loaded.name,
       content: loaded.content,
+      pool: queueCards,
       queue,
       index: 0,
       revealed: false,
-      finished: queue.length === 0,
+      // A session only ends when the user chooses to via finish() — an empty
+      // deck simply has no card to show, not an auto-completed session.
+      finished: false,
       summary: emptySummary,
       schedulerMode,
       lastGrade: null,
@@ -219,6 +227,23 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       )
       queue = requeueAfterAgain(withoutCurrent, updatedCard, before.lapses + 1)
       nextIndex = state.index // the next card has shifted into this position
+    } else if (nextIndex >= queue.length) {
+      // The session only ends when the user clicks Finish, so pull in more
+      // of the deck rather than stopping here. The per-session new-card
+      // throttle already had its say in the initial queue; keep only the
+      // circulation cap so this never floods the learner with brand-new
+      // material, just lets them keep going.
+      const alreadyQueued = new Set(queue.map((entry) => entry.stickyId))
+      const more = buildQueue(state.pool, {
+        now,
+        config: {
+          ...DEFAULT_SRS_CONFIG,
+          newPerSession: DEFAULT_SRS_CONFIG.maxNewInCirculation,
+        },
+        dayOfYear: Math.floor(now / 86_400_000),
+        schedulerMode: state.schedulerMode,
+      }).filter((entry) => !alreadyQueued.has(entry.stickyId))
+      if (more.length > 0) queue = [...queue, ...more]
     }
 
     const summary: SessionSummary = {
@@ -246,7 +271,6 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         contentRef: card.stickyId,
         restoreToLevel: before.level,
       },
-      finished: nextIndex >= queue.length,
     })
   },
 

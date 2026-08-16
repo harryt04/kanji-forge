@@ -67,11 +67,6 @@ export const STUDY_ANSWER_OPTIONS = [
     label: 'Meaning',
     description: 'Show the English meanings after reveal.',
   },
-  {
-    value: 'writing',
-    label: 'Writing pad',
-    description: 'Practice writing the kanji after reveal.',
-  },
 ] as const
 
 export type StudyAnswer = (typeof STUDY_ANSWER_OPTIONS)[number]['value']

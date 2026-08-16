@@ -14,11 +14,14 @@ describe('study answer settings', () => {
     expect(DEFAULT_STUDY_ANSWER).toEqual(['kanji', 'reading', 'meaning'])
   })
 
-  it('keeps writing answer-only so it cannot be paired with a word question', () => {
+  it('has no writing answer field — writing practice is always on, not opt-in', () => {
     expect(STUDY_QUESTION_OPTIONS.map(({ value }) => value)).not.toContain(
       'writing',
     )
-    expect(parseStudyAnswer('writing')).toEqual(['writing'])
+    // A stored value referencing the removed 'writing' field falls back to
+    // the default rather than parsing to an empty answer set.
+    expect(parseStudyAnswer('kanji,writing')).toEqual(['kanji'])
+    expect(parseStudyAnswer('writing')).toEqual([...DEFAULT_STUDY_ANSWER])
   })
 
   it('defaults to all available answer fields', () => {
@@ -34,8 +37,6 @@ describe('study answer settings', () => {
 
   it('serializes fields in the stable option order', () => {
     expect(serializeStudyAnswer(['meaning', 'kanji'])).toBe('kanji,meaning')
-    expect(serializeStudyAnswer(['writing'])).toBe('writing')
-    expect(parseStudyAnswer('writing,writing')).toEqual(['writing'])
   })
 
   it('only enables two-tap study for the explicit persisted value', () => {

@@ -120,10 +120,10 @@ describe('AppNavigation', () => {
   it.each([
     ['/home', 'Home'],
     ['/study', 'Study'],
+    ['/writing', 'Writing'],
     ['/browse', 'Browse'],
     ['/history', 'History'],
     ['/dictionary', 'Dictionary'],
-    ['/writing', 'Writing'],
     ['/help', 'Help'],
   ])('marks %s as the current page', (pathname, label) => {
     pathnameState.current = pathname
