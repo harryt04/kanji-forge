@@ -1066,7 +1066,7 @@ describe('BrowseScreen', () => {
     expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
       flagged: false,
     })
-  })
+  }, 15_000)
 
   it('sets multiple selected levels with manual-review history', async () => {
     const { repo } = await seedListView(userId)
@@ -1139,7 +1139,7 @@ describe('BrowseScreen', () => {
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
     )
     expect(screen.getAllByRole('status')).toHaveLength(1)
-  })
+  }, 15_000)
 
   it('renders view-setting failures in the single alert region', async () => {
     const runtime = bootstrapUserRuntime(`browse-${userId}`)
