@@ -77,7 +77,11 @@ async function seedListView(id: number) {
 function openBrowseMenu(
   name: 'Search' | 'Sort' | 'Filter' | 'View' | 'Select',
 ) {
-  fireEvent.pointerDown(screen.getByRole('menuitem', { name }))
+  fireEvent.pointerDown(
+    screen.getByRole('menuitem', {
+      name: new RegExp(`^${name}(?: \\(active\\)|, \\d+ selected)?$`),
+    }),
+  )
   return screen.getByRole('menu')
 }
 
@@ -799,6 +803,63 @@ describe('BrowseScreen', () => {
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
     expect(
       screen.getByText('No cards match “does-not-exist”.'),
+    ).toBeInTheDocument()
+  })
+
+  it('announces active search, filter, and selection state on collapsed triggers', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(
+      screen.getByRole('menuitem', { name: 'Search', exact: true }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Filter', exact: true }),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Search')
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'Search this deck' }),
+      {
+        target: { value: 'sun' },
+      },
+    )
+    expect(
+      screen.getByRole('menuitem', { name: 'Search (active)', exact: true }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Development Kanji · 1 of 200 cards'),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /3 · Known/ }))
+    expect(
+      screen.getByRole('menuitem', { name: 'Filter (active)', exact: true }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Development Kanji · 0 of 200 cards'),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All levels' }))
+    openBrowseMenu('Search')
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'Search this deck' }),
+      {
+        target: { value: '' },
+      },
+    )
+    enterSelectionMode()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    expect(
+      screen.getByRole('menuitem', {
+        name: 'Select, 1 selected',
+        exact: true,
+      }),
     ).toBeInTheDocument()
   })
 

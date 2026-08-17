@@ -358,7 +358,7 @@ loop is what stops the menubar quietly undoing Loops B and D.
       pass, while the broader auth-backed sweep was blocked by local session
       readiness timeouts before its Browse assertions ran.
 
-- [ ] **I2. A collapsed menu can hide that the wall is filtered.**
+- [x] **I2. A collapsed menu can hide that the wall is filtered.**
       Evidence: today the active filter state is legible because every control
       is on screen. Once collapsed, a user can leave a level filter or a search
       term set, walk away, and come back to a wall that silently shows a
@@ -377,6 +377,11 @@ loop is what stops the menubar quietly undoing Loops B and D.
       accessible-name or `aria-*` difference, not colour alone), and the "N of M
       cards" line is visible without opening a menu — proven in
       `browse-screen.test.tsx`. Blocked by Loop H.
+
+      Search and Filter now show a token-colored active dot and announce their
+      active state on the collapsed trigger; Select shows the selected count.
+      `browse-screen.test.tsx` proves the trigger announcements and visible
+      results count while menus are closed.
 
 - [ ] **I3. Menu content can run off a 375px viewport.**
       Evidence: the Filter menu carries a level radio group, a flagged toggle,

@@ -778,7 +778,18 @@ export function BrowseScreen({
 
         <Menubar aria-label="Browse menus">
           <MenubarMenu value="search">
-            <MenubarTrigger>Search</MenubarTrigger>
+            <MenubarTrigger
+              aria-label={`Search${query.trim() ? ' (active)' : ''}`}
+              className="relative"
+            >
+              Search
+              {query.trim() && (
+                <span
+                  aria-hidden="true"
+                  className="bg-primary pointer-events-none absolute top-1 right-1 size-1.5 rounded-full"
+                />
+              )}
+            </MenubarTrigger>
             <MenubarContent>
               <MenubarFormField>
                 <label className="grid gap-1" htmlFor="browse-search">
@@ -817,7 +828,18 @@ export function BrowseScreen({
           </MenubarMenu>
 
           <MenubarMenu value="filter">
-            <MenubarTrigger>Filter</MenubarTrigger>
+            <MenubarTrigger
+              aria-label={`Filter${hasFilters ? ' (active)' : ''}`}
+              className="relative"
+            >
+              Filter
+              {hasFilters && (
+                <span
+                  aria-hidden="true"
+                  className="bg-primary pointer-events-none absolute top-1 right-1 size-1.5 rounded-full"
+                />
+              )}
+            </MenubarTrigger>
             <MenubarContent>
               <MenubarLabel>Filter by level</MenubarLabel>
               <MenubarRadioGroup
@@ -982,7 +1004,21 @@ export function BrowseScreen({
           </MenubarMenu>
 
           <MenubarMenu value="select">
-            <MenubarTrigger>Select</MenubarTrigger>
+            <MenubarTrigger
+              aria-label={
+                selectedContentRefs.size > 0
+                  ? `Select, ${selectedContentRefs.size} selected`
+                  : 'Select'
+              }
+              className="relative"
+            >
+              Select
+              {selectedContentRefs.size > 0 && (
+                <span className="text-muted-foreground ml-1 text-xs">
+                  ({selectedContentRefs.size})
+                </span>
+              )}
+            </MenubarTrigger>
             <MenubarContent>
               <MenubarLabel>Selection</MenubarLabel>
               <MenubarCheckboxItem
