@@ -9,7 +9,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -40,9 +51,9 @@ async function freshDatabase(): Promise<LocalUserDatabase> {
 describe('loadWritingQueue', () => {
   it('returns every kanji in a built-in deck, not just one', async () => {
     const database = await freshDatabase()
-    const queue = await loadWritingQueue(database, 'dev-kanji')
+    const queue = await loadWritingQueue(database, 'jlpt-kanji-n5')
 
-    expect(queue.deckId).toBe('dev-kanji')
+    expect(queue.deckId).toBe('jlpt-kanji-n5')
     expect(queue.entries.length).toBeGreaterThan(1)
     expect(queue.entries.map((entry) => entry.literal)).toContain('日')
     for (const entry of queue.entries) {
@@ -52,7 +63,7 @@ describe('loadWritingQueue', () => {
 
   it('deduplicates literals while keeping the first occurrence', async () => {
     const database = await freshDatabase()
-    const queue = await loadWritingQueue(database, 'dev-kanji')
+    const queue = await loadWritingQueue(database, 'jlpt-kanji-n5')
     const literals = queue.entries.map((entry) => entry.literal)
     expect(new Set(literals).size).toBe(literals.length)
   })

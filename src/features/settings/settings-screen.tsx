@@ -14,6 +14,10 @@ import {
 import { getDeviceId } from '@/lib/device-id'
 import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
 import {
+  DEFAULT_STARTER_DECK_NAME,
+  STARTER_DECK_ID,
+} from '@/features/decks/starter-deck'
+import {
   AUDIO_PACK_PREFERENCE_AUTO,
   AUDIO_PACK_PREFERENCE_SETTING,
   STUDY_AUTO_PLAY_AUDIO_SETTING,
@@ -235,9 +239,6 @@ const APP_BADGE_OPTIONS: ReadonlyArray<{
     description: 'Do not show a number on the app icon.',
   },
 ]
-
-const STARTER_DECK_ID = 'dev-kanji'
-const DEFAULT_STARTER_DECK_NAME = 'Development Kanji'
 
 async function loadCardIdentities(
   sources: readonly DeckSourceOption[],
@@ -2103,7 +2104,7 @@ export function SettingsScreen(): React.ReactElement {
     try {
       await runtime.database.ready
       const repositories = createUserRepositories(runtime.database)
-      const states = await repositories.cardStates.list('dev-kanji')
+      const states = await repositories.cardStates.list(STARTER_DECK_ID)
       const now = Date.now()
       const updatedBy = getDeviceId()
       const changes = states.map((state: CardState) => ({

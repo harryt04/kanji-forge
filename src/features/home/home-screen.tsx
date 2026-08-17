@@ -17,23 +17,22 @@ import { emptyCardState } from '@/core/srs/types'
 import { createUserRepositories, type CardState } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card'
-import { loadDeck, loadStarterDeck } from '@/features/study/deck-loader'
-import { loadDeckDefinitions } from '@/data/packs'
+import { loadStarterDeck } from '@/features/study/deck-loader'
 import { toCoreState } from '@/features/study/adapters'
-import {
-  groupDecksByFolder,
-  normalizeDeckFolder,
-} from '@/features/settings/deck-folders'
+import { groupDecksByFolder } from '@/features/settings/deck-folders'
 import { BELT_NAMES, beltLevelLabel } from '@/features/level-rank'
 import {
   countCardsByLevel,
-  lastSessionEndedAt,
-  summarizeDeckCards,
+  loadDeckSummaries,
   type DeckSummary,
   type LevelCounts,
 } from '@/features/decks/deck-summary'
+import {
+  deckCategoryLabel,
+  groupByCategory,
+} from '@/features/decks/deck-categories'
+import { STARTER_DECK_ID } from '@/features/decks/starter-deck'
 
-const STARTER_DECK_ID = 'dev-kanji'
 const DAY_MS = 86_400_000
 
 type DeckShelfItem = DeckSummary
@@ -110,61 +109,10 @@ export function HomeScreen(): React.ReactElement {
     await runtime.database.ready
     const repo = createUserRepositories(runtime.database)
     const loaded = await loadStarterDeck(runtime.database, STARTER_DECK_ID)
-    const settings = await repo.settings.list()
-    const builtInDecks = await Promise.all(
-      (await loadDeckDefinitions()).map(async (definition) => {
-        const existing = await repo.decks.get(definition.id)
-        const deck =
-          existing ??
-          ({
-            id: definition.id,
-            name: definition.name,
-            kind: 'derived',
-            definitionId: definition.id,
-            updatedAt: Date.now(),
-          } as const)
-        if (!existing) await repo.decks.upsert(deck)
-        const cards = await repo.decks.listCards(deck.id, {
-          contentRefsFor: () => definition.contentRefs,
-        })
-        const lastSessionAt = lastSessionEndedAt(
-          await repo.sessions.list(deck.id),
-        )
-        return summarizeDeckCards({
-          deck: { id: deck.id, name: deck.name, kind: 'derived' },
-          contentRefs: cards.map((card) => card.contentRef),
-          states: cards
-            .map((card) => card.state)
-            .filter((state): state is CardState => state !== undefined),
-          userId: runtime.userId,
-          lastSessionAt,
-        })
-      }),
-    )
-    const customDecks = await Promise.all(
-      (await repo.decks.list())
-        .filter((candidate) => candidate.kind === 'custom')
-        .map(async (candidate): Promise<DeckShelfItem> => {
-          const customDeck = await loadDeck(runtime.database, candidate.id)
-          const lastSessionAt = lastSessionEndedAt(
-            await repo.sessions.list(candidate.id),
-          )
-          return summarizeDeckCards({
-            deck: { id: candidate.id, name: candidate.name, kind: 'custom' },
-            contentRefs: customDeck.cards.map((card) => card.contentRef),
-            states: customDeck.cards
-              .map((card) => card.state)
-              .filter((state): state is CardState => state !== undefined),
-            userId: runtime.userId,
-            folder: normalizeDeckFolder(
-              settings.find(
-                (setting) => setting.key === `deck-folder:${candidate.id}`,
-              )?.value,
-            ),
-            lastSessionAt,
-          })
-        }),
-    )
+    const { builtIn: builtInDecks, custom: customDecks } =
+      await loadDeckSummaries(runtime.database, runtime.userId, {
+        includeSessions: true,
+      })
 
     const states: CardState[] = loaded.cards
       .map((card) => card.state)
@@ -292,7 +240,7 @@ export function HomeScreen(): React.ReactElement {
     data.customDecks,
     Object.fromEntries(data.customDecks.map((deck) => [deck.id, deck.folder])),
   )
-  const builtInDecks = data.builtInDecks
+  const builtInDeckGroups = groupByCategory(data.builtInDecks)
   const progressLabel = `Level ${data.progressLevel}, ${BELT_NAMES[data.progressLevel]}`
   const forecastTotal = data.forecast.reduce(
     (total, day) => total + day.reviews,
@@ -489,39 +437,61 @@ export function HomeScreen(): React.ReactElement {
             separately for each deck.
           </p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {builtInDecks.map((deck) => (
-            <div key={deck.id} className="border-border rounded-md border p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate font-medium">{deck.name}</h3>
-                  <p className="text-muted-foreground text-sm">
-                    {deck.progressPercent}% · {deck.cardCount}{' '}
-                    {deck.cardCount === 1 ? 'card' : 'cards'}
-                    {deck.lastStudiedAt
-                      ? ` · Last studied ${new Date(deck.lastStudiedAt).toLocaleString()}`
-                      : ' · Not studied yet'}
-                  </p>
-                </div>
-                <span
-                  className="level-swatch sticky-shape h-8 w-8 shrink-0"
-                  data-level={deck.progressLevel}
-                  aria-label={`Deck color: ${beltLevelLabel(deck.progressLevel)}`}
-                />
+        <CardContent className="space-y-5">
+          {builtInDeckGroups.map((group) => (
+            <section
+              key={group.category}
+              aria-labelledby={`builtin-deck-category-${group.category}`}
+            >
+              <h3
+                id={`builtin-deck-category-${group.category}`}
+                className="text-muted-foreground mb-2 text-sm font-semibold"
+              >
+                {deckCategoryLabel(group.category)}
+              </h3>
+              <div className="space-y-3">
+                {group.items.map((deck) => (
+                  <div
+                    key={deck.id}
+                    className="border-border rounded-md border p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 className="truncate font-medium">{deck.name}</h4>
+                        <p className="text-muted-foreground text-sm">
+                          {deck.progressPercent}% · {deck.cardCount}{' '}
+                          {deck.cardCount === 1 ? 'card' : 'cards'}
+                          {deck.lastStudiedAt
+                            ? ` · Last studied ${new Date(deck.lastStudiedAt).toLocaleString()}`
+                            : ' · Not studied yet'}
+                        </p>
+                      </div>
+                      <span
+                        className="level-swatch sticky-shape h-8 w-8 shrink-0"
+                        data-level={deck.progressLevel}
+                        aria-label={`Deck color: ${beltLevelLabel(deck.progressLevel)}`}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button size="sm" asChild>
+                        <Link
+                          href={`/study?deckId=${encodeURIComponent(deck.id)}`}
+                        >
+                          Study
+                        </Link>
+                      </Button>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link
+                          href={`/browse?deckId=${encodeURIComponent(deck.id)}`}
+                        >
+                          Browse
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" asChild>
-                  <Link href={`/study?deckId=${encodeURIComponent(deck.id)}`}>
-                    Study
-                  </Link>
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/browse?deckId=${encodeURIComponent(deck.id)}`}>
-                    Browse
-                  </Link>
-                </Button>
-              </div>
-            </div>
+            </section>
           ))}
         </CardContent>
       </Card>

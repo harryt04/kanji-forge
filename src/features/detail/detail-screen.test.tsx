@@ -22,7 +22,18 @@ const REPO_PACK_ROOT = join(process.cwd(), 'packs')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(
         join(path.startsWith('strokes/') ? REPO_PACK_ROOT : FIXTURE_ROOT, path),
@@ -221,7 +232,7 @@ describe('DetailScreen', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: '日' })).toBeInTheDocument(),
     )
-    expect(screen.getByText('1 of 200')).toBeInTheDocument()
+    expect(screen.getByText('1 of 52')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Previous/ })).toBeDisabled()
 
     await userEvent.click(screen.getByRole('button', { name: 'Next →' }))
@@ -229,7 +240,7 @@ describe('DetailScreen', () => {
       expect(screen.getByRole('heading', { name: '一' })).toBeInTheDocument(),
     )
     expect(window.location.search).toBe('?contentRef=kanji%3A%E4%B8%80')
-    expect(screen.getByText('2 of 200')).toBeInTheDocument()
+    expect(screen.getByText('2 of 52')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /Previous/ }))
     await waitFor(() =>
@@ -481,7 +492,7 @@ describe('DetailScreen', () => {
     ).toBeInTheDocument()
     expect(
       await createUserRepositories(runtime.database).annotations.get(
-        'dev-kanji',
+        'jlpt-kanji-n5',
         'kanji:日',
       ),
     ).toMatchObject({

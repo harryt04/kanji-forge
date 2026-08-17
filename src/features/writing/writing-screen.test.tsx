@@ -27,7 +27,18 @@ const REPO_PACK_ROOT = join(process.cwd(), 'packs')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(
         join(path.startsWith('strokes/') ? REPO_PACK_ROOT : FIXTURE_ROOT, path),
@@ -341,7 +352,7 @@ describe('WritingScreen', () => {
     // same SRS-ordered queue Study would use.
     await waitFor(() =>
       expect(
-        screen.getByText(/Development Kanji · Character 1 of \d+/),
+        screen.getByText(/JLPT Kanji N5 · Character 1 of \d+/),
       ).toBeInTheDocument(),
     )
     const firstHeading = screen.getByRole('heading', { level: 1 })
@@ -351,7 +362,7 @@ describe('WritingScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() =>
       expect(
-        screen.getByText(/Development Kanji · Character 2 of \d+/),
+        screen.getByText(/JLPT Kanji N5 · Character 2 of \d+/),
       ).toBeInTheDocument(),
     )
     expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled()
@@ -369,12 +380,41 @@ describe('WritingScreen', () => {
 
   it('switches decks and expands a word deck into its kanji', async () => {
     bootstrapUserRuntime('writing-deck-switch-user')
+    const runtime = getActiveUserRuntime()!
+    await runtime.database.ready
+    const repo = createUserRepositories(runtime.database)
+    // The shipped catalog only ships kanji-content decks (see build-decks.ts's
+    // shippedContentTypes), so a word deck is exercised via a custom deck here
+    // rather than a built-in one, reusing the packs-dev word-deck fixture data.
+    const devDecks = JSON.parse(
+      readFileSync(join(FIXTURE_ROOT, 'decks.json'), 'utf8'),
+    ) as { decks: readonly { id: string; contentRefs: readonly string[] }[] }
+    const wordDeck = devDecks.decks.find((deck) => deck.id === 'dev-words')!
+    await repo.decks.upsert({
+      id: 'custom-words',
+      name: 'Custom Words',
+      kind: 'custom',
+      definitionId: null,
+      updatedAt: Date.now(),
+    })
+    await Promise.all(
+      wordDeck.contentRefs.map((contentRef, index) =>
+        repo.deckMembership.save({
+          deckId: 'custom-words',
+          contentRef,
+          sortOrder: index,
+          addedAt: Date.now(),
+          updatedAt: Date.now(),
+        }),
+      ),
+    )
+
     window.history.replaceState({}, '', '/writing')
     render(<WritingScreen />)
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Development Kanji · Character 1 of \d+/),
+        screen.getByText(/JLPT Kanji N5 · Character 1 of \d+/),
       ).toBeInTheDocument(),
     )
     const deckSelect = screen.getByRole('combobox', { name: 'Deck' })
@@ -383,16 +423,16 @@ describe('WritingScreen', () => {
         Array.from(deckSelect.querySelectorAll('option')).map(
           (option) => option.textContent,
         ),
-      ).toContain('Development Words'),
+      ).toContain('Custom Words'),
     )
 
     fireEvent.change(deckSelect, {
-      target: { value: 'dev-words' },
+      target: { value: 'custom-words' },
     })
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Development Words · Character 1 of \d+/),
+        screen.getByText(/Custom Words · Character 1 of \d+/),
       ).toBeInTheDocument(),
     )
     // Every option in the character picker must be a single kanji, never kana.

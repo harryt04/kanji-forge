@@ -1,6 +1,7 @@
 import type { LocalUserDatabase, SqlRow, SqlValue } from '@/data/db'
 import { replay } from '@/core/srs/replay'
 import { DEFAULT_SRS_CONFIG } from '@/core/srs/types'
+import { STARTER_DECK_ID } from '@/features/decks/starter-deck'
 
 export type CardLevel = 0 | 1 | 2 | 3 | 4
 export type Grade = 'again' | 'good' | 'easy'
@@ -831,7 +832,7 @@ export function createUserRepositories(
       ])
     },
     async deleteDeck({ deckId, mutation }) {
-      if (deckId === 'dev-kanji')
+      if (deckId === STARTER_DECK_ID)
         throw new Error('The built-in starter deck cannot be deleted.')
       if (mutation.mutType !== 'deck.delete')
         throw new Error('Deck deletion must use the deck.delete mutation.')

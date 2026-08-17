@@ -25,6 +25,7 @@ import {
 import { loadDeck, type LoadedDeck } from '@/features/study/deck-loader'
 import { DetailScreen } from '@/features/detail'
 import { getDeviceId } from '@/lib/device-id'
+import { STARTER_DECK_ID } from '@/features/decks/starter-deck'
 import {
   DEFAULT_BROWSE_FILTERS,
   filterBrowseCards,
@@ -209,7 +210,7 @@ const BROWSE_SORT_OPTIONS: readonly {
 ]
 
 export function BrowseScreen({
-  deckDefinitionId = 'dev-kanji',
+  deckDefinitionId = STARTER_DECK_ID,
 }: {
   deckDefinitionId?: string
 }): React.ReactElement {

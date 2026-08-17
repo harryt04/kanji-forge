@@ -6,6 +6,7 @@ import {
   loadDeckDefinitions,
   parseContentRef,
 } from '@/data/packs'
+import { STARTER_DECK_ID } from '@/features/decks/starter-deck'
 
 export interface StudyCard {
   readonly contentRef: string
@@ -31,10 +32,14 @@ export interface LoadedDeck {
   readonly content: ReadonlyMap<string, StudyCard>
 }
 
-/** Loads a built-in or user-owned deck from the local pack/database projection. */
+/** Loads a built-in or user-owned deck from the local pack/database projection.
+ * A derived deck whose definition has since been removed from the catalog
+ * (e.g. a legacy fixture deck like the old `dev-kanji` starter) resolves to
+ * zero cards rather than throwing, so a stale `decks` row never breaks
+ * Home, Study, or Browse for a returning user. */
 export async function loadDeck(
   database: LocalUserDatabase,
-  deckId = 'dev-kanji',
+  deckId = STARTER_DECK_ID,
 ): Promise<LoadedDeck> {
   const definitions = await loadDeckDefinitions()
   const repo = createUserRepositories(database)
@@ -56,9 +61,6 @@ export async function loadDeck(
     deck.kind === 'derived'
       ? definitions.find((candidate) => candidate.id === deck.definitionId)
       : undefined
-  if (deck.kind === 'derived' && !definition) {
-    throw new Error(`Unknown deck definition: ${deck.definitionId}`)
-  }
   const source = {
     contentRefsFor: (candidate: Deck): readonly string[] =>
       candidate.kind === 'derived' ? (definition?.contentRefs ?? []) : [],
@@ -140,10 +142,10 @@ export async function loadDeck(
   }
 }
 
-/** Loads (and lazily registers) one built-in deck by its packs-dev definition id. */
+/** Loads (and lazily registers) one built-in deck by its catalog definition id. */
 export async function loadStarterDeck(
   database: LocalUserDatabase,
-  definitionId = 'dev-kanji',
+  definitionId = STARTER_DECK_ID,
 ): Promise<LoadedDeck> {
   return loadDeck(database, definitionId)
 }

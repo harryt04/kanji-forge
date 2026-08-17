@@ -15,7 +15,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -56,10 +67,10 @@ describe('AppNavigation', () => {
       '/browse',
     )
     await waitFor(() =>
-      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('200'),
+      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('52'),
     )
     expect(
-      screen.getByRole('link', { name: 'Browse, 200 stickies' }),
+      screen.getByRole('link', { name: 'Browse, 52 stickies' }),
     ).toHaveAttribute('href', '/browse')
     expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute(
       'href',
@@ -110,7 +121,7 @@ describe('AppNavigation', () => {
       'vertical',
     )
     await waitFor(() =>
-      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('200'),
+      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('52'),
     )
     expect(screen.getByRole('link', { name: 'Dictionary' })).toHaveClass(
       'w-full',

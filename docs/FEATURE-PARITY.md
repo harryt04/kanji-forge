@@ -117,8 +117,8 @@ When implementing a feature, update the "Implemented" cell with today's date. In
 | 6.4 | Create new deck | ✅ | 2026-08-08 | Settings creates an empty user-owned custom deck offline and queues its metadata for sync; card population and custom-deck study surfaces follow in the deck-content slices |
 | 6.5 | Combine multiple decks into a new deck | ✅ | 2026-08-08 | Settings creates a user-owned deck from one or more built-in or user-owned sources, preserving source order and removing duplicate cards |
 | 6.6 | Take only the first N stickies when combining | ✅ | 2026-08-08 | Optional first-N limit applies after the combined source list is de-duplicated |
-| 6.7 | Built-in JLPT Kanji N1–N5 | ✅ | 2026-08-06 | Sourced per DATA-SOURCES §5 (content pipeline) |
-| 6.8 | Built-in JLPT Vocabulary N1–N5 | ✅ | 2026-08-06 | Same caveat (content pipeline) |
+| 6.7 | Built-in JLPT Kanji N1–N5 | ✅ | 2026-08-17 | Sourced per DATA-SOURCES §5; shipped in `packs/decks/catalog.json` and served to the app at `/packs/decks/catalog.json` |
+| 6.8 | Built-in JLPT Vocabulary N1–N5 | ⏳ | 2026-08-17 | Built and hashed by the content pipeline but withheld from the shipped catalog — `words-core-v1.sqlite` (27 MB) has no delivery path yet (`shippedContentTypes` in `build-decks.ts`) |
 | 6.9 | Built-in School Grade 1–6 | ✅ | 2026-08-06 | KANJIDIC2 grade field (content pipeline) |
 | 6.10 | Built-in School Grade 7/8/9 (KK4/KK3/KK2.5) | ✅ | 2026-08-06 | grade 8 partitioned by frequency (content pipeline) |
 | 6.11 | Built-in Jōyō (Old, 1981) | ✅ | 2026-08-06 | (content pipeline) |

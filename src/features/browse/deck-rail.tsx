@@ -1,5 +1,9 @@
 import Link from 'next/link'
 import type { DeckSummary } from '@/features/decks/deck-summary'
+import {
+  deckCategoryLabel,
+  groupByCategory,
+} from '@/features/decks/deck-categories'
 import { groupDecksByFolder } from '@/features/settings/deck-folders'
 import { LevelRamp } from './level-ramp'
 
@@ -57,6 +61,7 @@ export function DeckRail({
     custom.map((deck) => [deck.id, deck.folder]),
   )
   const customGroups = groupDecksByFolder(custom, folderByDeckId)
+  const builtInGroups = groupByCategory(builtIn)
   const listClassName = gallery
     ? 'grid gap-2 sm:grid-cols-2'
     : 'flex gap-2 overflow-x-auto pb-2 lg:grid lg:gap-2 lg:overflow-visible'
@@ -91,21 +96,25 @@ export function DeckRail({
         </div>
       )}
 
-      <div className="grid min-w-0 gap-2">
-        <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-          Built-in decks
-        </h2>
-        <div className={listClassName}>
-          {builtIn.map((deck) => (
-            <div key={deck.id} className={itemClassName}>
-              <DeckButton
-                deck={deck}
-                selected={deck.id === selectedDeckId}
-                onSelectDeck={onSelectDeck}
-              />
+      <div className="grid min-w-0 gap-3">
+        {builtInGroups.map((group) => (
+          <div key={group.category} className="grid min-w-0 gap-2">
+            <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              {deckCategoryLabel(group.category)}
+            </h2>
+            <div className={listClassName}>
+              {group.items.map((deck) => (
+                <div key={deck.id} className={itemClassName}>
+                  <DeckButton
+                    deck={deck}
+                    selected={deck.id === selectedDeckId}
+                    onSelectDeck={onSelectDeck}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       {gallery && (
