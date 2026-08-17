@@ -86,6 +86,53 @@ test.describe('Browse Workbench', () => {
     ).toBeVisible()
   })
 
+  test('supports complete keyboard operation across the menubar', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.goto('/browse')
+
+    const triggerNames = ['Search', 'Sort', 'Filter', 'View', 'Select']
+    const searchTrigger = page.getByRole('menuitem', {
+      name: /^Search(?: \(active\))?$/,
+    })
+    await searchTrigger.focus()
+
+    for (const triggerName of triggerNames) {
+      await expect(
+        page.getByRole('menuitem', { name: triggerName, exact: true }),
+      ).toBeFocused()
+      if (triggerName !== triggerNames.at(-1))
+        await page.keyboard.press('ArrowRight')
+    }
+
+    await page.keyboard.press('ArrowRight')
+    await expect(searchTrigger).toBeFocused()
+
+    await page.keyboard.press('Enter')
+    const search = page.getByRole('searchbox', { name: 'Search this deck' })
+    await expect(search).toBeFocused()
+    await page.keyboard.type('S')
+    await expect(search).toHaveValue('S')
+
+    await page.keyboard.press('Escape')
+    await expect(search).toHaveCount(0)
+    await expect(searchTrigger).toBeFocused()
+
+    await page.keyboard.press('ArrowRight')
+    const sortTrigger = page.getByRole('menuitem', {
+      name: 'Sort',
+      exact: true,
+    })
+    await expect(sortTrigger).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Deck order', exact: true }),
+    ).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(sortTrigger).toBeFocused()
+  })
+
   test('mounts View settings and defaults only inside the View menu', async ({
     page,
     authedUser: _authedUser,

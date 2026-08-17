@@ -400,7 +400,7 @@ loop is what stops the menubar quietly undoing Loops B and D.
       `browse-workbench.spec.ts` mobile sweep proves all five menus stay within
       375×667 and can reach their last interactive item after scrolling.
 
-- [ ] **I4. The menubar must be operable without a pointer.**
+- [x] **I4. The menubar must be operable without a pointer.**
       Fix: verify, don't assume — Radix supplies roving focus, but the fields
       added in H1/H3 are custom and are exactly where it breaks.
       **Acceptance line:** from the Search trigger, arrow keys move between all
@@ -408,6 +408,11 @@ loop is what stops the menubar quietly undoing Loops B and D.
       closes it and returns focus to the trigger it came from; and typing in the
       search field inserts characters instead of moving focus. Proven by a
       keyboard-driven test, not by manual description. Blocked by Loop H.
+
+      Search now receives initial focus when keyboard-opened, while Radix
+      supplies trigger and menu-item roving focus. The Chromium/WebKit Browse
+      Workbench test proves traversal, Enter/Space opening, typing, and Escape
+      focus restoration.
 
 ---
 

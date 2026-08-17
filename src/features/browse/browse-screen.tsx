@@ -799,6 +799,7 @@ export function BrowseScreen({
                   <input
                     id="browse-search"
                     type="search"
+                    autoFocus
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Kanji, reading, or meaning"
