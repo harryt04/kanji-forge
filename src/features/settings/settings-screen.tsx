@@ -67,6 +67,13 @@ import {
   type BackgroundPushStatus,
   type StoragePersistenceStatus,
 } from '@/pwa'
+import {
+  BROWSE_BADGE_PREFERENCES,
+  BROWSE_BADGE_SETTING,
+  BROWSE_BADGE_SETTING_CHANGED_EVENT,
+  isBrowseBadgePreference,
+  type BrowseBadgePreference,
+} from '@/features/navigation/browse-badge'
 import { Button } from '@/ui/button'
 import { parseAnkiApkg, type AnkiImportValue } from '@/core/import/apkg'
 import {
@@ -240,6 +247,34 @@ const APP_BADGE_OPTIONS: ReadonlyArray<{
   },
 ]
 
+const BROWSE_BADGE_OPTIONS: ReadonlyArray<{
+  value: BrowseBadgePreference
+  label: string
+  description: string
+}> = [
+  {
+    value: 'due',
+    label: 'Cards due',
+    description: 'Show new and scheduled cards from the deck you are browsing.',
+  },
+  {
+    value: 'total',
+    label: 'Total cards',
+    description: 'Show the total number of cards in the deck you are browsing.',
+  },
+  {
+    value: 'unstudied',
+    label: 'Not started',
+    description:
+      'Show cards you have not studied yet in the deck you are browsing.',
+  },
+  {
+    value: 'off',
+    label: 'Off',
+    description: 'Do not show a number next to Browse.',
+  },
+]
+
 async function loadCardIdentities(
   sources: readonly DeckSourceOption[],
 ): Promise<ReadonlyMap<string, string>> {
@@ -320,6 +355,8 @@ export function SettingsScreen(): React.ReactElement {
   )
   const [badgePreference, setBadgePreference] =
     useState<AppBadgePreference>('due')
+  const [browseBadgePreference, setBrowseBadgePreference] =
+    useState<BrowseBadgePreference>('due')
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState(false)
   const [dailyReminderTime, setDailyReminderTime] = useState(
     DEFAULT_DAILY_REMINDER_TIME,
@@ -436,6 +473,7 @@ export function SettingsScreen(): React.ReactElement {
       const repositories = createUserRepositories(runtime.database)
       const [
         savedBadge,
+        savedBrowseBadge,
         savedReminderEnabled,
         savedReminderTime,
         savedQuestion,
@@ -458,6 +496,7 @@ export function SettingsScreen(): React.ReactElement {
         allSettings,
       ] = await Promise.all([
         repositories.settings.get(APP_BADGE_SETTING),
+        repositories.settings.get(BROWSE_BADGE_SETTING),
         repositories.settings.get(DAILY_REMINDER_ENABLED_SETTING),
         repositories.settings.get(DAILY_REMINDER_TIME_SETTING),
         repositories.settings.get(STUDY_QUESTION_SETTING),
@@ -483,6 +522,9 @@ export function SettingsScreen(): React.ReactElement {
       const nextBadgePreference = savedBadge?.value ?? ''
       if (isAppBadgePreference(nextBadgePreference))
         setBadgePreference(nextBadgePreference)
+      const nextBrowseBadgePreference = savedBrowseBadge?.value ?? ''
+      if (isBrowseBadgePreference(nextBrowseBadgePreference))
+        setBrowseBadgePreference(nextBrowseBadgePreference)
       setDailyReminderEnabled(savedReminderEnabled?.value === 'true')
       if (isDailyReminderTime(savedReminderTime?.value ?? ''))
         setDailyReminderTime(savedReminderTime!.value)
@@ -695,6 +737,33 @@ export function SettingsScreen(): React.ReactElement {
         reason instanceof Error
           ? reason.message
           : 'Could not save app badge setting.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function chooseBrowseBadgePreference(
+    next: BrowseBadgePreference,
+  ): Promise<void> {
+    if (!runtime || next === browseBadgePreference) return
+    const previous = browseBadgePreference
+    setBrowseBadgePreference(next)
+    setError(null)
+    setSaving(true)
+    try {
+      await createUserRepositories(runtime.database).settings.set({
+        key: BROWSE_BADGE_SETTING,
+        value: next,
+        updatedAt: Date.now(),
+      })
+      window.dispatchEvent(new Event(BROWSE_BADGE_SETTING_CHANGED_EVENT))
+    } catch (reason: unknown) {
+      setBrowseBadgePreference(previous)
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Could not save Browse badge setting.',
       )
     } finally {
       setSaving(false)
@@ -2321,6 +2390,7 @@ export function SettingsScreen(): React.ReactElement {
             ['stroke-animation-heading', 'Stroke animation'],
             ['saving-cards-heading', 'Saving cards'],
             ['app-icon-badge-heading', 'App icon badge'],
+            ['browse-badge-heading', 'Browse badge'],
             ['study-reminder-heading', 'Study reminder'],
             ['storage-protection-heading', 'Storage protection'],
             ['deck-name-heading', 'Deck name'],
@@ -3215,6 +3285,47 @@ export function SettingsScreen(): React.ReactElement {
               disabled={saving}
               className="h-auto min-h-14 justify-start px-4 py-3 text-left"
               onClick={() => void chooseBadgePreference(value)}
+            >
+              <span>
+                <span className="block font-semibold">{label}</span>
+                <span className="text-muted-foreground block text-sm font-normal">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+        </div>
+      </section>
+      <section className="border-border bg-card mt-6 rounded-[var(--radius)] border p-5 shadow-[var(--shadow-card)]">
+        <h2
+          id="browse-badge-heading"
+          className="scroll-mt-4 text-lg font-semibold"
+        >
+          Browse badge
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Choose what the number next to Browse means. It counts cards in
+          whichever deck you are browsing, and updates as you switch decks.
+        </p>
+        <div
+          className="mt-5 grid gap-3"
+          role="radiogroup"
+          aria-label="Browse badge"
+        >
+          {BROWSE_BADGE_OPTIONS.filter(({ value }) =>
+            BROWSE_BADGE_PREFERENCES.includes(value),
+          ).map(({ value, label, description }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={
+                browseBadgePreference === value ? 'secondary' : 'outline'
+              }
+              aria-checked={browseBadgePreference === value}
+              role="radio"
+              disabled={saving}
+              className="h-auto min-h-14 justify-start px-4 py-3 text-left"
+              onClick={() => void chooseBrowseBadgePreference(value)}
             >
               <span>
                 <span className="block font-semibold">{label}</span>

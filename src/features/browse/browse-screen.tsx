@@ -51,6 +51,7 @@ import {
 } from '@/features/decks/deck-summary'
 import { LevelRamp } from './level-ramp'
 import { DeckRail } from './deck-rail'
+import { announceBrowseDeck } from '@/features/navigation/browse-badge'
 
 const LEVEL_SHAPES = ['l0', 'l1', 'l2', 'l3', 'l4'] as const
 export const BROWSE_VIEW_SETTING = 'browse.view'
@@ -306,6 +307,7 @@ export function BrowseScreen({
         savedDeckTileZoom?.value ??
         (defaults ? String(defaults.tileZoom) : savedTileZoom?.value)
       if (active) setDeck(loaded)
+      if (active) announceBrowseDeck(loaded.deckId)
       if (active && isBrowseView(selectedView)) setView(selectedView)
       if (active && isBrowseTileContent(selectedTileContent))
         setTileContent(selectedTileContent)
