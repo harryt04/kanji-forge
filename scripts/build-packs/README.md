@@ -61,6 +61,10 @@ because it depends on gitignored `packs/*.sqlite` output that only exists after 
 not in CI's fixture-only mode). If you add a new `build-*.test.ts`, decide deliberately whether
 it belongs in `packs:test`, `test:decks`, or neither, rather than assuming it runs somewhere.
 
+The pull-request CI coverage job already includes the files selected by `packs:test` through
+the `unit-node` Vitest project; `packs:test` remains useful as a focused local command and is
+not run as a second CI step.
+
 ## `.cache/`
 
 Downloaded upstream artifacts (gzip/zip, license text) live here. Not meant to be committed —
