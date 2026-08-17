@@ -12,6 +12,13 @@ async function chooseViewOption(page: Page, name: string) {
     .evaluate((element) => (element as HTMLElement).click())
 }
 
+async function toggleSelectionMode(page: Page) {
+  await page.getByRole('menuitem', { name: 'Select', exact: true }).click()
+  await page
+    .getByRole('menuitemcheckbox', { name: 'Select cards', exact: true })
+    .click()
+}
+
 test.describe('Browse Workbench', () => {
   test.skip(
     !API_URL,
@@ -138,14 +145,14 @@ test.describe('Browse Workbench', () => {
           .evaluate((element) => element.getBoundingClientRect().top)
 
         await chooseViewOption(page, '100% · Standard')
-        await page.getByRole('button', { name: 'Select cards' }).click()
+        await toggleSelectionMode(page)
         const selectionTile = await page.getByTestId('browse-tile').first()
         const selectionGeometry = await selectionTile.evaluate((tile) => {
           const rect = tile.getBoundingClientRect()
           return { width: rect.width, height: rect.height }
         })
 
-        await page.getByRole('button', { name: 'Select cards' }).click()
+        await toggleSelectionMode(page)
         await chooseViewOption(page, '75% · Compact')
         const compactTile = await page
           .getByTestId('browse-tile')
@@ -182,7 +189,7 @@ test.describe('Browse Workbench', () => {
       await page.goto('/browse')
       await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
       await chooseViewOption(page, '100% · Standard')
-      await page.getByRole('button', { name: 'Select cards' }).click()
+      await toggleSelectionMode(page)
 
       const tile = page.getByTestId('browse-tile').first()
       await expect(tile).toHaveRole('checkbox')
@@ -271,7 +278,7 @@ test.describe('Browse Workbench', () => {
 
         for (const selectionMode of [false, true]) {
           if (selectionMode) {
-            await page.getByRole('button', { name: 'Select cards' }).click()
+            await toggleSelectionMode(page)
           }
 
           const dimensions = await page
@@ -290,7 +297,7 @@ test.describe('Browse Workbench', () => {
           }
 
           if (selectionMode) {
-            await page.getByRole('button', { name: 'Select cards' }).click()
+            await toggleSelectionMode(page)
           }
         }
       }

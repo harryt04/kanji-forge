@@ -309,7 +309,7 @@ module, stop — you have misread the item.
       portal-mounted View menu; `browse-screen.test.tsx` and the signed-in
       Browse Playwright sweep prove the body controls are absent until View opens.
 
-- [ ] **H5. Selection mode and bulk actions are two separate surfaces.**
+- [x] **H5. Selection mode and bulk actions are two separate surfaces.**
       Where: the "Select cards" toggle at
       [`:918-929`](../src/features/browse/browse-screen.tsx#L918) and the sticky
       bulk toolbar at
@@ -323,6 +323,11 @@ module, stop — you have misread the item.
       invoked from the menubar alone; the sticky bar renders only when at least
       one card is selected; and the existing bulk flag/unflag/set-level tests
       still pass. Blocked by H1 and G1.
+
+      The Select menubar now owns selection-mode entry, Select all visible,
+      Clear selection, and Flag/Unflag/Set level actions. The sticky toolbar is
+      retained as a single selected-count row, and unit plus signed-in Browse
+      Playwright coverage exercises the new menu path.
 
 ---
 

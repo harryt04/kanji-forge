@@ -74,9 +74,18 @@ async function seedListView(id: number) {
   return { runtime, repo }
 }
 
-function openBrowseMenu(name: 'Search' | 'Sort' | 'Filter' | 'View') {
+function openBrowseMenu(
+  name: 'Search' | 'Sort' | 'Filter' | 'View' | 'Select',
+) {
   fireEvent.pointerDown(screen.getByRole('menuitem', { name }))
   return screen.getByRole('menu')
+}
+
+function enterSelectionMode(): void {
+  openBrowseMenu('Select')
+  fireEvent.click(
+    screen.getByRole('menuitemcheckbox', { name: 'Select cards' }),
+  )
 }
 
 describe('BrowseScreen', () => {
@@ -963,10 +972,11 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Flag selected' }))
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
@@ -978,6 +988,23 @@ describe('BrowseScreen', () => {
       flagged: true,
     })
     expect(await repo.outbox.pending()).toHaveLength(2)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Unflag selected' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '2 cards unflagged.',
+      ),
+    )
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+      flagged: false,
+    })
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+      flagged: false,
+    })
   })
 
   it('sets multiple selected levels with manual-review history', async () => {
@@ -988,9 +1015,10 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    openBrowseMenu('Select')
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Set selected level' }),
       {
@@ -1040,10 +1068,11 @@ describe('BrowseScreen', () => {
       ),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Flag selected' }))
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
@@ -1150,15 +1179,44 @@ describe('BrowseScreen', () => {
       screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     expect(
       screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
     ).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    const toolbar = screen.getByRole('toolbar', { name: 'Bulk card actions' })
+    expect(toolbar).toBeInTheDocument()
+    expect(toolbar).toHaveTextContent('1 selected')
+    expect(within(toolbar).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(toolbar).queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  it('keeps selection entry, visible selection, and clearing in the Select menu', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'Select cards' }),
+    ).not.toBeInTheDocument()
+
+    enterSelectionMode()
+    openBrowseMenu('Select')
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Select all visible' }),
+    )
     expect(
       screen.getByRole('toolbar', { name: 'Bulk card actions' }),
-    ).toBeInTheDocument()
+    ).toHaveTextContent('200 selected')
+
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Clear selection' }))
+    expect(
+      screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
+    ).not.toBeInTheDocument()
   })
 
   it('mounts every filter only while the Filter menu is open', async () => {

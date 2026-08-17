@@ -506,6 +506,11 @@ export function BrowseScreen({
     setStatusMessage(null)
   }
 
+  function toggleSelectionMode(enabled: boolean): void {
+    setSelectionMode(enabled)
+    if (!enabled) clearSelection()
+  }
+
   function applyStateUpdates(updates: readonly { state: CardState }[]): void {
     const states = new Map(
       updates.map((update) => [update.state.contentRef, update.state]),
@@ -975,92 +980,87 @@ export function BrowseScreen({
               </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
-        </Menubar>
 
-        <div className="flex min-w-0 flex-wrap items-end gap-3">
-          <Button
-            type="button"
-            size="sm"
-            variant={selectionMode ? 'secondary' : 'outline'}
-            aria-pressed={selectionMode}
-            onClick={() => {
-              setSelectionMode((current) => !current)
-              if (selectionMode) clearSelection()
-            }}
-          >
-            Select cards
-          </Button>
-        </div>
+          <MenubarMenu value="select">
+            <MenubarTrigger>Select</MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Selection</MenubarLabel>
+              <MenubarCheckboxItem
+                checked={selectionMode}
+                onCheckedChange={(checked) =>
+                  toggleSelectionMode(checked === true)
+                }
+              >
+                Select cards
+              </MenubarCheckboxItem>
+              <MenubarItem
+                disabled={
+                  !selectionMode || sortedCards.length === 0 || bulkBusy
+                }
+                onSelect={selectVisibleCards}
+              >
+                Select all visible
+              </MenubarItem>
+              <MenubarItem
+                disabled={selectedContentRefs.size === 0 || bulkBusy}
+                onSelect={clearSelection}
+              >
+                Clear selection
+              </MenubarItem>
+
+              <MenubarSeparator />
+              <MenubarLabel>Bulk actions</MenubarLabel>
+              <MenubarItem
+                disabled={selectedContentRefs.size === 0 || bulkBusy}
+                onSelect={() => void bulkSetFlagged(true)}
+              >
+                Flag selected
+              </MenubarItem>
+              <MenubarItem
+                disabled={selectedContentRefs.size === 0 || bulkBusy}
+                onSelect={() => void bulkSetFlagged(false)}
+              >
+                Unflag selected
+              </MenubarItem>
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-bulk-level">
+                  <span className="text-muted-foreground text-xs">
+                    Set selected level
+                  </span>
+                  <select
+                    id="browse-bulk-level"
+                    value={bulkLevel}
+                    disabled={selectedContentRefs.size === 0 || bulkBusy}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      if (value !== 'all')
+                        void bulkSetLevel(Number(value) as CardState['level'])
+                    }}
+                    aria-label="Set selected level"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 min-w-32 rounded-md border px-2 text-base shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
+                  >
+                    <option value="all">Choose level…</option>
+                    {LEVEL_NAMES.map((name, candidateLevel) => (
+                      <option key={name} value={candidateLevel}>
+                        {candidateLevel} · {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </MenubarFormField>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
 
         {selectionMode && selectedContentRefs.size > 0 && (
           <div
             role="toolbar"
             aria-label="Bulk card actions"
-            className="border-border bg-card sticky bottom-2 z-10 flex min-w-0 flex-wrap items-end gap-3 rounded-md border p-3 shadow-sm"
+            className="border-border bg-card sticky bottom-2 z-10 flex min-w-0 items-center rounded-md border p-3 shadow-sm"
           >
-            <p className="text-muted-foreground min-w-0 basis-full text-sm">
+            <p className="text-muted-foreground min-w-0 text-sm">
               {`${selectedContentRefs.size} selected${selectedVisibleCount < selectedContentRefs.size ? ` · ${selectedVisibleCount} visible` : ''}.`}
             </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={selectVisibleCards}
-              disabled={bulkBusy}
-            >
-              Select visible
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={clearSelection}
-              disabled={bulkBusy}
-            >
-              Clear selection
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void bulkSetFlagged(true)}
-              disabled={bulkBusy}
-            >
-              Flag selected
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void bulkSetFlagged(false)}
-              disabled={bulkBusy}
-            >
-              Unflag selected
-            </Button>
-            <label className="grid gap-1" htmlFor="browse-bulk-level">
-              <span className="text-muted-foreground text-xs">
-                Set selected level
-              </span>
-              <select
-                id="browse-bulk-level"
-                value={bulkLevel}
-                disabled={bulkBusy}
-                onChange={(event) => {
-                  const value = event.target.value
-                  if (value !== 'all')
-                    void bulkSetLevel(Number(value) as CardState['level'])
-                }}
-                aria-label="Set selected level"
-                className="border-input bg-background focus-visible:ring-ring h-10 min-w-32 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
-              >
-                <option value="all">Choose level…</option>
-                {LEVEL_NAMES.map((name, candidateLevel) => (
-                  <option key={name} value={candidateLevel}>
-                    {candidateLevel} · {name}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
         )}
 
