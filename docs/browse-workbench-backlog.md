@@ -431,7 +431,7 @@ loop is what stops the menubar quietly undoing Loops B and D.
       already matched the shipped layout and primitive. A relative-link audit found
       no 404s across all three documents.
 
-- [ ] **J2. `HANDOFF-BROWSE-WALL-WORKBENCH.md` has outlived its purpose.**
+- [x] **J2. `HANDOFF-BROWSE-WALL-WORKBENCH.md` has outlived its purpose.**
       Evidence: that file says to delete it once the branch is reviewed or
       merged. `feat/browse-wall-workbench` merged into `gnhf` at `6c73d70`, and
       several of its claims are now wrong — it says the `<details>` conditional
@@ -440,6 +440,11 @@ loop is what stops the menubar quietly undoing Loops B and D.
       **Acceptance line:** the file is deleted, and anything in it still worth
       keeping has been moved into a `docs/` file that is linked from
       `AGENTS.md`.
+
+      The handoff was already removed from the current tree in `05adffa`.
+      Its durable Browse intent and verification context are retained in this
+      linked backlog and in `docs/implemented-already.md`, both linked from
+      `AGENTS.md`; no stale handoff reference remains in the repository.
 
 - [ ] **J3. The Japanese webfont payload is ~500 `@font-face` rules.**
       **This is a performance item, not a bug.** Read the Evidence section at
