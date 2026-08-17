@@ -53,6 +53,7 @@ jobs:
   unit-coverage:
     name: Unit coverage
     runs-on: ubuntu-latest
+    needs: smoke
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
