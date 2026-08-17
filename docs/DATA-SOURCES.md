@@ -215,11 +215,15 @@ StickyStudy ships 8,000+ words recorded by a human speaker. **There is no openly
 | Klee One | Alternate card face — textbook/handwriting forms, matches how kanji are taught | SIL OFL 1.1 |
 | (Latin display + body faces) | Headings and glosses | Choose OFL-licensed; see PRD §6.3 |
 
-**Subsetting is mandatory.** Full Noto Sans JP is ~5 MB per weight. Build a subset containing:
+**Subsetting is mandatory and shipped.** Full Noto Sans JP is ~5 MB per weight. The
+reproducible `npm run build:fonts` script builds the self-hosted subset containing:
 - The jōyō + jinmeiyō set plus every character appearing in any bundled deck or in `words-core` (roughly 3,500 characters)
 - Full kana, punctuation, and Latin/digits
 
-Use `unicode-range` splitting across several woff2 chunks so the browser fetches only what it renders. Target ≤400 KB for the initial Japanese font payload.
+The generated `public/fonts/japanese/` assets use `unicode-range` splitting across
+WOFF2 chunks so the browser fetches only what it renders. The signed-in Browse
+Playwright check measures the initial Japanese payload at ≤400 KB and verifies
+visible dev-kanji glyphs load from Klee One.
 
 Do **not** rely on system Japanese fonts. Android device coverage is inconsistent, and the whole point of a kanji app is that the character renders correctly at 200px.
 

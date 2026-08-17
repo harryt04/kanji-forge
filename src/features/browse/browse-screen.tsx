@@ -9,6 +9,19 @@ import type { CardState } from '@/data/repo'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
+import {
+  Menubar,
+  MenubarCheckboxItem,
+  MenubarContent,
+  MenubarFormField,
+  MenubarItem,
+  MenubarLabel,
+  MenubarMenu,
+  MenubarRadioGroup,
+  MenubarRadioItem,
+  MenubarSeparator,
+  MenubarTrigger,
+} from '@/ui/menubar'
 import { loadDeck, type LoadedDeck } from '@/features/study/deck-loader'
 import { DetailScreen } from '@/features/detail'
 import { getDeviceId } from '@/lib/device-id'
@@ -19,7 +32,11 @@ import {
 } from './browse-filter'
 import { buildBulkFlagUpdates, buildBulkLevelOverrides } from './browse-bulk'
 import { sortBrowseCards, type BrowseSort } from './browse-sort'
-import { beltLevelLabel, LEVEL_NAMES } from '@/features/level-rank'
+import {
+  beltLevelLabel,
+  LEVEL_NAMES,
+  normalizeLevel,
+} from '@/features/level-rank'
 import {
   BROWSE_LIST_ROW_HEIGHT,
   BROWSE_LIST_VIEWPORT_HEIGHT,
@@ -176,6 +193,21 @@ function tileContentLabel(content: BrowseTileContent): string {
   return 'kanji'
 }
 
+const BROWSE_SORT_OPTIONS: readonly {
+  readonly value: BrowseSort
+  readonly label: string
+}[] = [
+  { value: 'deck-order', label: 'Deck order' },
+  { value: 'level', label: 'Level (new → mastered)' },
+  { value: 'stroke-count', label: 'Stroke count' },
+  { value: 'frequency', label: 'Frequency rank' },
+  { value: 'jlpt', label: 'JLPT level (N5 → N1)' },
+  { value: 'grade', label: 'School grade' },
+  { value: 'times-reviewed', label: 'Times reviewed' },
+  { value: 'last-reviewed', label: 'Last reviewed' },
+  { value: 'kana', label: 'Kana alphabetical' },
+]
+
 export function BrowseScreen({
   deckDefinitionId = 'dev-kanji',
 }: {
@@ -212,7 +244,8 @@ export function BrowseScreen({
   const [summaryVersion, setSummaryVersion] = useState(0)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [selectionMode, setSelectionMode] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const browseError =
+    viewError ?? tileContentError ?? tileZoomError ?? editError
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -471,6 +504,11 @@ export function BrowseScreen({
   function clearSelection(): void {
     setSelectedContentRefs(new Set())
     setStatusMessage(null)
+  }
+
+  function toggleSelectionMode(enabled: boolean): void {
+    setSelectionMode(enabled)
+    if (!enabled) clearSelection()
   }
 
   function applyStateUpdates(updates: readonly { state: CardState }[]): void {
@@ -734,211 +772,120 @@ export function BrowseScreen({
           {statusMessage}
         </p>
 
-        {viewError && (
-          <p className="text-destructive" role="alert">
-            {viewError}
-          </p>
-        )}
+        <p className="text-destructive min-h-5" role="alert">
+          {browseError}
+        </p>
 
-        {tileContentError && (
-          <p className="text-destructive" role="alert">
-            {tileContentError}
-          </p>
-        )}
-
-        {tileZoomError && (
-          <p className="text-destructive" role="alert">
-            {tileZoomError}
-          </p>
-        )}
-
-        {editError && (
-          <p className="text-destructive" role="alert">
-            {editError}
-          </p>
-        )}
-
-        <div
-          className="flex min-w-0 flex-wrap items-end gap-3"
-          role="group"
-          aria-label="Browse controls"
-        >
-          <label className="grid gap-1" htmlFor="browse-search">
-            <span className="text-muted-foreground text-xs">
-              Search this deck
-            </span>
-            <input
-              id="browse-search"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Kanji, reading, or meaning"
-              aria-label="Search this deck"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            />
-          </label>
-
-          <label className="grid gap-1" htmlFor="browse-sort">
-            <span className="text-muted-foreground text-xs">Sort cards</span>
-            <select
-              id="browse-sort"
-              value={sort}
-              onChange={(event) => setSort(event.target.value as BrowseSort)}
-              aria-label="Sort cards"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+        <Menubar aria-label="Browse menus">
+          <MenubarMenu value="search">
+            <MenubarTrigger
+              aria-label={`Search${query.trim() ? ' (active)' : ''}`}
+              className="relative"
             >
-              <option value="deck-order">Deck order</option>
-              <option value="level">Level (new → mastered)</option>
-              <option value="stroke-count">Stroke count</option>
-              <option value="frequency">Frequency rank</option>
-              <option value="jlpt">JLPT level (N5 → N1)</option>
-              <option value="grade">School grade</option>
-              <option value="times-reviewed">Times reviewed</option>
-              <option value="last-reviewed">Last reviewed</option>
-              <option value="kana">Kana alphabetical</option>
-            </select>
-          </label>
+              Search
+              {query.trim() && (
+                <span
+                  aria-hidden="true"
+                  className="bg-primary pointer-events-none absolute top-1 right-1 size-1.5 rounded-full"
+                />
+              )}
+            </MenubarTrigger>
+            <MenubarContent>
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-search">
+                  <span className="text-muted-foreground text-xs">
+                    Search this deck
+                  </span>
+                  <input
+                    id="browse-search"
+                    type="search"
+                    autoFocus
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Kanji, reading, or meaning"
+                    aria-label="Search this deck"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
+                  />
+                </label>
+              </MenubarFormField>
+            </MenubarContent>
+          </MenubarMenu>
 
-          <label className="grid gap-1" htmlFor="browse-level-filter">
-            <span className="text-muted-foreground text-xs">Level</span>
-            <select
-              id="browse-level-filter"
-              value={filters.level ?? 'all'}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  level:
-                    event.target.value === 'all'
-                      ? null
-                      : (Number(event.target.value) as BrowseFilters['level']),
-                }))
-              }
-              aria-label="Filter by level"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+          <MenubarMenu value="sort">
+            <MenubarTrigger>Sort</MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Sort cards</MenubarLabel>
+              <MenubarRadioGroup
+                value={sort}
+                onValueChange={(value) => setSort(value as BrowseSort)}
+              >
+                {BROWSE_SORT_OPTIONS.map((option) => (
+                  <MenubarRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenubarRadioItem>
+                ))}
+              </MenubarRadioGroup>
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu value="filter">
+            <MenubarTrigger
+              aria-label={`Filter${hasFilters ? ' (active)' : ''}`}
+              className="relative"
             >
-              <option value="all">All levels</option>
-              {LEVEL_NAMES.map((name, level) => (
-                <option key={name} value={level}>
-                  {level} · {name}
-                </option>
-              ))}
-            </select>
-          </label>
+              Filter
+              {hasFilters && (
+                <span
+                  aria-hidden="true"
+                  className="bg-primary pointer-events-none absolute top-1 right-1 size-1.5 rounded-full"
+                />
+              )}
+            </MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Filter by level</MenubarLabel>
+              <MenubarRadioGroup
+                value={filters.level === null ? 'all' : String(filters.level)}
+                onValueChange={(value) =>
+                  setFilters((current) => ({
+                    ...current,
+                    level:
+                      value === 'all'
+                        ? null
+                        : (Number(value) as BrowseFilters['level']),
+                  }))
+                }
+              >
+                <MenubarRadioItem value="all">All levels</MenubarRadioItem>
+                {LEVEL_NAMES.map((name, level) => (
+                  <MenubarRadioItem key={name} value={String(level)}>
+                    <span
+                      aria-hidden="true"
+                      className="mr-2 inline-block size-3 rounded-full border border-current align-[-1px]"
+                      style={{
+                        backgroundColor: `var(--level-${level})`,
+                      }}
+                    />
+                    {level} · {name}
+                  </MenubarRadioItem>
+                ))}
+              </MenubarRadioGroup>
 
-          <label className="flex min-h-11 items-center gap-3">
-            <input
-              type="checkbox"
-              checked={filters.flagged}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  flagged: event.target.checked,
-                }))
-              }
-              aria-label="Show flagged only"
-              className="accent-primary h-4 w-4"
-            />
-            <span className="text-sm font-semibold">Show flagged only</span>
-          </label>
+              <MenubarSeparator />
 
-          {hasFilters && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setFilters(DEFAULT_BROWSE_FILTERS)}
-            >
-              Clear filters
-            </Button>
-          )}
+              <MenubarCheckboxItem
+                checked={filters.flagged}
+                onCheckedChange={(checked) =>
+                  setFilters((current) => ({
+                    ...current,
+                    flagged: checked === true,
+                  }))
+                }
+              >
+                Show flagged only
+              </MenubarCheckboxItem>
 
-          <label className="grid gap-1" htmlFor="browse-tile-content">
-            <span className="text-muted-foreground text-xs">Tile content</span>
-            <select
-              id="browse-tile-content"
-              value={tileContent}
-              onChange={(event) =>
-                void chooseTileContent(event.target.value as BrowseTileContent)
-              }
-              aria-label="Tile content"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            >
-              <option value="kanji">Kanji</option>
-              <option value="reading">Reading</option>
-              <option value="meaning">Meaning</option>
-            </select>
-          </label>
-
-          <label className="grid gap-1" htmlFor="browse-tile-zoom">
-            <span className="text-muted-foreground text-xs">Tile zoom</span>
-            <select
-              id="browse-tile-zoom"
-              value={tileZoom}
-              onChange={(event) =>
-                void chooseTileZoom(
-                  Number(event.target.value) as BrowseTileZoom,
-                )
-              }
-              aria-label="Tile zoom"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            >
-              <option value="0.75">75% · Compact</option>
-              <option value="1">100% · Standard</option>
-              <option value="1.5">150% · Large</option>
-            </select>
-          </label>
-
-          <div
-            className="border-border inline-flex rounded-md border p-1"
-            role="group"
-            aria-label="Browse view"
-          >
-            <Button
-              type="button"
-              size="sm"
-              variant={view === 'list' ? 'secondary' : 'ghost'}
-              aria-pressed={view === 'list'}
-              aria-label="Show list view"
-              onClick={() => void chooseView('list')}
-            >
-              List
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={view === 'tiles' ? 'secondary' : 'ghost'}
-              aria-pressed={view === 'tiles'}
-              aria-label="Show tile view"
-              onClick={() => void chooseView('tiles')}
-            >
-              Tiles
-            </Button>
-          </div>
-
-          <Button
-            type="button"
-            size="sm"
-            variant={selectionMode ? 'secondary' : 'outline'}
-            aria-pressed={selectionMode}
-            onClick={() => {
-              setSelectionMode((current) => !current)
-              if (selectionMode) clearSelection()
-            }}
-          >
-            Select cards
-          </Button>
-
-          <details
-            className="min-w-0"
-            open={filtersOpen}
-            onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
-          >
-            <summary className="text-primary flex min-h-11 cursor-pointer items-center text-sm font-medium select-none">
-              More filters
-            </summary>
-            {filtersOpen && (
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2" htmlFor="browse-min-strokes">
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-min-strokes">
                   <span className="text-sm font-semibold">Minimum strokes</span>
                   <input
                     id="browse-min-strokes"
@@ -951,11 +898,13 @@ export function BrowseScreen({
                     }
                     aria-label="Minimum stroke count"
                     placeholder="Any"
-                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
                   />
                 </label>
+              </MenubarFormField>
 
-                <label className="grid gap-2" htmlFor="browse-max-strokes">
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-max-strokes">
                   <span className="text-sm font-semibold">Maximum strokes</span>
                   <input
                     id="browse-max-strokes"
@@ -968,14 +917,13 @@ export function BrowseScreen({
                     }
                     aria-label="Maximum stroke count"
                     placeholder="Any"
-                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
                   />
                 </label>
+              </MenubarFormField>
 
-                <label
-                  className="grid gap-2 sm:max-w-sm"
-                  htmlFor="browse-jlpt-filter"
-                >
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-jlpt-filter">
                   <span className="text-sm font-semibold">JLPT level</span>
                   <select
                     id="browse-jlpt-filter"
@@ -990,7 +938,7 @@ export function BrowseScreen({
                       }))
                     }
                     aria-label="Filter by JLPT level"
-                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
                   >
                     <option value="all">All JLPT levels</option>
                     <option value="5">N5</option>
@@ -1000,94 +948,156 @@ export function BrowseScreen({
                     <option value="1">N1</option>
                   </select>
                 </label>
-              </div>
-            )}
-          </details>
-        </div>
+              </MenubarFormField>
 
-        <div className="border-border flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-          <p className="text-muted-foreground text-sm">
-            Choose the same view, tile content, and zoom automatically for
-            future decks.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void saveBrowseDefaults()}
-          >
-            Use these settings for all decks
-          </Button>
-        </div>
+              <MenubarSeparator />
+              <MenubarItem
+                disabled={!hasFilters}
+                onSelect={() => setFilters(DEFAULT_BROWSE_FILTERS)}
+              >
+                Clear filters
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu value="view">
+            <MenubarTrigger>View</MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Layout</MenubarLabel>
+              <MenubarRadioGroup
+                value={view}
+                onValueChange={(value) => void chooseView(value as BrowseView)}
+              >
+                <MenubarRadioItem value="list">List</MenubarRadioItem>
+                <MenubarRadioItem value="tiles">Tiles</MenubarRadioItem>
+              </MenubarRadioGroup>
+
+              <MenubarSeparator />
+
+              <MenubarLabel>Tile content</MenubarLabel>
+              <MenubarRadioGroup
+                value={tileContent}
+                onValueChange={(value) =>
+                  void chooseTileContent(value as BrowseTileContent)
+                }
+              >
+                <MenubarRadioItem value="kanji">Kanji</MenubarRadioItem>
+                <MenubarRadioItem value="reading">Reading</MenubarRadioItem>
+                <MenubarRadioItem value="meaning">Meaning</MenubarRadioItem>
+              </MenubarRadioGroup>
+
+              <MenubarLabel>Tile zoom</MenubarLabel>
+              <MenubarRadioGroup
+                value={String(tileZoom)}
+                onValueChange={(value) =>
+                  void chooseTileZoom(Number(value) as BrowseTileZoom)
+                }
+              >
+                <MenubarRadioItem value="0.75">75% · Compact</MenubarRadioItem>
+                <MenubarRadioItem value="1">100% · Standard</MenubarRadioItem>
+                <MenubarRadioItem value="1.5">150% · Large</MenubarRadioItem>
+              </MenubarRadioGroup>
+
+              <MenubarSeparator />
+              <MenubarItem onSelect={() => void saveBrowseDefaults()}>
+                Use these settings for all decks
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu value="select">
+            <MenubarTrigger
+              aria-label={
+                selectedContentRefs.size > 0
+                  ? `Select, ${selectedContentRefs.size} selected`
+                  : 'Select'
+              }
+              className="relative"
+            >
+              Select
+              {selectedContentRefs.size > 0 && (
+                <span className="text-muted-foreground ml-1 text-xs">
+                  ({selectedContentRefs.size})
+                </span>
+              )}
+            </MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Selection</MenubarLabel>
+              <MenubarCheckboxItem
+                checked={selectionMode}
+                onCheckedChange={(checked) =>
+                  toggleSelectionMode(checked === true)
+                }
+              >
+                Select cards
+              </MenubarCheckboxItem>
+              <MenubarItem
+                disabled={
+                  !selectionMode || sortedCards.length === 0 || bulkBusy
+                }
+                onSelect={selectVisibleCards}
+              >
+                Select all visible
+              </MenubarItem>
+              <MenubarItem
+                disabled={selectedContentRefs.size === 0 || bulkBusy}
+                onSelect={clearSelection}
+              >
+                Clear selection
+              </MenubarItem>
+
+              <MenubarSeparator />
+              <MenubarLabel>Bulk actions</MenubarLabel>
+              <MenubarItem
+                disabled={selectedContentRefs.size === 0 || bulkBusy}
+                onSelect={() => void bulkSetFlagged(true)}
+              >
+                Flag selected
+              </MenubarItem>
+              <MenubarItem
+                disabled={selectedContentRefs.size === 0 || bulkBusy}
+                onSelect={() => void bulkSetFlagged(false)}
+              >
+                Unflag selected
+              </MenubarItem>
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-bulk-level">
+                  <span className="text-muted-foreground text-xs">
+                    Set selected level
+                  </span>
+                  <select
+                    id="browse-bulk-level"
+                    value={bulkLevel}
+                    disabled={selectedContentRefs.size === 0 || bulkBusy}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      if (value !== 'all')
+                        void bulkSetLevel(Number(value) as CardState['level'])
+                    }}
+                    aria-label="Set selected level"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 min-w-32 rounded-md border px-2 text-base shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
+                  >
+                    <option value="all">Choose level…</option>
+                    {LEVEL_NAMES.map((name, candidateLevel) => (
+                      <option key={name} value={candidateLevel}>
+                        {candidateLevel} · {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </MenubarFormField>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
 
         {selectionMode && selectedContentRefs.size > 0 && (
           <div
             role="toolbar"
             aria-label="Bulk card actions"
-            className="border-border bg-card sticky bottom-2 z-10 flex min-w-0 flex-wrap items-end gap-3 rounded-md border p-3 shadow-sm"
+            className="border-border bg-card sticky bottom-2 z-10 flex min-w-0 items-center rounded-md border p-3 shadow-sm"
           >
-            <p className="text-muted-foreground min-w-0 basis-full text-sm">
+            <p className="text-muted-foreground min-w-0 text-sm">
               {`${selectedContentRefs.size} selected${selectedVisibleCount < selectedContentRefs.size ? ` · ${selectedVisibleCount} visible` : ''}.`}
             </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={selectVisibleCards}
-              disabled={bulkBusy}
-            >
-              Select visible
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={clearSelection}
-              disabled={bulkBusy}
-            >
-              Clear selection
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void bulkSetFlagged(true)}
-              disabled={bulkBusy}
-            >
-              Flag selected
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void bulkSetFlagged(false)}
-              disabled={bulkBusy}
-            >
-              Unflag selected
-            </Button>
-            <label className="grid gap-1" htmlFor="browse-bulk-level">
-              <span className="text-muted-foreground text-xs">
-                Set selected level
-              </span>
-              <select
-                id="browse-bulk-level"
-                value={bulkLevel}
-                disabled={bulkBusy}
-                onChange={(event) => {
-                  const value = event.target.value
-                  if (value !== 'all')
-                    void bulkSetLevel(Number(value) as CardState['level'])
-                }}
-                aria-label="Set selected level"
-                className="border-input bg-background focus-visible:ring-ring h-10 min-w-32 rounded-md border px-2 text-sm shadow-sm outline-none focus-visible:ring-2 disabled:opacity-60"
-              >
-                <option value="all">Choose level…</option>
-                {LEVEL_NAMES.map((name, candidateLevel) => (
-                  <option key={name} value={candidateLevel}>
-                    {candidateLevel} · {name}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
         )}
 
@@ -1112,65 +1122,92 @@ export function BrowseScreen({
             <div
               className="grid gap-2"
               style={{
-                gridTemplateColumns: `repeat(auto-fill, minmax(${
-                  selectionMode ? Math.max(44, 56 * tileZoom) : 56 * tileZoom
-                }px, 1fr))`,
+                gridTemplateColumns: `repeat(auto-fill, minmax(${Math.max(
+                  44,
+                  56 * tileZoom,
+                )}px, 1fr))`,
               }}
               data-testid="browse-tile-wall"
               role="grid"
               aria-label={`${deck.name} tile wall`}
             >
               {sortedCards.map((card) => {
-                const level = card.state?.level ?? 0
+                const level = normalizeLevel(card.state?.level ?? 0)
                 const flagged = card.state?.flagged ?? false
+                const selected = selectedContentRefs.has(card.contentRef)
                 const text = tileText(card, tileContent)
                 const japanese = tileContent !== 'meaning'
                 const accessibleLabel =
                   tileContent === 'kanji'
                     ? `${card.literal}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
                     : `${card.literal}, ${tileContentLabel(tileContent)}: ${text}, ${beltLevelLabel(level)}, ${LEVEL_NAMES[level]}${flagged ? ', flagged' : ''}`
+                const tileClassName = `level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square w-full min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none ${selectionMode && selected ? 'ring-primary ring-3 ring-inset pr-5' : ''}`
+                const tileContents = (
+                  <>
+                    <span
+                      className={japanese ? 'font-jp-display' : undefined}
+                      lang={japanese ? 'ja' : undefined}
+                    >
+                      {text}
+                    </span>
+                    {flagged && (
+                      <span
+                        className="text-primary absolute right-1 bottom-0 text-xs"
+                        aria-hidden="true"
+                      >
+                        ⚑
+                      </span>
+                    )}
+                    {selectionMode && selected && (
+                      <span
+                        className="text-primary absolute top-1 right-1 text-sm leading-none font-bold"
+                        aria-hidden="true"
+                        data-testid="browse-tile-selection-check"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </>
+                )
                 return (
                   <div
                     key={card.contentRef}
                     className="relative min-w-0"
                     data-testid="browse-tile-shell"
                   >
-                    {selectionMode && (
-                      <label className="bg-background/90 absolute top-1 left-1 z-10 inline-flex min-h-11 min-w-11 items-center justify-center rounded p-1 shadow-sm">
-                        <span className="sr-only">Select {card.literal}</span>
-                        <input
-                          type="checkbox"
-                          checked={selectedContentRefs.has(card.contentRef)}
-                          onChange={() => toggleSelection(card.contentRef)}
-                          aria-label={`Select ${card.literal}`}
-                          className="accent-primary h-4 w-4"
-                        />
-                      </label>
-                    )}
-                    <Link
-                      href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
-                      className={`level-swatch sticky-shape ${LEVEL_SHAPES[level]} relative grid aspect-square min-w-0 place-items-center rounded-md border ${tileContent === 'kanji' ? 'text-2xl' : 'px-1 text-center text-xs'} focus-visible:ring-ring shadow-sm focus-visible:ring-2 focus-visible:outline-none`}
-                      data-level={level}
-                      data-content-ref={card.contentRef}
-                      data-testid="browse-tile"
-                      role="gridcell"
-                      aria-label={accessibleLabel}
-                    >
-                      <span
-                        className={japanese ? 'font-jp-display' : undefined}
-                        lang={japanese ? 'ja' : undefined}
+                    {selectionMode ? (
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={selected}
+                        aria-label={accessibleLabel}
+                        className={tileClassName}
+                        data-level={level}
+                        data-content-ref={card.contentRef}
+                        data-selected={selected}
+                        data-testid="browse-tile"
+                        style={
+                          selectionMode && selected
+                            ? { boxShadow: 'inset 0 0 0 3px var(--primary)' }
+                            : undefined
+                        }
+                        onClick={() => toggleSelection(card.contentRef)}
                       >
-                        {text}
-                      </span>
-                      {flagged && (
-                        <span
-                          className="text-primary absolute right-1 bottom-0 text-xs"
-                          aria-hidden="true"
-                        >
-                          ⚑
-                        </span>
-                      )}
-                    </Link>
+                        {tileContents}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/browse?deckId=${encodeURIComponent(deck.deckId)}&contentRef=${encodeURIComponent(card.contentRef)}`}
+                        className={tileClassName}
+                        data-level={level}
+                        data-content-ref={card.contentRef}
+                        data-testid="browse-tile"
+                        role="gridcell"
+                        aria-label={accessibleLabel}
+                      >
+                        {tileContents}
+                      </Link>
+                    )}
                   </div>
                 )
               })}
@@ -1201,7 +1238,7 @@ export function BrowseScreen({
               >
                 {visibleListCards.map((card, visibleIndex) => {
                   const cardIndex = listRange.start + visibleIndex
-                  const level = card.state?.level ?? 0
+                  const level = normalizeLevel(card.state?.level ?? 0)
                   const flagged = card.state?.flagged ?? false
                   const reading = [
                     ...card.onReadings,

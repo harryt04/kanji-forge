@@ -1,6 +1,6 @@
 # `src/ui/`
 
-Intentionally minimal: `button.tsx`, `card.tsx`, `dialog.tsx`. This is not a component library
+Intentionally minimal: `button.tsx`, `card.tsx`, `dialog.tsx`, `menubar.tsx`. This is not a component library
 — per `docs/ARCHITECTURE.md` §1.1 ("No heavy component library"), the house style is
 shadcn/ui-style copy-in primitives, not a shared design-system package.
 
@@ -14,3 +14,7 @@ work).
 
 If you find yourself duplicating a styled element across three or more feature screens, that's
 the signal to promote it into a primitive here — not before.
+
+`menubar.tsx` is the Radix Menubar copy-in primitive used by the Browse Workbench. Its content
+is portal-mounted with an internal height limit, and `MenubarFormField` stops keydown bubbling so
+inputs and selects inside a menu keep focus instead of triggering menu typeahead.

@@ -11,6 +11,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
 import { createUserRepositories } from '@/data/repo'
+import * as deckLoader from '@/features/study/deck-loader'
+import type { LoadedDeck } from '@/features/study/deck-loader'
 import {
   BROWSE_TILE_CONTENT_SETTING,
   BROWSE_DEFAULTS_SETTING,
@@ -18,6 +20,12 @@ import {
   BrowseScreen,
   BROWSE_TILE_ZOOM_SETTING,
 } from './browse-screen'
+
+vi.mock('@/features/study/deck-loader', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/study/deck-loader')>()
+  return { ...actual, loadDeck: vi.fn(actual.loadDeck) }
+})
 
 const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
@@ -66,6 +74,24 @@ async function seedListView(id: number) {
   return { runtime, repo }
 }
 
+function openBrowseMenu(
+  name: 'Search' | 'Sort' | 'Filter' | 'View' | 'Select',
+) {
+  fireEvent.pointerDown(
+    screen.getByRole('menuitem', {
+      name: new RegExp(`^${name}(?: \\(active\\)|, \\d+ selected)?$`),
+    }),
+  )
+  return screen.getByRole('menu')
+}
+
+function enterSelectionMode(): void {
+  openBrowseMenu('Select')
+  fireEvent.click(
+    screen.getByRole('menuitemcheckbox', { name: 'Select cards' }),
+  )
+}
+
 describe('BrowseScreen', () => {
   it('prompts anonymous users to sign in', () => {
     render(<BrowseScreen />)
@@ -82,6 +108,146 @@ describe('BrowseScreen', () => {
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
   })
 
+  it('mounts one Search, Sort, or Filter menu at a time', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+    expect(
+      screen.queryByRole('searchbox', { name: 'Search this deck' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitemradio', { name: /Deck order/ }),
+    ).not.toBeInTheDocument()
+
+    openBrowseMenu('Search')
+    expect(
+      screen.getByRole('searchbox', { name: 'Search this deck' }),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Sort')
+    expect(
+      screen.queryByRole('searchbox', { name: 'Search this deck' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitemradio', { name: /Deck order/ }),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    expect(
+      screen.queryByRole('menuitemradio', { name: /Deck order/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitemradio', { name: /All levels/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps view settings and defaults inside the View menu', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+    expect(screen.queryByLabelText('Tile content')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Tile zoom')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Use these settings for all decks',
+      }),
+    ).not.toBeInTheDocument()
+
+    openBrowseMenu('View')
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Tiles' }),
+    ).toHaveAttribute('data-state', 'checked')
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Kanji' }),
+    ).toHaveAttribute('data-state', 'checked')
+    expect(
+      screen.getByRole('menuitemradio', { name: '100% · Standard' }),
+    ).toHaveAttribute('data-state', 'checked')
+    expect(
+      screen.getByRole('menuitem', {
+        name: 'Use these settings for all decks',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('falls back to level 0 styling and labels for an out-of-range level', async () => {
+    bootstrapUserRuntime(`browse-${userId}`)
+    const contentRef = 'kanji:日'
+    const invalidDeck = {
+      deckId: 'dev-kanji',
+      name: 'Development Kanji',
+      cards: [
+        {
+          deckId: 'dev-kanji',
+          contentRef,
+          state: {
+            deckId: 'dev-kanji',
+            contentRef,
+            level: 7,
+            dueAt: null,
+            lastReviewedAt: null,
+            correctStreak: 0,
+            totalReviews: 0,
+            totalCorrect: 0,
+            lapses: 0,
+            flagged: false,
+            manualOverride: false,
+            updatedAt: Date.now(),
+            updatedBy: 'browse-test',
+          },
+        },
+      ],
+      content: new Map([
+        [
+          contentRef,
+          {
+            contentRef,
+            contentType: 'kanji',
+            literal: '日',
+            readings: ['ひ'],
+            strokeCount: 4,
+            frequency: null,
+            jlptLegacy: 5,
+            grade: 1,
+            nanori: [],
+            meanings: ['day; sun; Japan'],
+            onReadings: ['ニチ'],
+            kunReadings: ['ひ'],
+          },
+        ],
+      ]),
+    } as unknown as LoadedDeck
+    vi.mocked(deckLoader.loadDeck).mockResolvedValueOnce(invalidDeck)
+
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile')).toBeInTheDocument(),
+    )
+    const tile = screen.getByTestId('browse-tile')
+    expect(tile).toHaveAttribute('data-level', '0')
+    expect(tile).toHaveClass('l0')
+    expect(tile).toHaveAccessibleName('日, Level 0, white (Shiro), New')
+    expect(tile.getAttribute('aria-label')).not.toContain('undefined')
+
+    openBrowseMenu('View')
+    await fireEvent.click(screen.getByRole('menuitemradio', { name: 'List' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+    const card = screen.getByTestId('browse-card')
+    expect(card).toHaveAttribute('data-level', '0')
+    expect(card).toHaveClass('l0')
+    expect(card).toHaveAccessibleName('日, Level 0, white (Shiro), New')
+    expect(card.getAttribute('aria-label')).not.toContain('undefined')
+  })
+
   it('keeps a stable results wrapper across both views', async () => {
     bootstrapUserRuntime(`browse-${userId}`)
     render(<BrowseScreen />)
@@ -94,9 +260,8 @@ describe('BrowseScreen', () => {
       ).toBeInTheDocument(),
     )
 
-    await fireEvent.click(
-      screen.getByRole('button', { name: 'Show list view' }),
-    )
+    openBrowseMenu('View')
+    await fireEvent.click(screen.getByRole('menuitemradio', { name: 'List' }))
     await waitFor(() =>
       expect(
         within(screen.getByTestId('browse-cards')).getByTestId(
@@ -133,9 +298,8 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    await fireEvent.click(
-      screen.getByRole('button', { name: 'Show tile view' }),
-    )
+    openBrowseMenu('View')
+    await fireEvent.click(screen.getByRole('menuitemradio', { name: 'Tiles' }))
     await waitFor(() =>
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
@@ -147,9 +311,10 @@ describe('BrowseScreen', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+    openBrowseMenu('View')
     expect(
-      screen.getByRole('button', { name: 'Show tile view' }),
-    ).toHaveAttribute('aria-pressed', 'true')
+      screen.getByRole('menuitemradio', { name: 'Tiles' }),
+    ).toHaveAttribute('data-state', 'checked')
     expect(
       screen
         .getByRole('gridcell', {
@@ -161,9 +326,8 @@ describe('BrowseScreen', () => {
       '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
     )
 
-    await fireEvent.click(
-      screen.getByRole('button', { name: 'Show list view' }),
-    )
+    openBrowseMenu('View')
+    await fireEvent.click(screen.getByRole('menuitemradio', { name: 'List' }))
     await waitFor(() =>
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
@@ -220,13 +384,12 @@ describe('BrowseScreen', () => {
     expect(dayTile).toBeDefined()
     expect(dayTile).toHaveAccessibleName(/日, reading:/u)
     expect(dayTile?.textContent).not.toContain('日')
-    expect(screen.getByRole('combobox', { name: 'Tile content' })).toHaveValue(
-      'reading',
-    )
+    openBrowseMenu('View')
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Reading' }),
+    ).toHaveAttribute('data-state', 'checked')
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Tile content' }), {
-      target: { value: 'meaning' },
-    })
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Meaning' }))
     await waitFor(async () =>
       expect(
         await repo.settings.get(BROWSE_TILE_CONTENT_SETTING),
@@ -256,16 +419,15 @@ describe('BrowseScreen', () => {
     )
 
     const wall = screen.getByTestId('browse-tile-wall')
-    expect(screen.getByRole('combobox', { name: 'Tile zoom' })).toHaveValue(
-      '0.75',
-    )
+    openBrowseMenu('View')
+    expect(
+      screen.getByRole('menuitemradio', { name: '75% · Compact' }),
+    ).toHaveAttribute('data-state', 'checked')
     expect(wall).toHaveStyle(
-      'grid-template-columns: repeat(auto-fill, minmax(42px, 1fr))',
+      'grid-template-columns: repeat(auto-fill, minmax(44px, 1fr))',
     )
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Tile zoom' }), {
-      target: { value: '1.5' },
-    })
+    fireEvent.click(screen.getByRole('menuitemradio', { name: '150% · Large' }))
     await waitFor(async () =>
       expect(await repo.settings.get(BROWSE_TILE_ZOOM_SETTING)).toMatchObject({
         value: '1.5',
@@ -301,8 +463,11 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
 
+    openBrowseMenu('View')
     fireEvent.click(
-      screen.getByRole('button', { name: 'Use these settings for all decks' }),
+      screen.getByRole('menuitem', {
+        name: 'Use these settings for all decks',
+      }),
     )
 
     await waitFor(async () => {
@@ -407,13 +572,10 @@ describe('BrowseScreen', () => {
       expect(screen.getAllByTestId('browse-tile')).toHaveLength(1),
     )
     expect(segment).toHaveAttribute('aria-pressed', 'true')
+    openBrowseMenu('Filter')
     expect(
-      (
-        screen.getByRole('combobox', {
-          name: 'Filter by level',
-        }) as HTMLSelectElement
-      ).value,
-    ).toBe('3')
+      screen.getByRole('menuitemradio', { name: /3 · Known/ }),
+    ).toHaveAttribute('aria-checked', 'true')
   })
 
   it('clears the level filter when the active segment is clicked again', async () => {
@@ -624,6 +786,7 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
+    openBrowseMenu('Search')
     const search = screen.getByRole('searchbox', { name: 'Search this deck' })
     fireEvent.change(search, { target: { value: 'sun' } })
 
@@ -640,6 +803,63 @@ describe('BrowseScreen', () => {
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
     expect(
       screen.getByText('No cards match “does-not-exist”.'),
+    ).toBeInTheDocument()
+  })
+
+  it('announces active search, filter, and selection state on collapsed triggers', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(
+      screen.getByRole('menuitem', { name: 'Search', exact: true }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Filter', exact: true }),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Search')
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'Search this deck' }),
+      {
+        target: { value: 'sun' },
+      },
+    )
+    expect(
+      screen.getByRole('menuitem', { name: 'Search (active)', exact: true }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Development Kanji · 1 of 200 cards'),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /3 · Known/ }))
+    expect(
+      screen.getByRole('menuitem', { name: 'Filter (active)', exact: true }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Development Kanji · 0 of 200 cards'),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All levels' }))
+    openBrowseMenu('Search')
+    fireEvent.change(
+      screen.getByRole('searchbox', { name: 'Search this deck' }),
+      {
+        target: { value: '' },
+      },
+    )
+    enterSelectionMode()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    expect(
+      screen.getByRole('menuitem', {
+        name: 'Select, 1 selected',
+        exact: true,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -672,9 +892,10 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Sort cards' }), {
-      target: { value: 'level' },
-    })
+    openBrowseMenu('Sort')
+    fireEvent.click(
+      screen.getByRole('menuitemradio', { name: /Level \(new → mastered\)/ }),
+    )
 
     const cards = screen.getAllByTestId('browse-card')
     const positionOf = (contentRef: string) =>
@@ -717,24 +938,44 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.change(
-      screen.getByRole('combobox', { name: 'Filter by level' }),
-      {
-        target: { value: '3' },
-      },
-    )
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /3 · Known/ }))
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
     expect(screen.getByText(/1 of 200 cards/)).toBeInTheDocument()
     expect(screen.getByText('Flagged')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Show flagged only' }))
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All levels' }))
+    openBrowseMenu('Filter')
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: 'Show flagged only' }),
+    )
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
     expect(
       screen.getByRole('article', {
         name: /日, Level 3, blue \(Ao\), Known, flagged/,
       }),
     ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('spinbutton', { name: 'Maximum stroke count' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'Filter by JLPT level' }),
+    ).toBeInTheDocument()
+    fireEvent.change(
+      screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
+      {
+        target: { value: '999' },
+      },
+    )
+    expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Clear filters' }))
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(200)
   })
 
   it('sets a card level manually without changing review totals', async () => {
@@ -792,10 +1033,11 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Flag selected' }))
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
@@ -807,7 +1049,24 @@ describe('BrowseScreen', () => {
       flagged: true,
     })
     expect(await repo.outbox.pending()).toHaveLength(2)
-  })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Unflag selected' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '2 cards unflagged.',
+      ),
+    )
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+      flagged: false,
+    })
+    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+      flagged: false,
+    })
+  }, 15_000)
 
   it('sets multiple selected levels with manual-review history', async () => {
     const { repo } = await seedListView(userId)
@@ -817,9 +1076,10 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
+    openBrowseMenu('Select')
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Set selected level' }),
       {
@@ -854,8 +1114,14 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByRole('alert')).toHaveTextContent('')
+
+    openBrowseMenu('View')
     fireEvent.click(
-      screen.getByRole('button', { name: 'Use these settings for all decks' }),
+      screen.getByRole('menuitem', {
+        name: 'Use these settings for all decks',
+      }),
     )
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(
@@ -863,15 +1129,104 @@ describe('BrowseScreen', () => {
       ),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 一' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flag selected' }))
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Flag selected' }))
 
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
     )
     expect(screen.getAllByRole('status')).toHaveLength(1)
+  }, 15_000)
+
+  it('renders view-setting failures in the single alert region', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'write').mockRejectedValue(
+      new Error('View settings failed.'),
+    )
+    openBrowseMenu('View')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'List' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'View settings failed.',
+      ),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('renders tile-content failures in the single alert region', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'write').mockRejectedValue(
+      new Error('Tile content settings failed.'),
+    )
+    openBrowseMenu('View')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Reading' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Tile content settings failed.',
+      ),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('renders tile-zoom failures in the single alert region', async () => {
+    const runtime = bootstrapUserRuntime(`browse-${userId}`)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'write').mockRejectedValue(
+      new Error('Tile zoom settings failed.'),
+    )
+    openBrowseMenu('View')
+    fireEvent.click(
+      screen.getByRole('menuitemradio', { name: '75% · Compact' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Tile zoom settings failed.',
+      ),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('renders edit failures in the single alert region', async () => {
+    const { runtime } = await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Set level for 日' }),
+      ).toBeInTheDocument(),
+    )
+
+    vi.spyOn(runtime.database, 'transaction').mockRejectedValue(
+      new Error('Card edit failed.'),
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Set level for 日' }),
+      { target: { value: '4' } },
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Card edit failed.'),
+    )
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
   })
 
   it('shows bulk actions only when cards are selected', async () => {
@@ -885,18 +1240,47 @@ describe('BrowseScreen', () => {
       screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Select cards' }))
+    enterSelectionMode()
     expect(
       screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
     ).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select 日' }))
-    expect(
-      screen.getByRole('toolbar', { name: 'Bulk card actions' }),
-    ).toBeInTheDocument()
+    const toolbar = screen.getByRole('toolbar', { name: 'Bulk card actions' })
+    expect(toolbar).toBeInTheDocument()
+    expect(toolbar).toHaveTextContent('1 selected')
+    expect(within(toolbar).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(toolbar).queryByRole('combobox')).not.toBeInTheDocument()
   })
 
-  it('keeps advanced filter controls out of the DOM while collapsed', async () => {
+  it('keeps selection entry, visible selection, and clearing in the Select menu', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'Select cards' }),
+    ).not.toBeInTheDocument()
+
+    enterSelectionMode()
+    openBrowseMenu('Select')
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Select all visible' }),
+    )
+    expect(
+      screen.getByRole('toolbar', { name: 'Bulk card actions' }),
+    ).toHaveTextContent('200 selected')
+
+    openBrowseMenu('Select')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Clear selection' }))
+    expect(
+      screen.queryByRole('toolbar', { name: 'Bulk card actions' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('mounts every filter only while the Filter menu is open', async () => {
     await seedListView(userId)
     render(<BrowseScreen />)
     await waitFor(() =>
@@ -906,13 +1290,38 @@ describe('BrowseScreen', () => {
     expect(
       screen.queryByRole('spinbutton', { name: 'Minimum stroke count' }),
     ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Maximum stroke count' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'Filter by JLPT level' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'Show flagged only' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'Clear filters' }),
+    ).not.toBeInTheDocument()
+    expect(document.querySelector('details')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('More filters'))
+    openBrowseMenu('Filter')
 
     await waitFor(() =>
       expect(
         screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
       ).toBeInTheDocument(),
     )
+    expect(
+      screen.getByRole('spinbutton', { name: 'Maximum stroke count' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'Filter by JLPT level' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'Show flagged only' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Clear filters' }),
+    ).toBeInTheDocument()
   })
 })

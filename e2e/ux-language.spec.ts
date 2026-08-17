@@ -1,4 +1,5 @@
 import { API_URL, expect, test } from './fixtures'
+import { forEachBrowseMenu } from './browse-menus'
 
 const japaneseText = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/u
 
@@ -33,30 +34,38 @@ test.describe('Japanese language metadata', () => {
       await page.goto(route)
       await page.locator(ready).waitFor()
 
-      const missing = await page.evaluate((pattern) => {
-        const expression = new RegExp(pattern, 'u')
-        const walker = document.createTreeWalker(
-          document.body,
-          NodeFilter.SHOW_TEXT,
-        )
-        const failures: string[] = []
-        let node = walker.nextNode()
-        while (node) {
-          const text = node.textContent?.trim() ?? ''
-          const parent = node.parentElement
-          if (
-            parent &&
-            text &&
-            expression.test(text) &&
-            !['SCRIPT', 'STYLE'].includes(parent.tagName) &&
-            parent.closest('[lang]')?.getAttribute('lang') !== 'ja'
-          ) {
-            failures.push(text.slice(0, 80))
+      const findMissing = async () =>
+        page.evaluate((pattern) => {
+          const expression = new RegExp(pattern, 'u')
+          const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+          )
+          const failures: string[] = []
+          let node = walker.nextNode()
+          while (node) {
+            const text = node.textContent?.trim() ?? ''
+            const parent = node.parentElement
+            if (
+              parent &&
+              text &&
+              expression.test(text) &&
+              !['SCRIPT', 'STYLE'].includes(parent.tagName) &&
+              parent.closest('[lang]')?.getAttribute('lang') !== 'ja'
+            ) {
+              failures.push(text.slice(0, 80))
+            }
+            node = walker.nextNode()
           }
-          node = walker.nextNode()
-        }
-        return failures
-      }, japaneseText.source)
+          return failures
+        }, japaneseText.source)
+
+      const missing = await findMissing()
+      if (route === '/browse' || route.startsWith('/browse?')) {
+        await forEachBrowseMenu(page, async () => {
+          missing.push(...(await findMissing()))
+        })
+      }
 
       expect(missing, `${route} Japanese text`).toEqual([])
     }

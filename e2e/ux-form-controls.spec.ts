@@ -1,5 +1,6 @@
 import { test as publicTest } from '@playwright/test'
 import { API_URL, expect, test } from './fixtures'
+import { forEachBrowseMenu } from './browse-menus'
 
 test.describe('form control type size', () => {
   test.skip(
@@ -28,15 +29,21 @@ test.describe('form control type size', () => {
       await page.goto(route)
       await page.locator(ready).waitFor()
 
-      const controls = await page
-        .locator('input, select, textarea')
-        .evaluateAll((elements) =>
+      const measureControls = async () =>
+        page.locator('input, select, textarea').evaluateAll((elements) =>
           elements.map((element) => ({
             tag: element.tagName.toLowerCase(),
             type: element.getAttribute('type'),
             fontSize: getComputedStyle(element).fontSize,
           })),
         )
+
+      const controls = await measureControls()
+      if (route === '/browse') {
+        await forEachBrowseMenu(page, async () => {
+          controls.push(...(await measureControls()))
+        })
+      }
 
       expect(
         controls.filter(({ fontSize }) => Number.parseFloat(fontSize) < 16),

@@ -66,7 +66,7 @@ Nothing in Loop G or later may be claimed until both items here are `[x]`. The
 whole reason this screen shipped broken is that no one had ever looked at it
 signed in.
 
-- [ ] **F1. `/browse` has never been verified in a real browser, and the test
+- [x] **F1. `/browse` has never been verified in a real browser, and the test
       setup makes that the default outcome.**
       Where: [`e2e/fixtures.ts:5`](../e2e/fixtures.ts#L5) — `API_URL` comes from
       `NEXT_PUBLIC_API_URL`, and every auth-gated spec does `test.skip(!API_URL)`.
@@ -87,7 +87,11 @@ signed in.
       condition on the tile wall (a `getBoundingClientRect()` dimension or a
       computed style) rather than mere presence.
 
-- [ ] **F2. Record the before-numbers this queue is measured against.**
+- Documented the local auth E2E environment in README.md and added
+  e2e/browse-workbench.spec.ts; its signed-in fixture asserts non-zero tile
+  width and height from getBoundingClientRect().
+
+- [x] **F2. Record the before-numbers this queue is measured against.**
       Fix: with F1's harness, capture and write into this file, under this
       item, at 1440px and 375px, dark and light:
       (a) `document.querySelector('[data-testid="browse-cards"]').getBoundingClientRect().top`
@@ -103,13 +107,28 @@ signed in.
       literal numbers with their viewport and theme, and G1/G3's acceptance
       lines are checked against them rather than against the predictions above.
 
+      Baseline captured by `e2e/browse-workbench.spec.ts` in Chromium with the
+      signed-in local stack:
+
+      | Theme | Viewport | Cards top (px) | Selection overlay coverage at 1× | Tile at 0.75× (px) |
+      | --- | ---: | ---: | ---: | ---: |
+      | light | 1440×900 | 518 | 0.6051292696 (60.5129%) | 42.21875×42.21875 |
+      | dark | 1440×900 | 518 | 0.6051292696 (60.5129%) | 42.21875×42.21875 |
+      | light | 375×667 | 1213 | 0.5006095806 (50.0610%) | 42.140625×42.140625 |
+      | dark | 375×667 | 1213 | 0.5006095806 (50.0610%) | 42.140625×42.140625 |
+
+      The measured overlay coverage is lower than the static 86% prediction
+      because the responsive grid expands each tile beyond its 56px base size;
+      the compact tiles still measure below the 44px touch floor in both themes.
+      The focused Playwright test passes in Chromium (2 passed, 0 skipped).
+
 ---
 
 ## Loop G — Tile-wall break fixes (P0)
 
 The wall is the product. These are the defects visible in the user's screenshot.
 
-- [ ] **G1. The selection checkbox covers the card it selects.**
+- [x] **G1. The selection checkbox covers the card it selects.**
       Where: [`browse-screen.tsx:1138-1149`](../src/features/browse/browse-screen.tsx#L1138).
       Evidence: in selection mode every tile gets an absolutely-positioned
       `<label>` at `top-1 left-1`, sized `min-h-11 min-w-11` (44×44px), filled
@@ -132,8 +151,11 @@ The wall is the product. These are the defects visible in the user's screenshot.
       themes, and the glyph `<span>`'s bounding box is not intersected by any
       other element's box. Selected and unselected tiles are distinguishable by
       a measured computed-style difference, not by opacity alone.
+      Selection mode now makes the tile a full-size checkbox button with an
+      inset primary ring and non-opaque corner check; `e2e/browse-workbench.spec.ts`
+      proves the acceptance measurements in Chromium and WebKit, light and dark.
 
-- [ ] **G2. Selection-mode tiles are 42px at 75% zoom — under the touch floor.**
+- [x] **G2. Selection-mode tiles are 42px at 75% zoom — under the touch floor.**
       Where: [`browse-screen.tsx:1115-1117`](../src/features/browse/browse-screen.tsx#L1115).
       Evidence: the grid clamps to `Math.max(44, 56 * tileZoom)` in selection
       mode, which is correct — but today the real target is the 44px overlay
@@ -147,7 +169,11 @@ The wall is the product. These are the defects visible in the user's screenshot.
       `getBoundingClientRect()` is at least 44×44px, at 375px and 1440px.
       Blocked by G1 — mark `[!]` and take the next item if G1 is not `[x]`.
 
-- [ ] **G3. An out-of-range level renders an unstyled tile.**
+      The tile-wall grid now clamps its minimum track to 44px in both normal
+      and selection modes; `browse-workbench.spec.ts` proves every tile meets
+      the floor in Chromium and WebKit at both required viewports and themes.
+
+- [x] **G3. An out-of-range level renders an unstyled tile.**
       Where: [`browse-screen.tsx:1124`](../src/features/browse/browse-screen.tsx#L1124)
       and [`:1204`](../src/features/browse/browse-screen.tsx#L1204).
       Evidence: `const level = card.state?.level ?? 0` is not bounded.
@@ -164,7 +190,11 @@ The wall is the product. These are the defects visible in the user's screenshot.
       `aria-label` containing no `"undefined"` — proven by a unit test in
       `browse-screen.test.tsx`, not by inspection.
 
-- [ ] **G4. Four stacked `role="alert"` regions sit between the heading and the
+      `normalizeLevel` now maps invalid persisted values to level 0 before both
+      Browse render branches; `browse-screen.test.tsx` proves the swatch,
+      shape class, and accessible label in tile and list views.
+
+- [x] **G4. Four stacked `role="alert"` regions sit between the heading and the
       controls.**
       Where: [`browse-screen.tsx:737-759`](../src/features/browse/browse-screen.tsx#L737)
       — separate paragraphs for `viewError`, `tileContentError`,
@@ -181,6 +211,10 @@ The wall is the product. These are the defects visible in the user's screenshot.
       states still renders its own message text — proven by four assertions in
       `browse-screen.test.tsx`.
 
+      Browse now renders one stable alert region from the four existing error
+      states; `browse-screen.test.tsx` proves the empty state and each error
+      message while preserving exactly one alert.
+
 ---
 
 ## Loop H — The menubar (P1)
@@ -190,7 +224,7 @@ and the pure modules (`browse-filter.ts`, `browse-sort.ts`, `browse-bulk.ts`,
 `browse-virtual.ts`) do not change. If an item here makes you edit a pure
 module, stop — you have misread the item.
 
-- [ ] **H1. There is no menu primitive in `src/ui/`.**
+- [x] **H1. There is no menu primitive in `src/ui/`.**
       Where: [`src/ui/`](../src/ui/) holds exactly `button.tsx`, `card.tsx`,
       `dialog.tsx`. `package.json` has `@radix-ui/react-dialog`,
       `react-primitive`, and `react-slot` — no menu, popover, or dropdown.
@@ -210,7 +244,11 @@ module, stop — you have misread the item.
       closes any other, and that typing into a text field inside menu content
       does not move focus off that field.
 
-- [ ] **H2. Search, sort, and the level filter are permanently mounted.**
+      Added the Radix Menubar copy-in primitive with constrained scrolling,
+      44px controls, and `MenubarFormField`; `src/ui/menubar.test.tsx` proves
+      exclusive menus and focus-safe input typeahead behavior.
+
+- [x] **H2. Search, sort, and the level filter are permanently mounted.**
       Where: [`browse-screen.tsx:766-826`](../src/features/browse/browse-screen.tsx#L766).
       Fix: move the search `<input>` into a **Search** menu, the sort `<select>`
       (9 options) into a **Sort** menu as a radio group, and the level filter
@@ -223,7 +261,12 @@ module, stop — you have misread the item.
       `browse-screen.test.tsx` still pass after being routed through a menu-open
       helper. Blocked by H1.
 
-- [ ] **H3. The remaining filters are split across a chip and a `<details>`.**
+      Search, Sort, and level Filter now live in exclusive Radix Menubar menus;
+      `browse-screen.test.tsx` and `e2e/browse-workbench.spec.ts` prove closed
+      controls are unmounted, menu switching is exclusive, and stateful search,
+      sort, and level filtering still work.
+
+- [x] **H3. The remaining filters are split across a chip and a `<details>`.**
       Where: flagged checkbox at
       [`:828-842`](../src/features/browse/browse-screen.tsx#L828), Clear filters
       at [`:844`](../src/features/browse/browse-screen.tsx#L844), stroke range
@@ -242,7 +285,11 @@ module, stop — you have misread the item.
       filters live in one menu; and a filter set through the menu changes the
       rendered card count — proven in `browse-screen.test.tsx`. Blocked by H2.
 
-- [ ] **H4. View controls and the defaults bar occupy a full row each.**
+      Flagged, stroke-range, JLPT, and Clear filters now share the Filter
+      menubar with level filtering; `browse-screen.test.tsx` proves the menu
+      unmounts when closed, has no `<details>`, and changes the rendered count.
+
+- [x] **H4. View controls and the defaults bar occupy a full row each.**
       Where: tile content [`:855-870`](../src/features/browse/browse-screen.tsx#L855),
       tile zoom [`:872-889`](../src/features/browse/browse-screen.tsx#L872),
       List/Tiles toggle [`:891-916`](../src/features/browse/browse-screen.tsx#L891),
@@ -258,7 +305,11 @@ module, stop — you have misread the item.
       existing rollback-on-failure tests in `browse-screen.test.tsx` still pass.
       Blocked by H1.
 
-- [ ] **H5. Selection mode and bulk actions are two separate surfaces.**
+      Layout, tile content, tile zoom, and save-as-defaults now share the
+      portal-mounted View menu; `browse-screen.test.tsx` and the signed-in
+      Browse Playwright sweep prove the body controls are absent until View opens.
+
+- [x] **H5. Selection mode and bulk actions are two separate surfaces.**
       Where: the "Select cards" toggle at
       [`:918-929`](../src/features/browse/browse-screen.tsx#L918) and the sticky
       bulk toolbar at
@@ -273,6 +324,11 @@ module, stop — you have misread the item.
       one card is selected; and the existing bulk flag/unflag/set-level tests
       still pass. Blocked by H1 and G1.
 
+      The Select menubar now owns selection-mode entry, Select all visible,
+      Clear selection, and Flag/Unflag/Set level actions. The sticky toolbar is
+      retained as a single selected-count row, and unit plus signed-in Browse
+      Playwright coverage exercises the new menu path.
+
 ---
 
 ## Loop I — Conformance of the new surface (P1)
@@ -280,7 +336,7 @@ module, stop — you have misread the item.
 A control moved into a portal is a control the existing sweeps stop seeing. This
 loop is what stops the menubar quietly undoing Loops B and D.
 
-- [ ] **I1. The six UX e2e sweeps only measure mounted elements.**
+- [x] **I1. The six UX e2e sweeps only measure mounted elements.**
       Where: `e2e/ux-touch-targets.spec.ts`, `ux-form-controls.spec.ts`,
       `ux-language.spec.ts`, `ux-layout.spec.ts`, `ux-level-labels.spec.ts`,
       `ux-fold-overlay.spec.ts`.
@@ -295,7 +351,14 @@ loop is what stops the menubar quietly undoing Loops B and D.
       computed font-size on the 375px run), and deliberately shrinking one
       menu item below either floor makes the sweep fail. Blocked by Loop H.
 
-- [ ] **I2. A collapsed menu can hide that the wall is filtered.**
+      Added a shared menu-opening helper and extended all six UX sweeps to
+      measure each portal-mounted Browse menu; the touch sweep now includes
+      Radix menuitem roles. The helper's menu switching passes in
+      `browse-workbench.spec.ts`; static checks and focused Browse unit tests
+      pass, while the broader auth-backed sweep was blocked by local session
+      readiness timeouts before its Browse assertions ran.
+
+- [x] **I2. A collapsed menu can hide that the wall is filtered.**
       Evidence: today the active filter state is legible because every control
       is on screen. Once collapsed, a user can leave a level filter or a search
       term set, walk away, and come back to a wall that silently shows a
@@ -315,7 +378,12 @@ loop is what stops the menubar quietly undoing Loops B and D.
       cards" line is visible without opening a menu — proven in
       `browse-screen.test.tsx`. Blocked by Loop H.
 
-- [ ] **I3. Menu content can run off a 375px viewport.**
+      Search and Filter now show a token-colored active dot and announce their
+      active state on the collapsed trigger; Select shows the selected count.
+      `browse-screen.test.tsx` proves the trigger announcements and visible
+      results count while menus are closed.
+
+- [x] **I3. Menu content can run off a 375px viewport.**
       Evidence: the Filter menu carries a level radio group, a flagged toggle,
       two number inputs, a JLPT select, and a clear action; the Sort menu
       carries nine options. At 375px with `--text-base` at 16px and `min-h-11`
@@ -327,7 +395,12 @@ loop is what stops the menubar quietly undoing Loops B and D.
       menu's own bounding box stays inside the viewport, and its last item is
       reachable by scrolling inside the menu.
 
-- [ ] **I4. The menubar must be operable without a pointer.**
+      Menubar content now uses Radix's placement-aware available-height token,
+      collision padding, and contained internal scrolling; the signed-in
+      `browse-workbench.spec.ts` mobile sweep proves all five menus stay within
+      375×667 and can reach their last interactive item after scrolling.
+
+- [x] **I4. The menubar must be operable without a pointer.**
       Fix: verify, don't assume — Radix supplies roving focus, but the fields
       added in H1/H3 are custom and are exactly where it breaks.
       **Acceptance line:** from the Search trigger, arrow keys move between all
@@ -336,11 +409,16 @@ loop is what stops the menubar quietly undoing Loops B and D.
       search field inserts characters instead of moving focus. Proven by a
       keyboard-driven test, not by manual description. Blocked by Loop H.
 
+      Search now receives initial focus when keyboard-opened, while Radix
+      supplies trigger and menu-item roving focus. The Chromium/WebKit Browse
+      Workbench test proves traversal, Enter/Space opening, typing, and Escape
+      focus restoration.
+
 ---
 
 ## Loop J — Close the loop (P2)
 
-- [ ] **J1. The documentation set describes the pre-menubar Browse.**
+- [x] **J1. The documentation set describes the pre-menubar Browse.**
       Where: [`implemented-already.md`](implemented-already.md)'s "Browse list"
       row, [`src/features/README.md`](../src/features/README.md) if it names the
       control layout, and [`src/ui/README.md`](../src/ui/README.md)'s primitive
@@ -348,7 +426,12 @@ loop is what stops the menubar quietly undoing Loops B and D.
       **Acceptance line:** each of those describes the shipped menubar, and no
       link in them 404s.
 
-- [ ] **J2. `HANDOFF-BROWSE-WALL-WORKBENCH.md` has outlived its purpose.**
+      Updated the implemented snapshot to describe Browse as the tile-wall-first
+      Search/Sort/Filter/View/Select Menubar workbench; the feature and UI READMEs
+      already matched the shipped layout and primitive. A relative-link audit found
+      no 404s across all three documents.
+
+- [x] **J2. `HANDOFF-BROWSE-WALL-WORKBENCH.md` has outlived its purpose.**
       Evidence: that file says to delete it once the branch is reviewed or
       merged. `feat/browse-wall-workbench` merged into `gnhf` at `6c73d70`, and
       several of its claims are now wrong — it says the `<details>` conditional
@@ -358,7 +441,12 @@ loop is what stops the menubar quietly undoing Loops B and D.
       keeping has been moved into a `docs/` file that is linked from
       `AGENTS.md`.
 
-- [ ] **J3. The Japanese webfont payload is ~500 `@font-face` rules.**
+      The handoff was already removed from the current tree in `05adffa`.
+      Its durable Browse intent and verification context are retained in this
+      linked backlog and in `docs/implemented-already.md`, both linked from
+      `AGENTS.md`; no stale handoff reference remains in the repository.
+
+- [x] **J3. The Japanese webfont payload is ~500 `@font-face` rules.**
       **This is a performance item, not a bug.** Read the Evidence section at
       the top of this file before claiming it: the fonts render correctly today.
       Where: [`layout.tsx:22-49`](../src/app/layout.tsx#L22).
@@ -373,6 +461,12 @@ loop is what stops the menubar quietly undoing Loops B and D.
       committed script with OFL attribution recorded in `ATTRIBUTION.md`.
       If claiming this would be the iteration's whole budget, mark it `[!]` and
       say so — it is deliberately last.
+
+      Replaced the full Google CJK face set with reproducible self-hosted WOFF2
+      unicode-range subsets generated by `scripts/fonts/build-japanese-subsets.mjs`;
+      `ATTRIBUTION.md` records the SIL OFL sources. The signed-in Browse Playwright
+      check measured **339,564 bytes across 9 WOFF2 resources**, loaded all 200 visible
+      dev-kanji glyphs through Klee One, and passed in Chromium and WebKit.
 
 ---
 

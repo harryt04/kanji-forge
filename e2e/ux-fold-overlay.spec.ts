@@ -1,10 +1,8 @@
 import { type Page } from '@playwright/test'
 import { API_URL, expect, test } from './fixtures'
+import { forEachBrowseMenu } from './browse-menus'
 
-async function assertFoldAreas(page: Page, route: string): Promise<void> {
-  await page.goto(route)
-  await page.locator('.sticky-shape').first().waitFor()
-
+async function measureFoldAreas(page: Page, route: string): Promise<void> {
   const measurements = await page.evaluate(() =>
     Array.from(document.querySelectorAll<HTMLElement>('.sticky-shape'))
       .filter((element) => {
@@ -41,6 +39,12 @@ async function assertFoldAreas(page: Page, route: string): Promise<void> {
   ).toBeTruthy()
 }
 
+async function assertFoldAreas(page: Page, route: string): Promise<void> {
+  await page.goto(route)
+  await page.locator('.sticky-shape').first().waitFor()
+  await measureFoldAreas(page, route)
+}
+
 test.describe('fold overlay proportions', () => {
   for (const viewport of [375, 1440]) {
     test(`keeps the marketing folds proportional at ${viewport}px`, async ({
@@ -70,6 +74,14 @@ test.describe('fold overlay proportions', () => {
           '/detail?contentRef=kanji%3A%E6%97%A5',
         ]) {
           await assertFoldAreas(page, route)
+          if (route === '/browse') {
+            await forEachBrowseMenu(page, async (menuName) => {
+              await measureFoldAreas(
+                page,
+                `${route} with ${menuName} menu open`,
+              )
+            })
+          }
         }
       })
     }
