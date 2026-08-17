@@ -224,7 +224,7 @@ and the pure modules (`browse-filter.ts`, `browse-sort.ts`, `browse-bulk.ts`,
 `browse-virtual.ts`) do not change. If an item here makes you edit a pure
 module, stop — you have misread the item.
 
-- [ ] **H1. There is no menu primitive in `src/ui/`.**
+- [x] **H1. There is no menu primitive in `src/ui/`.**
       Where: [`src/ui/`](../src/ui/) holds exactly `button.tsx`, `card.tsx`,
       `dialog.tsx`. `package.json` has `@radix-ui/react-dialog`,
       `react-primitive`, and `react-slot` — no menu, popover, or dropdown.
@@ -243,6 +243,10 @@ module, stop — you have misread the item.
       label, and separator; a colocated test asserts that opening one menu
       closes any other, and that typing into a text field inside menu content
       does not move focus off that field.
+
+      Added the Radix Menubar copy-in primitive with constrained scrolling,
+      44px controls, and `MenubarFormField`; `src/ui/menubar.test.tsx` proves
+      exclusive menus and focus-safe input typeahead behavior.
 
 - [ ] **H2. Search, sort, and the level filter are permanently mounted.**
       Where: [`browse-screen.tsx:766-826`](../src/features/browse/browse-screen.tsx#L766).
