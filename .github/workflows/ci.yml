@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  NEXT_FONT_GOOGLE_MOCKED_RESPONSES: ${{ github.workspace }}/scripts/next-font-mocks.cjs
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
