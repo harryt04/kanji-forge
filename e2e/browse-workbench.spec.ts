@@ -1,4 +1,16 @@
 import { API_URL, expect, test } from './fixtures'
+import type { Page } from '@playwright/test'
+
+async function openViewMenu(page: Page) {
+  await page.getByRole('menuitem', { name: 'View', exact: true }).click()
+}
+
+async function chooseViewOption(page: Page, name: string) {
+  await openViewMenu(page)
+  await page
+    .getByRole('menuitemradio', { name, exact: true })
+    .evaluate((element) => (element as HTMLElement).click())
+}
 
 test.describe('Browse Workbench', () => {
   test.skip(
@@ -66,6 +78,42 @@ test.describe('Browse Workbench', () => {
     ).toBeVisible()
   })
 
+  test('mounts View settings and defaults only inside the View menu', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.goto('/browse')
+
+    await expect(page.locator('#browse-tile-content')).toHaveCount(0)
+    await expect(page.locator('#browse-tile-zoom')).toHaveCount(0)
+    await expect(
+      page.getByRole('menuitem', {
+        name: 'Use these settings for all decks',
+        exact: true,
+      }),
+    ).toHaveCount(0)
+
+    await openViewMenu(page)
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Tiles', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Kanji', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('menuitemradio', {
+        name: '100% · Standard',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('menuitem', {
+        name: 'Use these settings for all decks',
+        exact: true,
+      }),
+    ).toBeVisible()
+  })
+
   test('records the Browse workbench baseline geometry', async ({
     page,
     authedUser: _authedUser,
@@ -89,7 +137,7 @@ test.describe('Browse Workbench', () => {
           .getByTestId('browse-cards')
           .evaluate((element) => element.getBoundingClientRect().top)
 
-        await page.getByLabel('Tile zoom').selectOption('1')
+        await chooseViewOption(page, '100% · Standard')
         await page.getByRole('button', { name: 'Select cards' }).click()
         const selectionTile = await page.getByTestId('browse-tile').first()
         const selectionGeometry = await selectionTile.evaluate((tile) => {
@@ -98,7 +146,7 @@ test.describe('Browse Workbench', () => {
         })
 
         await page.getByRole('button', { name: 'Select cards' }).click()
-        await page.getByLabel('Tile zoom').selectOption('0.75')
+        await chooseViewOption(page, '75% · Compact')
         const compactTile = await page
           .getByTestId('browse-tile')
           .first()
@@ -133,7 +181,7 @@ test.describe('Browse Workbench', () => {
       await page.setViewportSize({ width: 1440, height: 900 })
       await page.goto('/browse')
       await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
-      await page.getByLabel('Tile zoom').selectOption('1')
+      await chooseViewOption(page, '100% · Standard')
       await page.getByRole('button', { name: 'Select cards' }).click()
 
       const tile = page.getByTestId('browse-tile').first()
@@ -219,7 +267,7 @@ test.describe('Browse Workbench', () => {
         await page.setViewportSize(viewport)
         await page.goto('/browse')
         await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
-        await page.getByLabel('Tile zoom').selectOption('0.75')
+        await chooseViewOption(page, '75% · Compact')
 
         for (const selectionMode of [false, true]) {
           if (selectionMode) {

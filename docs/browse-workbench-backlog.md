@@ -289,7 +289,7 @@ module, stop — you have misread the item.
       menubar with level filtering; `browse-screen.test.tsx` proves the menu
       unmounts when closed, has no `<details>`, and changes the rendered count.
 
-- [ ] **H4. View controls and the defaults bar occupy a full row each.**
+- [x] **H4. View controls and the defaults bar occupy a full row each.**
       Where: tile content [`:855-870`](../src/features/browse/browse-screen.tsx#L855),
       tile zoom [`:872-889`](../src/features/browse/browse-screen.tsx#L872),
       List/Tiles toggle [`:891-916`](../src/features/browse/browse-screen.tsx#L891),
@@ -304,6 +304,10 @@ module, stop — you have misread the item.
       all four controls are reachable only through the View menu; and the
       existing rollback-on-failure tests in `browse-screen.test.tsx` still pass.
       Blocked by H1.
+
+      Layout, tile content, tile zoom, and save-as-defaults now share the
+      portal-mounted View menu; `browse-screen.test.tsx` and the signed-in
+      Browse Playwright sweep prove the body controls are absent until View opens.
 
 - [ ] **H5. Selection mode and bulk actions are two separate surfaces.**
       Where: the "Select cards" toggle at

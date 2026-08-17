@@ -931,76 +931,53 @@ export function BrowseScreen({
               </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
+          <MenubarMenu value="view">
+            <MenubarTrigger>View</MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Layout</MenubarLabel>
+              <MenubarRadioGroup
+                value={view}
+                onValueChange={(value) => void chooseView(value as BrowseView)}
+              >
+                <MenubarRadioItem value="list">List</MenubarRadioItem>
+                <MenubarRadioItem value="tiles">Tiles</MenubarRadioItem>
+              </MenubarRadioGroup>
+
+              <MenubarSeparator />
+
+              <MenubarLabel>Tile content</MenubarLabel>
+              <MenubarRadioGroup
+                value={tileContent}
+                onValueChange={(value) =>
+                  void chooseTileContent(value as BrowseTileContent)
+                }
+              >
+                <MenubarRadioItem value="kanji">Kanji</MenubarRadioItem>
+                <MenubarRadioItem value="reading">Reading</MenubarRadioItem>
+                <MenubarRadioItem value="meaning">Meaning</MenubarRadioItem>
+              </MenubarRadioGroup>
+
+              <MenubarLabel>Tile zoom</MenubarLabel>
+              <MenubarRadioGroup
+                value={String(tileZoom)}
+                onValueChange={(value) =>
+                  void chooseTileZoom(Number(value) as BrowseTileZoom)
+                }
+              >
+                <MenubarRadioItem value="0.75">75% · Compact</MenubarRadioItem>
+                <MenubarRadioItem value="1">100% · Standard</MenubarRadioItem>
+                <MenubarRadioItem value="1.5">150% · Large</MenubarRadioItem>
+              </MenubarRadioGroup>
+
+              <MenubarSeparator />
+              <MenubarItem onSelect={() => void saveBrowseDefaults()}>
+                Use these settings for all decks
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
         </Menubar>
 
-        <div
-          className="flex min-w-0 flex-wrap items-end gap-3"
-          role="group"
-          aria-label="Browse controls"
-        >
-          <label className="grid gap-1" htmlFor="browse-tile-content">
-            <span className="text-muted-foreground text-xs">Tile content</span>
-            <select
-              id="browse-tile-content"
-              value={tileContent}
-              onChange={(event) =>
-                void chooseTileContent(event.target.value as BrowseTileContent)
-              }
-              aria-label="Tile content"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            >
-              <option value="kanji">Kanji</option>
-              <option value="reading">Reading</option>
-              <option value="meaning">Meaning</option>
-            </select>
-          </label>
-
-          <label className="grid gap-1" htmlFor="browse-tile-zoom">
-            <span className="text-muted-foreground text-xs">Tile zoom</span>
-            <select
-              id="browse-tile-zoom"
-              value={tileZoom}
-              onChange={(event) =>
-                void chooseTileZoom(
-                  Number(event.target.value) as BrowseTileZoom,
-                )
-              }
-              aria-label="Tile zoom"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            >
-              <option value="0.75">75% · Compact</option>
-              <option value="1">100% · Standard</option>
-              <option value="1.5">150% · Large</option>
-            </select>
-          </label>
-
-          <div
-            className="border-border inline-flex rounded-md border p-1"
-            role="group"
-            aria-label="Browse view"
-          >
-            <Button
-              type="button"
-              size="sm"
-              variant={view === 'list' ? 'secondary' : 'ghost'}
-              aria-pressed={view === 'list'}
-              aria-label="Show list view"
-              onClick={() => void chooseView('list')}
-            >
-              List
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={view === 'tiles' ? 'secondary' : 'ghost'}
-              aria-pressed={view === 'tiles'}
-              aria-label="Show tile view"
-              onClick={() => void chooseView('tiles')}
-            >
-              Tiles
-            </Button>
-          </div>
-
+        <div className="flex min-w-0 flex-wrap items-end gap-3">
           <Button
             type="button"
             size="sm"
@@ -1012,20 +989,6 @@ export function BrowseScreen({
             }}
           >
             Select cards
-          </Button>
-        </div>
-
-        <div className="border-border flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-          <p className="text-muted-foreground text-sm">
-            Choose the same view, tile content, and zoom automatically for
-            future decks.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => void saveBrowseDefaults()}
-          >
-            Use these settings for all decks
           </Button>
         </div>
 
