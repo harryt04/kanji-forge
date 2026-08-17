@@ -1,4 +1,5 @@
 import { API_URL, expect, test } from './fixtures'
+import { forEachBrowseMenu } from './browse-menus'
 
 test.describe('authenticated layout overflow', () => {
   test.skip(
@@ -39,45 +40,57 @@ test.describe('authenticated layout overflow', () => {
         if (readyHeading)
           await page.getByRole('heading', { name: readyHeading }).waitFor()
 
-        const metrics = await page.evaluate(() => {
-          const documentElement = document.documentElement
-          const main = document.querySelector('main')
-          const directTracks = main
-            ? Array.from(main.children).filter(
-                (element) =>
-                  element.tagName === 'SECTION' || element.tagName === 'ASIDE',
-              )
-            : []
-          const tracks = directTracks.length === 2 ? directTracks : []
-          const [leftTrack, rightTrack] = tracks
-          const leftRect = leftTrack?.getBoundingClientRect()
-          const rightRect = rightTrack?.getBoundingClientRect()
-          const crossTrackElements =
-            leftRect && rightRect
-              ? Array.from(leftTrack?.querySelectorAll('*') ?? [])
-                  .map((element) => ({
-                    element,
-                    rect: element.getBoundingClientRect(),
-                  }))
-                  .filter(({ rect }) => rect.right > rightRect.left + 1)
-                  .map(({ element }) => element.tagName.toLowerCase())
+        const measureLayout = async () =>
+          page.evaluate(() => {
+            const documentElement = document.documentElement
+            const main = document.querySelector('main')
+            const directTracks = main
+              ? Array.from(main.children).filter(
+                  (element) =>
+                    element.tagName === 'SECTION' ||
+                    element.tagName === 'ASIDE',
+                )
               : []
+            const tracks = directTracks.length === 2 ? directTracks : []
+            const [leftTrack, rightTrack] = tracks
+            const leftRect = leftTrack?.getBoundingClientRect()
+            const rightRect = rightTrack?.getBoundingClientRect()
+            const crossTrackElements =
+              leftRect && rightRect
+                ? Array.from(leftTrack?.querySelectorAll('*') ?? [])
+                    .map((element) => ({
+                      element,
+                      rect: element.getBoundingClientRect(),
+                    }))
+                    .filter(({ rect }) => rect.right > rightRect.left + 1)
+                    .map(({ element }) => element.tagName.toLowerCase())
+                : []
 
-          return {
-            clientWidth: documentElement.clientWidth,
-            scrollWidth: documentElement.scrollWidth,
-            crossTrackElements,
-          }
-        })
+            return {
+              clientWidth: documentElement.clientWidth,
+              scrollWidth: documentElement.scrollWidth,
+              crossTrackElements,
+            }
+          })
 
-        expect(
-          metrics.scrollWidth,
-          `${route} scroll width`,
-        ).toBeLessThanOrEqual(metrics.clientWidth)
-        expect(
-          metrics.crossTrackElements,
-          `${route} left track overflow`,
-        ).toEqual([])
+        const assertLayout = async (suffix = '') => {
+          const metrics = await measureLayout()
+          expect(
+            metrics.scrollWidth,
+            `${route} scroll width${suffix}`,
+          ).toBeLessThanOrEqual(metrics.clientWidth)
+          expect(
+            metrics.crossTrackElements,
+            `${route} left track overflow${suffix}`,
+          ).toEqual([])
+        }
+
+        await assertLayout()
+        if (route.startsWith('/browse')) {
+          await forEachBrowseMenu(page, async (menuName) => {
+            await assertLayout(` with ${menuName} menu open`)
+          })
+        }
       }
     })
   }

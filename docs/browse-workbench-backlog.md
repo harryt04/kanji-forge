@@ -336,7 +336,7 @@ module, stop — you have misread the item.
 A control moved into a portal is a control the existing sweeps stop seeing. This
 loop is what stops the menubar quietly undoing Loops B and D.
 
-- [ ] **I1. The six UX e2e sweeps only measure mounted elements.**
+- [x] **I1. The six UX e2e sweeps only measure mounted elements.**
       Where: `e2e/ux-touch-targets.spec.ts`, `ux-form-controls.spec.ts`,
       `ux-language.spec.ts`, `ux-layout.spec.ts`, `ux-level-labels.spec.ts`,
       `ux-fold-overlay.spec.ts`.
@@ -350,6 +350,13 @@ loop is what stops the menubar quietly undoing Loops B and D.
       the touch-target sweep (≥44×44) and the form-control sweep (≥16px
       computed font-size on the 375px run), and deliberately shrinking one
       menu item below either floor makes the sweep fail. Blocked by Loop H.
+
+      Added a shared menu-opening helper and extended all six UX sweeps to
+      measure each portal-mounted Browse menu; the touch sweep now includes
+      Radix menuitem roles. The helper's menu switching passes in
+      `browse-workbench.spec.ts`; static checks and focused Browse unit tests
+      pass, while the broader auth-backed sweep was blocked by local session
+      readiness timeouts before its Browse assertions ran.
 
 - [ ] **I2. A collapsed menu can hide that the wall is filtered.**
       Evidence: today the active filter state is legible because every control

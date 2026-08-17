@@ -1,4 +1,5 @@
 import { API_URL, expect, test } from './fixtures'
+import { forEachBrowseMenu } from './browse-menus'
 
 test.describe('authenticated touch targets', () => {
   test.skip(
@@ -24,56 +25,67 @@ test.describe('authenticated touch targets', () => {
         await page.goto(route.path)
         await page.locator(route.ready).first().waitFor()
 
-        const undersized = await page.evaluate(() => {
-          const selectors = [
-            'a',
-            'button',
-            'input:not([type="hidden"])',
-            'select',
-            'textarea',
-            '[role="button"]',
-            '[role="checkbox"]',
-            '[role="radio"]',
-          ]
-          const elements = Array.from(
-            new Set(
-              selectors.flatMap((selector) =>
-                Array.from(document.querySelectorAll<HTMLElement>(selector)),
+        const measureUndersized = async () =>
+          page.evaluate(() => {
+            const selectors = [
+              'a',
+              'button',
+              'input:not([type="hidden"])',
+              'select',
+              'textarea',
+              '[role="button"]',
+              '[role="checkbox"]',
+              '[role="radio"]',
+              '[role="menuitem"]',
+              '[role="menuitemcheckbox"]',
+              '[role="menuitemradio"]',
+            ]
+            const elements = Array.from(
+              new Set(
+                selectors.flatMap((selector) =>
+                  Array.from(document.querySelectorAll<HTMLElement>(selector)),
+                ),
               ),
-            ),
-          ).filter((element) => {
-            const style = getComputedStyle(element)
-            return (
-              !element.classList.contains('sr-only') &&
-              style.display !== 'none' &&
-              style.visibility !== 'hidden'
-            )
+            ).filter((element) => {
+              const style = getComputedStyle(element)
+              return (
+                !element.classList.contains('sr-only') &&
+                style.display !== 'none' &&
+                style.visibility !== 'hidden'
+              )
+            })
+
+            return elements.flatMap((element) => {
+              // Native checkboxes keep their compact visual glyph; their label
+              // is the intended tappable surface.
+              const target =
+                element instanceof HTMLInputElement &&
+                (element.type === 'checkbox' || element.type === 'radio')
+                  ? (element.closest('label') ?? element)
+                  : element
+              const rect = target.getBoundingClientRect()
+              return rect.width >= 44 && rect.height >= 44
+                ? []
+                : [
+                    {
+                      tag: element.tagName.toLowerCase(),
+                      label:
+                        element.getAttribute('aria-label') ??
+                        element.textContent?.trim().slice(0, 60) ??
+                        '',
+                      width: Math.round(rect.width),
+                      height: Math.round(rect.height),
+                    },
+                  ]
+            })
           })
 
-          return elements.flatMap((element) => {
-            // Native checkboxes keep their compact visual glyph; their label
-            // is the intended tappable surface.
-            const target =
-              element instanceof HTMLInputElement &&
-              (element.type === 'checkbox' || element.type === 'radio')
-                ? (element.closest('label') ?? element)
-                : element
-            const rect = target.getBoundingClientRect()
-            return rect.width >= 44 && rect.height >= 44
-              ? []
-              : [
-                  {
-                    tag: element.tagName.toLowerCase(),
-                    label:
-                      element.getAttribute('aria-label') ??
-                      element.textContent?.trim().slice(0, 60) ??
-                      '',
-                    width: Math.round(rect.width),
-                    height: Math.round(rect.height),
-                  },
-                ]
+        const undersized = await measureUndersized()
+        if (route.path === '/browse') {
+          await forEachBrowseMenu(page, async () => {
+            undersized.push(...(await measureUndersized()))
           })
-        })
+        }
 
         expect(undersized, `${route.path} undersized targets`).toEqual([])
       })

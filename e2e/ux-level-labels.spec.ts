@@ -1,4 +1,5 @@
 import { API_URL, expect, test } from './fixtures'
+import { forEachBrowseMenu } from './browse-menus'
 
 test.describe('level swatch accessible names', () => {
   test.skip(
@@ -13,13 +14,21 @@ test.describe('level swatch accessible names', () => {
       await page.goto(route)
       await page.locator('main').waitFor()
 
-      const labels = await page
-        .locator('.level-swatch, [data-testid="kanji-detail"]')
-        .evaluateAll((swatches) =>
-          swatches
-            .filter((swatch) => swatch.getAttribute('aria-hidden') !== 'true')
-            .map((swatch) => swatch.getAttribute('aria-label')),
-        )
+      const measureLabels = async () =>
+        page
+          .locator('.level-swatch, [data-testid="kanji-detail"]')
+          .evaluateAll((swatches) =>
+            swatches
+              .filter((swatch) => swatch.getAttribute('aria-hidden') !== 'true')
+              .map((swatch) => swatch.getAttribute('aria-label')),
+          )
+
+      const labels = await measureLabels()
+      if (route === '/browse') {
+        await forEachBrowseMenu(page, async () => {
+          labels.push(...(await measureLabels()))
+        })
+      }
 
       for (const label of labels) {
         expect(label ?? '').toMatch(
