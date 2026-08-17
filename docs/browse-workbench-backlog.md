@@ -418,13 +418,18 @@ loop is what stops the menubar quietly undoing Loops B and D.
 
 ## Loop J — Close the loop (P2)
 
-- [ ] **J1. The documentation set describes the pre-menubar Browse.**
+- [x] **J1. The documentation set describes the pre-menubar Browse.**
       Where: [`implemented-already.md`](implemented-already.md)'s "Browse list"
       row, [`src/features/README.md`](../src/features/README.md) if it names the
       control layout, and [`src/ui/README.md`](../src/ui/README.md)'s primitive
       inventory.
       **Acceptance line:** each of those describes the shipped menubar, and no
       link in them 404s.
+
+      Updated the implemented snapshot to describe Browse as the tile-wall-first
+      Search/Sort/Filter/View/Select Menubar workbench; the feature and UI READMEs
+      already matched the shipped layout and primitive. A relative-link audit found
+      no 404s across all three documents.
 
 - [ ] **J2. `HANDOFF-BROWSE-WALL-WORKBENCH.md` has outlived its purpose.**
       Evidence: that file says to delete it once the branch is reviewed or

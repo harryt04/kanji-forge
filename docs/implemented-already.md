@@ -103,7 +103,9 @@ Consistent with the code above, not aspirational:
 - Sign in or register against a running API backend, or continue offline on a cached identity.
 - Land on Home, see the starter deck's name, percent-complete, and last-studied time; set a goal
   date and see days-left / cards-needed-today / on-pace feedback.
-- Open Browse to inspect and filter the installed deck as a local-first list of colored cards with
+- Open Browse as a tile-wall-first workbench: use the Search, Sort, Filter, View, and Select
+  Menubar menus to inspect and filter the installed deck, switch between tile and list layouts,
+  and select cards for bulk actions while preserving the local-first colored-card view with
   readings, meanings, levels, flags, and metadata filters.
 - Open a kanji Detail view to see offline metadata, example words, example sentences with furigana,
   English translations, and source attribution.
