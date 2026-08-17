@@ -138,7 +138,7 @@ pnpm db:generate           # drizzle-kit generate — after changing src/server/
 pnpm db:migrate            # applies migrations; also runs automatically before `pnpm start`
 ```
 
-The full CI definition is [`.github/workflows/ci.yml`](.github/workflows/ci.yml). If a check fails, include the failing command and relevant output in the pull request rather than hiding or weakening the check.
+The full CI definition is [`.github/workflows/ci.yml`](.github/workflows/ci.yml). It runs a fast smoke job (format check, lint/type-check, production build, and pack-fixture verification), unit coverage, and Chromium/WebKit Playwright jobs in parallel, followed by a compatibility aggregator named `build-and-test`. Each Playwright job also performs the production build required by the service-worker tests. If a check fails, include the failing command and relevant output in the pull request rather than hiding or weakening the check.
 
 ## Contributing
 

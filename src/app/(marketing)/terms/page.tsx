@@ -20,9 +20,9 @@ export default function TermsPage(): React.ReactElement {
         <section>
           <h2 className="font-semibold">License</h2>
           <p className="text-muted-foreground mt-2">
-            The application and pipeline code are MIT licensed. Content
-            packs and derived datasets (kanji, dictionary, stroke order,
-            example sentences, and deck definitions) are CC BY-SA. See{' '}
+            The application and pipeline code are MIT licensed. Content packs
+            and derived datasets (kanji, dictionary, stroke order, example
+            sentences, and deck definitions) are CC BY-SA. See{' '}
             <a href="/open-source" className="text-primary underline">
               Open Source
             </a>{' '}
@@ -33,10 +33,10 @@ export default function TermsPage(): React.ReactElement {
         <section>
           <h2 className="font-semibold">No warranty</h2>
           <p className="text-muted-foreground mt-2">
-            KanjiForge is provided &quot;as is,&quot; without warranty of any kind. In
-            particular, JLPT level assignments are unofficial community
-            estimates, not an authoritative source — see the licensing terms
-            in the repository for the full disclaimer.
+            KanjiForge is provided &quot;as is,&quot; without warranty of any
+            kind. In particular, JLPT level assignments are unofficial community
+            estimates, not an authoritative source — see the licensing terms in
+            the repository for the full disclaimer.
           </p>
         </section>
 
@@ -44,8 +44,8 @@ export default function TermsPage(): React.ReactElement {
           <h2 className="font-semibold">Accounts</h2>
           <p className="text-muted-foreground mt-2">
             An account is optional and only needed for cross-device sync and
-            reminders. You may delete your account at any time from
-            Settings; see{' '}
+            reminders. You may delete your account at any time from Settings;
+            see{' '}
             <a href="/privacy" className="text-primary underline">
               Privacy
             </a>{' '}

@@ -5,7 +5,10 @@ import { getKanji } from '@/lib/seo/kanji-pack'
 import { getDeckMembership } from '@/lib/seo/decks'
 import { getSimilarKanji } from '@/lib/seo/similar-kanji'
 import { getKanjiStrokes } from '@/lib/seo/strokes'
-import { getCuratedLiterals, isCuratedLiteral } from '@/lib/seo/curated-literals'
+import {
+  getCuratedLiterals,
+  isCuratedLiteral,
+} from '@/lib/seo/curated-literals'
 import { breadcrumbListJsonLd, definedTermJsonLd } from '@/lib/seo/json-ld'
 
 export const dynamicParams = true
