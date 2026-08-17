@@ -49,7 +49,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -720,10 +731,10 @@ describe('SettingsScreen', () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).decks.upsert({
-      id: 'dev-kanji',
-      name: 'Development Kanji',
+      id: 'jlpt-kanji-n5',
+      name: 'JLPT Kanji N5',
       kind: 'derived',
-      definitionId: 'dev-kanji',
+      definitionId: 'jlpt-kanji-n5',
       updatedAt: 1,
     })
     render(<SettingsScreen />)
@@ -737,7 +748,9 @@ describe('SettingsScreen', () => {
 
     await waitFor(async () =>
       expect(
-        await createUserRepositories(runtime.database).decks.get('dev-kanji'),
+        await createUserRepositories(runtime.database).decks.get(
+          'jlpt-kanji-n5',
+        ),
       ).toMatchObject({ name: 'N5 commute deck' }),
     )
     expect(
@@ -790,9 +803,7 @@ describe('SettingsScreen', () => {
       screen.getByRole('textbox', { name: 'New deck name' }),
       'Commute kanji',
     )
-    await user.click(
-      screen.getByRole('checkbox', { name: /Development Kanji/ }),
-    )
+    await user.click(screen.getByRole('checkbox', { name: /JLPT Kanji N5/ }))
     await user.type(
       screen.getByRole('spinbutton', { name: /First N cards/ }),
       '3',
@@ -827,10 +838,10 @@ describe('SettingsScreen', () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!
     await createUserRepositories(runtime.database).decks.upsert({
-      id: 'dev-kanji',
+      id: 'jlpt-kanji-n5',
       name: 'N5 commute deck',
       kind: 'derived',
-      definitionId: 'dev-kanji',
+      definitionId: 'jlpt-kanji-n5',
       updatedAt: 1,
     })
     render(<SettingsScreen />)
@@ -842,11 +853,13 @@ describe('SettingsScreen', () => {
 
     await waitFor(async () =>
       expect(
-        await createUserRepositories(runtime.database).decks.get('dev-kanji'),
-      ).toMatchObject({ name: 'Development Kanji' }),
+        await createUserRepositories(runtime.database).decks.get(
+          'jlpt-kanji-n5',
+        ),
+      ).toMatchObject({ name: 'JLPT Kanji N5' }),
     )
     expect(
-      await screen.findByText('Renamed deck to “Development Kanji”.'),
+      await screen.findByText('Renamed deck to “JLPT Kanji N5”.'),
     ).toBeInTheDocument()
     expect(
       (await createUserRepositories(runtime.database).outbox.pending())[0],
@@ -862,7 +875,7 @@ describe('SettingsScreen', () => {
       await screen.findByRole('heading', { name: 'Deck organization' }),
     ).toBeInTheDocument()
     const starterFolder = screen.getByRole('textbox', {
-      name: 'Development Kanji folder',
+      name: 'JLPT Kanji N5 folder',
     })
     await user.type(starterFolder, 'JLPT N5')
     await user.click(screen.getAllByRole('button', { name: 'Save folder' })[0]!)
@@ -870,7 +883,7 @@ describe('SettingsScreen', () => {
     await waitFor(async () =>
       expect(
         await createUserRepositories(runtime.database).settings.get(
-          deckFolderSettingKey('dev-kanji'),
+          deckFolderSettingKey('jlpt-kanji-n5'),
         ),
       ).toMatchObject({ value: 'JLPT N5' }),
     )
@@ -964,7 +977,7 @@ describe('SettingsScreen', () => {
     const user = userEvent.setup()
     const runtime = getActiveUserRuntime()!
     const before = repoCardState({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 3,
       dueAt: Date.now() + 86_400_000,
@@ -990,7 +1003,7 @@ describe('SettingsScreen', () => {
     expect(confirm).toHaveBeenCalledOnce()
     await expect(
       createUserRepositories(runtime.database).cardStates.get(
-        'dev-kanji',
+        'jlpt-kanji-n5',
         'kanji:日',
       ),
     ).resolves.toMatchObject({
@@ -1017,14 +1030,14 @@ describe('SettingsScreen', () => {
     const reviewedAt = Date.now() - 86_400_000
     const review = repoReview({
       id: crypto.randomUUID(),
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       at: reviewedAt,
     })
     await repositories.recordGrade({
       review,
       nextState: repoCardState({
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef: 'kanji:日',
         level: 3,
         totalReviews: 4,
@@ -1043,7 +1056,7 @@ describe('SettingsScreen', () => {
     })
     await repositories.sessions.start({
       id: 'settings-statistics-session',
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       startedAt: 1,
       endedAt: 2,
     })
@@ -1059,11 +1072,15 @@ describe('SettingsScreen', () => {
       ),
     ).toBeInTheDocument()
     expect(confirm).toHaveBeenCalledOnce()
-    await expect(repositories.reviews.list('dev-kanji')).resolves.toEqual([])
+    await expect(repositories.reviews.list('jlpt-kanji-n5')).resolves.toEqual(
+      [],
+    )
     await expect(repositories.dailyStats.list()).resolves.toEqual([])
-    await expect(repositories.sessions.list('dev-kanji')).resolves.toEqual([])
+    await expect(repositories.sessions.list('jlpt-kanji-n5')).resolves.toEqual(
+      [],
+    )
     await expect(
-      repositories.cardStates.get('dev-kanji', 'kanji:日'),
+      repositories.cardStates.get('jlpt-kanji-n5', 'kanji:日'),
     ).resolves.toMatchObject({
       level: 0,
       dueAt: null,
@@ -1128,9 +1145,7 @@ describe('SettingsScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Copy deck as text' }))
 
     expect(
-      await screen.findByText(
-        /Copied 200 cards from “Development Kanji” as text\./,
-      ),
+      await screen.findByText(/Copied 52 cards from “JLPT Kanji N5” as text\./),
     ).toBeInTheDocument()
     expect(writeText).toHaveBeenCalledOnce()
     expect(writeText.mock.calls[0]?.[0]).toContain('日\t')
@@ -1151,7 +1166,7 @@ describe('SettingsScreen', () => {
 
     expect(
       await screen.findByText(
-        /Copied a share link for “Development Kanji”\. It contains card content only/u,
+        /Copied a share link for “JLPT Kanji N5”\. It contains card content only/u,
       ),
     ).toBeInTheDocument()
     expect(writeText).toHaveBeenCalledOnce()
@@ -1361,7 +1376,7 @@ describe('SettingsScreen', () => {
     const json = JSON.stringify({
       format: 'kanjiforge-deck-export',
       version: 1,
-      deck: { id: 'dev-kanji', name: 'Development Kanji' },
+      deck: { id: 'jlpt-kanji-n5', name: 'JLPT Kanji N5' },
       cards: [{ kanji: '日' }, { kanji: '本' }],
     })
     const file = new File([json], 'kanjiforge-deck.json', {
@@ -1462,7 +1477,7 @@ describe('SettingsScreen', () => {
     })
     await repositories.recordCardState({
       state: repoCardState({
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef: 'kanji:日',
         level: 3,
         flagged: false,

@@ -9,6 +9,16 @@ const REPO_PACK_ROOT = join(process.cwd(), 'packs')
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
     const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(
@@ -52,18 +62,32 @@ describe('data/packs', () => {
   })
 
   describe('loadDeckDefinitions', () => {
-    it('loads deck definitions from the packs-dev fixture', async () => {
+    it('loads the built-in deck catalog', async () => {
       const { loadDeckDefinitions } = await freshPacks()
       const decks = await loadDeckDefinitions()
       expect(decks.length).toBeGreaterThan(0)
-      expect(decks.find((deck) => deck.id === 'dev-kanji')).toMatchObject({
-        contentType: 'kanji',
-      })
+      for (const level of ['n5', 'n4', 'n3', 'n2', 'n1']) {
+        expect(
+          decks.find((deck) => deck.id === `jlpt-kanji-${level}`),
+        ).toMatchObject({ contentType: 'kanji', category: 'jlpt' })
+      }
       expect(decks.find((deck) => deck.id === 'kanken-10')).toMatchObject({
         name: 'Kanji Kentei 10',
         contentType: 'kanji',
+        category: 'kanken',
         contentRefs: expect.arrayContaining(['kanji:一']),
       })
+    })
+
+    it('returns decks sorted by category', async () => {
+      const { loadDeckDefinitions } = await freshPacks()
+      const decks = await loadDeckDefinitions()
+      const categories = decks.map((deck) => deck.category)
+      const firstSeen = [...new Set(categories)]
+      const sortedCopy = [...categories].sort(
+        (a, b) => firstSeen.indexOf(a) - firstSeen.indexOf(b),
+      )
+      expect(categories).toEqual(sortedCopy)
     })
 
     it('caches the deck definitions across calls', async () => {

@@ -35,6 +35,8 @@ export interface DeckSummary {
   readonly progressLevel: 0 | 1 | 2 | 3 | 4
   readonly lastStudiedAt: number | null
   readonly folder: string
+  /** Built-in shelf category (e.g. 'jlpt', 'kanken'); empty for custom decks. */
+  readonly category: string
 }
 
 /** Untouched cards (no saved state) count as level 0. */
@@ -59,6 +61,7 @@ export function summarizeDeckCards(input: {
     readonly id: string
     readonly name: string
     readonly kind: 'derived' | 'custom'
+    readonly category?: string
   }
   readonly contentRefs: readonly string[]
   readonly states: readonly CardState[]
@@ -112,6 +115,7 @@ export function summarizeDeckCards(input: {
     progressLevel: computeProgressLevel(progressValue),
     lastStudiedAt,
     folder: input.folder ?? '',
+    category: input.deck.category ?? '',
   }
 }
 
@@ -174,7 +178,12 @@ export async function loadDeckSummaries(
         sessionLastEndedAt(definition.id),
       ])
       return summarizeDeckCards({
-        deck: { id: definition.id, name: definition.name, kind: 'derived' },
+        deck: {
+          id: definition.id,
+          name: definition.name,
+          kind: 'derived',
+          category: definition.category,
+        },
         contentRefs: definition.contentRefs,
         states,
         userId,

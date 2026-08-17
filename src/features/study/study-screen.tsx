@@ -47,6 +47,7 @@ import {
   WRITING_VALIDATION_SETTING,
 } from '@/features/writing'
 import type { StrokeLeniency } from '@/core/stroke/match'
+import { STARTER_DECK_ID } from '@/features/decks/starter-deck'
 
 const LEVEL_LABELS = ['New', 'Seen', 'Learning', 'Known', 'Mastered'] as const
 export const GREY_STICKIES_SETTING = 'study.greyStickies'
@@ -58,7 +59,7 @@ function formatElapsedTime(totalSeconds: number): string {
 }
 
 export function StudyScreen({
-  deckDefinitionId = 'dev-kanji',
+  deckDefinitionId = STARTER_DECK_ID,
 }: {
   deckDefinitionId?: string
 }): React.ReactElement {

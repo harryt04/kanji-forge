@@ -20,7 +20,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')

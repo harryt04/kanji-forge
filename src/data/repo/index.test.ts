@@ -372,11 +372,11 @@ describe('recordCardState atomicity', () => {
     const repos = await freshRepo()
     await expect(
       repos.deleteDeck({
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         mutation: {
           id: 'starter-delete-1',
           mutType: 'deck.delete',
-          payload: JSON.stringify({ deckId: 'dev-kanji' }),
+          payload: JSON.stringify({ deckId: 'jlpt-kanji-n5' }),
           createdAt: 1,
           attempts: 0,
         },

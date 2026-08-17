@@ -17,7 +17,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -57,7 +68,7 @@ describe('HomeScreen', () => {
     // Let the in-flight load settle before teardown closes the database out from under it.
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+        screen.getByRole('heading', { name: 'JLPT Kanji N5', level: 2 }),
       ).toBeInTheDocument(),
     )
   })
@@ -68,7 +79,7 @@ describe('HomeScreen', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+        screen.getByRole('heading', { name: 'JLPT Kanji N5', level: 2 }),
       ).toBeInTheDocument(),
     )
     expect(screen.getByText('0%')).toBeInTheDocument()
@@ -88,17 +99,21 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
 
     const shelf = await screen.findByTestId('builtin-deck-shelf')
-    const wordsHeading = within(shelf).getByText('Development Words')
-    expect(wordsHeading).toBeInTheDocument()
-    expect(wordsHeading.nextElementSibling).toHaveTextContent('500 cards')
+    const n4Heading = within(shelf).getByText('JLPT Kanji N4')
+    expect(n4Heading).toBeInTheDocument()
+    expect(n4Heading.nextElementSibling).toHaveTextContent('166 cards')
     const studyLink = within(shelf)
       .getAllByRole('link', { name: 'Study', exact: true })
-      .find((link) => link.getAttribute('href') === '/study?deckId=dev-words')
+      .find(
+        (link) => link.getAttribute('href') === '/study?deckId=jlpt-kanji-n4',
+      )
     const browseLink = within(shelf)
       .getAllByRole('link', { name: 'Browse', exact: true })
-      .find((link) => link.getAttribute('href') === '/browse?deckId=dev-words')
-    expect(studyLink).toHaveAttribute('href', '/study?deckId=dev-words')
-    expect(browseLink).toHaveAttribute('href', '/browse?deckId=dev-words')
+      .find(
+        (link) => link.getAttribute('href') === '/browse?deckId=jlpt-kanji-n4',
+      )
+    expect(studyLink).toHaveAttribute('href', '/study?deckId=jlpt-kanji-n4')
+    expect(browseLink).toHaveAttribute('href', '/browse?deckId=jlpt-kanji-n4')
     expect(studyLink?.parentElement).toHaveClass('flex-wrap')
   })
 
@@ -221,7 +236,7 @@ describe('HomeScreen', () => {
     const repo = createUserRepositories(runtime.database)
     await repo.sessions.start({
       id: 'session-1',
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       startedAt: 1_700_000_000_000,
       endedAt: null,
     })
@@ -231,7 +246,7 @@ describe('HomeScreen', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+        screen.getByRole('heading', { name: 'JLPT Kanji N5', level: 2 }),
       ).toBeInTheDocument(),
     )
     expect(screen.getByText('1m 5s')).toBeInTheDocument()
@@ -244,7 +259,7 @@ describe('HomeScreen', () => {
     const now = Date.now()
     const review = (id: string, at: number) => ({
       id,
-      deckId: 'dev-kanji' as const,
+      deckId: 'jlpt-kanji-n5' as const,
       contentRef: 'kanji:日' as const,
       at,
       grade: 'good' as const,
@@ -259,7 +274,7 @@ describe('HomeScreen', () => {
     await repo.reviews.append(review('review-1', now - 2 * 86_400_000))
     await repo.reviews.append(review('review-2', now - 86_400_000))
     await repo.settings.set({
-      key: 'goal:dev-kanji',
+      key: 'goal:jlpt-kanji-n5',
       value: String(now + 30 * 86_400_000),
       updatedAt: now,
     })
@@ -285,7 +300,7 @@ describe('HomeScreen', () => {
     await repo.recordGrade({
       review: {
         id: 'r1',
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef: 'kanji:日',
         at: 1_700_000_000_000,
         grade: 'easy',
@@ -298,7 +313,7 @@ describe('HomeScreen', () => {
         deviceId: 'device',
       },
       nextState: {
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef: 'kanji:日',
         level: 4,
         dueAt: null,
@@ -349,7 +364,7 @@ describe('HomeScreen', () => {
       await repo.recordGrade({
         review: {
           id: `distribution-${index}`,
-          deckId: 'dev-kanji',
+          deckId: 'jlpt-kanji-n5',
           contentRef: card.contentRef,
           at: now + index,
           grade: card.grade,
@@ -362,7 +377,7 @@ describe('HomeScreen', () => {
           deviceId: 'device',
         },
         nextState: {
-          deckId: 'dev-kanji',
+          deckId: 'jlpt-kanji-n5',
           contentRef: card.contentRef,
           level: card.level,
           dueAt: null,
@@ -393,7 +408,7 @@ describe('HomeScreen', () => {
       expect(screen.getByTestId('level-distribution')).toBeInTheDocument(),
     )
     expect(screen.getByText('Level 0, white (Shiro)')).toBeInTheDocument()
-    expect(screen.getByText('197 cards')).toBeInTheDocument()
+    expect(screen.getByText('49 cards')).toBeInTheDocument()
     expect(screen.getByText('Level 1, yellow (Ki)')).toBeInTheDocument()
     expect(screen.getByText('Level 2, green (Midori)')).toBeInTheDocument()
     expect(screen.getByText('Level 4, black (Kuro)')).toBeInTheDocument()
@@ -402,7 +417,7 @@ describe('HomeScreen', () => {
     ).not.toHaveLength(0)
     expect(
       screen.getByRole('img', {
-        name: /Level distribution: Level 0, white \(Shiro\): 197 cards/,
+        name: /Level distribution: Level 0, white \(Shiro\): 49 cards/,
       }),
     ).toBeInTheDocument()
   })
@@ -423,7 +438,7 @@ describe('HomeScreen', () => {
     for (const review of reviews) {
       await repo.reviews.append({
         id: review.id,
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef: 'kanji:日',
         at: now,
         grade: review.grade,
@@ -438,7 +453,7 @@ describe('HomeScreen', () => {
     }
     await repo.reviews.append({
       id: 'retention-manual',
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       at: now,
       grade: 'again',
@@ -470,7 +485,7 @@ describe('HomeScreen', () => {
     const repo = createUserRepositories(runtime.database)
     const now = Date.now()
     const state = (contentRef: string, lapses: number, level: 1 | 2) => ({
-      deckId: 'dev-kanji' as const,
+      deckId: 'jlpt-kanji-n5' as const,
       contentRef,
       level,
       dueAt: now,
@@ -515,7 +530,7 @@ describe('HomeScreen', () => {
     const repo = createUserRepositories(runtime.database)
     const now = Date.now()
     const state = (contentRef: string, dueAt: number) => ({
-      deckId: 'dev-kanji' as const,
+      deckId: 'jlpt-kanji-n5' as const,
       contentRef,
       level: 1 as const,
       dueAt,
@@ -554,7 +569,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { name: 'Development Kanji', level: 2 }),
+        screen.getByRole('heading', { name: 'JLPT Kanji N5', level: 2 }),
       ).toBeInTheDocument(),
     )
 
@@ -579,7 +594,7 @@ describe('HomeScreen', () => {
     const repo = createUserRepositories(runtime.database)
     const now = Date.now()
     await repo.settings.set({
-      key: 'goal:dev-kanji',
+      key: 'goal:jlpt-kanji-n5',
       value: String(now + 86_400_000),
       updatedAt: now,
     })
@@ -588,7 +603,7 @@ describe('HomeScreen', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(screen.getByRole('alert')).toHaveTextContent(
-      /At this pace, you'd need 920 correct answers a day/,
+      /At this pace, you'd need 240 correct answers a day/,
     )
 
     await userEvent.click(

@@ -31,7 +31,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -67,7 +78,7 @@ async function seedListView(id: number) {
   await runtime.database.ready
   const repo = createUserRepositories(runtime.database)
   await repo.settings.set({
-    key: `${BROWSE_VIEW_SETTING}:dev-kanji`,
+    key: `${BROWSE_VIEW_SETTING}:jlpt-kanji-n5`,
     value: 'list',
     updatedAt: Date.now(),
   })
@@ -180,14 +191,14 @@ describe('BrowseScreen', () => {
     bootstrapUserRuntime(`browse-${userId}`)
     const contentRef = 'kanji:日'
     const invalidDeck = {
-      deckId: 'dev-kanji',
-      name: 'Development Kanji',
+      deckId: 'jlpt-kanji-n5',
+      name: 'JLPT Kanji N5',
       cards: [
         {
-          deckId: 'dev-kanji',
+          deckId: 'jlpt-kanji-n5',
           contentRef,
           state: {
-            deckId: 'dev-kanji',
+            deckId: 'jlpt-kanji-n5',
             contentRef,
             level: 7,
             dueAt: null,
@@ -280,14 +291,12 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    expect(
-      screen.getByText('Development Kanji · 200 cards'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('JLPT Kanji N5 · 52 cards')).toBeInTheDocument()
     expect(screen.getAllByText('日')).not.toHaveLength(0)
     expect(
       screen.getByText('day; sun; Japan; counter for days'),
     ).toBeInTheDocument()
-    expect(screen.getAllByTestId('browse-card')).toHaveLength(200)
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(52)
   })
 
   it('switches to a compact tile wall and persists the selected view', async () => {
@@ -304,7 +313,7 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
 
-    expect(screen.getAllByTestId('browse-tile')).toHaveLength(200)
+    expect(screen.getAllByTestId('browse-tile')).toHaveLength(52)
     expect(
       screen.getByRole('gridcell', {
         name: '日, Level 0, white (Shiro), New',
@@ -323,7 +332,7 @@ describe('BrowseScreen', () => {
         .closest('a'),
     ).toHaveAttribute(
       'href',
-      '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
+      '/browse?deckId=jlpt-kanji-n5&contentRef=kanji%3A%E6%97%A5',
     )
 
     openBrowseMenu('View')
@@ -340,7 +349,7 @@ describe('BrowseScreen', () => {
     window.history.replaceState(
       {},
       '',
-      '/browse?deckId=dev-kanji&contentRef=kanji%3A%E6%97%A5',
+      '/browse?deckId=jlpt-kanji-n5&contentRef=kanji%3A%E6%97%A5',
     )
     bootstrapUserRuntime(`browse-${userId}`)
     render(<BrowseScreen />)
@@ -496,7 +505,7 @@ describe('BrowseScreen', () => {
 
     cleanup()
     await repo.settings.set({
-      key: `${BROWSE_VIEW_SETTING}:dev-kanji`,
+      key: `${BROWSE_VIEW_SETTING}:jlpt-kanji-n5`,
       value: 'list',
       updatedAt: Date.now(),
     })
@@ -509,7 +518,7 @@ describe('BrowseScreen', () => {
   it('shows a level ramp with a labelled segment for every level', async () => {
     const { repo } = await seedListView(userId)
     await repo.cardStates.upsert({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 3,
       dueAt: Date.now(),
@@ -534,7 +543,7 @@ describe('BrowseScreen', () => {
       ramp.getByLabelText('Level 3, blue (Ao), Known, 1 cards'),
     ).toBeInTheDocument()
     expect(
-      ramp.getByLabelText('Level 0, white (Shiro), New, 199 cards'),
+      ramp.getByLabelText('Level 0, white (Shiro), New, 51 cards'),
     ).toBeInTheDocument()
   })
 
@@ -543,7 +552,7 @@ describe('BrowseScreen', () => {
     await runtime.database.ready
     const repo = createUserRepositories(runtime.database)
     await repo.cardStates.upsert({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 3,
       dueAt: Date.now(),
@@ -562,7 +571,7 @@ describe('BrowseScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
-    expect(screen.getAllByTestId('browse-tile')).toHaveLength(200)
+    expect(screen.getAllByTestId('browse-tile')).toHaveLength(52)
 
     const ramp = within(screen.getByTestId('browse-level-ramp'))
     const segment = ramp.getByLabelText('Level 3, blue (Ao), Known, 1 cards')
@@ -583,7 +592,7 @@ describe('BrowseScreen', () => {
     await runtime.database.ready
     const repo = createUserRepositories(runtime.database)
     await repo.cardStates.upsert({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 3,
       dueAt: Date.now(),
@@ -612,7 +621,7 @@ describe('BrowseScreen', () => {
 
     fireEvent.click(segment)
     await waitFor(() =>
-      expect(screen.getAllByTestId('browse-tile')).toHaveLength(200),
+      expect(screen.getAllByTestId('browse-tile')).toHaveLength(52),
     )
     expect(segment).toHaveAttribute('aria-pressed', 'false')
   })
@@ -697,9 +706,7 @@ describe('BrowseScreen', () => {
         screen.getByRole('button', { name: /^Kanji Kentei 10,/ }),
       ).toBeInTheDocument(),
     )
-    expect(
-      screen.getByText('Development Kanji · 200 cards'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('JLPT Kanji N5 · 52 cards')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /^Kanji Kentei 10,/ }))
 
@@ -752,7 +759,7 @@ describe('BrowseScreen', () => {
   it('shows each card level and flag state from the local database', async () => {
     const { repo } = await seedListView(userId)
     await repo.cardStates.upsert({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 3,
       dueAt: Date.now(),
@@ -791,7 +798,7 @@ describe('BrowseScreen', () => {
     fireEvent.change(search, { target: { value: 'sun' } })
 
     expect(
-      screen.getByText('Development Kanji · 1 of 200 cards'),
+      screen.getByText('JLPT Kanji N5 · 1 of 52 cards'),
     ).toBeInTheDocument()
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
     expect(screen.getAllByText('日')).not.toHaveLength(0)
@@ -832,7 +839,7 @@ describe('BrowseScreen', () => {
       screen.getByRole('menuitem', { name: 'Search (active)', exact: true }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Development Kanji · 1 of 200 cards'),
+      screen.getByText('JLPT Kanji N5 · 1 of 52 cards'),
     ).toBeInTheDocument()
 
     openBrowseMenu('Filter')
@@ -841,7 +848,7 @@ describe('BrowseScreen', () => {
       screen.getByRole('menuitem', { name: 'Filter (active)', exact: true }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Development Kanji · 0 of 200 cards'),
+      screen.getByText('JLPT Kanji N5 · 0 of 52 cards'),
     ).toBeInTheDocument()
 
     openBrowseMenu('Filter')
@@ -871,7 +878,7 @@ describe('BrowseScreen', () => {
       ['kanji:一', 1],
     ] as const) {
       await repo.cardStates.upsert({
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef,
         level,
         dueAt: now,
@@ -917,7 +924,7 @@ describe('BrowseScreen', () => {
       ['kanji:一', 1, false],
     ] as const) {
       await repo.cardStates.upsert({
-        deckId: 'dev-kanji',
+        deckId: 'jlpt-kanji-n5',
         contentRef,
         level,
         dueAt: now,
@@ -941,7 +948,7 @@ describe('BrowseScreen', () => {
     openBrowseMenu('Filter')
     fireEvent.click(screen.getByRole('menuitemradio', { name: /3 · Known/ }))
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
-    expect(screen.getByText(/1 of 200 cards/)).toBeInTheDocument()
+    expect(screen.getByText(/1 of 52 cards/)).toBeInTheDocument()
     expect(screen.getByText('Flagged')).toBeInTheDocument()
 
     openBrowseMenu('Filter')
@@ -975,14 +982,14 @@ describe('BrowseScreen', () => {
     )
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'Clear filters' }))
-    expect(screen.getAllByTestId('browse-card')).toHaveLength(200)
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(52)
   })
 
   it('sets a card level manually without changing review totals', async () => {
     const { repo } = await seedListView(userId)
     const reviewedAt = Date.now() - 86_400_000
     await repo.cardStates.upsert({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 1,
       dueAt: reviewedAt + 86_400_000,
@@ -1012,7 +1019,9 @@ describe('BrowseScreen', () => {
     await waitFor(() =>
       expect(screen.getByText('Level 4 · Mastered')).toBeInTheDocument(),
     )
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:日'),
+    ).toMatchObject({
       level: 4,
       manualOverride: true,
       totalReviews: 2,
@@ -1021,7 +1030,7 @@ describe('BrowseScreen', () => {
       flagged: true,
     })
     expect(await repo.dailyStats.list()).toEqual([])
-    expect(await repo.reviews.list('dev-kanji', 'kanji:日')).toHaveLength(1)
+    expect(await repo.reviews.list('jlpt-kanji-n5', 'kanji:日')).toHaveLength(1)
     expect(await repo.outbox.pending()).toHaveLength(1)
   })
 
@@ -1042,10 +1051,14 @@ describe('BrowseScreen', () => {
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('2 cards flagged.'),
     )
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:日'),
+    ).toMatchObject({
       flagged: true,
     })
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:一'),
+    ).toMatchObject({
       flagged: true,
     })
     expect(await repo.outbox.pending()).toHaveLength(2)
@@ -1060,10 +1073,14 @@ describe('BrowseScreen', () => {
         '2 cards unflagged.',
       ),
     )
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:日'),
+    ).toMatchObject({
       flagged: false,
     })
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:一'),
+    ).toMatchObject({
       flagged: false,
     })
   }, 15_000)
@@ -1092,17 +1109,21 @@ describe('BrowseScreen', () => {
         '2 cards set to Level 4 · Mastered.',
       ),
     )
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:日')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:日'),
+    ).toMatchObject({
       level: 4,
       manualOverride: true,
       totalReviews: 0,
     })
-    expect(await repo.cardStates.get('dev-kanji', 'kanji:一')).toMatchObject({
+    expect(
+      await repo.cardStates.get('jlpt-kanji-n5', 'kanji:一'),
+    ).toMatchObject({
       level: 4,
       manualOverride: true,
       totalReviews: 0,
     })
-    expect(await repo.reviews.list('dev-kanji')).toHaveLength(2)
+    expect(await repo.reviews.list('jlpt-kanji-n5')).toHaveLength(2)
     expect(await repo.dailyStats.list()).toEqual([])
     expect(await repo.outbox.pending()).toHaveLength(2)
   })
@@ -1271,7 +1292,7 @@ describe('BrowseScreen', () => {
     )
     expect(
       screen.getByRole('toolbar', { name: 'Bulk card actions' }),
-    ).toHaveTextContent('200 selected')
+    ).toHaveTextContent('52 selected')
 
     openBrowseMenu('Select')
     fireEvent.click(screen.getByRole('menuitem', { name: 'Clear selection' }))

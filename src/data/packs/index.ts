@@ -21,6 +21,8 @@ export interface DeckDefinition {
   readonly name: string
   readonly description: string
   readonly contentType: 'kanji' | 'word' | 'sentence'
+  readonly category: string
+  readonly sortOrder: number
   readonly contentRefs: readonly string[]
 }
 
@@ -106,8 +108,11 @@ function loadSqlJs(): ReturnType<typeof initSqlJs> {
 }
 
 let deckDefinitionsPromise: Promise<readonly DeckDefinition[]> | undefined
+/** Loads the shipped built-in deck catalog (`packs/decks/catalog.json`,
+ * built by `scripts/build-packs/build-decks.ts`), already sorted by shelf
+ * category then `sortOrder`. */
 export function loadDeckDefinitions(): Promise<readonly DeckDefinition[]> {
-  deckDefinitionsPromise ??= fetch('/packs-dev/decks.json')
+  deckDefinitionsPromise ??= fetch('/packs/decks/catalog.json')
     .then((response) => {
       if (!response.ok)
         throw new Error(`Failed to load deck definitions (${response.status}).`)

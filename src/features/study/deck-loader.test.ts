@@ -9,7 +9,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -42,19 +53,19 @@ async function freshDatabase(): Promise<LocalUserDatabase> {
 describe('loadStarterDeck', () => {
   it('lazily registers the deck on first load and loads kanji content', async () => {
     const database = await freshDatabase()
-    const loaded = await loadStarterDeck(database, 'dev-kanji')
+    const loaded = await loadStarterDeck(database, 'jlpt-kanji-n5')
 
-    expect(loaded.deckId).toBe('dev-kanji')
-    expect(loaded.name).toBe('Development Kanji')
+    expect(loaded.deckId).toBe('jlpt-kanji-n5')
+    expect(loaded.name).toBe('JLPT Kanji N5')
     expect(loaded.cards.length).toBeGreaterThan(0)
     expect(loaded.content.get('kanji:日')).toMatchObject({ literal: '日' })
   })
 
   it('does not re-register the deck on a second load', async () => {
     const database = await freshDatabase()
-    await loadStarterDeck(database, 'dev-kanji')
+    await loadStarterDeck(database, 'jlpt-kanji-n5')
     const fetchesAfterFirst = vi.mocked(fetch).mock.calls.length
-    await loadStarterDeck(database, 'dev-kanji')
+    await loadStarterDeck(database, 'jlpt-kanji-n5')
     // Deck definitions and the kanji pack are process-cached; a second load must not
     // re-fetch them, and must not error on the already-registered deck row.
     expect(vi.mocked(fetch).mock.calls.length).toBe(fetchesAfterFirst)
@@ -64,18 +75,18 @@ describe('loadStarterDeck', () => {
     const database = await freshDatabase()
     const repo = (await import('@/data/repo')).createUserRepositories(database)
     await repo.decks.upsert({
-      id: 'dev-kanji',
+      id: 'jlpt-kanji-n5',
       name: 'N5 commute deck',
       kind: 'derived',
-      definitionId: 'dev-kanji',
+      definitionId: 'jlpt-kanji-n5',
       updatedAt: Date.now(),
     })
 
-    await expect(loadStarterDeck(database, 'dev-kanji')).resolves.toMatchObject(
-      {
-        name: 'N5 commute deck',
-      },
-    )
+    await expect(
+      loadStarterDeck(database, 'jlpt-kanji-n5'),
+    ).resolves.toMatchObject({
+      name: 'N5 commute deck',
+    })
   })
 
   it('throws for an unknown deck definition id', async () => {
@@ -85,9 +96,30 @@ describe('loadStarterDeck', () => {
     )
   })
 
+  it('resolves an already-registered derived deck whose definition was removed from the catalog, with zero cards', async () => {
+    // Simulates a returning user whose stored `decks` row points at a
+    // definition id no longer shipped in the catalog (e.g. a legacy fixture
+    // deck). This must degrade, not throw — see loadDeck's doc comment.
+    const database = await freshDatabase()
+    const repo = (await import('@/data/repo')).createUserRepositories(database)
+    await repo.decks.upsert({
+      id: 'legacy-fixture-deck',
+      name: 'Legacy Fixture Deck',
+      kind: 'derived',
+      definitionId: 'legacy-fixture-deck',
+      updatedAt: Date.now(),
+    })
+
+    const loaded = await loadStarterDeck(database, 'legacy-fixture-deck')
+
+    expect(loaded.name).toBe('Legacy Fixture Deck')
+    expect(loaded.cards).toEqual([])
+    expect(loaded.content.size).toBe(0)
+  })
+
   it('skips content refs whose kanji record is missing from the pack', async () => {
     const database = await freshDatabase()
-    const loaded = await loadStarterDeck(database, 'dev-kanji')
+    const loaded = await loadStarterDeck(database, 'jlpt-kanji-n5')
     // Every content ref not resolvable in the pack is simply absent from `content`,
     // rather than throwing — the loader tolerates partial packs.
     for (const [ref, card] of loaded.content) {

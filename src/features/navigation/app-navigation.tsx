@@ -4,28 +4,81 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getActiveUserRuntime } from '@/auth/runtime'
-import { loadStarterDeck } from '@/features/study/deck-loader'
+import { createUserRepositories } from '@/data/repo'
+import { loadDeck } from '@/features/study/deck-loader'
+import { STARTER_DECK_ID } from '@/features/decks/starter-deck'
+import { APP_BADGE_STATE_CHANGED_EVENT } from '@/pwa/events'
+import {
+  BROWSE_BADGE_DECK_CHANGED_EVENT,
+  BROWSE_BADGE_SETTING,
+  BROWSE_BADGE_SETTING_CHANGED_EVENT,
+  browseBadgeLabel,
+  countBrowseBadgeCards,
+  isBrowseBadgePreference,
+  type BrowseBadgePreference,
+} from './browse-badge'
 
 interface AppNavigationProps {
   readonly userId: string
   readonly orientation?: 'horizontal' | 'vertical'
 }
 
+function browseDeckIdFromLocation(pathname: string): string {
+  if (typeof window === 'undefined' || !pathname.startsWith('/browse'))
+    return STARTER_DECK_ID
+  const requested = new URL(window.location.href).searchParams.get('deckId')
+  return requested || STARTER_DECK_ID
+}
+
 /**
  * Primary navigation for authenticated screens.
  *
  * The Browse badge is deliberately sourced from the installed deck rather than
- * hard-coded. This keeps the count useful when a content pack or deck
- * definition changes, and it remains available offline with the same local
- * source of truth as Browse itself. Help is a bundled route so it remains
- * available alongside the study surfaces when the network is unavailable.
+ * hard-coded. It tracks whichever deck Browse currently shows (see
+ * `announceBrowseDeck` in `browse-screen.tsx`), and its meaning (due / total /
+ * unstudied / off) is a user setting read from `BROWSE_BADGE_SETTING`. It
+ * remains available offline with the same local source of truth as Browse
+ * itself. Help is a bundled route so it remains available alongside the study
+ * surfaces when the network is unavailable.
  */
 export function AppNavigation({
   userId,
   orientation = 'horizontal',
 }: AppNavigationProps): React.ReactElement {
-  const [browseCount, setBrowseCount] = useState<number | null>(null)
   const pathname = usePathname()
+  const [browseBadge, setBrowseBadge] = useState<{
+    count: number
+    label: string
+  } | null>(null)
+  const [deckId, setDeckId] = useState(() => browseDeckIdFromLocation(pathname))
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    setDeckId(browseDeckIdFromLocation(pathname))
+  }, [pathname])
+
+  useEffect(() => {
+    function onDeckChanged(event: Event): void {
+      const detail = (event as CustomEvent<{ deckId: string }>).detail
+      if (detail?.deckId) setDeckId(detail.deckId)
+    }
+    function bumpRefresh(): void {
+      setRefreshKey((key) => key + 1)
+    }
+    window.addEventListener(BROWSE_BADGE_DECK_CHANGED_EVENT, onDeckChanged)
+    window.addEventListener(BROWSE_BADGE_SETTING_CHANGED_EVENT, bumpRefresh)
+    window.addEventListener(APP_BADGE_STATE_CHANGED_EVENT, bumpRefresh)
+    window.addEventListener('popstate', bumpRefresh)
+    return () => {
+      window.removeEventListener(BROWSE_BADGE_DECK_CHANGED_EVENT, onDeckChanged)
+      window.removeEventListener(
+        BROWSE_BADGE_SETTING_CHANGED_EVENT,
+        bumpRefresh,
+      )
+      window.removeEventListener(APP_BADGE_STATE_CHANGED_EVENT, bumpRefresh)
+      window.removeEventListener('popstate', bumpRefresh)
+    }
+  }, [])
 
   useEffect(() => {
     const runtime = getActiveUserRuntime()
@@ -35,8 +88,25 @@ export function AppNavigation({
     void (async () => {
       try {
         await runtime.database.ready
-        const deck = await loadStarterDeck(runtime.database)
-        if (active) setBrowseCount(deck.cards.length)
+        const deck = await loadDeck(runtime.database, deckId)
+        const repositories = createUserRepositories(runtime.database)
+        const saved = await repositories.settings.get(BROWSE_BADGE_SETTING)
+        const savedPreference = saved?.value ?? ''
+        const preference: BrowseBadgePreference = isBrowseBadgePreference(
+          savedPreference,
+        )
+          ? savedPreference
+          : 'due'
+        if (!active) return
+        if (preference === 'off') {
+          setBrowseBadge(null)
+          return
+        }
+        const count = countBrowseBadgeCards(deck.cards, preference, Date.now())
+        setBrowseBadge({
+          count,
+          label: browseBadgeLabel(count, preference, deck.name),
+        })
       } catch {
         // Navigation remains usable if the pack is still loading or unavailable.
       }
@@ -45,7 +115,7 @@ export function AppNavigation({
     return () => {
       active = false
     }
-  }, [userId])
+  }, [userId, deckId, refreshKey])
 
   return (
     <div
@@ -76,21 +146,22 @@ export function AppNavigation({
             'relative gap-2',
           )}
           href="/browse"
+          title={browseBadge?.label}
           aria-label={
-            browseCount === null ? 'Browse' : `Browse, ${browseCount} stickies`
+            browseBadge === null ? 'Browse' : `Browse, ${browseBadge.label}`
           }
           aria-current={
             isNavigationPathActive(pathname, '/browse') ? 'page' : undefined
           }
         >
           <span>Browse</span>
-          {browseCount !== null && (
+          {browseBadge !== null && (
             <span
               className="bg-primary text-primary-foreground inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums"
               data-testid="browse-count-badge"
               aria-hidden="true"
             >
-              {browseCount}
+              {browseBadge.count}
             </span>
           )}
         </Link>

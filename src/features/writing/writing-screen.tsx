@@ -22,8 +22,7 @@ import {
   isWritingValidationEnabled,
   WRITING_VALIDATION_SETTING,
 } from './settings'
-
-const DEFAULT_DECK_ID = 'dev-kanji'
+import { STARTER_DECK_ID as DEFAULT_DECK_ID } from '@/features/decks/starter-deck'
 
 /** How long the finished repetition stays on screen before the drill advances. */
 const AUTO_CLEAR_DELAY_MS = 500

@@ -2,8 +2,18 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
+import {
+  bootstrapUserRuntime,
+  clearUserRuntime,
+  getActiveUserRuntime,
+} from '@/auth/runtime'
+import { createUserRepositories } from '@/data/repo'
 import { AppNavigation } from './app-navigation'
+import {
+  BROWSE_BADGE_DECK_CHANGED_EVENT,
+  BROWSE_BADGE_SETTING,
+  BROWSE_BADGE_SETTING_CHANGED_EVENT,
+} from './browse-badge'
 
 const pathnameState = vi.hoisted(() => ({ current: '/home' }))
 
@@ -15,7 +25,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -56,10 +77,12 @@ describe('AppNavigation', () => {
       '/browse',
     )
     await waitFor(() =>
-      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('200'),
+      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('52'),
     )
     expect(
-      screen.getByRole('link', { name: 'Browse, 200 stickies' }),
+      screen.getByRole('link', {
+        name: 'Browse, 52 cards due in JLPT Kanji N5',
+      }),
     ).toHaveAttribute('href', '/browse')
     expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute(
       'href',
@@ -110,10 +133,79 @@ describe('AppNavigation', () => {
       'vertical',
     )
     await waitFor(() =>
-      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('200'),
+      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('52'),
     )
     expect(screen.getByRole('link', { name: 'Dictionary' })).toHaveClass(
       'w-full',
+    )
+  })
+
+  it('hides the badge when the browse badge preference is off', async () => {
+    const id = `navigation-${userId}`
+    bootstrapUserRuntime(id)
+    const runtime = getActiveUserRuntime()!
+    await runtime.database.ready
+    await createUserRepositories(runtime.database).settings.set({
+      key: BROWSE_BADGE_SETTING,
+      value: 'off',
+      updatedAt: Date.now(),
+    })
+
+    render(<AppNavigation userId={id} />)
+
+    expect(screen.getByRole('link', { name: 'Browse' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('browse-count-badge'),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('reacts to a Browse badge setting change without remounting', async () => {
+    const id = `navigation-${userId}`
+    bootstrapUserRuntime(id)
+
+    render(<AppNavigation userId={id} />)
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-count-badge')).toHaveTextContent('52'),
+    )
+
+    const runtime = getActiveUserRuntime()!
+    await createUserRepositories(runtime.database).settings.set({
+      key: BROWSE_BADGE_SETTING,
+      value: 'off',
+      updatedAt: Date.now(),
+    })
+    window.dispatchEvent(new Event(BROWSE_BADGE_SETTING_CHANGED_EVENT))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('browse-count-badge'),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('follows the deck announced from Browse', async () => {
+    const id = `navigation-${userId}`
+    bootstrapUserRuntime(id)
+
+    render(<AppNavigation userId={id} />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('link', { name: /JLPT Kanji N5/ }),
+      ).toBeInTheDocument(),
+    )
+
+    window.dispatchEvent(
+      new CustomEvent(BROWSE_BADGE_DECK_CHANGED_EVENT, {
+        detail: { deckId: 'jlpt-kanji-n4' },
+      }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('link', { name: /JLPT Kanji N4/ }),
+      ).toBeInTheDocument(),
     )
   })
 

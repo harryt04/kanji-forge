@@ -16,7 +16,18 @@ const FIXTURE_ROOT = join(process.cwd(), 'public', 'packs-dev')
 
 function fixtureFetch(): typeof fetch {
   return vi.fn(async (input: RequestInfo | URL) => {
-    const path = String(input).replace(/^\/packs-dev\//, '')
+    const url = String(input)
+    if (url.startsWith('/packs/decks/')) {
+      try {
+        return new Response(
+          readFileSync(join(process.cwd(), url.slice(1)), 'utf8'),
+          { status: 200 },
+        )
+      } catch {
+        return new Response('not found', { status: 404 })
+      }
+    }
+    const path = url.replace(/^\/packs-dev\//, '')
     try {
       const buffer = readFileSync(join(FIXTURE_ROOT, path))
       const body = path.endsWith('.json')
@@ -234,7 +245,11 @@ describe('loadDeckSummaries', () => {
         'SELECT * FROM card_states WHERE deck_id = ? AND content_ref = ?',
     )
     expect(perCardQueries).toHaveLength(0)
-    expect(calls.length).toBeLessThan(20)
+    // Roughly one query per deck plus a small constant, not one per card —
+    // proves this scales with deck count, not the ~14,000 refs across the
+    // catalog.
+    const deckCount = summaries.builtIn.length + summaries.custom.length
+    expect(calls.length).toBeLessThan(deckCount * 2 + 10)
   })
 
   it('groups a custom deck under its saved folder setting', async () => {
@@ -264,7 +279,7 @@ describe('loadDeckSummaries', () => {
     const repo = createUserRepositories(runtime.database)
     await repo.sessions.start({
       id: 's1',
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       startedAt: 1000,
       endedAt: null,
     })
@@ -275,7 +290,7 @@ describe('loadDeckSummaries', () => {
       runtime.userId,
     )
     const devKanjiWithout = withoutSessions.builtIn.find(
-      (summary) => summary.id === 'dev-kanji',
+      (summary) => summary.id === 'jlpt-kanji-n5',
     )
     expect(devKanjiWithout?.lastStudiedAt).toBeNull()
 
@@ -287,7 +302,7 @@ describe('loadDeckSummaries', () => {
       },
     )
     const devKanjiWith = withSessions.builtIn.find(
-      (summary) => summary.id === 'dev-kanji',
+      (summary) => summary.id === 'jlpt-kanji-n5',
     )
     expect(devKanjiWith?.lastStudiedAt).toBe(2000)
   })
@@ -298,7 +313,7 @@ describe('loadDeckSummaries', () => {
     const repo = createUserRepositories(runtime.database)
     const now = Date.now()
     await repo.cardStates.upsert({
-      deckId: 'dev-kanji',
+      deckId: 'jlpt-kanji-n5',
       contentRef: 'kanji:日',
       level: 2,
       dueAt: now - 1000,
@@ -321,15 +336,17 @@ describe('loadDeckSummaries', () => {
       },
     )
     const devKanji = summaries.builtIn.find(
-      (summary) => summary.id === 'dev-kanji',
+      (summary) => summary.id === 'jlpt-kanji-n5',
     )
     expect(devKanji).toBeDefined()
 
     const { countAppBadgeCards } = await import('@/pwa/app-badge')
     const definitions = (await import('@/data/packs')).loadDeckDefinitions
-    const definition = (await definitions()).find((d) => d.id === 'dev-kanji')
+    const definition = (await definitions()).find(
+      (d) => d.id === 'jlpt-kanji-n5',
+    )
     expect(definition).toBeDefined()
-    const states = await repo.cardStates.list('dev-kanji')
+    const states = await repo.cardStates.list('jlpt-kanji-n5')
     const stateByRef = new Map(states.map((state) => [state.contentRef, state]))
     const cards = definition!.contentRefs.map((contentRef) => ({
       state: stateByRef.get(contentRef),
