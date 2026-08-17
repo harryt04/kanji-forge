@@ -1,12 +1,7 @@
 import type { Metadata, Viewport } from 'next'
-import {
-  Fraunces,
-  JetBrains_Mono,
-  Klee_One,
-  Noto_Sans_JP,
-  Public_Sans,
-} from 'next/font/google'
+import { Fraunces, JetBrains_Mono, Public_Sans } from 'next/font/google'
 import './globals.css'
+import './japanese-fonts.css'
 import { PostHogInit } from '@/features/analytics/posthog-init'
 import { ThemeController } from '@/features/settings/theme-controller'
 import { THEME_INIT_SCRIPT } from '@/features/settings/theme-script'
@@ -18,12 +13,6 @@ const fraunces = Fraunces({
   subsets: ['latin'],
   weight: ['500', '600', '700', '900'],
   variable: '--font-display',
-  display: 'swap',
-})
-const notoSansJP = Noto_Sans_JP({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-jp-ui',
   display: 'swap',
 })
 const publicSans = Public_Sans({
@@ -38,17 +27,6 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
   display: 'swap',
 })
-// A flash of fallback kanji is worse than a brief blank — fallback fonts can
-// render a structurally different (simplified/Chinese-variant) glyph — so this
-// one stays `display: 'block'` per docs/BRAND-DESIGN-LANGUAGE.md §4, unlike the
-// other four families above.
-const kleeOne = Klee_One({
-  subsets: ['latin'],
-  weight: ['600'],
-  variable: '--font-jp-display',
-  display: 'block',
-})
-
 const title = 'KanjiForge — Japanese kanji study'
 const description =
   'A free, offline-first web app for studying kanji with the StickyStudy SRS system.'
@@ -135,10 +113,8 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(
         fraunces.variable,
-        notoSansJP.variable,
         publicSans.variable,
         jetbrainsMono.variable,
-        kleeOne.variable,
       )}
     >
       <head>

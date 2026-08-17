@@ -51,6 +51,67 @@ test.describe('Browse Workbench', () => {
     expect(geometry.height).toBeGreaterThan(0)
   })
 
+  test('loads the Browse Japanese subset payload and Klee card glyphs', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.goto('/browse')
+    await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
+
+    const metrics = await page.evaluate(async () => {
+      const glyphs = [
+        ...new Set(
+          Array.from(
+            document.querySelectorAll<HTMLElement>(
+              '[data-testid="browse-tile"] .font-jp-display',
+            ),
+          ).map((element) => element.textContent ?? ''),
+        ),
+      ].filter(Boolean)
+
+      await Promise.all(
+        glyphs.map((glyph) =>
+          document.fonts.load('600 64px "Klee One"', glyph),
+        ),
+      )
+      await document.fonts.ready
+
+      const fontResources = performance
+        .getEntriesByType('resource')
+        .filter((entry) =>
+          entry.name.includes('/fonts/japanese/'),
+        ) as PerformanceResourceTiming[]
+      const kleeFaces = [...document.fonts].filter(
+        (font) => font.family === 'Klee One' && font.weight === '600',
+      )
+
+      return {
+        glyphCount: glyphs.length,
+        payloadBytes: fontResources.reduce(
+          (total, entry) =>
+            total + (entry.transferSize || entry.encodedBodySize),
+          0,
+        ),
+        resourceCount: fontResources.length,
+        allWoff2: fontResources.every((entry) => entry.name.endsWith('.woff2')),
+        loadedKleeFaceCount: kleeFaces.filter(
+          (font) => font.status === 'loaded',
+        ).length,
+        allGlyphsHaveKleeFace: glyphs.every((glyph) =>
+          document.fonts.check('600 64px "Klee One"', glyph),
+        ),
+      }
+    })
+
+    console.log(`BROWSE_FONT_PAYLOAD ${JSON.stringify(metrics)}`)
+    expect(metrics.glyphCount).toBeGreaterThan(0)
+    expect(metrics.payloadBytes).toBeLessThanOrEqual(400 * 1024)
+    expect(metrics.resourceCount).toBeGreaterThan(0)
+    expect(metrics.allWoff2).toBe(true)
+    expect(metrics.loadedKleeFaceCount).toBeGreaterThan(0)
+    expect(metrics.allGlyphsHaveKleeFace).toBe(true)
+  })
+
   test('mounts Search, Sort, and Filter content only in the active menu', async ({
     page,
     authedUser: _authedUser,

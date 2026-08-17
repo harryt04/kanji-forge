@@ -107,10 +107,9 @@ textarea {
   --level-4-border: transparent; /* light theme: level 4 already contrasts against --background */
 
   /* ---- typography ----
-     --font-jp-display/-jp-ui/-display/-body/-mono are defined by next/font
-     (src/app/layout.tsx) via matching CSS custom-property names on <html>,
-     not here — this keeps the `@theme inline` mapping above as the single
-     Tailwind-facing surface without a second, competing font-family source. */
+     The Japanese family variables are supplied by the generated
+     japanese-fonts.css file. Latin families are supplied by next/font in the
+     root layout. */
 
   --text-display: 8.75rem; /* 140px, study-card kanji */
   --text-3xl: 2.5rem;

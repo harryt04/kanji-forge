@@ -13,6 +13,7 @@
     "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts",
     "build:words-full": "tsx scripts/build-packs/build-words-full-pack.ts",
     "build:names": "tsx scripts/build-packs/build-names-pack.ts",
+    "build:fonts": "node scripts/fonts/build-japanese-subsets.mjs",
     "build": "next build",
     "ci": "npm run build && npm run lint && npm run test:coverage && npm run test:e2e && npm run packs:verify && npm run packs:test",
     "dev": "next dev",
