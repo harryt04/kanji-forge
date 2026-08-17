@@ -8,45 +8,59 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
+  smoke:
+    name: Smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
+      - uses: actions/setup-node@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: '24'
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build
-
-      - name: Lint
+      - name: Lint and type-check
         run: pnpm lint
 
-      - name: Test
+      - name: Verify pack fixtures
+        run: pnpm packs:verify
+
+  unit-coverage:
+    name: Unit coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test with coverage thresholds
         run: pnpm test:coverage
 
       - name: Upload coverage report
@@ -56,18 +70,60 @@ jobs:
           name: coverage-report
           path: coverage/
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
+  e2e:
+    name: E2E (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - webkit
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: E2E test
-        run: pnpm test:e2e
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run Playwright tests
+        run: pnpm exec playwright test --project=${{ matrix.browser }}
 
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
 
-      - name: Verify Phase 0 pack fixture assertions
-        run: pnpm packs:verify && pnpm packs:test
+  build-and-test:
+    name: build-and-test
+    if: ${{ always() }}
+    needs:
+      - smoke
+      - unit-coverage
+      - e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all CI jobs to pass
+        env:
+          SMOKE_RESULT: ${{ needs.smoke.result }}
+          UNIT_RESULT: ${{ needs.unit-coverage.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          if [ "$SMOKE_RESULT" != success ] || [ "$UNIT_RESULT" != success ] || [ "$E2E_RESULT" != success ]; then
+            echo "CI failed: smoke=$SMOKE_RESULT unit-coverage=$UNIT_RESULT e2e=$E2E_RESULT"
+            exit 1
+          fi
