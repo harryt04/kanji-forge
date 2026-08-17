@@ -31,6 +31,41 @@ test.describe('Browse Workbench', () => {
     expect(geometry.height).toBeGreaterThan(0)
   })
 
+  test('mounts Search, Sort, and Filter content only in the active menu', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.goto('/browse')
+
+    await expect(
+      page.getByRole('searchbox', { name: 'Search this deck' }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Deck order', exact: true }),
+    ).toHaveCount(0)
+
+    await page.getByRole('menuitem', { name: 'Search', exact: true }).click()
+    await expect(
+      page.getByRole('searchbox', { name: 'Search this deck' }),
+    ).toBeVisible()
+
+    await page.getByRole('menuitem', { name: 'Sort', exact: true }).hover()
+    await expect(
+      page.getByRole('searchbox', { name: 'Search this deck' }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Deck order', exact: true }),
+    ).toBeVisible()
+
+    await page.getByRole('menuitem', { name: 'Filter', exact: true }).hover()
+    await expect(
+      page.getByRole('menuitemradio', { name: 'Deck order', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('menuitemradio', { name: 'All levels', exact: true }),
+    ).toBeVisible()
+  })
+
   test('records the Browse workbench baseline geometry', async ({
     page,
     authedUser: _authedUser,

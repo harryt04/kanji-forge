@@ -9,6 +9,16 @@ import type { CardState } from '@/data/repo'
 import { createUserRepositories } from '@/data/repo'
 import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
+import {
+  Menubar,
+  MenubarContent,
+  MenubarFormField,
+  MenubarLabel,
+  MenubarMenu,
+  MenubarRadioGroup,
+  MenubarRadioItem,
+  MenubarTrigger,
+} from '@/ui/menubar'
 import { loadDeck, type LoadedDeck } from '@/features/study/deck-loader'
 import { DetailScreen } from '@/features/detail'
 import { getDeviceId } from '@/lib/device-id'
@@ -179,6 +189,21 @@ function tileContentLabel(content: BrowseTileContent): string {
   if (content === 'meaning') return 'meaning'
   return 'kanji'
 }
+
+const BROWSE_SORT_OPTIONS: readonly {
+  readonly value: BrowseSort
+  readonly label: string
+}[] = [
+  { value: 'deck-order', label: 'Deck order' },
+  { value: 'level', label: 'Level (new → mastered)' },
+  { value: 'stroke-count', label: 'Stroke count' },
+  { value: 'frequency', label: 'Frequency rank' },
+  { value: 'jlpt', label: 'JLPT level (N5 → N1)' },
+  { value: 'grade', label: 'School grade' },
+  { value: 'times-reviewed', label: 'Times reviewed' },
+  { value: 'last-reviewed', label: 'Last reviewed' },
+  { value: 'kana', label: 'Kana alphabetical' },
+]
 
 export function BrowseScreen({
   deckDefinitionId = 'dev-kanji',
@@ -744,73 +769,85 @@ export function BrowseScreen({
           {browseError}
         </p>
 
+        <Menubar aria-label="Browse menus">
+          <MenubarMenu value="search">
+            <MenubarTrigger>Search</MenubarTrigger>
+            <MenubarContent>
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-search">
+                  <span className="text-muted-foreground text-xs">
+                    Search this deck
+                  </span>
+                  <input
+                    id="browse-search"
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Kanji, reading, or meaning"
+                    aria-label="Search this deck"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
+                  />
+                </label>
+              </MenubarFormField>
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu value="sort">
+            <MenubarTrigger>Sort</MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Sort cards</MenubarLabel>
+              <MenubarRadioGroup
+                value={sort}
+                onValueChange={(value) => setSort(value as BrowseSort)}
+              >
+                {BROWSE_SORT_OPTIONS.map((option) => (
+                  <MenubarRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenubarRadioItem>
+                ))}
+              </MenubarRadioGroup>
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu value="filter">
+            <MenubarTrigger>Filter</MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Filter by level</MenubarLabel>
+              <MenubarRadioGroup
+                value={filters.level === null ? 'all' : String(filters.level)}
+                onValueChange={(value) =>
+                  setFilters((current) => ({
+                    ...current,
+                    level:
+                      value === 'all'
+                        ? null
+                        : (Number(value) as BrowseFilters['level']),
+                  }))
+                }
+              >
+                <MenubarRadioItem value="all">All levels</MenubarRadioItem>
+                {LEVEL_NAMES.map((name, level) => (
+                  <MenubarRadioItem key={name} value={String(level)}>
+                    <span
+                      aria-hidden="true"
+                      className="mr-2 inline-block size-3 rounded-full border border-current align-[-1px]"
+                      style={{
+                        backgroundColor: `var(--level-${level})`,
+                      }}
+                    />
+                    {level} · {name}
+                  </MenubarRadioItem>
+                ))}
+              </MenubarRadioGroup>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
+
         <div
           className="flex min-w-0 flex-wrap items-end gap-3"
           role="group"
           aria-label="Browse controls"
         >
-          <label className="grid gap-1" htmlFor="browse-search">
-            <span className="text-muted-foreground text-xs">
-              Search this deck
-            </span>
-            <input
-              id="browse-search"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Kanji, reading, or meaning"
-              aria-label="Search this deck"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            />
-          </label>
-
-          <label className="grid gap-1" htmlFor="browse-sort">
-            <span className="text-muted-foreground text-xs">Sort cards</span>
-            <select
-              id="browse-sort"
-              value={sort}
-              onChange={(event) => setSort(event.target.value as BrowseSort)}
-              aria-label="Sort cards"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            >
-              <option value="deck-order">Deck order</option>
-              <option value="level">Level (new → mastered)</option>
-              <option value="stroke-count">Stroke count</option>
-              <option value="frequency">Frequency rank</option>
-              <option value="jlpt">JLPT level (N5 → N1)</option>
-              <option value="grade">School grade</option>
-              <option value="times-reviewed">Times reviewed</option>
-              <option value="last-reviewed">Last reviewed</option>
-              <option value="kana">Kana alphabetical</option>
-            </select>
-          </label>
-
-          <label className="grid gap-1" htmlFor="browse-level-filter">
-            <span className="text-muted-foreground text-xs">Level</span>
-            <select
-              id="browse-level-filter"
-              value={filters.level ?? 'all'}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  level:
-                    event.target.value === 'all'
-                      ? null
-                      : (Number(event.target.value) as BrowseFilters['level']),
-                }))
-              }
-              aria-label="Filter by level"
-              className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-            >
-              <option value="all">All levels</option>
-              {LEVEL_NAMES.map((name, level) => (
-                <option key={name} value={level}>
-                  {level} · {name}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label className="flex min-h-11 items-center gap-3">
             <input
               type="checkbox"

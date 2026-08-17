@@ -248,7 +248,7 @@ module, stop — you have misread the item.
       44px controls, and `MenubarFormField`; `src/ui/menubar.test.tsx` proves
       exclusive menus and focus-safe input typeahead behavior.
 
-- [ ] **H2. Search, sort, and the level filter are permanently mounted.**
+- [x] **H2. Search, sort, and the level filter are permanently mounted.**
       Where: [`browse-screen.tsx:766-826`](../src/features/browse/browse-screen.tsx#L766).
       Fix: move the search `<input>` into a **Search** menu, the sort `<select>`
       (9 options) into a **Sort** menu as a radio group, and the level filter
@@ -260,6 +260,11 @@ module, stop — you have misread the item.
       existing search / sort / level-filter assertions in
       `browse-screen.test.tsx` still pass after being routed through a menu-open
       helper. Blocked by H1.
+
+      Search, Sort, and level Filter now live in exclusive Radix Menubar menus;
+      `browse-screen.test.tsx` and `e2e/browse-workbench.spec.ts` prove closed
+      controls are unmounted, menu switching is exclusive, and stateful search,
+      sort, and level filtering still work.
 
 - [ ] **H3. The remaining filters are split across a chip and a `<details>`.**
       Where: flagged checkbox at

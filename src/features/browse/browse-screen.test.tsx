@@ -74,6 +74,11 @@ async function seedListView(id: number) {
   return { runtime, repo }
 }
 
+function openBrowseMenu(name: 'Search' | 'Sort' | 'Filter') {
+  fireEvent.pointerDown(screen.getByRole('menuitem', { name }))
+  return screen.getByRole('menu')
+}
+
 describe('BrowseScreen', () => {
   it('prompts anonymous users to sign in', () => {
     render(<BrowseScreen />)
@@ -88,6 +93,42 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-tile-wall')).toBeInTheDocument(),
     )
     expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+  })
+
+  it('mounts one Search, Sort, or Filter menu at a time', async () => {
+    await seedListView(userId)
+    render(<BrowseScreen />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
+    )
+    expect(
+      screen.queryByRole('searchbox', { name: 'Search this deck' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitemradio', { name: /Deck order/ }),
+    ).not.toBeInTheDocument()
+
+    openBrowseMenu('Search')
+    expect(
+      screen.getByRole('searchbox', { name: 'Search this deck' }),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Sort')
+    expect(
+      screen.queryByRole('searchbox', { name: 'Search this deck' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitemradio', { name: /Deck order/ }),
+    ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    expect(
+      screen.queryByRole('menuitemradio', { name: /Deck order/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitemradio', { name: /All levels/ }),
+    ).toBeInTheDocument()
   })
 
   it('falls back to level 0 styling and labels for an out-of-range level', async () => {
@@ -488,13 +529,10 @@ describe('BrowseScreen', () => {
       expect(screen.getAllByTestId('browse-tile')).toHaveLength(1),
     )
     expect(segment).toHaveAttribute('aria-pressed', 'true')
+    openBrowseMenu('Filter')
     expect(
-      (
-        screen.getByRole('combobox', {
-          name: 'Filter by level',
-        }) as HTMLSelectElement
-      ).value,
-    ).toBe('3')
+      screen.getByRole('menuitemradio', { name: /3 · Known/ }),
+    ).toHaveAttribute('aria-checked', 'true')
   })
 
   it('clears the level filter when the active segment is clicked again', async () => {
@@ -705,6 +743,7 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
+    openBrowseMenu('Search')
     const search = screen.getByRole('searchbox', { name: 'Search this deck' })
     fireEvent.change(search, { target: { value: 'sun' } })
 
@@ -753,9 +792,10 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Sort cards' }), {
-      target: { value: 'level' },
-    })
+    openBrowseMenu('Sort')
+    fireEvent.click(
+      screen.getByRole('menuitemradio', { name: /Level \(new → mastered\)/ }),
+    )
 
     const cards = screen.getAllByTestId('browse-card')
     const positionOf = (contentRef: string) =>
@@ -798,12 +838,8 @@ describe('BrowseScreen', () => {
       expect(screen.getByTestId('browse-card-list')).toBeInTheDocument(),
     )
 
-    fireEvent.change(
-      screen.getByRole('combobox', { name: 'Filter by level' }),
-      {
-        target: { value: '3' },
-      },
-    )
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /3 · Known/ }))
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
     expect(screen.getByText(/1 of 200 cards/)).toBeInTheDocument()
     expect(screen.getByText('Flagged')).toBeInTheDocument()
