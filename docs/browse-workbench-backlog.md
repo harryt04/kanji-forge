@@ -383,7 +383,7 @@ loop is what stops the menubar quietly undoing Loops B and D.
       `browse-screen.test.tsx` proves the trigger announcements and visible
       results count while menus are closed.
 
-- [ ] **I3. Menu content can run off a 375px viewport.**
+- [x] **I3. Menu content can run off a 375px viewport.**
       Evidence: the Filter menu carries a level radio group, a flagged toggle,
       two number inputs, a JLPT select, and a clear action; the Sort menu
       carries nine options. At 375px with `--text-base` at 16px and `min-h-11`
@@ -394,6 +394,11 @@ loop is what stops the menubar quietly undoing Loops B and D.
       `document.documentElement.scrollWidth` does not exceed `clientWidth`, the
       menu's own bounding box stays inside the viewport, and its last item is
       reachable by scrolling inside the menu.
+
+      Menubar content now uses Radix's placement-aware available-height token,
+      collision padding, and contained internal scrolling; the signed-in
+      `browse-workbench.spec.ts` mobile sweep proves all five menus stay within
+      375×667 and can reach their last interactive item after scrolling.
 
 - [ ] **I4. The menubar must be operable without a pointer.**
       Fix: verify, don't assume — Radix supplies roving focus, but the fields

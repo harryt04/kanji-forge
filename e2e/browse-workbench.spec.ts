@@ -1,5 +1,6 @@
 import { API_URL, expect, test } from './fixtures'
 import type { Page } from '@playwright/test'
+import { BROWSE_MENU_NAMES } from './browse-menus'
 
 async function openViewMenu(page: Page) {
   await page.getByRole('menuitem', { name: 'View', exact: true }).click()
@@ -119,6 +120,81 @@ test.describe('Browse Workbench', () => {
         exact: true,
       }),
     ).toBeVisible()
+  })
+
+  test('keeps every Browse menu inside the mobile viewport while scrolling internally', async ({
+    page,
+    authedUser: _authedUser,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/browse')
+    await expect(page.getByTestId('browse-tile-wall')).toBeVisible()
+
+    for (const [index, menuName] of BROWSE_MENU_NAMES.entries()) {
+      const trigger = page.getByRole('menuitem', {
+        name: menuName,
+        exact: true,
+      })
+      if (index === 0) await trigger.click()
+      else await trigger.hover()
+
+      const menu = page.locator(
+        '[data-radix-menubar-content][data-state="open"]',
+      )
+      await expect(menu).toBeVisible()
+
+      const metrics = await menu.evaluate((element) => {
+        const rect = element.getBoundingClientRect()
+        const lastInteractive = Array.from(
+          element.querySelectorAll<HTMLElement>(
+            '[role^="menuitem"], input, select, textarea',
+          ),
+        ).at(-1)
+        if (!lastInteractive) throw new Error('Menu has no interactive item')
+
+        const lastBeforeScroll = lastInteractive.getBoundingClientRect()
+        const initialScrollTop = element.scrollTop
+        element.scrollTop = element.scrollHeight
+        const lastAfterScroll = lastInteractive.getBoundingClientRect()
+        const isInside = (itemRect: DOMRect) =>
+          itemRect.top >= rect.top && itemRect.bottom <= rect.bottom
+
+        return {
+          documentScrollWidth: document.documentElement.scrollWidth,
+          documentClientWidth: document.documentElement.clientWidth,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          menu: {
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+          },
+          scrollHeight: element.scrollHeight,
+          clientHeight: element.clientHeight,
+          initialScrollTop,
+          scrollTopAfter: element.scrollTop,
+          lastBeforeScrollInside: isInside(lastBeforeScroll),
+          lastAfterScrollInside: isInside(lastAfterScroll),
+        }
+      })
+
+      expect(metrics.documentScrollWidth).toBeLessThanOrEqual(
+        metrics.documentClientWidth,
+      )
+      expect(metrics.menu.left).toBeGreaterThanOrEqual(0)
+      expect(metrics.menu.right).toBeLessThanOrEqual(metrics.viewportWidth)
+      expect(metrics.menu.top).toBeGreaterThanOrEqual(0)
+      expect(metrics.menu.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
+      expect(metrics.lastAfterScrollInside).toBe(true)
+      if (metrics.scrollHeight > metrics.clientHeight) {
+        expect(metrics.scrollTopAfter).toBeGreaterThan(metrics.initialScrollTop)
+      } else {
+        expect(metrics.lastBeforeScrollInside).toBe(true)
+      }
+    }
+
+    await page.keyboard.press('Escape')
   })
 
   test('records the Browse workbench baseline geometry', async ({
