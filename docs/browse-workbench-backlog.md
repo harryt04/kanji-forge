@@ -266,7 +266,7 @@ module, stop — you have misread the item.
       controls are unmounted, menu switching is exclusive, and stateful search,
       sort, and level filtering still work.
 
-- [ ] **H3. The remaining filters are split across a chip and a `<details>`.**
+- [x] **H3. The remaining filters are split across a chip and a `<details>`.**
       Where: flagged checkbox at
       [`:828-842`](../src/features/browse/browse-screen.tsx#L828), Clear filters
       at [`:844`](../src/features/browse/browse-screen.tsx#L844), stroke range
@@ -284,6 +284,10 @@ module, stop — you have misread the item.
       **Acceptance line:** `/browse` contains no `<details>` element; all five
       filters live in one menu; and a filter set through the menu changes the
       rendered card count — proven in `browse-screen.test.tsx`. Blocked by H2.
+
+      Flagged, stroke-range, JLPT, and Clear filters now share the Filter
+      menubar with level filtering; `browse-screen.test.tsx` proves the menu
+      unmounts when closed, has no `<details>`, and changes the rendered count.
 
 - [ ] **H4. View controls and the defaults bar occupy a full row each.**
       Where: tile content [`:855-870`](../src/features/browse/browse-screen.tsx#L855),

@@ -11,12 +11,15 @@ import { Button } from '@/ui/button'
 import { Card, CardContent } from '@/ui/card'
 import {
   Menubar,
+  MenubarCheckboxItem,
   MenubarContent,
   MenubarFormField,
+  MenubarItem,
   MenubarLabel,
   MenubarMenu,
   MenubarRadioGroup,
   MenubarRadioItem,
+  MenubarSeparator,
   MenubarTrigger,
 } from '@/ui/menubar'
 import { loadDeck, type LoadedDeck } from '@/features/study/deck-loader'
@@ -241,7 +244,6 @@ export function BrowseScreen({
   const [summaryVersion, setSummaryVersion] = useState(0)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [selectionMode, setSelectionMode] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
   const browseError =
     viewError ?? tileContentError ?? tileZoomError ?? editError
 
@@ -839,6 +841,94 @@ export function BrowseScreen({
                   </MenubarRadioItem>
                 ))}
               </MenubarRadioGroup>
+
+              <MenubarSeparator />
+
+              <MenubarCheckboxItem
+                checked={filters.flagged}
+                onCheckedChange={(checked) =>
+                  setFilters((current) => ({
+                    ...current,
+                    flagged: checked === true,
+                  }))
+                }
+              >
+                Show flagged only
+              </MenubarCheckboxItem>
+
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-min-strokes">
+                  <span className="text-sm font-semibold">Minimum strokes</span>
+                  <input
+                    id="browse-min-strokes"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    value={filters.minStrokeCount ?? ''}
+                    onChange={(event) =>
+                      setNumericFilter('minStrokeCount', event.target.value)
+                    }
+                    aria-label="Minimum stroke count"
+                    placeholder="Any"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
+                  />
+                </label>
+              </MenubarFormField>
+
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-max-strokes">
+                  <span className="text-sm font-semibold">Maximum strokes</span>
+                  <input
+                    id="browse-max-strokes"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    value={filters.maxStrokeCount ?? ''}
+                    onChange={(event) =>
+                      setNumericFilter('maxStrokeCount', event.target.value)
+                    }
+                    aria-label="Maximum stroke count"
+                    placeholder="Any"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
+                  />
+                </label>
+              </MenubarFormField>
+
+              <MenubarFormField>
+                <label className="grid gap-1" htmlFor="browse-jlpt-filter">
+                  <span className="text-sm font-semibold">JLPT level</span>
+                  <select
+                    id="browse-jlpt-filter"
+                    value={filters.jlptLegacy ?? 'all'}
+                    onChange={(event) =>
+                      setFilters((current) => ({
+                        ...current,
+                        jlptLegacy:
+                          event.target.value === 'all'
+                            ? null
+                            : Number(event.target.value),
+                      }))
+                    }
+                    aria-label="Filter by JLPT level"
+                    className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base shadow-sm outline-none focus-visible:ring-2"
+                  >
+                    <option value="all">All JLPT levels</option>
+                    <option value="5">N5</option>
+                    <option value="4">N4</option>
+                    <option value="3">N3</option>
+                    <option value="2">N2</option>
+                    <option value="1">N1</option>
+                  </select>
+                </label>
+              </MenubarFormField>
+
+              <MenubarSeparator />
+              <MenubarItem
+                disabled={!hasFilters}
+                onSelect={() => setFilters(DEFAULT_BROWSE_FILTERS)}
+              >
+                Clear filters
+              </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
         </Menubar>
@@ -848,33 +938,6 @@ export function BrowseScreen({
           role="group"
           aria-label="Browse controls"
         >
-          <label className="flex min-h-11 items-center gap-3">
-            <input
-              type="checkbox"
-              checked={filters.flagged}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  flagged: event.target.checked,
-                }))
-              }
-              aria-label="Show flagged only"
-              className="accent-primary h-4 w-4"
-            />
-            <span className="text-sm font-semibold">Show flagged only</span>
-          </label>
-
-          {hasFilters && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setFilters(DEFAULT_BROWSE_FILTERS)}
-            >
-              Clear filters
-            </Button>
-          )}
-
           <label className="grid gap-1" htmlFor="browse-tile-content">
             <span className="text-muted-foreground text-xs">Tile content</span>
             <select
@@ -950,82 +1013,6 @@ export function BrowseScreen({
           >
             Select cards
           </Button>
-
-          <details
-            className="min-w-0"
-            open={filtersOpen}
-            onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
-          >
-            <summary className="text-primary flex min-h-11 cursor-pointer items-center text-sm font-medium select-none">
-              More filters
-            </summary>
-            {filtersOpen && (
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2" htmlFor="browse-min-strokes">
-                  <span className="text-sm font-semibold">Minimum strokes</span>
-                  <input
-                    id="browse-min-strokes"
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    value={filters.minStrokeCount ?? ''}
-                    onChange={(event) =>
-                      setNumericFilter('minStrokeCount', event.target.value)
-                    }
-                    aria-label="Minimum stroke count"
-                    placeholder="Any"
-                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-                  />
-                </label>
-
-                <label className="grid gap-2" htmlFor="browse-max-strokes">
-                  <span className="text-sm font-semibold">Maximum strokes</span>
-                  <input
-                    id="browse-max-strokes"
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    value={filters.maxStrokeCount ?? ''}
-                    onChange={(event) =>
-                      setNumericFilter('maxStrokeCount', event.target.value)
-                    }
-                    aria-label="Maximum stroke count"
-                    placeholder="Any"
-                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-                  />
-                </label>
-
-                <label
-                  className="grid gap-2 sm:max-w-sm"
-                  htmlFor="browse-jlpt-filter"
-                >
-                  <span className="text-sm font-semibold">JLPT level</span>
-                  <select
-                    id="browse-jlpt-filter"
-                    value={filters.jlptLegacy ?? 'all'}
-                    onChange={(event) =>
-                      setFilters((current) => ({
-                        ...current,
-                        jlptLegacy:
-                          event.target.value === 'all'
-                            ? null
-                            : Number(event.target.value),
-                      }))
-                    }
-                    aria-label="Filter by JLPT level"
-                    className="border-input bg-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
-                  >
-                    <option value="all">All JLPT levels</option>
-                    <option value="5">N5</option>
-                    <option value="4">N4</option>
-                    <option value="3">N3</option>
-                    <option value="2">N2</option>
-                    <option value="1">N1</option>
-                  </select>
-                </label>
-              </div>
-            )}
-          </details>
         </div>
 
         <div className="border-border flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border p-3">

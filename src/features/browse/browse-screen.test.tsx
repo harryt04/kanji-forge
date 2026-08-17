@@ -844,14 +844,38 @@ describe('BrowseScreen', () => {
     expect(screen.getByText(/1 of 200 cards/)).toBeInTheDocument()
     expect(screen.getByText('Flagged')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Show flagged only' }))
+    openBrowseMenu('Filter')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All levels' }))
+    openBrowseMenu('Filter')
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: 'Show flagged only' }),
+    )
     expect(screen.getAllByTestId('browse-card')).toHaveLength(1)
     expect(
       screen.getByRole('article', {
         name: /日, Level 3, blue \(Ao\), Known, flagged/,
       }),
     ).toBeInTheDocument()
+
+    openBrowseMenu('Filter')
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('spinbutton', { name: 'Maximum stroke count' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'Filter by JLPT level' }),
+    ).toBeInTheDocument()
+    fireEvent.change(
+      screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
+      {
+        target: { value: '999' },
+      },
+    )
+    expect(screen.queryByTestId('browse-card-list')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Clear filters' }))
+    expect(screen.getAllByTestId('browse-card')).toHaveLength(200)
   })
 
   it('sets a card level manually without changing review totals', async () => {
@@ -1103,7 +1127,7 @@ describe('BrowseScreen', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps advanced filter controls out of the DOM while collapsed', async () => {
+  it('mounts every filter only while the Filter menu is open', async () => {
     await seedListView(userId)
     render(<BrowseScreen />)
     await waitFor(() =>
@@ -1113,13 +1137,38 @@ describe('BrowseScreen', () => {
     expect(
       screen.queryByRole('spinbutton', { name: 'Minimum stroke count' }),
     ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Maximum stroke count' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'Filter by JLPT level' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'Show flagged only' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'Clear filters' }),
+    ).not.toBeInTheDocument()
+    expect(document.querySelector('details')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('More filters'))
+    openBrowseMenu('Filter')
 
     await waitFor(() =>
       expect(
         screen.getByRole('spinbutton', { name: 'Minimum stroke count' }),
       ).toBeInTheDocument(),
     )
+    expect(
+      screen.getByRole('spinbutton', { name: 'Maximum stroke count' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'Filter by JLPT level' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'Show flagged only' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Clear filters' }),
+    ).toBeInTheDocument()
   })
 })
