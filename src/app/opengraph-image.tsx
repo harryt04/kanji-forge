@@ -56,7 +56,7 @@ export default function OpengraphImage(): ImageResponse {
           marginTop: 16,
         }}
       >
-        Your whole deck, as a wall of color.
+        Learn Japanese kanji without losing track of what you&apos;ve learned.
       </div>
     </div>,
     { ...size },

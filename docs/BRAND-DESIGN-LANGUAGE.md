@@ -12,7 +12,7 @@
 
 **Positioning.** StickyStudy's color-coded legibility, delivered as an open, cross-platform, offline-first web app with data you own — not a closed iOS app, not fifteen years of Anki add-ons, not a WaniKani subscription with a fixed curriculum.
 
-**Promise, one sentence.** *Your whole deck, as a wall of color you can trust.*
+**Promise, one sentence.** *Learn Japanese kanji without losing track of what you've learned.*
 
 **Three brand attributes.**
 1. **Legible.** The color is the interface (PRD §1.2 principle 1) — every state must read at a glance, including for people who cannot distinguish hue. This document exists mainly to make that literal.
@@ -306,7 +306,7 @@ Restates PRD §4.17 as testable rules, mapped to what's already handled by the s
 
 ## 11. Landing page direction
 
-- **Hero:** the tile wall *is* the hero — a live, animated (slow drift, `prefers-reduced-motion`-aware) wall of belt-colored tiles behind the headline, not a screenshot. Headline: *"Your whole deck, as a wall of color."* Subhead: *"A free, offline-first way to study kanji — the StickyStudy mechanic, open and yours."* Single CTA: *"Start studying — free."*
+- **Hero:** the tile wall *is* the hero — a live, animated (slow drift, `prefers-reduced-motion`-aware) wall of belt-colored tiles behind the headline, not a screenshot. Headline: *"Learn Japanese kanji without losing track of what you've learned."* Subhead: *"A free, offline-first way to study kanji — the StickyStudy mechanic, open and yours."* Single CTA: *"Start studying — free."*
 - **Sections, in order:** hero (tile wall) → the color-is-the-interface explainer (belt-rank ramp shown explicitly, since it's a genuinely novel pitch worth teaching) → screen highlights (study card, writing trainer, dictionary) → licensing honesty section (MIT code / CC BY-SA data, per `README.md`'s licensing table — a FOSS audience will look for this) → install/PWA instructions.
 - **No pricing section, no account-gated anything** — reinforces PRD §1's "no account, no server, no paywall" as a landing-page-level trust signal, not just a feature list bullet.
 

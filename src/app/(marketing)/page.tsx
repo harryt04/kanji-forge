@@ -9,7 +9,8 @@ import { OfflineOwnership } from '@/features/marketing/offline-ownership'
 import { SignedInRedirect } from '@/features/marketing/signed-in-redirect'
 
 export const metadata: Metadata = {
-  title: 'KanjiForge — Your whole deck, as a wall of color',
+  title:
+    "KanjiForge — Learn Japanese kanji without losing track of what you've learned",
   description:
     'A free, offline-first web app for studying kanji with the StickyStudy level-and-color SRS system. Open source, no ads, your data stays yours.',
   alternates: { canonical: '/' },

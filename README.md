@@ -1,5 +1,7 @@
 # KanjiForge
 
+> Learn Japanese kanji without losing track of what you've learned.
+
 KanjiForge is a free, offline-first Japanese kanji and vocabulary study PWA for learners who want their progress to remain visible and under their control. It uses spaced repetition; every card moves through belt-like levels as you answer it, so a deck's progress is easy to understand at a glance. It is built for independent learners on desktop, Android, and iOS who want offline study with optional account sync when they are back online.
 
 ## What is included

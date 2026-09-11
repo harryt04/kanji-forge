@@ -14,9 +14,9 @@ export function Hero(): React.ReactElement {
           className="font-display text-4xl leading-[1.05] font-bold text-balance sm:text-6xl"
           data-testid="marketing-hero-heading"
         >
-          Your whole deck,
+          Learn Japanese kanji
           <br />
-          as a wall of color.
+          without losing track of what you&apos;ve learned.
         </h1>
         <h2 className="text-muted-foreground mt-3 max-w-xl text-base font-normal sm:text-lg">
           A free, open-source, offline-first kanji study app.

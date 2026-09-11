@@ -39,7 +39,9 @@ base.describe('landing page', () => {
   base('renders publicly with no auth flash', async ({ page }) => {
     await page.goto('/')
     await expect(
-      page.getByRole('heading', { name: /wall of color/ }),
+      page.getByRole('heading', {
+        name: "Learn Japanese kanji without losing track of what you've learned.",
+      }),
     ).toBeVisible()
     await expect(
       page.getByRole('link', { name: 'Create a free account' }).first(),
@@ -62,7 +64,7 @@ base.describe('landing page', () => {
 
       const response = await page.goto('/', { waitUntil: 'commit' })
       expect(new URL(page.url()).pathname).toBe('/home')
-      expect(await response?.text()).not.toContain('wall of color')
+      expect(await response?.text()).not.toContain('Learn Japanese kanji')
     },
   )
 })
