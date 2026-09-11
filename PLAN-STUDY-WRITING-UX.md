@@ -23,8 +23,15 @@ Inside the one existing flashcard container, top to bottom:
 5. **Related words** — collapsed disclosure, expandable in place.
 6. **Level line** — unchanged.
 
-Grade buttons stay directly below the card, as today. The separate
-`StudyWritingPanel` box disappears; nothing renders between card and grades.
+**Correction (docs/ux-backlog.md Loop F):** grade buttons are a sticky
+bottom bar, not "directly below the card, as today" per this plan's original
+text. What shipped instead put them 200px above the card, forcing an upward
+scroll to grade and leaving only 29% of viewport height for the canvas — the
+opposite of "Manual verification" below's requirement. A sticky bar outside
+the scrollable content region keeps both the canvas and the grade buttons
+visible with zero scroll, and let the container's swipe-to-grade handler be
+deleted outright instead of merely guarded, closing the mobile handwriting
+bug this plan's own "Risks" section predicted.
 
 ### Word cards
 

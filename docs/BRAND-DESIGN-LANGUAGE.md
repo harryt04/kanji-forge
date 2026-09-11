@@ -219,6 +219,7 @@ Klee One's textbook-hand forms were chosen over a print serif specifically becau
   ```
   Dark theme: same structure, darker and more transparent, never the same values as light (`rgba(0,0,0,.35)`/`rgba(0,0,0,.25)`-range, tuned once real components exist).
 - **Touch targets:** ≥44×44 CSS px on every interactive element, no exceptions (PRD §4.17).
+- **Full-viewport-height chrome, and safe-area insets (docs/ux-backlog.md Loop F):** any screen that fills the viewport (the study loop, the auth shell) uses the `.app-viewport` utility (`globals.css`) — `100dvh`, not `100vh`, since iOS Safari's address bar makes `100vh` taller than what is actually visible. The manifest sets `viewportFit: 'cover'`, so content can run under the notch or home indicator unless it opts into `env(safe-area-inset-*)` explicitly — apply that per call site with Tailwind's own longhand arbitrary-value utilities (e.g. `pb-[max(0.75rem,env(safe-area-inset-bottom))]`), not a shared hand-written class, which would sit in the same cascade layer as Tailwind's generated CSS with no guaranteed ordering against responsive overrides like `sm:px-6`.
 
 ---
 

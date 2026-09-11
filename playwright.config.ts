@@ -37,6 +37,17 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
+    // Real touch emulation (device pixel ratio, mobile UA, touch points) —
+    // the desktop projects above only resize the viewport, which is exactly
+    // why the mobile handwriting bug (docs/ux-backlog.md Loop F) shipped
+    // undetected: every "mobile" check ran at a 375px *width* with a mouse.
+    // Scoped to the study/writing specs, not the whole suite, so it adds
+    // real signal without tripling CI time.
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 13'] },
+      testMatch: ['offline-study.spec.ts', 'mobile-writing-touch.spec.ts'],
+    },
   ],
   webServer: {
     // The offline/PWA specs need a real service worker, which `@serwist/next` only emits

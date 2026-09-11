@@ -525,7 +525,7 @@ export function ShareTargetScreen(): React.ReactElement {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl p-5 sm:p-8">
+    <main className="app-viewport mx-auto max-w-3xl p-5 sm:p-8">
       <p className="font-jp-ui text-muted-foreground text-sm" lang="ja">
         {sharedDeck ? '共有されたデッキ' : '共有された文章'}
       </p>

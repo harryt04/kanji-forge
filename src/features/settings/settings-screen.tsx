@@ -2877,7 +2877,7 @@ export function SettingsScreen(): React.ReactElement {
             value={writingLeniency}
             onChange={(event) => void chooseWritingLeniency(event.target.value)}
             disabled={saving || !writingValidationEnabled}
-            className="border-input bg-background focus-visible:ring-ring text-foreground h-10 rounded-md border px-3 outline-none focus-visible:ring-2"
+            className="border-input bg-background focus-visible:ring-ring text-foreground h-10 w-full min-w-0 rounded-md border px-3 outline-none focus-visible:ring-2"
           >
             {WRITING_LENIENCY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -4034,7 +4034,7 @@ export function SettingsScreen(): React.ReactElement {
               column containing kanji before previewing the matched cards.
             </p>
             <input
-              className="mt-3 block text-sm"
+              className="mt-3 block w-full min-w-0 text-sm"
               type="file"
               accept="text/csv,.csv"
               aria-label="Choose CSV import file"
@@ -4114,7 +4114,7 @@ export function SettingsScreen(): React.ReactElement {
                 Saved without replacing existing progress.
               </p>
               <input
-                className="mt-3 block text-sm"
+                className="mt-3 block w-full min-w-0 text-sm"
                 type="file"
                 accept="application/json,.json"
                 aria-label="Choose JSON deck import file"
@@ -4160,7 +4160,7 @@ export function SettingsScreen(): React.ReactElement {
                 intentionally not imported.
               </p>
               <input
-                className="mt-3 block text-sm"
+                className="mt-3 block w-full min-w-0 text-sm"
                 type="file"
                 accept=".apkg,application/zip"
                 aria-label="Choose Anki package import file"

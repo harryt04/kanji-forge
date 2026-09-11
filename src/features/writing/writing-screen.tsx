@@ -321,8 +321,8 @@ export function WritingScreen(): React.ReactElement {
   const currentEntry = queue[index]
 
   return (
-    <main className="reading-page w-full p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <main className="reading-page w-full min-w-0 p-3 sm:p-6">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <Link
           className="text-primary inline-flex min-h-11 items-center text-sm underline-offset-4 hover:underline"
           href={`/detail?contentRef=${encodeURIComponent(currentEntry?.contentRef ?? `kanji:${content.literal}`)}`}
@@ -331,65 +331,27 @@ export function WritingScreen(): React.ReactElement {
         </Link>
         <span className="text-muted-foreground text-sm">Offline practice</span>
       </div>
-      <header className="mt-6">
-        <p className="text-muted-foreground text-sm">Writing practice</p>
-        <h1 className="font-jp-display mt-1 text-6xl font-semibold" lang="ja">
-          {content.literal}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Draw each stroke in order. Your strokes stay on this device until you
-          clear them.
-        </p>
-      </header>
 
-      <section
-        className="border-border bg-card mt-6 grid gap-3 rounded-xl border p-4"
-        aria-labelledby="writing-deck-heading"
-      >
-        <div>
-          <h2 id="writing-deck-heading" className="font-semibold">
-            Deck
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Practice writing every kanji in a deck, ordered the same way Study
-            would show them.
+      {/* Canvas first. The old layout put a 6xl glyph, a paragraph, a Deck
+          chooser and a Drill panel ahead of the canvas — on a 375px phone
+          the canvas started at y=882, entirely below the fold. This compact
+          bar replaces the glyph+paragraph; Deck and Drill move to the
+          disclosure below the canvas. */}
+      <header className="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="font-jp-display text-4xl font-semibold" lang="ja">
+            {content.literal}
+          </h1>
+          <p className="text-muted-foreground min-w-0 text-sm" role="status">
+            {deckName} · Character {index + 1} of {queue.length}
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm" htmlFor="writing-deck">
-            <span className="font-medium">Deck</span>
-            <select
-              id="writing-deck"
-              value={deckId}
-              onChange={(event) => changeDeck(event.target.value)}
-              className="border-input bg-background focus-visible:ring-ring h-10 min-w-48 rounded-md border px-3 outline-none focus-visible:ring-2"
-            >
-              {deckOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="writing-character">
-            <span className="font-medium">Character</span>
-            <select
-              id="writing-character"
-              value={index}
-              onChange={(event) => goToIndex(Number(event.target.value))}
-              className="border-input bg-background focus-visible:ring-ring font-jp-ui h-10 min-w-24 rounded-md border px-3 outline-none focus-visible:ring-2"
-              lang="ja"
-            >
-              {queue.map((entry, entryIndex) => (
-                <option key={entry.contentRef} value={entryIndex}>
-                  {entry.literal}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="flex shrink-0 gap-2">
           <Button
             type="button"
             variant="outline"
+            size="sm"
+            nowrap
             onClick={() => goToIndex(index - 1)}
             disabled={index <= 0}
           >
@@ -398,91 +360,18 @@ export function WritingScreen(): React.ReactElement {
           <Button
             type="button"
             variant="outline"
+            size="sm"
+            nowrap
             onClick={() => goToIndex(index + 1)}
             disabled={index >= queue.length - 1}
           >
             Next
           </Button>
         </div>
-        <p className="text-muted-foreground text-sm" role="status">
-          {deckName} · Character {index + 1} of {queue.length}
-        </p>
-      </section>
+      </header>
 
       <section
-        className="border-border bg-card mt-6 grid gap-3 rounded-xl border p-4"
-        aria-labelledby="standalone-drill-heading"
-      >
-        <div>
-          <h2 id="standalone-drill-heading" className="font-semibold">
-            Standalone drill
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Practice this kanji repeatedly without changing your study progress.
-          </p>
-        </div>
-        {!drillActive && !drillComplete && (
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="grid gap-1 text-sm" htmlFor="drill-repetitions">
-              <span className="font-medium">Repetitions</span>
-              <input
-                id="drill-repetitions"
-                className="border-input bg-background h-10 w-24 rounded-md border px-3"
-                type="number"
-                min={1}
-                max={10}
-                value={drillRepetitions}
-                onChange={(event) =>
-                  setDrillRepetitions(
-                    Math.min(10, Math.max(1, Number(event.target.value) || 1)),
-                  )
-                }
-              />
-            </label>
-            <Button type="button" onClick={startDrill}>
-              Start drill
-            </Button>
-          </div>
-        )}
-        {drillActive && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm" role="status">
-              {repetitionComplete
-                ? drillAttempt === drillRepetitions
-                  ? 'Nicely drawn — drill complete.'
-                  : 'Nicely drawn — starting the next repetition.'
-                : `Repetition ${drillAttempt} of ${drillRepetitions}`}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={exitDrill}>
-                Exit drill
-              </Button>
-              <Button
-                type="button"
-                onClick={finishDrillRepetition}
-                disabled={!repetitionComplete}
-              >
-                {drillAttempt === drillRepetitions
-                  ? 'Finish drill'
-                  : 'Next repetition'}
-              </Button>
-            </div>
-          </div>
-        )}
-        {drillComplete && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm" role="status">
-              Drill complete — {drillRepetitions} repetitions finished.
-            </p>
-            <Button type="button" variant="outline" onClick={startDrill}>
-              Start again
-            </Button>
-          </div>
-        )}
-      </section>
-
-      <section
-        className="mt-6 grid gap-4"
+        className="mt-4 grid min-w-0 grid-cols-1 gap-4"
         aria-labelledby="writing-canvas-heading"
       >
         <h2 id="writing-canvas-heading" className="sr-only">
@@ -514,7 +403,7 @@ export function WritingScreen(): React.ReactElement {
             value={leniency}
             onChange={(event) => changeLeniency(event.target.value)}
             disabled={!validationEnabled}
-            className="border-input bg-background focus-visible:ring-ring text-foreground h-10 rounded-md border px-3 outline-none focus-visible:ring-2"
+            className="border-input bg-background focus-visible:ring-ring text-foreground h-10 w-full min-w-0 rounded-md border px-3 outline-none focus-visible:ring-2"
           >
             {WRITING_LENIENCY_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -524,6 +413,139 @@ export function WritingScreen(): React.ReactElement {
           </select>
         </label>
       </section>
+
+      {/* Config stays reachable but not ahead of the canvas — a disclosure,
+          open by default, rather than a third section competing for the
+          fold. */}
+      <details className="mt-6 min-w-0" open>
+        <summary className="text-muted-foreground min-h-11 cursor-pointer py-2 text-sm font-medium">
+          Deck and drill settings
+        </summary>
+
+        <section
+          className="border-border bg-card mt-3 grid min-w-0 grid-cols-1 gap-3 rounded-xl border p-4"
+          aria-labelledby="writing-deck-heading"
+        >
+          <div>
+            <h2 id="writing-deck-heading" className="font-semibold">
+              Deck
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Practice writing every kanji in a deck, ordered the same way Study
+              would show them.
+            </p>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-end gap-3">
+            <label className="grid gap-1 text-sm" htmlFor="writing-deck">
+              <span className="font-medium">Deck</span>
+              <select
+                id="writing-deck"
+                value={deckId}
+                onChange={(event) => changeDeck(event.target.value)}
+                className="border-input bg-background focus-visible:ring-ring h-10 min-w-0 rounded-md border px-3 outline-none focus-visible:ring-2"
+              >
+                {deckOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="writing-character">
+              <span className="font-medium">Character</span>
+              <select
+                id="writing-character"
+                value={index}
+                onChange={(event) => goToIndex(Number(event.target.value))}
+                className="border-input bg-background focus-visible:ring-ring font-jp-ui h-10 min-w-0 rounded-md border px-3 outline-none focus-visible:ring-2"
+                lang="ja"
+              >
+                {queue.map((entry, entryIndex) => (
+                  <option key={entry.contentRef} value={entryIndex}>
+                    {entry.literal}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section
+          className="border-border bg-card mt-3 grid min-w-0 grid-cols-1 gap-3 rounded-xl border p-4"
+          aria-labelledby="standalone-drill-heading"
+        >
+          <div>
+            <h2 id="standalone-drill-heading" className="font-semibold">
+              Standalone drill
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Practice this kanji repeatedly without changing your study
+              progress.
+            </p>
+          </div>
+          {!drillActive && !drillComplete && (
+            <div className="flex min-w-0 flex-wrap items-end gap-3">
+              <label className="grid gap-1 text-sm" htmlFor="drill-repetitions">
+                <span className="font-medium">Repetitions</span>
+                <input
+                  id="drill-repetitions"
+                  className="border-input bg-background h-10 w-24 rounded-md border px-3"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={drillRepetitions}
+                  onChange={(event) =>
+                    setDrillRepetitions(
+                      Math.min(
+                        10,
+                        Math.max(1, Number(event.target.value) || 1),
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <Button type="button" onClick={startDrill}>
+                Start drill
+              </Button>
+            </div>
+          )}
+          {drillActive && (
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <p className="text-sm" role="status">
+                {repetitionComplete
+                  ? drillAttempt === drillRepetitions
+                    ? 'Nicely drawn — drill complete.'
+                    : 'Nicely drawn — starting the next repetition.'
+                  : `Repetition ${drillAttempt} of ${drillRepetitions}`}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={exitDrill}>
+                  Exit drill
+                </Button>
+                <Button
+                  type="button"
+                  onClick={finishDrillRepetition}
+                  disabled={!repetitionComplete}
+                >
+                  {drillAttempt === drillRepetitions
+                    ? 'Finish drill'
+                    : 'Next repetition'}
+                </Button>
+              </div>
+            </div>
+          )}
+          {drillComplete && (
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <p className="text-sm" role="status">
+                Drill complete — {drillRepetitions} repetitions finished.
+              </p>
+              <Button type="button" variant="outline" onClick={startDrill}>
+                Start again
+              </Button>
+            </div>
+          )}
+        </section>
+      </details>
     </main>
   )
 }

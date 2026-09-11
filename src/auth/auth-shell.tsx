@@ -89,7 +89,7 @@ export function AuthShell({
   }
 
   return (
-    <main className="grid min-h-screen sm:grid-cols-2">
+    <main className="app-viewport grid sm:grid-cols-2">
       <div className="bg-secondary/40 relative hidden overflow-hidden sm:flex sm:flex-col sm:justify-between sm:p-10">
         <MarketingTileWall className="opacity-40" columns={12} />
         <div className="relative">

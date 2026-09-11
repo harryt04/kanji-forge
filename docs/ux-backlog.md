@@ -449,6 +449,115 @@ Functional breakage, not polish. Fix these before anything else in this file.
 
 ---
 
+## Loop F — Mobile handwriting (P0)
+
+Origin: a user report that two taps on the stroke-order canvas silently
+advance the study card, plus a live mobile-view audit that found the app's
+CSS is already mobile-first (`sm:` outnumbers `md:` 88 to 1) — the real
+failures are touch semantics, vertical budget, and viewport chrome, none of
+which the desktop-only Playwright projects (`chromium`, `webkit` — both
+resize a viewport, neither emulates touch) could have caught.
+
+- [x] **F1. A touch on the writing canvas can silently grade and advance the
+      study card.**
+      Where: [`study-screen.tsx`](../src/features/study/study-screen.tsx) —
+      `onTouchStart`/`onTouchEnd` sat on the container wrapping the whole
+      card, and the writing canvas
+      ([`writing-pad.tsx`](../src/features/writing/writing-pad.tsx)) is
+      mounted inside it with no `stopPropagation`.
+      Evidence, reproduced live: (1) a resting palm plus a stylus tap —
+      `touchStart` read `touches[0]` (the first *active* contact),
+      `touchEnd` read `changedTouches[0]` (the contact that just *lifted*) —
+      two different fingers produced a false ≥60px delta and graded `again`.
+      (2) A single plain horizontal stroke — the shape of 一, or the top
+      stroke of 二/三/王/国 — exceeded the same 60px threshold on its own and
+      graded `good`. A mouse fires no touch events, which is why this never
+      showed up outside real touch/stylus input.
+      Fix: delete the container's touch handler entirely and replace grading
+      with an explicit sticky bottom bar (F2); `writing-pad.tsx` also stops
+      propagation on its own pointer events as a second layer of defense.
+      **Acceptance line:** no touch sequence dispatched inside
+      `[data-study-writing]` — single-contact, multi-contact, or a
+      full-width drag — changes the current card.
+      `e2e/mobile-writing-touch.spec.ts` reproduces both mechanisms directly
+      against the canvas and asserts the card is unchanged;
+      `study-screen.test.tsx` covers the same guarantee at the unit level.
+
+- [x] **F2. The study card's vertical layout put 226px of chrome and a
+      200px gap above a 239px canvas, forcing a scroll to grade.**
+      Where: the old two-row header (97px, wraps) plus study toolbar (129px,
+      wraps) on `/study`; grade buttons rendered 200px above the card.
+      `PLAN-STUDY-WRITING-UX.md:114` required the canvas be "the largest
+      element and fully above the fold on a phone" — measured, it was 29% of
+      viewport height with the grade row unreachable without scrolling up.
+      Fix: `/study` renders one 56px bar (back link, deck name, remaining
+      count, an overflow menu for Show timer/Hide sticky colors); grade
+      buttons move to a sticky bottom bar outside the scrollable content
+      region, so they and the canvas are visible with zero scroll.
+      **Acceptance line:** at 375×812 and 390×844, on the revealed study
+      card, the canvas bounding box and every grade button's bounding box
+      are fully within the viewport at `window.scrollY === 0`.
+      `e2e/mobile-writing-touch.spec.ts` measures both viewports.
+
+- [x] **F3. `/writing`'s canvas sat entirely below the fold, and the page
+      overflowed horizontally.**
+      Where: [`writing-screen.tsx`](../src/features/writing/writing-screen.tsx)
+      put a 6xl glyph, a paragraph, a Deck chooser, and a Drill panel ahead
+      of the canvas — measured canvas top at y=882 on a 375×812 viewport.
+      The overflow itself was the same `min-width: auto` grid defect A1
+      fixed elsewhere, live in `writing-pad.tsx`'s root grid and meta row
+      (384px min-content floor in a 343px track, widening the document to
+      669px).
+      Fix: canvas-first — glyph/paragraph collapse into a compact bar above
+      the canvas; Deck and Drill move into a disclosure below it, open by
+      default. `min-w-0` added to `writing-pad.tsx`'s root grid and meta row,
+      and to the deck/character `<select>` elements.
+      **Acceptance line:** `documentElement.scrollWidth <= clientWidth` on
+      `/writing` at 375px, and the canvas renders above the Deck/Drill
+      disclosure in DOM order.
+      `e2e/ux-layout.spec.ts` asserts the overflow condition.
+
+- [x] **F4. Settings overflowed horizontally at 375px because Button forced
+      `whitespace-nowrap` unconditionally.**
+      Where: [`button.tsx:8`](../src/ui/button.tsx#L8) — Settings uses
+      Button as a full-width option card holding a description sentence,
+      which then could not wrap: 54 overflowing elements measured at 375px.
+      Fix: removed the forced `whitespace-nowrap` from the shared base and
+      added an explicit `nowrap` opt-in for toolbar/icon buttons that must
+      stay one line (study grade buttons, Flag, Undo, Finish). Also changed
+      the `default`/`sm`/`lg` size variants from a fixed `h-11` to
+      `min-h-11`, so any button that does wrap grows instead of clipping its
+      text — `icon` stays fixed since its content never wraps.
+      **Acceptance line:** `documentElement.scrollWidth <= clientWidth` on
+      `/settings` at 375px.
+      `e2e/ux-layout.spec.ts` asserts the overflow condition;
+      `button.test.tsx` covers the default-wraps / opt-in-nowrap contract.
+
+- [x] **F5. `viewportFit: 'cover'` shipped with zero safe-area insets, and
+      `100vh` (7 sites) instead of `100dvh` (1 site) risked content running
+      under the notch/home-indicator or behind iOS Safari's address bar.**
+      Where: [`layout.tsx:100`](../src/app/layout.tsx#L100) sets
+      `viewportFit: 'cover'` and `statusBarStyle: 'black-translucent'`, but
+      `grep -r "env(safe" src/` returned nothing before this fix.
+      Fix: a `.app-viewport` utility (`100dvh`, with a `100vh` and
+      `-webkit-fill-available` fallback) replaces `min-h-screen`/`100vh` at
+      all 7 sites (`auth-gate.tsx`, `auth-shell.tsx`, `share-screen.tsx`,
+      `study-screen.tsx`, `prototype/tiles/page.tsx`). Safe-area insets are
+      applied per call site with Tailwind's own longhand arbitrary-value
+      utilities (`pb-[max(0.75rem,env(safe-area-inset-bottom))]` and
+      equivalents) on the study bar and sticky grade bar — not a shared
+      hand-written class, which would sit in the same cascade layer as
+      Tailwind's generated CSS with no guaranteed ordering against responsive
+      overrides like `sm:px-6`.
+      **Acceptance line:** every former `min-h-screen`/`100vh` site computes
+      its height from `100dvh`; the study bar and sticky grade bar's padding
+      grows under a non-zero `env(safe-area-inset-*)`.
+      Verified by reading the computed `min-height` and padding at each site;
+      no dedicated e2e check, since Playwright's browser engines report
+      `env(safe-area-inset-*)` as `0px` with no way to emulate a real notch.
+
+---
+
 ## Observed, not queued
 
 Record anything noticed while working a claimed item here, in one or two

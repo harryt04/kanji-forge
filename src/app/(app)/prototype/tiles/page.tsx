@@ -86,7 +86,7 @@ export default function TilesPrototypePage(): ReactNode {
 
   if (useAccessibilityMode) {
     return (
-      <div className="bg-background min-h-screen p-4">
+      <div className="bg-background app-viewport p-4">
         <div className="mx-auto max-w-4xl">
           <h1 className="mb-2 text-3xl font-bold">Tile Wall — List View</h1>
           <p className="text-muted-foreground mb-6">
@@ -100,7 +100,7 @@ export default function TilesPrototypePage(): ReactNode {
   }
 
   return (
-    <div className="bg-background flex min-h-screen flex-col">
+    <div className="bg-background app-viewport flex flex-col">
       <header className="bg-card border-border border-b px-4 py-3">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-2xl font-bold">

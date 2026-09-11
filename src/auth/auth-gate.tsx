@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { AuthShell } from '@/auth/auth-shell'
 import { getSession, signOut, type AuthUser } from '@/auth/client'
 import { bootstrapUserRuntime, clearUserRuntime } from '@/auth/runtime'
@@ -16,6 +17,13 @@ export function AuthGate({
   children: React.ReactNode
 }): React.ReactElement {
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined)
+  const pathname = usePathname()
+  // /study renders its own compact bar (back link, deck name, remaining
+  // count, options menu) built for the study loop specifically. Stacking
+  // this generic header above it was 226px of chrome before any card
+  // content on a 375x812 screen — exactly the budget the writing canvas
+  // needed.
+  const suppressMobileHeader = pathname?.startsWith('/study') ?? false
 
   useEffect(() => {
     let current = true
@@ -52,9 +60,9 @@ export function AuthGate({
 
   return (
     <>
-      <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="app-viewport lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
         <aside
-          className="border-border bg-card hidden border-r lg:sticky lg:top-0 lg:flex lg:min-h-screen lg:flex-col lg:gap-8 lg:self-start lg:p-5"
+          className="border-border bg-card app-viewport hidden border-r lg:sticky lg:top-0 lg:flex lg:flex-col lg:gap-8 lg:self-start lg:p-5"
           aria-label="Application sidebar"
         >
           <Link className="font-display text-xl font-bold" href="/home">
@@ -65,18 +73,25 @@ export function AuthGate({
         </aside>
 
         <div className="min-w-0">
-          <header className="border-border flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-4 sm:px-6 lg:hidden">
-            <div className="flex min-w-0 items-center gap-2">
-              <Link
-                className="font-display shrink-0 text-xl font-bold"
-                href="/home"
-              >
-                KanjiForge
-              </Link>
-              <AppNavigation userId={user.id} />
-            </div>
-            <AccountNavigation onSignOut={() => void handleSignOut()} />
-          </header>
+          {/* Sticky (not static) so it stays reachable while a long page
+              scrolls, and a single row instead of wrapping to two — the old
+              header plus the study toolbar it used to sit above cost 226px,
+              28% of a 375x812 screen, before any page content. Suppressed on
+              /study, which renders its own equivalent bar. */}
+          {!suppressMobileHeader && (
+            <header className="border-border bg-background sticky top-0 z-10 flex min-h-14 items-center justify-between gap-2 border-b px-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:px-6 lg:hidden">
+              <div className="flex min-w-0 items-center gap-2">
+                <Link
+                  className="font-display shrink-0 text-xl font-bold"
+                  href="/home"
+                >
+                  KanjiForge
+                </Link>
+                <AppNavigation userId={user.id} />
+              </div>
+              <AccountNavigation onSignOut={() => void handleSignOut()} />
+            </header>
+          )}
           {children}
         </div>
       </div>
@@ -121,7 +136,7 @@ function AccountNavigation({
 function AuthShellSkeleton(): React.ReactElement {
   return (
     <main
-      className="grid min-h-screen sm:grid-cols-2"
+      className="app-viewport grid sm:grid-cols-2"
       aria-busy="true"
       aria-label="Loading"
     >

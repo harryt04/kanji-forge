@@ -142,7 +142,44 @@ textarea {
     max-width: var(--content-reading-max);
     margin-inline: auto;
   }
+
+  /* Full-viewport-height chrome (the study loop, the auth shell) needs the
+   * dynamic viewport height, not 100vh — iOS Safari's address bar makes 100vh
+   * taller than what is actually visible, which is exactly what pushes grade
+   * buttons and the writing canvas below the fold. `viewportFit: 'cover'`
+   * (layout.tsx) also means content can run under the notch/home indicator
+   * unless it opts into the safe-area insets explicitly. One utility for both,
+   * so the pattern cannot drift screen-to-screen the way --content-reading-max
+   * stopped max-width literals from drifting. */
+  .app-viewport {
+    min-height: 100vh;
+    min-height: -webkit-fill-available; /* older iOS fallback */
+    min-height: 100dvh;
+  }
+
+  /* `min-height` (above) lets the element grow past the viewport when its
+   * content is taller — correct for a normally-scrolling page. A pinned
+   * footer (the study screen's sticky grade bar) instead needs a FIXED
+   * height: with only `min-height`, a flex column has no definite size to
+   * distribute, so its `flex-1 overflow-y-auto` child never actually clips
+   * and scrolls internally — the whole column just grows, and the footer
+   * is pushed off past the viewport bottom instead of staying pinned. */
+  .app-viewport-fixed {
+    height: 100vh;
+    height: -webkit-fill-available; /* older iOS fallback */
+    height: 100dvh;
+  }
 }
+
+/* Safe-area insets are applied per call site with Tailwind's own arbitrary-
+ * value longhand utilities (pb-[max(...)], pl-[max(...)], pr-[max(...)]) —
+ * NOT a shared class here. Tailwind guarantees longhand utilities (pl-/pr-/
+ * pb-) are emitted after the shorthand ones (p-/px-) they refine, so
+ * `p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]` composes correctly.
+ * A hand-written `.safe-x`-style class in this stylesheet would not: it
+ * would sit in the same utilities layer as Tailwind's generated CSS at
+ * whatever position it is declared, with no such ordering guarantee against
+ * `sm:px-6` and similar responsive overrides. */
 
 /* The mobile primary nav intentionally remains horizontally scrollable so all
  * seven destinations keep their full labels. This edge fade makes the hidden

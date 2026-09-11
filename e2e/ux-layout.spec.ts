@@ -10,6 +10,7 @@ test.describe('authenticated layout overflow', () => {
   for (const viewport of [375, 768, 1440]) {
     test(`keeps Browse, Dictionary, and Detail within ${viewport}px`, async ({
       page,
+      authedUser: _authedUser,
     }) => {
       await page.setViewportSize({ width: viewport, height: 900 })
 
@@ -97,6 +98,7 @@ test.describe('authenticated layout overflow', () => {
 
   test('keeps the Home deck action row within the mobile viewport', async ({
     page,
+    authedUser: _authedUser,
   }) => {
     await page.setViewportSize({ width: 375, height: 900 })
     await page.goto('/home')
@@ -117,6 +119,7 @@ test.describe('authenticated layout overflow', () => {
 
   test('keeps the Study remaining count visible on mobile', async ({
     page,
+    authedUser: _authedUser,
   }) => {
     await page.setViewportSize({ width: 375, height: 900 })
     await page.goto('/study')
@@ -148,9 +151,39 @@ test.describe('authenticated layout overflow', () => {
     ).toBeLessThanOrEqual(metrics.clientWidth)
   })
 
+  // Loop F (docs/ux-backlog.md): writing-pad.tsx's root grid had the same
+  // `min-width: auto` defect Loop A fixed in Browse/Dictionary/Detail — its
+  // meta row set a 384px min-content floor inside a 343px track, widening
+  // the whole document to 669px and un-clipping the mobile nav strip.
+  // Settings' 323px overflow at 375px came from Button's forced
+  // whitespace-nowrap on its full-width option-card usage.
+  for (const route of ['/writing', '/settings']) {
+    test(`keeps ${route} within the viewport at 375px`, async ({
+      page,
+      authedUser: _authedUser,
+    }) => {
+      await page.setViewportSize({ width: 375, height: 900 })
+      await page.goto(route)
+      await page.locator('main').first().waitFor()
+
+      const metrics = await page.evaluate(() => {
+        const documentElement = document.documentElement
+        return {
+          clientWidth: documentElement.clientWidth,
+          scrollWidth: documentElement.scrollWidth,
+        }
+      })
+
+      expect(metrics.scrollWidth, `${route} scroll width`).toBeLessThanOrEqual(
+        metrics.clientWidth,
+      )
+    })
+  }
+
   for (const viewport of [375, 1440]) {
     test(`uses one reading width token across single-column screens at ${viewport}px`, async ({
       page,
+      authedUser: _authedUser,
     }) => {
       await page.setViewportSize({ width: viewport, height: 900 })
 
@@ -188,6 +221,7 @@ test.describe('authenticated layout overflow', () => {
 
   test('keeps the desktop sidebar visible at the bottom of Home and Settings', async ({
     page,
+    authedUser: _authedUser,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
 
@@ -240,9 +274,22 @@ test.describe('authenticated layout overflow', () => {
 
   test('keeps tablet portrait on the mobile navigation layout', async ({
     page,
+    authedUser: _authedUser,
   }) => {
     await page.setViewportSize({ width: 768, height: 900 })
     await page.goto('/home')
+    // AuthGate shows a loading skeleton (no <aside>, no <header>) until its
+    // async session check resolves. Evaluating immediately after `goto()`
+    // races that swap and can read the skeleton's absence of both elements
+    // as "mobile header not visible" even on a signed-in session. Below
+    // `lg`, the <aside> is DOM-first but permanently `hidden` — `.first()`
+    // without `:visible` would wait on it forever instead of the header
+    // this breakpoint actually shows (same pitfall as fixtures.ts's
+    // authedUser wait).
+    await page
+      .locator('header:visible, [aria-label="Application sidebar"]:visible')
+      .first()
+      .waitFor()
 
     const metrics = await page.evaluate(() => {
       const sidebar = document.querySelector(

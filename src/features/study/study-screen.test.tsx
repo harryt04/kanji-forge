@@ -61,6 +61,10 @@ function fixtureFetch(): typeof fetch {
 let userId = 0
 const originalStorage = Object.getOwnPropertyDescriptor(navigator, 'storage')
 
+function openStudyMenu(): void {
+  fireEvent.pointerDown(screen.getByRole('menuitem', { name: 'Study options' }))
+}
+
 function setPointerCoarse(coarse: boolean): void {
   vi.stubGlobal(
     'matchMedia',
@@ -246,29 +250,36 @@ describe('StudyScreen', () => {
 
   it('keeps the session timer hidden until requested and updates it while visible', async () => {
     await renderReady()
-    expect(screen.queryByText('Time 0:00')).not.toBeInTheDocument()
+    expect(screen.queryByText('0:00')).not.toBeInTheDocument()
 
     vi.useFakeTimers()
-    fireEvent.click(screen.getByRole('button', { name: 'Show timer' }))
-    expect(screen.getByText('Time 0:00')).toBeInTheDocument()
+    openStudyMenu()
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: 'Show timer' }),
+    )
+    expect(screen.getByText('0:00')).toBeInTheDocument()
 
     act(() => vi.advanceTimersByTime(61_000))
-    expect(screen.getByText('Time 1:01')).toBeInTheDocument()
+    expect(screen.getByText('1:01')).toBeInTheDocument()
   })
 
   it('persists the grey-stickies preference and hides study colors', async () => {
     await renderReady()
     const sticky = screen.getByRole('button', { name: 'Reveal answer' })
-    const toggle = screen.getByRole('button', { name: 'Hide sticky colors' })
+    openStudyMenu()
+    const toggle = screen.getByRole('menuitemcheckbox', {
+      name: 'Hide sticky colors',
+    })
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
-    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(toggle)
 
-    await waitFor(() =>
+    await waitFor(() => {
+      openStudyMenu()
       expect(
-        screen.getByRole('button', { name: 'Show sticky colors' }),
-      ).toHaveAttribute('aria-pressed', 'true'),
-    )
+        screen.getByRole('menuitemcheckbox', { name: 'Show sticky colors' }),
+      ).toHaveAttribute('aria-checked', 'true')
+    })
     expect(sticky).toHaveAttribute('data-grey-stickies', 'true')
     expect(sticky).toHaveStyle({ borderColor: 'var(--muted-foreground)' })
     expect(
@@ -288,9 +299,10 @@ describe('StudyScreen', () => {
 
     await renderReady()
 
+    openStudyMenu()
     expect(
-      screen.getByRole('button', { name: 'Show sticky colors' }),
-    ).toHaveAttribute('aria-pressed', 'true')
+      screen.getByRole('menuitemcheckbox', { name: 'Show sticky colors' }),
+    ).toHaveAttribute('aria-checked', 'true')
     expect(
       screen.getByRole('button', { name: 'Reveal answer' }),
     ).toHaveAttribute('data-grey-stickies', 'true')
@@ -603,29 +615,56 @@ describe('StudyScreen', () => {
     expect(useStudyStore.getState().summary.seen).toBe(0)
   })
 
-  it('grades via a left/right swipe gesture once revealed', async () => {
+  it('does not grade from a touch sequence on the writing canvas', async () => {
+    // Regression test for the mobile handwriting bug: a swipe-to-grade
+    // handler used to sit on the container wrapping the whole card, so any
+    // touch inside the writing canvas — a single tap with a resting palm
+    // (two contacts, matched touches[0] against changedTouches[0] from a
+    // different finger), or a plain horizontal stroke exceeding the 60px
+    // threshold (drawing 一, or the top stroke of 二/三/王/国) — silently
+    // graded the card and advanced past it. The fix deletes that handler
+    // entirely and stops propagation at the canvas; this test exercises the
+    // canvas directly rather than re-deriving the deleted deltaX math.
     await renderReady()
-    const card = screen.getByRole('button', { name: 'Reveal answer' })
     await userEvent.click(
       screen.getByRole('button', { name: 'Reveal (Space)' }),
     )
+    const before = useStudyStore.getState().index
+    const canvas = screen.getByRole('application', {
+      name: /Writing canvas for/,
+    })
 
-    card.dispatchEvent(
+    // A full-width horizontal drag — the exact shape of a drawn 一 stroke.
+    canvas.dispatchEvent(
       new TouchEvent('touchstart', {
-        touches: [{ clientX: 200 } as Touch],
+        touches: [{ clientX: 10, identifier: 1 } as Touch],
         bubbles: true,
       }),
     )
-    card.dispatchEvent(
+    canvas.dispatchEvent(
       new TouchEvent('touchend', {
-        changedTouches: [{ clientX: 100 } as Touch],
+        changedTouches: [{ clientX: 300, identifier: 1 } as Touch],
         bubbles: true,
       }),
     )
 
-    await waitFor(() =>
-      expect(useStudyStore.getState().summary.seen).toBeGreaterThan(0),
+    // A resting-palm-plus-tap sequence — the multi-touch mechanism.
+    canvas.dispatchEvent(
+      new TouchEvent('touchstart', {
+        touches: [{ clientX: 300, identifier: 1 } as Touch],
+        bubbles: true,
+      }),
     )
+    canvas.dispatchEvent(
+      new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 100, identifier: 2 } as Touch],
+        bubbles: true,
+      }),
+    )
+
+    expect(useStudyStore.getState().index).toBe(before)
+    expect(useStudyStore.getState().summary.seen).toBe(0)
+    expect(useStudyStore.getState().revealed).toBe(true)
   })
 
   it('undo restores the previous card and disables itself again', async () => {

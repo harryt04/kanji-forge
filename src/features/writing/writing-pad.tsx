@@ -120,6 +120,12 @@ export function WritingPad({
   }, [literal])
 
   function beginStroke(event: React.PointerEvent<SVGSVGElement>): void {
+    // Belt and braces: the canvas is a drawing surface, never a gesture
+    // target for an ancestor. Stop every pointer contact here so no future
+    // swipe/tap handler placed on a wrapping card can ever act on it — this
+    // is exactly the bug class that let a drawn stroke silently grade and
+    // advance the study card.
+    event.stopPropagation()
     if (!surfaceRef.current || activePointerId.current !== null) return
     activePointerId.current = event.pointerId
     surfaceRef.current.setPointerCapture?.(event.pointerId)
@@ -129,6 +135,7 @@ export function WritingPad({
   }
 
   function continueStroke(event: React.PointerEvent<SVGSVGElement>): void {
+    event.stopPropagation()
     if (
       !surfaceRef.current ||
       activePointerId.current !== event.pointerId ||
@@ -141,6 +148,7 @@ export function WritingPad({
   }
 
   function endStroke(event: React.PointerEvent<SVGSVGElement>): void {
+    event.stopPropagation()
     if (activePointerId.current !== event.pointerId) return
     activePointerId.current = null
     const stroke = draftStrokeRef.current
@@ -232,7 +240,7 @@ export function WritingPad({
   const expectedStrokeIndex = expectedStrokeIndexes[0]
 
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 grid-cols-1 gap-3">
       <div
         className={
           fill
@@ -368,8 +376,8 @@ export function WritingPad({
       <div
         className={
           fill
-            ? 'flex flex-wrap items-center justify-between gap-2'
-            : 'flex flex-wrap items-center justify-between gap-3'
+            ? 'flex min-w-0 flex-wrap items-center justify-between gap-2'
+            : 'flex min-w-0 flex-wrap items-center justify-between gap-3'
         }
       >
         <p className="text-muted-foreground text-sm" role="status">

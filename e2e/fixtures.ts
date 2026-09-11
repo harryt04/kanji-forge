@@ -68,7 +68,19 @@ export const test = base.extend<{ authedUser: AuthedUser }>({
   authedUser: async ({ page }, use) => {
     const user = await registerUser(page)
     await page.goto('/home')
-    await page.waitForSelector('text=Sign out')
+    // The authenticated shell renders two "Sign out" buttons — one in the
+    // desktop sidebar, one in the mobile header — and hides whichever one
+    // doesn't match the current viewport with CSS, not conditional
+    // rendering. `page.waitForSelector('text=Sign out')` matches both and
+    // (its pre-strict-mode API) waits on the first DOM match, which is the
+    // sidebar's copy — permanently hidden below the `lg` breakpoint. Every
+    // existing project was desktop-width, so that copy was always the
+    // visible one and this never mattered; a mobile-width project hangs on
+    // it forever. The CSS `:visible` pseudo-class, combined with `hasText`
+    // via the locator API (not appended to a `text=` prefix — that consumes
+    // the rest of the string as literal text to match, not a selector to
+    // chain), scopes the wait to whichever copy the viewport actually shows.
+    await page.locator('button:visible', { hasText: 'Sign out' }).waitFor()
     await waitForServiceWorkerControl(page)
     await use(user)
   },
