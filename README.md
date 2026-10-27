@@ -16,7 +16,7 @@ The application and pipeline code are MIT licensed. Content packs and derived da
 ## Prerequisites
 
 - Git
-- Node.js 22 or newer (the package supports Node.js 18.17+)
+- Node.js 24 or newer (the package supports Node.js 24)
 - pnpm 9, matching [`pnpm-lock.yaml`](pnpm-lock.yaml)
 - Docker Desktop or another Docker-compatible runtime if you want to run the local Postgres auth backend
 - Chromium and WebKit dependencies for the full Playwright suite
