@@ -7,19 +7,19 @@
   "scripts": {
     "build:decks": "tsx scripts/build-packs/build-decks.ts",
     "build:kanji": "tsx scripts/build-packs/build-kanji-pack.ts",
-    "build:sentences-pack": "npx --yes tsx scripts/build-packs/build-sentences-pack.ts",
+    "build:sentences-pack": "tsx scripts/build-packs/build-sentences-pack.ts",
     "build:similar": "tsx scripts/build-packs/build-similar-pack.ts",
-    "build:strokes-pack": "npx tsx scripts/build-packs/build-strokes-pack.ts",
+    "build:strokes-pack": "tsx scripts/build-packs/build-strokes-pack.ts",
     "build:words-core": "tsx scripts/build-packs/build-words-core-pack.ts",
     "build:words-full": "tsx scripts/build-packs/build-words-full-pack.ts",
     "build:names": "tsx scripts/build-packs/build-names-pack.ts",
     "build:fonts": "node scripts/fonts/build-japanese-subsets.mjs",
     "build": "next build",
-    "ci": "npm run format:check && npm run lint && npm run test:coverage && npm run packs:verify && npm run test:e2e",
+    "ci": "pnpm run format:check && pnpm run lint && pnpm run test:coverage && pnpm run packs:verify && pnpm run test:e2e",
     "dev": "next dev",
     "fetch:sources": "tsx scripts/build-packs/fetch-sources.ts",
     "format:check": "prettier --check .",
-    "lint": "eslint src --max-warnings 0 && npm run typecheck:worker",
+    "lint": "eslint src --max-warnings 0 && pnpm run typecheck:worker",
     "typecheck:worker": "tsc --project tsconfig.worker.json",
     "packs:full": "node scripts/build-packs/pipeline.mjs --mode full",
     "packs:refresh": "pnpm fetch:sources -- --refresh && pnpm build:kanji && pnpm build:words-core && pnpm build:strokes-pack && pnpm build:sentences-pack && pnpm build:similar && pnpm build:decks && pnpm packs:full",
@@ -99,5 +99,6 @@
   },
   "engines": {
     "node": "24.x"
-  }
+  },
+  "packageManager": "pnpm@11.24.0"
 }

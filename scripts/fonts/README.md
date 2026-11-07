@@ -9,7 +9,7 @@ The dev fixture and static UI characters are emitted into the first hot chunks s
 the common `/browse` wall does not fetch cold long-tail ranges merely because its
 kanji are spread across the Unicode plane.
 
-Run `npm run build:fonts` after changing bundled Japanese content or the font
+Run `pnpm run build:fonts` after changing bundled Japanese content or the font
 families. The generated manifest records every subset hash and the exact character
 set used for the build. Noto Sans JP is emitted at weight 400 and Klee One at 600;
 the browser synthesizes the other UI weights from the single Noto face, while the

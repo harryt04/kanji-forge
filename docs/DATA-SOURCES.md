@@ -76,7 +76,7 @@ Full JMdict + JMnedict is far too much to force on a phone. Ship three packs:
 |---|---|---|---|
 | `words-core` | Entries with any `*_pri` tag (~30k entries) — covers essentially all study vocabulary | ~6 MB | Installed by default |
 | `words-full` | All ~200k JMdict entries | ~40 MB compressed (measured from the pinned source) | Optional |
-| `names` | JMnedict (~700k entries) | ~15 MB | Optional; build with `npm run build:names` |
+| `names` | JMnedict (~700k entries) | ~15 MB | Optional; build with `pnpm run build:names` |
 
 `words-core` alone must be enough for every study feature, every built-in deck, and import enrichment. `words-full` and `names` only extend dictionary search depth.
 
@@ -216,7 +216,7 @@ StickyStudy ships 8,000+ words recorded by a human speaker. **There is no openly
 | (Latin display + body faces) | Headings and glosses | Choose OFL-licensed; see PRD §6.3 |
 
 **Subsetting is mandatory and shipped.** Full Noto Sans JP is ~5 MB per weight. The
-reproducible `npm run build:fonts` script builds the self-hosted subset containing:
+reproducible `pnpm run build:fonts` script builds the self-hosted subset containing:
 - The jōyō + jinmeiyō set plus every character appearing in any bundled deck or in `words-core` (roughly 3,500 characters)
 - Full kana, punctuation, and Latin/digits
 
