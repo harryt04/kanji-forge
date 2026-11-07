@@ -17,15 +17,15 @@ The application and pipeline code are MIT licensed. Content packs and derived da
 
 - Git
 - Node.js 24 or newer (the package supports Node.js 24)
-- pnpm 9, matching [`pnpm-lock.yaml`](pnpm-lock.yaml)
+- pnpm 11.24.0, pinned in `package.json` and matching [`pnpm-lock.yaml`](pnpm-lock.yaml)
 - Docker Desktop or another Docker-compatible runtime if you want to run the local Postgres auth backend
 - Chromium and WebKit dependencies for the full Playwright suite
 
-The repository uses pnpm as its canonical package manager. With a recent Node.js installation, enable Corepack and activate pnpm 9:
+The repository uses pnpm as its canonical package manager. With a recent Node.js installation, enable Corepack and activate the pinned pnpm version:
 
 ```sh
 corepack enable
-corepack prepare pnpm@9 --activate
+corepack prepare pnpm@11.24.0 --activate
 ```
 
 ## Clone and run locally
@@ -33,7 +33,7 @@ corepack prepare pnpm@9 --activate
 ```sh
 git clone https://github.com/harryt04/kanji-forge.git
 cd kanji-forge
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
@@ -114,7 +114,7 @@ pnpm packs:test           # content-pipeline unit tests
 pnpm ci                   # complete local CI sequence
 ```
 
-`npm run ci` is also supported for contributors who use npm to invoke package scripts. Without `NEXT_PUBLIC_API_URL`, the public E2E checks run without requiring Postgres and auth-dependent cases (including the offline-study flow) skip. With an API origin configured, make sure that backend is reachable and that any same-origin database has been migrated.
+Without `NEXT_PUBLIC_API_URL`, the public E2E checks run without requiring Postgres and auth-dependent cases (including the offline-study flow) skip. With an API origin configured, make sure that backend is reachable and that any same-origin database has been migrated.
 
 To run the authenticated Browse Workbench check locally, keep Postgres running and set the
 following in the root .env.local (the auth and database variables are described above):
@@ -184,7 +184,7 @@ If you cloned the main repository directly, replace `upstream` with `origin` in 
 ### Open a pull request
 
 1. Make the smallest complete change that solves the problem. Add or update tests for behavior changes, and update documentation or attribution when the change affects either.
-2. Run `pnpm ci` (or `npm run ci`) locally. For UI changes, manually check the affected route at desktop and mobile widths; for offline behavior, test a reload while offline.
+2. Run `pnpm ci` locally. For UI changes, manually check the affected route at desktop and mobile widths; for offline behavior, test a reload while offline.
 3. Commit with a short, imperative message, for example `Fix E2E startup without Postgres`.
 4. Push your branch and open a pull request against `master`:
 
@@ -220,3 +220,7 @@ touching: [`src/core/`](src/core/README.md), [`src/data/`](src/data/README.md),
 ## License
 
 Application and pipeline code are licensed under the [MIT License](LICENSE). Content packs and derived datasets are licensed under [CC BY-SA 4.0](LICENSE-DATA).
+
+Commit `pnpm-lock.yaml` with dependency changes. Use pnpm for installation and
+package scripts; do not generate npm, Yarn, or Bun lockfiles. CI reads the pnpm
+version from `packageManager` and installs with `--frozen-lockfile`.

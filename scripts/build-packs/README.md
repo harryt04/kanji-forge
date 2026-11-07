@@ -22,7 +22,7 @@ here. The real entry points are the `build-*.ts` scripts below plus `pipeline.mj
 | `build-similar-pack.ts` | Visually-similar-kanji index |
 | `build-decks.ts` | Deck definitions: JLPT, school grades, jōyō, top 500, kana, all 12 Kanji Kentei levels |
 
-Each has a matching `npm run build:*` script (see root `package.json`).
+Each has a matching `pnpm run build:*` script (see root `package.json`).
 
 ## `pipeline.mjs` — the shared assertion/publishing layer
 
